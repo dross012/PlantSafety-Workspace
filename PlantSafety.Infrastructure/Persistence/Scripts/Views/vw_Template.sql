@@ -1,0 +1,18 @@
+﻿-- ============================================================================
+--  Project:        PlantSafety.Platform
+--  Layer:          Infrastructure – SQL Scripts
+--  File:           vw_Template.sql
+--  Created:        2026-06-17
+--  Description:    Template for read-optimised SQL views.
+-- ============================================================================
+
+-- CREATE OR ALTER VIEW [Schema].[vw_ModuleName]
+-- AS
+-- SELECT
+--     t.Id,
+--     t.TenantId,
+--     t.Status,
+--     t.CreatedAt
+-- FROM [Schema].[Table] AS t
+-- WHERE t.IsDeleted = 0;
+-- GO

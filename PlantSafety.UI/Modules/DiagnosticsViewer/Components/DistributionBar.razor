@@ -1,0 +1,29 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Reusable horizontal distribution bar used by severity
+     and category distribution charts. Width is computed deterministically
+     from Count/Total. Color is passed via a CSS custom property name so no
+     hardcoded values appear in component markup.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI-A
+   ============================================================ *@
+
+<div class="ps-dist-bar-row">
+    <span class="ps-dist-bar-label">@Label</span>
+    <div class="ps-dist-bar-track" role="img" aria-label="@Label: @Count of @Total">
+        <div class="ps-dist-bar-fill"
+             style="width: @WidthPercent%; background: var(@ColorVar);">
+        </div>
+    </div>
+    <span class="ps-dist-bar-count">@Count</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public int Count { get; set; }
+    [Parameter, EditorRequired] public int Total { get; set; }
+    [Parameter] public string ColorVar { get; set; } = "--ps-color-brand-secondary";
+
+    private double WidthPercent => Total > 0 ? Math.Round((double)Count / Total * 100, 1) : 0;
+}

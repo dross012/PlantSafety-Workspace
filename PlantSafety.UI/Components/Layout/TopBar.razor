@@ -1,0 +1,79 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Top navigation bar component. Displays the active page
+     title, breadcrumb trail, tenant name, authenticated user display name,
+     and a sign-out action. Subscribes to NavigationState and UserSessionState
+     to re-render on context changes without cascading values.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@inject NavigationState NavState
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject IMsalTokenProvider TokenProvider
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+<header class="ps-topbar" role="banner">
+    <div class="ps-topbar-left">
+        <nav aria-label="Breadcrumb" class="ps-breadcrumb">
+            @foreach (var crumb in NavState.Breadcrumbs)
+            {
+                if (crumb.Href is not null)
+                {
+                    <a href="@crumb.Href" class="ps-breadcrumb-link">@crumb.Label</a>
+                    <span class="ps-breadcrumb-sep" aria-hidden="true">/</span>
+                }
+                else
+                {
+                    <span class="ps-breadcrumb-current" aria-current="page">@crumb.Label</span>
+                }
+            }
+        </nav>
+        <h1 class="ps-page-title">@NavState.PageTitle</h1>
+    </div>
+
+    <div class="ps-topbar-right">
+        @if (TenantCtx.IsLoaded)
+        {
+            <span class="ps-tenant-badge">@TenantCtx.Tenant!.TenantName</span>
+        }
+
+        @if (UserSession.IsAuthenticated)
+        {
+            <div class="ps-user-menu" aria-label="User menu">
+                <span class="ps-user-name">@UserSession.User.DisplayName</span>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="SignOutAsync">Sign out</button>
+            </div>
+        }
+    </div>
+</header>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.OnChange += StateHasChanged;
+        UserSession.OnChange += StateHasChanged;
+        TenantCtx.OnChange += StateHasChanged;
+    }
+
+    private async Task SignOutAsync()
+    {
+        await TokenProvider.SignOutAsync();
+        UserSession.ClearUser();
+        TenantCtx.ClearTenant();
+        Nav.NavigateTo(RouteDefinitions.Login, forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        NavState.OnChange -= StateHasChanged;
+        UserSession.OnChange -= StateHasChanged;
+        TenantCtx.OnChange -= StateHasChanged;
+    }
+}
+
+@using PlantSafety.UI.Infrastructure.Auth

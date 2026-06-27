@@ -1,0 +1,248 @@
+﻿
+PlantSafety.Infrastructure
+├── AiGovernance
+├── AiSafetyIntelligence
+│   ├── AiInvestigations
+│   ├── AiTraining
+│   ├── DataLake
+│   └── PredictiveSafety
+├── Analytics
+│   ├── Culture
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── Dashboard
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── Engagement
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── PredictiveAnalytics
+│   │   ├── Messaging
+│   │   └── Persistence
+│   └── ScoreCards
+│       ├── Messaging
+│       └── Persistence
+├── BackgroundJobs
+├── bin
+│   └── Debug
+│       └── net8.0
+├── Caching
+├── Common
+│   ├── Configuration
+│   ├── Constants
+│   ├── Exceptions
+│   ├── Logging
+│   ├── Mapping
+│   ├── Middleware
+│   ├── Pipelines
+│   ├── Serialization
+│   └── Utilities
+├── Compliance
+│   ├── Auditing
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── Certification
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── Compliance
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── ManagementOfChange
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── Permits
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── Policies
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── Procedures
+│   │   ├── Messaging
+│   │   └── Persistence
+│   └── RegulatoryCalendar
+│       ├── Messaging
+│       └── Persistence
+├── ContinuousImprovement
+│   ├── CAPA
+│   └── RCA
+├── ContractorVisitor
+│   └── Contractor
+│       ├── Interfaces
+│       ├── Mapping
+│       ├── Messaging
+│       ├── Persistence
+│       └── Repositories
+├── DependencyInjection
+├── DigitalTwin
+├── EnterpriseFabric
+│   ├── Employees
+│   ├── Machines
+│   ├── Operators
+│   └── WorkCenters
+├── EnvironmentalHealth
+│   └── EnvironmentalMonitoring
+├── ExternalServices
+├── FileStorage
+├── Financials
+│   ├── Persistence
+│   ├── Services
+│   └── Sql
+├── Governance
+├── HumanFactors
+│   ├── Ergonomics
+│   └── FatigueManagement
+├── Identity
+├── Integrations
+│   ├── Administration
+│   │   ├── Backup
+│   │   ├── Cleanup
+│   │   ├── Permissions
+│   │   ├── Restore
+│   │   ├── Roles
+│   │   ├── Updates
+│   │   └── Users
+│   ├── Analytics
+│   ├── Auditing
+│   ├── BackgroundServices
+│   ├── Documents
+│   ├── Email
+│   ├── ErrorHandling
+│   ├── Export
+│   ├── ExternalSystems
+│   ├── Generators
+│   ├── Import
+│   ├── IntegrationHub
+│   ├── IoT
+│   ├── Notifications
+│   │   ├── Email
+│   │   ├── Internal
+│   │   └── Texting
+│   ├── Reporting
+│   └── Texting
+├── Messaging
+│   ├── Consumers
+│   │   ├── AiGovernance
+│   │   ├── AiSafetyIntelligence
+│   │   ├── Analytics
+│   │   ├── Compliance
+│   │   ├── ContractorVisitor
+│   │   ├── DigitalTwin
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── Governance
+│   │   ├── HumanFactors
+│   │   ├── Integrations
+│   │   ├── OperationalSafety
+│   │   ├── SafetyEvents
+│   │   ├── Sustainability
+│   │   ├── Training
+│   │   └── WorkerWellBeing
+│   ├── Publishers
+│   └── Sagas
+├── obj
+│   └── Debug
+│       └── net8.0
+├── OperationalSafety
+│   ├── Alerts
+│   │   ├── Interfaces
+│   │   ├── Mapping
+│   │   ├── Messaging
+│   │   ├── Persistence
+│   │   └── Repositories
+│   ├── Checklists
+│   │   ├── Interfaces
+│   │   ├── Mapping
+│   │   ├── Messaging
+│   │   ├── Persistence
+│   │   └── Repositories
+│   ├── CompetencyManagement
+│   │   ├── Interfaces
+│   │   ├── Mapping
+│   │   ├── Messaging
+│   │   ├── Persistence
+│   │   └── Repositories
+│   ├── EquipmentSafety
+│   ├── HazardousMaterials
+│   ├── Inspections
+│   ├── JobSafetyAnalysis
+│   ├── PPEManagement
+│   │   ├── Interfaces
+│   │   ├── Mapping
+│   │   ├── Messaging
+│   │   ├── Persistence
+│   │   └── Repositories
+│   ├── PredictiveMaintenance
+│   ├── RiskManagement
+│   │   ├── Interfaces
+│   │   ├── Mapping
+│   │   ├── Messaging
+│   │   ├── Persistence
+│   │   └── Repositories
+│   ├── Schedules
+│   │   ├── Interfaces
+│   │   ├── Mapping
+│   │   ├── Messaging
+│   │   ├── Persistence
+│   │   └── Repositories
+│   └── WorkforceSafety
+├── Persistence
+│   ├── Configurations
+│   │   ├── AiGovernance
+│   │   ├── AiSafetyIntelligence
+│   │   ├── Analytics
+│   │   ├── Compliance
+│   │   ├── ContractorVisitor
+│   │   ├── DigitalTwin
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── Governance
+│   │   ├── HumanFactors
+│   │   ├── Integrations
+│   │   ├── OperationalSafety
+│   │   ├── SafetyEvents
+│   │   ├── Sustainability
+│   │   ├── Training
+│   │   └── WorkerWellBeing
+│   ├── ConnectionFactory
+│   ├── Dapper
+│   │   ├── Commands
+│   │   ├── Queries
+│   │   └── SqlBuilder
+│   ├── Repositories
+│   ├── Scripts
+│   └── UnitOfWork
+├── PlanningProjects
+│   ├── Persistence
+│   ├── Services
+│   └── Sql
+│       ├── Functions
+│       ├── Procedures
+│       ├── Tables
+│       ├── Triggers
+│       └── Views
+├── SafetyEvents
+│   ├── CrisisManagement
+│   ├── DrillsAndExercises
+│   ├── EmergencyManagement
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── IncidentManagement
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── NearMisses
+│   ├── Observation
+│   │   ├── Messaging
+│   │   └── Persistence
+│   └── RootCauseAnalysis
+├── Search
+│   └── IndexDefinitions
+├── Sustainability
+├── Training
+│   └── Training
+│       ├── Interfaces
+│       ├── Mapping
+│       ├── Messaging
+│       ├── Persistence
+│       └── Repositories
+└── WorkerWellBeing
+    └── Wellness

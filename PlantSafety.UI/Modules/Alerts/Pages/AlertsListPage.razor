@@ -1,0 +1,147 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Alerts list page. Loads the paginated alert list via
+     AlertsApiClient, populates AlertsState, and renders the alert table with
+     severity badges, status badges, and pagination controls.
+     Exemplar pattern for all module list pages.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/alerts"
+
+@inject AlertsState State
+@inject AlertsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Alerts.ApiClients
+@using PlantSafety.UI.Modules.Alerts.Models
+
+<PageTitle>Alerts — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <div class="ps-page-actions">
+        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+            <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+        </button>
+    </div>
+
+    @if (State.ListError is not null)
+    {
+        <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+    }
+
+    @if (State.IsLoadingList)
+    {
+        <div class="ps-loading-panel" aria-live="polite" aria-busy="true">
+            <div class="ps-spinner"></div>
+            <span>Loading alerts…</span>
+        </div>
+    }
+    else
+    {
+        <table class="ps-table" aria-label="Alerts">
+            <thead>
+                <tr>
+                    <th scope="col">Severity</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Source</th>
+                    <th scope="col">Raised</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var alert in State.Alerts)
+                {
+                    <tr>
+                        <td><span class="ps-badge ps-badge--@SeverityClass(alert.Severity)">@alert.Severity</span></td>
+                        <td>@alert.Title</td>
+                        <td>@alert.Status</td>
+                        <td>@alert.SourceModule</td>
+                        <td>@alert.RaisedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>
+                            <a href="@RouteDefinitions.AlertsList/@alert.AlertId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                        </td>
+                    </tr>
+                }
+                @if (!State.Alerts.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="ps-table-empty">No alerts found.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @* ── Pagination ───────────────────────────────────────────────────────────── *@
+        @if (State.TotalPages > 1)
+        {
+            <div class="ps-pagination" aria-label="Pagination">
+                <button class="ps-btn ps-btn-ghost ps-btn-sm"
+                        @onclick="() => GoToPageAsync(State.CurrentPage - 1)"
+                        disabled="@(State.CurrentPage <= 1)">
+                    <span class="bi bi-chevron-left" aria-hidden="true"></span> Prev
+                </button>
+                <span class="ps-pagination-info">Page @State.CurrentPage of @State.TotalPages (@State.TotalCount total)</span>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm"
+                        @onclick="() => GoToPageAsync(State.CurrentPage + 1)"
+                        disabled="@(State.CurrentPage >= State.TotalPages)">
+                    Next <span class="bi bi-chevron-right" aria-hidden="true"></span>
+                </button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Alerts",
+            activeModuleCode: "alerts",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Alerts" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync() => await GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.GetAlertsAsync(pageNumber: page, pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetAlerts(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load alerts: {envelope.FaultType}");
+    }
+
+    private static string SeverityClass(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" => "critical",
+        "high"     => "high",
+        "medium"   => "medium",
+        "low"      => "low",
+        _          => "info"
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

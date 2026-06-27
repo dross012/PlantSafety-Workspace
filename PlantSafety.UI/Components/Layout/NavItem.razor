@@ -1,0 +1,28 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Single nav menu item. Hidden when the active tenant
+     does not have the module enabled. Uses NavLink for active-route styling.
+     All hrefs come from RouteDefinitions constants — no magic strings.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@inject TenantState TenantCtx
+
+@if (!TenantCtx.IsLoaded || TenantCtx.IsModuleEnabled(ModuleCode))
+{
+    <div class="ps-nav-item">
+        <NavLink class="ps-nav-link" href="@Href" Match="NavLinkMatch.Prefix">
+            <span class="bi @Icon ps-nav-icon" aria-hidden="true"></span>
+            <span class="ps-nav-label">@Label</span>
+        </NavLink>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string ModuleCode { get; set; } = string.Empty;
+}

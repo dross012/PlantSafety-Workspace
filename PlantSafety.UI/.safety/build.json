@@ -1,0 +1,89 @@
+{
+  "$schema": "https://plantsafety.dev/schemas/safety-build/v2026.1.json",
+  "module": "PlantSafety.UI",
+  "moduleType": "Presentation",
+  "schemaVersion": "2026.1",
+  "enforcementLevel": "Strict",
+  "description": "Blazor Hybrid MAUI presentation layer for the PlantSafety platform.",
+
+  "layerRules": {
+    "allowedProjectReferences": [],
+    "forbiddenProjectReferences": [
+      "PlantSafety.Domain",
+      "PlantSafety.Application",
+      "PlantSafety.Infrastructure"
+    ],
+    "note": "UI must NOT reference any backend layer. Consumes API via typed HttpClient only."
+  },
+
+  "forbiddenPackages": [
+    "Microsoft.EntityFrameworkCore",
+    "AutoMapper",
+    "Newtonsoft.Json",
+    "Dapper"
+  ],
+
+  "forbiddenFolders": [
+    "/Migrations",
+    "/EF",
+    "/ORM"
+  ],
+
+  "forbiddenPatterns": [
+    "HttpClient.*GetAsync(?!.*ApiClient)",
+    "DbContext",
+    "IQueryable",
+    "SqlConnection"
+  ],
+
+  "requiredFolders": [
+    "Components/Layout",
+    "Components/Pages",
+    "Infrastructure/Auth",
+    "Infrastructure/ApiClients",
+    "Infrastructure/Correlation",
+    "Models/Common",
+    "Models/Auth",
+    "Routing",
+    "State",
+    "Modules/DiagnosticsViewer",
+    "wwwroot/css"
+  ],
+
+  "moduleStructureRules": {
+    "perModuleFolders": ["Pages", "Components", "State", "ApiClients", "Models"],
+    "enforced": true
+  },
+
+  "blazorRules": {
+    "requireStateContainerPattern": true,
+    "forbidCascadingBusinessState": true,
+    "forbidDirectHttpInComponents": true,
+    "forbidDomainLogicInComponents": true,
+    "requireTypedRoutes": true
+  },
+
+  "diagnosticsViewer": {
+    "requiredStatContainers": [
+      "DiagnosticsSessionState",
+      "FilterState",
+      "SortState",
+      "SelectedResultState",
+      "ExportState",
+      "ComparisonState"
+    ],
+    "requiredDashboardViews": [
+      "SeverityDistribution",
+      "CategoryDistribution",
+      "RuleFrequency",
+      "TargetHotspots",
+      "TrendOverTime"
+    ]
+  },
+
+  "buildMetrics": {
+    "exportOnPostCompile": true,
+    "certificationRequired": false,
+    "metricsOutput": "build/metrics/ui-metrics.json"
+  }
+}

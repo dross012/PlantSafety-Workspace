@@ -1,0 +1,32 @@
+// ============================================================================
+// File: CrisisManagementQueryRequest.cs
+// Project: PlantSafety.Api
+// Author: David (Ted)
+// Created: 2026-06-17
+// Last Updated: 2026-06-17
+// Description: Internal Presentation-layer request model for CrisisManagement queries, decoupled from the external Contracts/Requests DTO.
+// ============================================================================
+//
+// Onboarding Notes:
+// - Created by the controller from the validated Contracts/Requests DTO.
+//
+// Rationale:
+// - Decoupling allows the Presentation layer to enrich requests before dispatching to the Application layer.
+//
+// Future Extension Seams:
+// - Add server-side enrichment fields here (e.g. CallerUserId from JWT) that should not be exposed in the external contract.
+//
+// ============================================================================
+
+namespace PlantSafety.Api.SafetyEvents.CrisisManagement.Models.Requests;
+
+/// <summary>Internal Presentation-layer request model for CrisisManagement queries.</summary>
+/// <param name="TenantId">Tenant identifier resolved from JWT by TenantResolutionMiddleware.</param>
+/// <param name="SiteId">Optional site filter.</param>
+/// <param name="From">Start of date range (UTC).</param>
+/// <param name="To">End of date range (UTC).</param>
+public sealed record CrisisManagementQueryRequest(
+    Guid     TenantId,
+    Guid?    SiteId,
+    DateTime From,
+    DateTime To);

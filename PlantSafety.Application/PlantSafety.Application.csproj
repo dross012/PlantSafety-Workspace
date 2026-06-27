@@ -1,0 +1,122 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn)</NoWarn>
+    <WarningsAsErrors>CS1591</WarningsAsErrors>
+    <LangVersion>12</LangVersion>
+    <Optimize>true</Optimize>
+    <AssemblyName>PlantSafety.Application</AssemblyName>
+    <RootNamespace>PlantSafety.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="14.1.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PlantSafety.Domain\PlantSafety.Domain.csproj" />
+    <ProjectReference Include="..\PlantSafety.SharedKernel\PlantSafety.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Abstractions\Caching\" />
+    <Folder Include="Abstractions\Clock\" />
+    <Folder Include="Abstractions\Context\" />
+    <Folder Include="Abstractions\CurrentUser\" />
+    <Folder Include="Abstractions\Events\" />
+    <Folder Include="Abstractions\Localization\" />
+    <Folder Include="Abstractions\Logging\" />
+    <Folder Include="Abstractions\Messaging\" />
+    <Folder Include="Abstractions\Security\" />
+    <Folder Include="Abstractions\Validation\" />
+    <Folder Include="Analytics\Abstractions\" />
+    <Folder Include="Analytics\Constants\" />
+    <Folder Include="Analytics\DependencyInjection\" />
+    <Folder Include="Analytics\Validation\" />
+    <Folder Include="Analytics\Permissions\" />
+    <Folder Include="Analytics\Policies\" />
+    <Folder Include="Behaviors\Caching\" />
+    <Folder Include="Behaviors\Concurrency\" />
+    <Folder Include="Behaviors\Logging\" />
+    <Folder Include="Behaviors\Metrics\" />
+    <Folder Include="Behaviors\Performance\" />
+    <Folder Include="Behaviors\Security\" />
+    <Folder Include="Behaviors\Transactions\" />
+    <Folder Include="Behaviors\Validation\" />
+    <Folder Include="Common\Constants\" />
+    <Folder Include="Common\Enums\" />
+    <Folder Include="Common\Errors\" />
+    <Folder Include="Common\Extensions\" />
+    <Folder Include="Common\Guards\" />
+    <Folder Include="Common\Mapping\" />
+    <Folder Include="Common\Results\" />
+    <Folder Include="Common\Types\" />
+    <Folder Include="Common\Utilities\" />
+    <Folder Include="Compliance\Abstractions\" />
+    <Folder Include="Compliance\Constants\" />
+    <Folder Include="Compliance\DependencyInjection\" />
+    <Folder Include="Compliance\Permissions\" />
+    <Folder Include="Compliance\Policies\" />
+    <Folder Include="Compliance\Validation\" />
+    <Folder Include="ContinuousImprovement\Abstractions\" />
+    <Folder Include="ContinuousImprovement\Constants\" />
+    <Folder Include="ContinuousImprovement\DependencyInjection\" />
+    <Folder Include="ContinuousImprovement\Permissions\" />
+    <Folder Include="ContinuousImprovement\Policies\" />
+    <Folder Include="ContinuousImprovement\Validation\" />
+    <Folder Include="Contracts\Dtos\" />
+    <Folder Include="Contracts\Events\" />
+    <Folder Include="Contracts\Messages\" />
+    <Folder Include="Contracts\Requests\" />
+    <Folder Include="Contracts\Responses\" />
+    <Folder Include="EnterpriseFabric\Abstractions\" />
+    <Folder Include="EnterpriseFabric\Constants\" />
+    <Folder Include="EnterpriseFabric\DependencyInjection\" />
+    <Folder Include="EnterpriseFabric\Permissions\" />
+    <Folder Include="EnterpriseFabric\Policies\" />
+    <Folder Include="EnterpriseFabric\Validation\" />
+    <Folder Include="DependencyInjection\Modules\" />
+    <Folder Include="DependencyInjection\Services\" />
+    <Folder Include="DependencyInjection\Validation\" />
+    <Folder Include="Financials\Abstractions\" />
+    <Folder Include="Financials\Constants\" />
+    <Folder Include="Financials\DependencyInjection\" />
+    <Folder Include="Financials\Permissions\" />
+    <Folder Include="Financials\Policies\" />
+    <Folder Include="Financials\Validation\" />
+    <Folder Include="Operational\Abstractions\" />
+    <Folder Include="Operational\Constants\" />
+    <Folder Include="Operational\DependencyInjection\" />
+    <Folder Include="Operational\Permissions\" />
+    <Folder Include="Operational\Policies\" />
+    <Folder Include="Operational\Validation\" />
+    <Folder Include="PlanningProjects\Abstractions\" />
+    <Folder Include="PlanningProjects\Constants\" />
+    <Folder Include="PlanningProjects\DependencyInjection\" />
+    <Folder Include="PlanningProjects\Permissions\" />
+    <Folder Include="PlanningProjects\Policies\" />
+    <Folder Include="PlanningProjects\Validation\" />
+    <Folder Include="SafetyEvents\Abstractions\" />
+    <Folder Include="SafetyEvents\Constants\" />
+    <Folder Include="SafetyEvents\DependencyInjection\" />
+    <Folder Include="SafetyEvents\Permissions\" />
+    <Folder Include="SafetyEvents\Policies\" />
+    <Folder Include="SafetyEvents\Validation\" />
+    <Folder Include="Validation\Attributes\" />
+    <Folder Include="Validation\Behaviors\" />
+    <Folder Include="Validation\Extensions\" />
+    <Folder Include="Validation\Fluent\" />
+    <Folder Include="Validation\Rules\" />
+  </ItemGroup>
+
+</Project>

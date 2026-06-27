@@ -1,0 +1,38 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Severity distribution chart for the DiagnosticsViewer
+     dashboard. Renders counts per severity level using deterministic bar
+     widths derived from percentages. No random colors — all colors use
+     the canonical design token variables per Part XI-A.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI-A
+   ============================================================ *@
+
+@using PlantSafety.UI.Modules.DiagnosticsViewer.Models
+
+<div class="ps-chart-card" aria-label="Severity distribution">
+    <h4 class="ps-chart-title">Severity Distribution</h4>
+
+    @if (Results is not null && Results.Count > 0)
+    {
+        var total   = Results.Count;
+        var errors  = Results.Count(r => r.Severity == DiagnosticSeverity.Error);
+        var warnings= Results.Count(r => r.Severity == DiagnosticSeverity.Warning);
+        var infos   = Results.Count(r => r.Severity == DiagnosticSeverity.Information);
+
+        <div class="ps-dist-bars">
+            <DistributionBar Label="Error"       Count="@errors"   Total="@total" ColorVar="--ps-color-severity-high" />
+            <DistributionBar Label="Warning"     Count="@warnings" Total="@total" ColorVar="--ps-color-severity-medium" />
+            <DistributionBar Label="Information" Count="@infos"    Total="@total" ColorVar="--ps-color-severity-info" />
+        </div>
+    }
+    else
+    {
+        <p class="ps-chart-empty">No results to display.</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<DiagnosticResult>? Results { get; set; }
+}

@@ -1,0 +1,64 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Home dashboard page. Sets navigation context and renders
+     a welcome landing with quick-access tiles to the most frequently used
+     modules. Populated from UserSessionState — no direct HTTP calls.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/"
+@inject NavigationState NavState
+@inject UserSessionState UserSession
+
+<PageTitle>Home — PlantSafety</PageTitle>
+
+<div class="ps-home">
+    <div class="ps-home-welcome">
+        <h2 class="ps-home-greeting">
+            Welcome back, <strong>@UserSession.User.DisplayName</strong>
+        </h2>
+        <p class="ps-home-subtitle">PlantSafety Platform — Industrial Safety Management</p>
+    </div>
+
+    <div class="ps-home-tiles">
+        <a href="@RouteDefinitions.AlertsList" class="ps-tile ps-tile--alerts">
+            <span class="bi bi-bell ps-tile-icon" aria-hidden="true"></span>
+            <span class="ps-tile-label">Alerts</span>
+        </a>
+        <a href="@RouteDefinitions.IncidentManagementList" class="ps-tile ps-tile--incidents">
+            <span class="bi bi-exclamation-triangle ps-tile-icon" aria-hidden="true"></span>
+            <span class="ps-tile-label">Incidents</span>
+        </a>
+        <a href="@RouteDefinitions.PermitsList" class="ps-tile ps-tile--permits">
+            <span class="bi bi-patch-check ps-tile-icon" aria-hidden="true"></span>
+            <span class="ps-tile-label">Permits to Work</span>
+        </a>
+        <a href="@RouteDefinitions.DashboardAnalytics" class="ps-tile ps-tile--analytics">
+            <span class="bi bi-speedometer2 ps-tile-icon" aria-hidden="true"></span>
+            <span class="ps-tile-label">Analytics</span>
+        </a>
+        <a href="@RouteDefinitions.ComplianceDashboard" class="ps-tile ps-tile--compliance">
+            <span class="bi bi-check2-all ps-tile-icon" aria-hidden="true"></span>
+            <span class="ps-tile-label">Compliance</span>
+        </a>
+        <a href="@RouteDefinitions.ScorecardsDashboard" class="ps-tile ps-tile--scorecards">
+            <span class="bi bi-trophy ps-tile-icon" aria-hidden="true"></span>
+            <span class="ps-tile-label">Scorecards</span>
+        </a>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Home",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home" }
+            ]);
+    }
+}

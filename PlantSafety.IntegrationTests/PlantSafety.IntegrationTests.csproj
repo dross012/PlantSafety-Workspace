@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bogus" Version="35.6.5" />
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.27" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.27" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="System.Net.Http.Json" Version="10.0.8" />
+    <PackageReference Include="Testcontainers" Version="4.12.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.v3.runner.console" Version="3.2.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PlantSafety.Api\PlantSafety.Api.csproj" />
+    <ProjectReference Include="..\PlantSafety.Application\PlantSafety.Application.csproj" />
+    <ProjectReference Include="..\PlantSafety.Domain\PlantSafety.Domain.csproj" />
+    <ProjectReference Include="..\PlantSafety.Infrastructure\PlantSafety.Infrastructure.csproj" />
+    <ProjectReference Include="..\PlantSafety.SharedKernel\PlantSafety.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Commands\" />
+    <Folder Include="Events\" />
+    <Folder Include="Api\" />
+    <Folder Include="Financials\Api\" />
+    <Folder Include="Financials\EndToEnd\" />
+    <Folder Include="Financials\Sql\" />
+    <Folder Include="PlanningProjects\Api\" />
+    <Folder Include="PlanningProjects\EndToEnd\" />
+    <Folder Include="PlanningProjects\Sql\" />
+    <Folder Include="Setup\" />
+    <Folder Include="Repositories\" />
+    <Folder Include="Queries\" />
+  </ItemGroup>
+
+</Project>

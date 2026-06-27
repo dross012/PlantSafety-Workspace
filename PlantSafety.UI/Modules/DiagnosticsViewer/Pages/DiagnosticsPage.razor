@@ -1,0 +1,211 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: DiagnosticsViewer main page. Loads diagnostic results via
+     DiagnosticsApiClient, populates DiagnosticsSessionState, and renders the
+     severity distribution, category distribution, rule frequency, and result
+     list views. Required dashboard views per Part XI-A.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI-A
+   ============================================================ *@
+
+@page "/modules/diagnostics"
+
+@inject DiagnosticsSessionState SessionState
+@inject FilterState Filters
+@inject SortState Sort
+@inject SelectedResultState Selection
+@inject NavigationState NavState
+@inject DiagnosticsApiClient ApiClient
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DiagnosticsViewer.Components
+@using PlantSafety.UI.Modules.DiagnosticsViewer.Services
+@using PlantSafety.UI.Modules.DiagnosticsViewer.Pipelines
+
+<PageTitle>Diagnostics Viewer — PlantSafety</PageTitle>
+
+<div class="ps-diagnostics">
+
+    @* ── Toolbar ──────────────────────────────────────────────────────────────── *@
+    <div class="ps-diagnostics-toolbar">
+        <div class="ps-diagnostics-toolbar-left">
+            @if (SessionState.HasResults)
+            {
+                <span class="ps-text-muted ps-text-sm">
+                    Session: <strong>@SessionState.SessionLabel</strong>
+                    &nbsp;·&nbsp; Loaded: @SessionState.LoadedAtUtc?.ToString("u")
+                </span>
+            }
+        </div>
+        <div class="ps-diagnostics-toolbar-right">
+            <button class="ps-btn ps-btn-primary ps-btn-sm"
+                    @onclick="LoadLatestAsync"
+                    disabled="@SessionState.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span>
+                Refresh
+            </button>
+            @if (Filters.IsFiltered)
+            {
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="Filters.ClearAll">
+                    Clear Filters
+                </button>
+            }
+        </div>
+    </div>
+
+    @* ── Load Error ────────────────────────────────────────────────────────────── *@
+    @if (SessionState.LoadError is not null)
+    {
+        <div class="ps-alert ps-alert--danger" role="alert">
+            <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+            @SessionState.LoadError
+        </div>
+    }
+
+    @* ── Loading ───────────────────────────────────────────────────────────────── *@
+    @if (SessionState.IsLoading)
+    {
+        <div class="ps-loading-panel" aria-live="polite" aria-busy="true">
+            <div class="ps-spinner"></div>
+            <span>Loading diagnostic results…</span>
+        </div>
+    }
+    else if (SessionState.HasResults)
+    {
+        var filtered = DiagnosticFilterPipeline.Apply(SessionState.Results, Filters, Sort);
+        var grouped  = DiagnosticFilterPipeline.GroupBySeverity(filtered);
+
+        @* ── Summary Counts ──────────────────────────────────────────────────────── *@
+        <div class="ps-diagnostics-summary">
+            <div class="ps-diag-count ps-diag-count--error">
+                <span class="ps-diag-count-value">@SessionState.Results.Count(r => r.Severity == DiagnosticSeverity.Error)</span>
+                <span class="ps-diag-count-label">Errors</span>
+            </div>
+            <div class="ps-diag-count ps-diag-count--warning">
+                <span class="ps-diag-count-value">@SessionState.Results.Count(r => r.Severity == DiagnosticSeverity.Warning)</span>
+                <span class="ps-diag-count-label">Warnings</span>
+            </div>
+            <div class="ps-diag-count ps-diag-count--info">
+                <span class="ps-diag-count-value">@SessionState.Results.Count(r => r.Severity == DiagnosticSeverity.Information)</span>
+                <span class="ps-diag-count-label">Info</span>
+            </div>
+            <div class="ps-diag-count ps-diag-count--total">
+                <span class="ps-diag-count-value">@filtered.Count</span>
+                <span class="ps-diag-count-label">Filtered</span>
+            </div>
+        </div>
+
+        @* ── Dashboard Views (required per Part XI-A) ────────────────────────────── *@
+        <div class="ps-diagnostics-charts">
+            <SeverityDistributionChart Results="@SessionState.Results" />
+            <CategoryDistributionChart Results="@SessionState.Results" />
+        </div>
+
+        @* ── Results List ─────────────────────────────────────────────────────────── *@
+        <div class="ps-diagnostics-results">
+            @foreach (var (severity, items) in grouped)
+            {
+                <div class="ps-diag-group">
+                    <h3 class="ps-diag-group-header">
+                        <span class="ps-badge ps-badge--@severity.ToString().ToLowerInvariant()">
+                            @severity.ToString() (@items.Count)
+                        </span>
+                    </h3>
+                    @foreach (var result in items)
+                    {
+                        <div class="ps-diag-row @(Selection.Selected?.ResultId == result.ResultId ? "ps-diag-row--selected" : string.Empty)"
+                             @onclick="() => Selection.Select(result)"
+                             role="button"
+                             tabindex="0">
+                            <span class="ps-diag-rule-code">@result.RuleCode</span>
+                            <span class="ps-diag-target">@result.Target@(result.LineNumber.HasValue ? $":{result.LineNumber}" : string.Empty)</span>
+                            <span class="ps-diag-message">@result.Message</span>
+                            @if (result.HasAutoFix)
+                            {
+                                <span class="ps-badge ps-badge--info ps-diag-autofix-badge" title="AutoFix available">Fix</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @* ── Detail Panel ─────────────────────────────────────────────────────────── *@
+        @if (Selection.HasSelection)
+        {
+            var r = Selection.Selected!;
+            <aside class="ps-diag-detail" aria-label="Finding detail">
+                <div class="ps-diag-detail-header">
+                    <strong>@r.RuleCode</strong>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="Selection.Clear">Close</button>
+                </div>
+                <dl class="ps-diag-detail-body">
+                    <dt>Severity</dt>     <dd><span class="ps-badge ps-badge--@r.Severity.ToString().ToLowerInvariant()">@r.Severity</span></dd>
+                    <dt>Category</dt>     <dd>@r.Category</dd>
+                    <dt>Target</dt>       <dd>@r.Target@(r.LineNumber.HasValue ? $" (line {r.LineNumber})" : string.Empty)</dd>
+                    <dt>Message</dt>      <dd>@r.Message</dd>
+                    <dt>Handbook</dt>     <dd>@r.HandbookSection</dd>
+                    <dt>Suggested Fix</dt><dd>@(string.IsNullOrWhiteSpace(r.SuggestedFix) ? "—" : r.SuggestedFix)</dd>
+                </dl>
+            </aside>
+        }
+    }
+    else if (!SessionState.IsLoading && SessionState.LoadError is null)
+    {
+        <div class="ps-diagnostics-empty">
+            <span class="bi bi-check2-circle ps-diagnostics-empty-icon" aria-hidden="true"></span>
+            <p>No diagnostic results loaded. Click <strong>Refresh</strong> to fetch the latest run.</p>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Diagnostics Viewer",
+            activeModuleCode: "diagnostics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Diagnostics Viewer" }
+            ]);
+
+        SessionState.OnChange += StateHasChanged;
+        Filters.OnChange     += StateHasChanged;
+        Sort.OnChange        += StateHasChanged;
+        Selection.OnChange   += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !SessionState.HasResults)
+            await LoadLatestAsync();
+    }
+
+    private async Task LoadLatestAsync()
+    {
+        SessionState.BeginLoad();
+
+        var envelope = await ApiClient.GetLatestResultsAsync();
+
+        if (envelope.IsSuccess)
+            SessionState.SetResults(envelope.Data!, $"Latest — {DateTimeOffset.UtcNow:u}");
+        else if (envelope.IsProblem)
+            SessionState.SetLoadError(envelope.Problem!.Detail);
+        else
+            SessionState.SetLoadError($"Communication error: {envelope.FaultType}");
+    }
+
+    public void Dispose()
+    {
+        SessionState.OnChange -= StateHasChanged;
+        Filters.OnChange     -= StateHasChanged;
+        Sort.OnChange        -= StateHasChanged;
+        Selection.OnChange   -= StateHasChanged;
+    }
+}
+
+@using PlantSafety.UI.Modules.DiagnosticsViewer.Models

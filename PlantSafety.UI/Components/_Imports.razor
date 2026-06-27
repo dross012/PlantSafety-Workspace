@@ -1,0 +1,35 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Global Razor imports. All @using directives applied to
+     every .razor file in the project. State containers, routing constants,
+     and model namespaces are imported here to eliminate per-file boilerplate.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+
+@* ── PlantSafety.UI root ─────────────────────────────────────────────────── *@
+@using PlantSafety.UI
+@using PlantSafety.UI.Components
+
+@* ── Models ──────────────────────────────────────────────────────────────── *@
+@using PlantSafety.UI.Models.Auth
+@using PlantSafety.UI.Models.Common
+
+@* ── Routing ─────────────────────────────────────────────────────────────── *@
+@using PlantSafety.UI.Routing
+
+@* ── State Containers ─────────────────────────────────────────────────────── *@
+@using PlantSafety.UI.State
+
+@* ── Module Namespaces ────────────────────────────────────────────────────── *@
+@using PlantSafety.UI.Modules.Alerts.State
+@using PlantSafety.UI.Modules.DiagnosticsViewer.State

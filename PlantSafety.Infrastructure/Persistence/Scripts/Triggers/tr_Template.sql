@@ -1,0 +1,17 @@
+﻿-- ============================================================================
+--  Project:        PlantSafety.Platform
+--  Layer:          Infrastructure – SQL Scripts
+--  File:           tr_Template.sql
+--  Created:        2026-06-17
+--  Description:    Template for audit-trail SQL triggers.
+-- ============================================================================
+
+-- CREATE OR ALTER TRIGGER [Schema].[tr_ModuleName_AuditInsert]
+-- ON [Schema].[Table]
+-- AFTER INSERT
+-- AS
+-- BEGIN
+--     SET NOCOUNT ON;
+--     -- Insert audit rows here
+-- END;
+-- GO

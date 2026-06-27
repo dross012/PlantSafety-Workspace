@@ -1,0 +1,109 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Authentication and initialization gate for the Blazor
+     shell. Renders a loading skeleton during app initialization, an error
+     panel on failure, and the child content only when the session is fully
+     ready. Updates CorrelationContext with the authenticated identity.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@inject AppSessionState SessionState
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject CorrelationContext Correlation
+@inject IMsalTokenProvider TokenProvider
+@inject ILogger<AppShell> Logger
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@if (SessionState.IsInitializing)
+{
+    <div class="ps-init-loading">
+        <div class="ps-spinner" aria-label="Initializing PlantSafety platform…"></div>
+        <p class="ps-init-label">Initializing PlantSafety…</p>
+    </div>
+}
+else if (SessionState.InitState == AppInitState.Failed)
+{
+    <div class="ps-init-error" role="alert">
+        <h2>Unable to start PlantSafety</h2>
+        <p>@SessionState.InitError</p>
+        <button class="ps-btn ps-btn-primary" @onclick="RetryInitializationAsync">Retry</button>
+    </div>
+}
+else if (SessionState.IsReady)
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        SessionState.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await InitializeSessionAsync();
+    }
+
+    private async Task InitializeSessionAsync()
+    {
+        SessionState.BeginInitialization();
+
+        try
+        {
+            var token = await TokenProvider.AcquireTokenAsync();
+
+            // In a full implementation, the UserClaimsDto would be parsed from
+            // the JWT token or fetched from /auth/me. Here we bind the identity
+            // to the correlation context for lineage tracking.
+            // Replace with actual claims parsing against the ID token.
+            var claims = new UserClaimsDto
+            {
+                UserId = Guid.NewGuid(),   // Replace: parse from JWT sub claim
+                TenantId = Guid.NewGuid(), // Replace: parse from JWT tid claim
+                DisplayName = "Platform User",
+                TokenExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1)
+            };
+
+            UserSession.SetUser(claims);
+            Correlation.BindIdentity(claims.TenantId, claims.UserId);
+
+            Logger.LogInformation(
+                "Session initialized. CorrelationId={CorrelationId} TenantId={TenantId}",
+                Correlation.CorrelationId,
+                claims.TenantId);
+
+            SessionState.MarkReady();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(
+                "Session initialization failed. ExceptionType={ExceptionType}",
+                ex.GetType().Name);
+
+            SessionState.MarkFailed("Authentication failed. Please check your network connection and try again.");
+        }
+    }
+
+    private async Task RetryInitializationAsync()
+    {
+        await InitializeSessionAsync();
+    }
+
+    public void Dispose()
+    {
+        SessionState.OnChange -= StateHasChanged;
+    }
+}
+
+@using PlantSafety.UI.Infrastructure.Auth
+@using PlantSafety.UI.Infrastructure.Correlation
+@using Microsoft.Extensions.Logging

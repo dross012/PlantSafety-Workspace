@@ -1,0 +1,13 @@
+﻿-- ============================================================================
+--  Project:        PlantSafety.Platform
+--  Layer:          Infrastructure – SQL Scripts
+--  File:           fn_Template.sql
+--  Created:        2026-06-17
+--  Description:    Template for scalar / table-valued SQL functions.
+-- ============================================================================
+
+-- CREATE OR ALTER FUNCTION [Schema].[fn_ModuleName_Example] (@TenantId UNIQUEIDENTIFIER)
+-- RETURNS TABLE
+-- AS RETURN
+--     SELECT Id, Status FROM [Schema].[Table] WHERE TenantId = @TenantId;
+-- GO

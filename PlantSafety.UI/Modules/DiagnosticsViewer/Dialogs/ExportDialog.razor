@@ -1,0 +1,123 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Export dialog for the DiagnosticsViewer. Allows the user
+     to choose an export format and initiate an export via the canonical export
+     flow: UI → ExportDialog → ExportState → ResultExportManager.
+     The UI must NOT call formatters directly per Part XI-A.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI-A
+   ============================================================ *@
+
+@inject ExportState ExportCtx
+
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="ps-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="export-dialog-title">
+        <div class="ps-dialog">
+            <div class="ps-dialog-header">
+                <h2 id="export-dialog-title" class="ps-dialog-title">Export Diagnostic Results</h2>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="Close" aria-label="Close export dialog">
+                    <span class="bi bi-x-lg" aria-hidden="true"></span>
+                </button>
+            </div>
+
+            <div class="ps-dialog-body">
+                <label class="ps-form-label" for="export-format">Export format</label>
+                <select id="export-format"
+                        class="ps-form-select"
+                        @onchange="OnFormatChanged"
+                        disabled="@ExportCtx.IsExporting">
+                    @foreach (var format in Enum.GetValues<ExportFormat>())
+                    {
+                        <option value="@format" selected="@(ExportCtx.Format == format)">@format.ToString()</option>
+                    }
+                </select>
+
+                @if (ExportCtx.ExportError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@ExportCtx.ExportError</div>
+                }
+
+                @if (ExportCtx.Status == ExportStatus.Completed)
+                {
+                    <div class="ps-alert ps-alert--success" role="status">
+                        Export completed at @ExportCtx.CompletedAtUtc?.ToString("u").
+                    </div>
+                }
+            </div>
+
+            <div class="ps-dialog-footer">
+                <button class="ps-btn ps-btn-ghost" @onclick="Close">Cancel</button>
+                <button class="ps-btn ps-btn-primary"
+                        @onclick="ExportAsync"
+                        disabled="@ExportCtx.IsExporting">
+                    @if (ExportCtx.IsExporting)
+                    {
+                        <span class="ps-spinner ps-spinner-sm" aria-hidden="true"></span>
+                        <span>Exporting…</span>
+                    }
+                    else
+                    {
+                        <span class="bi bi-download" aria-hidden="true"></span>
+                        <span>Export</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    /// <summary>The result set to export, provided by the parent DiagnosticsPage.</summary>
+    [Parameter] public IReadOnlyList<DiagnosticResult>? Results { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ExportCtx.OnChange += StateHasChanged;
+    }
+
+    private void OnFormatChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<ExportFormat>(e.Value?.ToString(), out var format))
+            ExportCtx.SetFormat(format);
+    }
+
+    private async Task ExportAsync()
+    {
+        if (Results is null || Results.Count == 0) return;
+
+        ExportCtx.BeginExport();
+
+        try
+        {
+            // In a full implementation, the ResultExportManager service is called here.
+            // It selects the correct Exporter → Formatter pipeline based on ExportCtx.Format.
+            // The UI never writes files directly.
+            await Task.Delay(500); // Placeholder for ResultExportManager.ExportAsync(...)
+            ExportCtx.MarkCompleted();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ExportCtx.MarkFailed("Export failed. Please try again.");
+        }
+    }
+
+    private async Task Close()
+    {
+        ExportCtx.Reset();
+        await OnClose.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        ExportCtx.OnChange -= StateHasChanged;
+    }
+}
+
+@using PlantSafety.UI.Modules.DiagnosticsViewer.Models

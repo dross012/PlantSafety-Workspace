@@ -1,0 +1,120 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Alert detail page. Loads the full AlertDto by route
+     parameter, displays all fields, and provides an Acknowledge action.
+     Correlation ID is displayed for support reference — never PII.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/alerts/{AlertId:guid}"
+
+@inject AlertsState State
+@inject AlertsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Alerts.ApiClients
+
+<PageTitle>Alert Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    @if (State.IsLoadingDetail)
+    {
+        <div class="ps-loading-panel" aria-live="polite" aria-busy="true">
+            <div class="ps-spinner"></div>
+            <span>Loading alert…</span>
+        </div>
+    }
+    else if (State.DetailError is not null)
+    {
+        <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+    }
+    else if (State.SelectedAlert is { } alert)
+    {
+        <div class="ps-detail-card">
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@alert.Title</h2>
+                <span class="ps-badge ps-badge--@alert.Severity.ToLowerInvariant()">@alert.Severity</span>
+                <span class="ps-badge">@alert.Status</span>
+            </div>
+
+            <dl class="ps-detail-fields">
+                <dt>Description</dt>     <dd>@alert.Description</dd>
+                <dt>Alert Type</dt>      <dd>@alert.AlertType</dd>
+                <dt>Source Module</dt>   <dd>@alert.SourceModule</dd>
+                <dt>Subject</dt>         <dd>@alert.SubjectEntityType @(alert.SubjectEntityId.HasValue ? $"({alert.SubjectEntityId})" : string.Empty)</dd>
+                <dt>Raised</dt>          <dd>@alert.RaisedAtUtc.ToString("u") UTC</dd>
+                <dt>Last Updated</dt>    <dd>@alert.UpdatedAtUtc.ToString("u") UTC</dd>
+                @if (alert.IsAcknowledged)
+                {
+                    <dt>Acknowledged</dt><dd>@alert.AcknowledgedAtUtc?.ToString("u") UTC by @alert.AcknowledgedByName</dd>
+                }
+                <dt>Correlation ID</dt>  <dd class="ps-mono">@alert.CorrelationId</dd>
+            </dl>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AlertsList)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Alerts
+                </button>
+                @if (!alert.IsAcknowledged)
+                {
+                    <button class="ps-btn ps-btn-primary" @onclick="AcknowledgeAsync">
+                        <span class="bi bi-check-lg" aria-hidden="true"></span> Acknowledge
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid AlertId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Alert Detail",
+            activeModuleCode: "alerts",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home",   Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Alerts", Href = RouteDefinitions.AlertsList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetAlertAsync(AlertId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedAlert(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load alert: {envelope.FaultType}");
+    }
+
+    private async Task AcknowledgeAsync()
+    {
+        var envelope = await ApiClient.AcknowledgeAlertAsync(AlertId);
+        if (envelope.IsSuccess)
+            State.SetSelectedAlert(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Acknowledge failed: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

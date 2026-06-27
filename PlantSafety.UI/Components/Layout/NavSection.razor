@@ -1,0 +1,36 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Collapsible nav menu section component. Renders a section
+     heading with an expand/collapse toggle and its child NavItem components.
+     Collapses by default if no child is in the active route.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@inject NavigationManager Nav
+
+<div class="ps-nav-section @(IsExpanded ? "ps-nav-section--expanded" : string.Empty)">
+    <button class="ps-nav-section-header" @onclick="ToggleExpanded"
+            aria-expanded="@IsExpanded.ToString().ToLowerInvariant()"
+            aria-controls="nav-section-@SectionCode">
+        <span class="ps-nav-section-title">@Title</span>
+        <span class="bi @(IsExpanded ? "bi-chevron-up" : "bi-chevron-down") ps-nav-section-chevron" aria-hidden="true"></span>
+    </button>
+
+    <div id="nav-section-@SectionCode"
+         class="ps-nav-section-items"
+         hidden="@(!IsExpanded)">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string SectionCode { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool IsExpanded { get; set; } = true;
+
+    private void ToggleExpanded() => IsExpanded = !IsExpanded;
+}

@@ -1,0 +1,144 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Module navigation sidebar. Renders all 66 PlantSafety
+     modules grouped by the 9 v5.0 sections. Modules not enabled for the
+     active tenant are hidden. Uses RouteDefinitions constants exclusively —
+     no magic strings. Subscribes to TenantState for module visibility.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+
+@implements IDisposable
+
+<div class="ps-nav-header">
+    <a href="@RouteDefinitions.Home" class="ps-nav-brand" aria-label="PlantSafety home">
+        <span class="ps-nav-brand-text">PlantSafety</span>
+    </a>
+</div>
+
+<nav class="ps-nav-body" aria-label="Modules">
+
+    @* ── Section 1: Core Operational ────────────────────────────────────────── *@
+    <NavSection Title="Core Operational" SectionCode="core-operational">
+        <NavItem Href="@RouteDefinitions.AlertsList"            Icon="bi-bell"             Label="Alerts"                ModuleCode="alerts" />
+        <NavItem Href="@RouteDefinitions.AuditingList"          Icon="bi-clipboard-check"  Label="Auditing"              ModuleCode="auditing" />
+        <NavItem Href="@RouteDefinitions.WorkerManagementList"  Icon="bi-people"           Label="Worker Management"     ModuleCode="worker-management" />
+        <NavItem Href="@RouteDefinitions.MachineManagementList" Icon="bi-gear"             Label="Machine Management"    ModuleCode="machine-management" />
+        <NavItem Href="@RouteDefinitions.ProcessManagementList" Icon="bi-diagram-3"        Label="Process Management"    ModuleCode="process-management" />
+        <NavItem Href="@RouteDefinitions.TrainingList"          Icon="bi-mortarboard"      Label="Training"              ModuleCode="training" />
+        <NavItem Href="@RouteDefinitions.CertificationsList"    Icon="bi-award"            Label="Certifications"        ModuleCode="certifications" />
+        <NavItem Href="@RouteDefinitions.PpeList"               Icon="bi-shield-check"     Label="PPE"                   ModuleCode="ppe" />
+        <NavItem Href="@RouteDefinitions.CultureDashboard"      Icon="bi-heart-pulse"      Label="Culture"               ModuleCode="culture" />
+        <NavItem Href="@RouteDefinitions.SchedulingList"        Icon="bi-calendar3"        Label="Scheduling"            ModuleCode="scheduling" />
+        <NavItem Href="@RouteDefinitions.MaintenanceList"       Icon="bi-tools"            Label="Maintenance"           ModuleCode="maintenance" />
+        <NavItem Href="@RouteDefinitions.PredictiveMaintenanceDashboard" Icon="bi-graph-up" Label="Predictive Maintenance" ModuleCode="predictive-maintenance" />
+        <NavItem Href="@RouteDefinitions.ProductionTrackingDashboard" Icon="bi-bar-chart"  Label="Production Tracking"   ModuleCode="production-tracking" />
+        <NavItem Href="@RouteDefinitions.RoutingList"           Icon="bi-signpost-split"   Label="Routing"               ModuleCode="routing" />
+        <NavItem Href="@RouteDefinitions.ReportingList"         Icon="bi-file-earmark-text" Label="Reporting"            ModuleCode="reporting" />
+        <NavItem Href="@RouteDefinitions.SafetyProgramsList"    Icon="bi-shield"           Label="Safety Programs"       ModuleCode="safety-programs" />
+        <NavItem Href="@RouteDefinitions.IncidentManagementList" Icon="bi-exclamation-triangle" Label="Incident Management" ModuleCode="incident-management" />
+        <NavItem Href="@RouteDefinitions.DocumentManagementList" Icon="bi-folder"          Label="Document Management"   ModuleCode="document-management" />
+    </NavSection>
+
+    @* ── Section 2: Safety Event ─────────────────────────────────────────────── *@
+    <NavSection Title="Safety Event" SectionCode="safety-event">
+        <NavItem Href="@RouteDefinitions.CrisisManagementDashboard" Icon="bi-lightning"   Label="Crisis Management"     ModuleCode="crisis-management" />
+        <NavItem Href="@RouteDefinitions.DrillsList"                Icon="bi-stopwatch"   Label="Drills &amp; Exercises" ModuleCode="drills" />
+        <NavItem Href="@RouteDefinitions.EmergencyManagementDashboard" Icon="bi-alarm"    Label="Emergency Management"  ModuleCode="emergency-management" />
+        <NavItem Href="@RouteDefinitions.NearMissList"              Icon="bi-eye-slash"   Label="Near Miss"             ModuleCode="near-miss" />
+        <NavItem Href="@RouteDefinitions.ObservationList"           Icon="bi-binoculars"  Label="Observations"          ModuleCode="observations" />
+        <NavItem Href="@RouteDefinitions.RcaList"                   Icon="bi-search"      Label="Root Cause Analysis"   ModuleCode="rca" />
+    </NavSection>
+
+    @* ── Section 3: Human Factors ────────────────────────────────────────────── *@
+    <NavSection Title="Human Factors" SectionCode="human-factors">
+        <NavItem Href="@RouteDefinitions.HumanFactorsDashboard"     Icon="bi-person-lines-fill" Label="Human Factors"   ModuleCode="human-factors" />
+        <NavItem Href="@RouteDefinitions.FatigueManagementDashboard" Icon="bi-moon"        Label="Fatigue Management"   ModuleCode="fatigue-management" />
+        <NavItem Href="@RouteDefinitions.ErgonomicsList"            Icon="bi-body-text"    Label="Ergonomics"            ModuleCode="ergonomics" />
+        <NavItem Href="@RouteDefinitions.IndustrialHygieneList"     Icon="bi-droplet"      Label="Industrial Hygiene"    ModuleCode="industrial-hygiene" />
+        <NavItem Href="@RouteDefinitions.WorkerWellBeingDashboard"  Icon="bi-heart"        Label="Worker Wellbeing"      ModuleCode="worker-wellbeing" />
+    </NavSection>
+
+    @* ── Section 4: Operational Safety ──────────────────────────────────────── *@
+    <NavSection Title="Operational Safety" SectionCode="operational-safety">
+        <NavItem Href="@RouteDefinitions.EquipmentSafetyList"  Icon="bi-hammer"             Label="Equipment Safety"      ModuleCode="equipment-safety" />
+        <NavItem Href="@RouteDefinitions.HazardAssessmentList" Icon="bi-radioactive"         Label="Hazard Assessment"     ModuleCode="hazard-assessment" />
+        <NavItem Href="@RouteDefinitions.HazMatList"           Icon="bi-exclamation-octagon" Label="HazMat"                ModuleCode="hazmat" />
+        <NavItem Href="@RouteDefinitions.InspectionsList"      Icon="bi-clipboard2-check"    Label="Inspections"           ModuleCode="inspections" />
+        <NavItem Href="@RouteDefinitions.JsaList"              Icon="bi-card-checklist"      Label="Job Safety Analysis"   ModuleCode="jsa" />
+        <NavItem Href="@RouteDefinitions.LotoList"             Icon="bi-lock"                Label="LOTO"                  ModuleCode="loto" />
+        <NavItem Href="@RouteDefinitions.PermitsList"          Icon="bi-patch-check"         Label="Permits to Work"       ModuleCode="permits" />
+    </NavSection>
+
+    @* ── Section 5: Analytics ────────────────────────────────────────────────── *@
+    <NavSection Title="Analytics" SectionCode="analytics">
+        <NavItem Href="@RouteDefinitions.CultureAnalyticsDashboard"    Icon="bi-graph-up-arrow"  Label="Culture Analytics"       ModuleCode="culture-analytics" />
+        <NavItem Href="@RouteDefinitions.DashboardAnalytics"           Icon="bi-speedometer2"    Label="Dashboard Analytics"     ModuleCode="dashboard-analytics" />
+        <NavItem Href="@RouteDefinitions.EngagementAnalyticsDashboard" Icon="bi-people-fill"     Label="Engagement Analytics"    ModuleCode="engagement-analytics" />
+        <NavItem Href="@RouteDefinitions.PredictiveAnalyticsDashboard" Icon="bi-cpu"             Label="Predictive Analytics"    ModuleCode="predictive-analytics" />
+        <NavItem Href="@RouteDefinitions.ReportingAnalyticsList"       Icon="bi-file-bar-graph"  Label="Reporting Analytics"     ModuleCode="reporting-analytics" />
+        <NavItem Href="@RouteDefinitions.SchedulingAnalyticsDashboard" Icon="bi-calendar-check"  Label="Scheduling Analytics"    ModuleCode="scheduling-analytics" />
+        <NavItem Href="@RouteDefinitions.ScorecardsDashboard"          Icon="bi-trophy"          Label="Scorecards"              ModuleCode="scorecards" />
+        <NavItem Href="@RouteDefinitions.TrendAnalysisDashboard"       Icon="bi-activity"        Label="Trend Analysis"          ModuleCode="trend-analysis" />
+    </NavSection>
+
+    @* ── Section 6: Compliance ───────────────────────────────────────────────── *@
+    <NavSection Title="Compliance" SectionCode="compliance">
+        <NavItem Href="@RouteDefinitions.ComplianceDashboard"  Icon="bi-check2-all"     Label="Compliance"            ModuleCode="compliance" />
+        <NavItem Href="@RouteDefinitions.MocList"              Icon="bi-arrow-repeat"   Label="Management of Change"  ModuleCode="moc" />
+        <NavItem Href="@RouteDefinitions.PoliciesList"         Icon="bi-journal-text"   Label="Policies &amp; Procedures" ModuleCode="policies" />
+        <NavItem Href="@RouteDefinitions.RegulatoryCalendar"   Icon="bi-calendar-event" Label="Regulatory Calendar"   ModuleCode="regulatory-calendar" />
+    </NavSection>
+
+    @* ── Section 7: Financial ────────────────────────────────────────────────── *@
+    <NavSection Title="Financial" SectionCode="financial">
+        <NavItem Href="@RouteDefinitions.FinancialsDashboard"       Icon="bi-currency-dollar" Label="Financials"            ModuleCode="financials" />
+        <NavItem Href="@RouteDefinitions.RoiDashboard"              Icon="bi-graph-up"        Label="ROI Analysis"          ModuleCode="roi" />
+        <NavItem Href="@RouteDefinitions.ChecklistList"             Icon="bi-list-check"      Label="Checklists"            ModuleCode="checklists" />
+        <NavItem Href="@RouteDefinitions.ContractorManagementList"  Icon="bi-briefcase"       Label="Contractor Management" ModuleCode="contractor-management" />
+    </NavSection>
+
+    @* ── Section 8: Intelligence ─────────────────────────────────────────────── *@
+    <NavSection Title="Intelligence" SectionCode="intelligence">
+        <NavItem Href="@RouteDefinitions.AiTrainingDashboard"          Icon="bi-robot"          Label="AI Training"          ModuleCode="ai-training" />
+        <NavItem Href="@RouteDefinitions.AiInvestigationList"          Icon="bi-search-heart"   Label="AI Investigation"     ModuleCode="ai-investigation" />
+        <NavItem Href="@RouteDefinitions.DataLakeExplorer"             Icon="bi-database"       Label="Data Lake"            ModuleCode="data-lake" />
+        <NavItem Href="@RouteDefinitions.PredictiveSafetyDashboard"    Icon="bi-shield-fill-check" Label="Predictive Safety" ModuleCode="predictive-safety" />
+        <NavItem Href="@RouteDefinitions.ExportsList"                  Icon="bi-box-arrow-up"   Label="Exports"              ModuleCode="exports" />
+        <NavItem Href="@RouteDefinitions.GovernanceDashboard"          Icon="bi-key"            Label="Governance"           ModuleCode="governance" />
+        <NavItem Href="@RouteDefinitions.DigitalTwinViewer"            Icon="bi-layers"         Label="Digital Twin"         ModuleCode="digital-twin" />
+        <NavItem Href="@RouteDefinitions.SustainabilityDashboard"      Icon="bi-tree"           Label="Sustainability"        ModuleCode="sustainability" />
+        <NavItem Href="@RouteDefinitions.AiGovernanceDashboard"        Icon="bi-shield-lock"    Label="AI Governance"        ModuleCode="ai-governance" />
+        <NavItem Href="@RouteDefinitions.EnterpriseFabricDashboard"    Icon="bi-hdd-network"    Label="Enterprise Fabric"    ModuleCode="enterprise-fabric" />
+        <NavItem Href="@RouteDefinitions.EnvironmentalHealthDashboard" Icon="bi-flower1"        Label="Environmental Health" ModuleCode="environmental-health" />
+    </NavSection>
+
+    @* ── Section 9: Planning Projects ───────────────────────────────────────── *@
+    <NavSection Title="Planning Projects" SectionCode="planning-projects">
+        <NavItem Href="@RouteDefinitions.PlanningProjectsList"       Icon="bi-kanban"         Label="Planning Projects"    ModuleCode="planning-projects" />
+        <NavItem Href="@RouteDefinitions.ProjectBudgetingDashboard"  Icon="bi-wallet2"        Label="Project Budgeting"    ModuleCode="project-budgeting" />
+        <NavItem Href="@RouteDefinitions.ProjectSchedulingDashboard" Icon="bi-calendar-range" Label="Project Scheduling"   ModuleCode="project-scheduling" />
+    </NavSection>
+
+    @* ── Diagnostics (Platform Tools) ───────────────────────────────────────── *@
+    <NavSection Title="Platform Tools" SectionCode="platform-tools">
+        <NavItem Href="@RouteDefinitions.DiagnosticsViewer" Icon="bi-bug" Label="Diagnostics Viewer" ModuleCode="diagnostics" />
+    </NavSection>
+
+</nav>
+
+@code {
+    protected override void OnInitialized()
+    {
+        TenantCtx.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        TenantCtx.OnChange -= StateHasChanged;
+    }
+}

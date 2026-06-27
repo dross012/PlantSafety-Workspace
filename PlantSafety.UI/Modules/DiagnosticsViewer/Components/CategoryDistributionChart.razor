@@ -1,0 +1,42 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Category distribution chart for the DiagnosticsViewer
+     dashboard. Shows finding counts per category (e.g., ForbiddenArtifact,
+     ModuleBoundary) sorted descending by count. Deterministic ordering —
+     no random colors, no nondeterministic rendering per Part XI-A.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI-A
+   ============================================================ *@
+
+@using PlantSafety.UI.Modules.DiagnosticsViewer.Models
+
+<div class="ps-chart-card" aria-label="Category distribution">
+    <h4 class="ps-chart-title">Category Distribution</h4>
+
+    @if (Results is not null && Results.Count > 0)
+    {
+        var total = Results.Count;
+        var byCategory = Results
+            .GroupBy(r => r.Category, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (Category: g.Key, Count: g.Count()))
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Category, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        <div class="ps-dist-bars">
+            @foreach (var (category, count) in byCategory)
+            {
+                <DistributionBar Label="@category" Count="@count" Total="@total" ColorVar="--ps-color-brand-secondary" />
+            }
+        </div>
+    }
+    else
+    {
+        <p class="ps-chart-empty">No results to display.</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<DiagnosticResult>? Results { get; set; }
+}

@@ -1,0 +1,55 @@
+﻿// ============================================================================
+//  Project:        PlantSafety.Platform
+//  Module:         Operational.Contractor
+//  Layer:          Domain
+//  File:           ContractorHistoryEntry.cs
+//  Created:        2026-06-17
+//  Author:         David (Ted) + Copilot
+//  SchemaVersion:  2026.1
+//  Description:    
+//                  Additive-only evolution.
+// ============================================================================
+namespace PlantSafety.Domain.Operational.Contractor.Entities;
+
+/// <summary>Records a single lifecycle status transition on a <see cref="Contractor"/> aggregate.</summary>
+public sealed class ContractorHistoryEntry
+{
+    /// <summary>Unique identity of this history record.</summary>
+    public Guid HistoryId { get; private set; }
+
+    /// <summary>Identity of the parent Contractor aggregate.</summary>
+    public ContractorId ContractorId { get; private set; }
+
+    /// <summary>Status before the transition.</summary>
+    public string PreviousStatus { get; private set; }
+
+    /// <summary>Status after the transition.</summary>
+    public string NewStatus { get; private set; }
+
+    /// <summary>UTC instant of the transition.</summary>
+    public UtcTimestamp ChangedAtUtc { get; private set; }
+
+    /// <summary>Actor who performed the transition.</summary>
+    public string ChangedBy { get; private set; }
+
+    /// <summary>Optional notes recorded at the time of the transition.</summary>
+    public string? Notes { get; private set; }
+
+    /// <summary>For ORM rehydration only.</summary>
+    private ContractorHistoryEntry() { }
+
+    /// <summary>Creates a new history entry for the given transition.</summary>
+    public ContractorHistoryEntry(
+        Guid historyId, ContractorId Id,
+        string previousStatus, string newStatus,
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+    {
+        HistoryId     = historyId;
+        ContractorId      = Id;
+        PreviousStatus = previousStatus;
+        NewStatus      = newStatus;
+        ChangedAtUtc   = changedAtUtc;
+        ChangedBy      = changedBy;
+        Notes          = notes;
+    }
+}

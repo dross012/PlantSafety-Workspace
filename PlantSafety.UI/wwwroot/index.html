@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <!--
+        Content-Security-Policy: strict-dynamic prevents inline script injection.
+        frame-ancestors 'none' prevents clickjacking.
+        No unsafe-inline or unsafe-eval permitted.
+    -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   script-src 'self' 'wasm-unsafe-eval';
+                   style-src 'self' 'unsafe-inline';
+                   img-src 'self' data: blob:;
+                   connect-src 'self' https://login.microsoftonline.com https://*.plantsafety.com;
+                   frame-ancestors 'none';
+                   base-uri 'self';" />
+
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+
+    <title>PlantSafety</title>
+    <base href="/" />
+
+    <!-- Bootstrap Icons (self-hosted in wwwroot/vendor) or CDN with SRI in production -->
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/plantsafety.css" />
+    <link rel="stylesheet" href="PlantSafety.UI.styles.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+</head>
+
+<body>
+
+    <div class="status-bar-safe-area"></div>
+
+    <div id="app" aria-live="polite" aria-label="PlantSafety application">Loading…</div>
+
+    <div id="blazor-error-ui" role="alert" aria-live="assertive">
+        An unhandled error occurred. <a href="" class="reload">Reload</a>
+    </div>
+
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+
+</body>
+</html>

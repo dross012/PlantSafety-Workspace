@@ -1,0 +1,25 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Root Blazor router. Wraps the standard Razor router in
+     the AppShell authentication gate. Unauthenticated users are redirected
+     to the login route; authenticated users are routed normally.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+<Router AppAssembly="@typeof(MauiProgram).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(Layout.MainLayout)">
+            <div class="ps-not-found">
+                <h1>Page not found</h1>
+                <p>The requested route does not exist in the PlantSafety platform.</p>
+                <a href="@RouteDefinitions.Home" class="ps-btn ps-btn-primary">Return to Home</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

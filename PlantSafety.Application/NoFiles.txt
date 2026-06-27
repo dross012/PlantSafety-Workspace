@@ -1,0 +1,191 @@
+﻿
+PlantSafety.Application
+├── Abstractions
+│   ├── Caching
+│   ├── Clock
+│   ├── Context
+│   ├── CurrentUser
+│   ├── Events
+│   ├── Localization
+│   ├── Logging
+│   ├── Messaging
+│   ├── Security
+│   └── Validation
+├── Analytics
+│   ├── Abstractions
+│   ├── Constants
+│   ├── DependencyInjection
+│   ├── Permissions
+│   ├── Policies
+│   └── Validation
+├── Behaviors
+│   ├── Caching
+│   ├── Concurrency
+│   ├── Logging
+│   ├── Metrics
+│   ├── Performance
+│   ├── Security
+│   ├── Transactions
+│   └── Validation
+├── bin
+│   ├── Debug
+│   │   └── net8.0
+│   └── Release
+│       └── net8.0
+├── Common
+│   ├── Constants
+│   ├── Enums
+│   ├── Errors
+│   ├── Extensions
+│   ├── Guards
+│   ├── Mapping
+│   ├── Results
+│   ├── Types
+│   └── Utilities
+├── Compliance
+│   ├── Abstractions
+│   ├── Constants
+│   ├── DependencyInjection
+│   ├── Permissions
+│   ├── Policies
+│   └── Validation
+├── Contracts
+│   ├── Dtos
+│   ├── Events
+│   ├── Messages
+│   ├── Requests
+│   └── Responses
+├── CrossDomain
+│   ├── Abstractions
+│   ├── Constants
+│   ├── DependencyInjection
+│   ├── Permissions
+│   ├── Policies
+│   └── Validation
+├── DependencyInjection
+│   ├── Modules
+│   ├── Services
+│   └── Validation
+├── Features
+│   ├── Analytics
+│   │   ├── Commands
+│   │   ├── Events
+│   │   ├── Handlers
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── Rules
+│   │   └── Vallidators
+│   ├── Compliance
+│   │   ├── Commands
+│   │   ├── Events
+│   │   ├── Handlers
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── Rules
+│   │   └── Vallidators
+│   ├── ContinuousImprovement
+│   │   ├── Commands
+│   │   ├── Events
+│   │   ├── Handlers
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── Rules
+│   │   └── Vallidators
+│   ├── CrossDomain
+│   │   ├── Commands
+│   │   ├── Events
+│   │   ├── Handlers
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── Rules
+│   │   └── Vallidators
+│   ├── Financials
+│   │   ├── Commands
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   └── Queries
+│   ├── Integrations
+│   │   ├── Commands
+│   │   ├── Events
+│   │   ├── Handlers
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── Rules
+│   │   └── Vallidators
+│   ├── Intelligence
+│   │   ├── Commands
+│   │   ├── Events
+│   │   ├── Handlers
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── Rules
+│   │   └── Vallidators
+│   ├── Operational
+│   │   ├── Commands
+│   │   ├── Events
+│   │   ├── Handlers
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── Rules
+│   │   └── Vallidators
+│   ├── PlanningProjects
+│   │   ├── Commands
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   └── Queries
+│   └── SafetyEvents
+│       ├── Commands
+│       ├── Events
+│       ├── Handlers
+│       ├── Mappings
+│       ├── Models
+│       ├── Policies
+│       ├── Queries
+│       ├── Rules
+│       └── Vallidators
+├── Integrations
+│   ├── Abstractions
+│   ├── Constants
+│   ├── DependencyInjection
+│   ├── Permissions
+│   ├── Policies
+│   └── Validation
+├── obj
+│   ├── Debug
+│   │   └── net8.0
+│   └── Release
+│       └── net8.0
+├── Operational
+│   ├── Abstractions
+│   ├── Constants
+│   ├── DependencyInjection
+│   ├── Permissions
+│   ├── Policies
+│   └── Validation
+├── SafetyEvents
+│   ├── Abstractions
+│   ├── Constants
+│   ├── DependencyInjection
+│   ├── Permissions
+│   ├── Policies
+│   └── Validation
+└── Validation
+    ├── Attributes
+    ├── Behaviors
+    ├── Extensions
+    ├── Fluent
+    └── Rules

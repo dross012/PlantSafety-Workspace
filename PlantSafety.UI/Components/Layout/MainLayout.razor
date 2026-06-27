@@ -1,0 +1,28 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-06-17
+   FILE DESCRIPTION: Root shell layout. Composes the AppShell auth gate,
+     NavMenu sidebar, TopBar, and main content area. Applies the standard
+     three-zone layout (sidebar | top bar | content) required by the
+     PlantSafety UI design system.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@inherits LayoutComponentBase
+
+<AppShell>
+    <div class="ps-shell">
+        <aside class="ps-sidebar" role="navigation" aria-label="Module navigation">
+            <NavMenu />
+        </aside>
+
+        <div class="ps-main-area">
+            <TopBar />
+
+            <main class="ps-content" role="main" id="main-content">
+                @Body
+            </main>
+        </div>
+    </div>
+</AppShell>
