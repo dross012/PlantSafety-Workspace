@@ -1,0 +1,28 @@
+Write-Host "=== DATABASE MIGRATION START ==="
+
+$migrationDir = $env:PLANTSAFETY_SQL_MIGRATIONS
+$dbName       = $env:PLANTSAFETY_DB_NAME
+
+if (-not (Test-Path $migrationDir)) {
+    Write-Host "No migration directory found. Exiting."
+    exit 0
+}
+
+$sqlFiles = Get-ChildItem $migrationDir -Filter "*.sql" | Sort-Object Name
+
+if ($sqlFiles.Count -eq 0) {
+    Write-Host "No SQL migration files found."
+    exit 0
+}
+
+foreach ($file in $sqlFiles) {
+    Write-Host "Running migration: $($file.Name)"
+    sqlcmd -S localhost -d $dbName -i $file.FullName
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: Migration failed on $($file.Name)."
+        exit 1
+    }
+}
+
+Write-Host "=== DATABASE MIGRATION COMPLETE ==="

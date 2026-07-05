@@ -51,7 +51,12 @@ public abstract record StrongId<TStrongId> : IStrongId
     /// Creates a StrongId from an existing Guid.
     /// </summary>
     public static TStrongId From(Guid value)
-        => new(value);
+    {
+        if (value == Guid.Empty)
+            throw new ArgumentException("StrongId cannot wrap Guid.Empty.", nameof(value));
+
+        return new() { Value = value };
+    }
 
     /// <summary>
     /// Attempts to parse a Guid into a StrongId without throwing.

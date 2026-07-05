@@ -74,6 +74,5 @@ public abstract class PropertyValidator : IPropertyValidator
     /// Helper for creating a ValidationError bound to this validator's property.
     /// </summary>
     protected ValidationError Error(string code, string message)
-        => new()
-        { PropertyName = PropertyName, ErrorMessage = message };
+        => new(PropertyName, message, code);
 }

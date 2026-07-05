@@ -17,7 +17,7 @@ namespace PlantSafety.SharedKernel.Base;
 /// Abstract domain event base class.
 /// Concrete domain events MUST be <c>sealed record</c> types with positional parameters.
 /// </summary>
-public abstract record DomainEvent : IDomainEvent
+public abstract record DomainEvent : Abstractions.IDomainEvent
 {
     /// <inheritdoc/>
     public abstract string EventType { get; }

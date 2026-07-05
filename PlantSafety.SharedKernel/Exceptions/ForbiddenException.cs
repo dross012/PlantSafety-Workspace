@@ -24,7 +24,7 @@ public sealed class ForbiddenException : BaseException
     public ForbiddenException()
         : base(
             new Error(
-                new ErrorCode("ACCESS_FORBIDDEN"),
+                ErrorCode.Create("access.forbidden"),
                 ErrorType.Forbidden,
                 "You do not have permission to perform this action."),
             ExceptionSeverity.Warning)

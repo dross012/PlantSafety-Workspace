@@ -11,13 +11,13 @@
 using System.Text;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
-using ISerializer = YamlDotNet.Serialization.ISerializer;
+using PlantSafety.SharedKernel.Serialization.Abstractions;
 
 namespace PlantSafety.SharedKernel.Serialization.Yaml;
 
-public sealed class YamlSerializer : ISerializer
+public sealed class YamlSerializer : PlantSafety.SharedKernel.Serialization.Abstractions.ISerializer
 {
-    private static readonly ISerializer _serializer =
+    private static readonly YamlDotNet.Serialization.ISerializer _serializer =
         new SerializerBuilder()
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
@@ -27,19 +27,19 @@ public sealed class YamlSerializer : ISerializer
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
 
-    public static byte[] Serialize<T>(T value)
+    public byte[] Serialize<T>(T value)
     {
         var yaml = _serializer.Serialize(value);
         return Encoding.UTF8.GetBytes(yaml);
     }
 
-    public static T? Deserialize<T>(byte[] data)
+    public T? Deserialize<T>(byte[] data)
     {
         var yaml = Encoding.UTF8.GetString(data);
         return _deserializer.Deserialize<T>(yaml);
     }
 
-    public static object? Deserialize(byte[] data, Type type)
+    public object? Deserialize(byte[] data, Type type)
     {
         var yaml = Encoding.UTF8.GetString(data);
         return _deserializer.Deserialize(yaml, type);

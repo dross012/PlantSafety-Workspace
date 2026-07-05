@@ -55,6 +55,11 @@ public sealed class Result<T>
     /// </summary>
     public static Result<T> Failure(Error error) => new(false, default, error);
 
+    /// <summary>
+    /// Creates a failed result using the canonical "resource not found" error.
+    /// </summary>
+    public static Result<T> NotFound() => new(false, default, CommonErrors.NotFound);
+
     public override string ToString()
         => IsSuccess ? $"Success: {Value}" : $"Failure: {Error}";
 }

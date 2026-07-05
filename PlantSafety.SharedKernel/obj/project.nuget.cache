@@ -1,14 +1,21 @@
 {
   "version": 2,
-  "dgSpecHash": "N8+DgQKk53A=",
+  "dgSpecHash": "OIrRd5EiwXE=",
   "success": true,
   "projectFilePath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\dross\\.nuget\\packages\\fluentvalidation\\12.1.1\\fluentvalidation.12.1.1.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\messagepack\\3.1.7\\messagepack.3.1.7.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\messagepack.annotations\\3.1.7\\messagepack.annotations.3.1.7.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\messagepackanalyzer\\3.1.7\\messagepackanalyzer.3.1.7.nupkg.sha512",
     "C:\\Users\\dross\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\10.0.8\\microsoft.extensions.dependencyinjection.10.0.8.nupkg.sha512",
     "C:\\Users\\dross\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\10.0.8\\microsoft.extensions.dependencyinjection.abstractions.10.0.8.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\microsoft.net.stringtools\\17.11.4\\microsoft.net.stringtools.17.11.4.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\mongodb.bson\\3.1.0\\mongodb.bson.3.1.0.nupkg.sha512",
     "C:\\Users\\dross\\.nuget\\packages\\protobuf-net\\3.2.56\\protobuf-net.3.2.56.nupkg.sha512",
     "C:\\Users\\dross\\.nuget\\packages\\protobuf-net.core\\3.2.56\\protobuf-net.core.3.2.56.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\5.0.0\\system.runtime.compilerservices.unsafe.5.0.0.nupkg.sha512",
     "C:\\Users\\dross\\.nuget\\packages\\yamldotnet\\18.0.0\\yamldotnet.18.0.0.nupkg.sha512"
   ],
   "logs": []

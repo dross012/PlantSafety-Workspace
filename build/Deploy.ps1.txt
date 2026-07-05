@@ -1,0 +1,129 @@
+Write-Host "=== DEPLOY PIPELINE START ==="
+
+# ---------------------------------------------------------
+# 0. Configuration (EDIT THESE FOR YOUR ENVIRONMENT)
+# ---------------------------------------------------------
+$envName          = "Local"
+$apiProject       = "src/PlantSafety.Api"
+$uiProject        = "src/PlantSafety.UI"
+$apiPublishDir    = "artifacts/api"
+$uiPublishDir     = "artifacts/ui"
+$apiDeployTarget  = "C:\Deploy\PlantSafety\Api"
+$uiDeployTarget   = "C:\Deploy\PlantSafety\Ui"
+$sqlScriptsDir    = ".\sql\migrations"
+$backupRoot       = "C:\Deploy\Backups\PlantSafety"
+$serviceName      = "PlantSafety.Api"   # if using Windows Service
+$healthCheckUrl   = "http://localhost:5000/health"  # adjust for your API
+
+# ---------------------------------------------------------
+# 1. Ensure clean working directory
+# ---------------------------------------------------------
+Write-Host "Checking for uncommitted changes..."
+$changes = git status --porcelain
+if ($changes) {
+    Write-Host "ERROR: Uncommitted changes detected. Commit or stash before deploying."
+    exit 1
+}
+
+# ---------------------------------------------------------
+# 2. Build & Publish Artifacts (reuse CI logic)
+# ---------------------------------------------------------
+Write-Host "Building and publishing API..."
+dotnet publish $apiProject -c Release -o $apiPublishDir
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host "Building and publishing UI..."
+dotnet publish $uiProject -c Release -o $uiPublishDir
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# ---------------------------------------------------------
+# 3. Create Backup of Current Deployment
+# ---------------------------------------------------------
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$backupDir = Join-Path $backupRoot $timestamp
+
+Write-Host "Creating backup at $backupDir..."
+New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+
+if (Test-Path $apiDeployTarget) {
+    Copy-Item $apiDeployTarget -Destination (Join-Path $backupDir "Api") -Recurse -Force
+}
+if (Test-Path $uiDeployTarget) {
+    Copy-Item $uiDeployTarget -Destination (Join-Path $backupDir "Ui") -Recurse -Force
+}
+
+Write-Host "Backup complete."
+
+# ---------------------------------------------------------
+# 4. Stop Services / App (if applicable)
+# ---------------------------------------------------------
+if ($serviceName -ne "") {
+    Write-Host "Stopping service $serviceName..."
+    Stop-Service -Name $serviceName -ErrorAction SilentlyContinue
+}
+
+# If using IIS, you might instead stop/recycle app pool here.
+
+# ---------------------------------------------------------
+# 5. Deploy API
+# ---------------------------------------------------------
+Write-Host "Deploying API to $apiDeployTarget..."
+New-Item -ItemType Directory -Path $apiDeployTarget -Force | Out-Null
+Copy-Item "$apiPublishDir\*" -Destination $apiDeployTarget -Recurse -Force
+
+# ---------------------------------------------------------
+# 6. Deploy UI
+# ---------------------------------------------------------
+Write-Host "Deploying UI to $uiDeployTarget..."
+New-Item -ItemType Directory -Path $uiDeployTarget -Force | Out-Null
+Copy-Item "$uiPublishDir\*" -Destination $uiDeployTarget -Recurse -Force
+
+# ---------------------------------------------------------
+# 7. Apply SQL Migrations (if any)
+# ---------------------------------------------------------
+if (Test-Path $sqlScriptsDir) {
+    Write-Host "Applying SQL migrations from $sqlScriptsDir..."
+    $sqlFiles = Get-ChildItem $sqlScriptsDir -Filter "*.sql" | Sort-Object Name
+    foreach ($file in $sqlFiles) {
+        Write-Host "Running migration: $($file.Name)"
+        sqlcmd -S localhost -d DiagnosticsDB -i $file.FullName
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR: SQL migration failed on $($file.Name). Initiating rollback..."
+            # Rollback: restore backup
+            if (Test-Path (Join-Path $backupDir "Api")) {
+                Copy-Item (Join-Path $backupDir "Api\*") -Destination $apiDeployTarget -Recurse -Force
+            }
+            if (Test-Path (Join-Path $backupDir "Ui")) {
+                Copy-Item (Join-Path $backupDir "Ui\*") -Destination $uiDeployTarget -Recurse -Force
+            }
+            exit 1
+        }
+    }
+}
+
+# ---------------------------------------------------------
+# 8. Start Services / App
+# ---------------------------------------------------------
+if ($serviceName -ne "") {
+    Write-Host "Starting service $serviceName..."
+    Start-Service -Name $serviceName
+}
+
+# ---------------------------------------------------------
+# 9. Health Check
+# ---------------------------------------------------------
+Write-Host "Checking API health at $healthCheckUrl..."
+try {
+    $response = Invoke-WebRequest -Uri $healthCheckUrl -UseBasicParsing -TimeoutSec 10
+    if ($response.StatusCode -ne 200) {
+        Write-Host "ERROR: Health check failed with status $($response.StatusCode)."
+        exit 1
+    }
+}
+catch {
+    Write-Host "ERROR: Health check request failed: $($_.Exception.Message)"
+    exit 1
+}
+
+Write-Host "Deployment to $envName environment completed successfully."
+Write-Host "=== DEPLOY PIPELINE COMPLETE ==="

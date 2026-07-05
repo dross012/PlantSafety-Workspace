@@ -23,9 +23,12 @@ public sealed record ErrorCode
     /// </summary>
     public string Value { get; }
 
-    private ErrorCode(string value)
+    public ErrorCode(string value)
     {
-        Value = value;
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException("ErrorCode cannot be empty.", nameof(value));
+
+        Value = value.Trim();
     }
 
     public static ErrorCode Create(string value)

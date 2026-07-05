@@ -1,0 +1,12 @@
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\PlantSafety.SharedKernel.csproj.AssemblyReference.cache
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\PlantSafety.SharedKernel.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\PlantSafety.SharedKernel.AssemblyInfoInputs.cache
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\PlantSafety.SharedKernel.AssemblyInfo.cs
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\PlantSafety.SharedKernel.csproj.CoreCompileInputs.cache
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\bin\Debug\net8.0\PlantSafety.SharedKernel.deps.json
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\bin\Debug\net8.0\PlantSafety.SharedKernel.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\bin\Debug\net8.0\PlantSafety.SharedKernel.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\PlantSafety.SharedKernel.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\refint\PlantSafety.SharedKernel.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\PlantSafety.SharedKernel.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.SharedKernel\obj\Debug\net8.0\ref\PlantSafety.SharedKernel.dll

@@ -32,7 +32,7 @@ public static class DateTimeExtensions
 
     /// <summary>Returns the end of the calendar day (23:59:59.9999999 UTC).</summary>
     public static DateTime EndOfDay(this DateTime value)
-        => new(value.Year, value.Month, value.Day, 23, 59, 59, 999, DateTimeKind.Utc)
+        => new DateTime(value.Year, value.Month, value.Day, 23, 59, 59, 999, DateTimeKind.Utc)
             .AddTicks(9999);
 
     /// <summary>

@@ -1,0 +1,122 @@
+Write-Host "=== TEST PIPELINE START ==="
+
+# ---------------------------------------------------------
+# 0. Ensure clean working directory
+# ---------------------------------------------------------
+Write-Host "Checking for uncommitted changes..."
+$changes = git status --porcelain
+if ($changes) {
+    Write-Host "ERROR: Uncommitted changes detected. Commit or stash before running tests."
+    exit 1
+}
+
+# ---------------------------------------------------------
+# 1. Restore
+# ---------------------------------------------------------
+Write-Host "Restoring packages..."
+dotnet restore
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# ---------------------------------------------------------
+# 2. Build (strict mode)
+# ---------------------------------------------------------
+Write-Host "Building solution..."
+dotnet build --configuration Release --no-restore -warnaserror
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# ---------------------------------------------------------
+# 3. Run Unit Tests
+# ---------------------------------------------------------
+Write-Host "Running unit tests..."
+dotnet test --configuration Release --no-build --logger "trx"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# ---------------------------------------------------------
+# 4. Run Integration Tests (if folder exists)
+# ---------------------------------------------------------
+if (Test-Path ".\tests\IntegrationTests") {
+    Write-Host "Running integration tests..."
+    dotnet test tests/IntegrationTests --configuration Release --no-build --logger "trx"
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+# ---------------------------------------------------------
+# 5. Run SafetyAnalyzers (strict)
+# ---------------------------------------------------------
+Write-Host "Running SafetyAnalyzers..."
+dotnet build --configuration Release --no-restore -p:RunAnalyzers=true -p:TreatWarningsAsErrors=true
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# ---------------------------------------------------------
+# 6. Static Analysis (formatting, style)
+# ---------------------------------------------------------
+Write-Host "Running static analysis (dotnet format)..."
+dotnet format --verify-no-changes
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# ---------------------------------------------------------
+# 7. Vulnerability Scan
+# ---------------------------------------------------------
+Write-Host "Checking for vulnerable packages..."
+dotnet list package --vulnerable
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Vulnerable packages detected."
+    exit 1
+}
+
+# ---------------------------------------------------------
+# 8. Outdated Package Scan
+# ---------------------------------------------------------
+Write-Host "Checking for outdated packages..."
+dotnet list package --outdated
+# (Does not fail build unless you want strict mode)
+
+# ---------------------------------------------------------
+# 9. Forbidden File Type Scan
+# ---------------------------------------------------------
+Write-Host "Checking for forbidden file types..."
+$forbidden = @("*.exe","*.dll","*.zip","*.bak","*.tmp")
+foreach ($pattern in $forbidden) {
+    $found = Get-ChildItem -Recurse -Filter $pattern
+    if ($found) {
+        Write-Host "ERROR: Forbidden file type detected: $pattern"
+        $found | ForEach-Object { Write-Host $_.FullName }
+        exit 1
+    }
+}
+
+# ---------------------------------------------------------
+# 10. Large File Scan (> 1MB)
+# ---------------------------------------------------------
+Write-Host "Checking for large files..."
+$largeFiles = git ls-files -s | Where-Object { $_ -match " [0-9]{7,} " }
+if ($largeFiles) {
+    Write-Host "ERROR: Large files detected in repository."
+    Write-Host $largeFiles
+    exit 1
+}
+
+# ---------------------------------------------------------
+# 11. TODO / FIXME / HACK Scan
+# ---------------------------------------------------------
+Write-Host "Scanning for TODO/FIXME/HACK comments..."
+$badComments = Select-String -Path .\**\*.cs -Pattern "TODO|FIXME|HACK"
+if ($badComments) {
+    Write-Host "ERROR: TODO/FIXME/HACK comments found:"
+    $badComments | ForEach-Object { Write-Host $_.Line }
+    exit 1
+}
+
+# ---------------------------------------------------------
+# 12. SQL Validation Hook (optional)
+# ---------------------------------------------------------
+if (Test-Path ".\sql\validate.sql") {
+    Write-Host "Running SQL validation..."
+    sqlcmd -S localhost -d DiagnosticsDB -i .\sql\validate.sql
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: SQL validation failed."
+        exit 1
+    }
+}
+
+Write-Host "=== TEST PIPELINE COMPLETE ==="

@@ -1,0 +1,123 @@
+Write-Host "=== ROLLBACK PIPELINE START ==="
+
+# ---------------------------------------------------------
+# 0. Configuration (EDIT THESE FOR YOUR ENVIRONMENT)
+# ---------------------------------------------------------
+$apiDeployTarget  = "C:\Deploy\PlantSafety\Api"
+$uiDeployTarget   = "C:\Deploy\PlantSafety\Ui"
+$backupRoot       = "C:\Deploy\Backups\PlantSafety"
+$serviceName      = "PlantSafety.Api"
+$healthCheckUrl   = "http://localhost:5000/health"
+$sqlRollbackFile  = ".\sql\rollback.sql"   # optional
+
+# ---------------------------------------------------------
+# 1. Ensure backup directory exists
+# ---------------------------------------------------------
+if (-not (Test-Path $backupRoot)) {
+    Write-Host "ERROR: Backup directory not found: $backupRoot"
+    exit 1
+}
+
+# ---------------------------------------------------------
+# 2. List available backups
+# ---------------------------------------------------------
+Write-Host "Available backups:"
+$backups = Get-ChildItem $backupRoot | Sort-Object Name -Descending
+
+if ($backups.Count -eq 0) {
+    Write-Host "ERROR: No backups found."
+    exit 1
+}
+
+$index = 1
+foreach ($b in $backups) {
+    Write-Host "[$index] $($b.Name)"
+    $index++
+}
+
+# ---------------------------------------------------------
+# 3. Prompt user to choose backup
+# ---------------------------------------------------------
+$choice = Read-Host "Enter the number of the backup to restore"
+$choiceIndex = [int]$choice - 1
+
+if ($choiceIndex -lt 0 -or $choiceIndex -ge $backups.Count) {
+    Write-Host "ERROR: Invalid selection."
+    exit 1
+}
+
+$selectedBackup = $backups[$choiceIndex].FullName
+Write-Host "Selected backup: $selectedBackup"
+
+# ---------------------------------------------------------
+# 4. Stop service before rollback
+# ---------------------------------------------------------
+if ($serviceName -ne "") {
+    Write-Host "Stopping service $serviceName..."
+    Stop-Service -Name $serviceName -ErrorAction SilentlyContinue
+}
+
+# ---------------------------------------------------------
+# 5. Restore API
+# ---------------------------------------------------------
+$apiBackup = Join-Path $selectedBackup "Api"
+if (Test-Path $apiBackup) {
+    Write-Host "Restoring API from backup..."
+    New-Item -ItemType Directory -Path $apiDeployTarget -Force | Out-Null
+    Copy-Item "$apiBackup\*" -Destination $apiDeployTarget -Recurse -Force
+} else {
+    Write-Host "WARNING: API backup folder not found."
+}
+
+# ---------------------------------------------------------
+# 6. Restore UI
+# ---------------------------------------------------------
+$uiBackup = Join-Path $selectedBackup "Ui"
+if (Test-Path $uiBackup) {
+    Write-Host "Restoring UI from backup..."
+    New-Item -ItemType Directory -Path $uiDeployTarget -Force | Out-Null
+    Copy-Item "$uiBackup\*" -Destination $uiDeployTarget -Recurse -Force
+} else {
+    Write-Host "WARNING: UI backup folder not found."
+}
+
+# ---------------------------------------------------------
+# 7. Optional SQL rollback
+# ---------------------------------------------------------
+if (Test-Path $sqlRollbackFile) {
+    Write-Host "Running SQL rollback script..."
+    sqlcmd -S localhost -d DiagnosticsDB -i $sqlRollbackFile
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: SQL rollback failed."
+        exit 1
+    }
+} else {
+    Write-Host "No SQL rollback file found. Skipping SQL rollback."
+}
+
+# ---------------------------------------------------------
+# 8. Restart service
+# ---------------------------------------------------------
+if ($serviceName -ne "") {
+    Write-Host "Starting service $serviceName..."
+    Start-Service -Name $serviceName
+}
+
+# ---------------------------------------------------------
+# 9. Health check
+# ---------------------------------------------------------
+Write-Host "Checking API health at $healthCheckUrl..."
+try {
+    $response = Invoke-WebRequest -Uri $healthCheckUrl -UseBasicParsing -TimeoutSec 10
+    if ($response.StatusCode -ne 200) {
+        Write-Host "ERROR: Health check failed with status $($response.StatusCode)."
+        exit 1
+    }
+}
+catch {
+    Write-Host "ERROR: Health check request failed: $($_.Exception.Message)"
+    exit 1
+}
+
+Write-Host "Rollback completed successfully."
+Write-Host "=== ROLLBACK PIPELINE COMPLETE ==="

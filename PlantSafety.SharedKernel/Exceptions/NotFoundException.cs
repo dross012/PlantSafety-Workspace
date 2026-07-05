@@ -23,7 +23,7 @@ public sealed class NotFoundException : BaseException
     public NotFoundException(string entityType, string id)
         : base(
             new Error(
-                new ErrorCode($"{entityType.ToUpperInvariant()}_NOT_FOUND"),
+                ErrorCode.Create($"{entityType}.not_found"),
                 ErrorType.NotFound,
                 $"The requested {entityType} was not found."),
             ExceptionSeverity.Warning)

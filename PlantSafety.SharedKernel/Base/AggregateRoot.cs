@@ -20,16 +20,16 @@ namespace PlantSafety.SharedKernel.Base;
 public abstract class AggregateRoot<TId> : Entity<TId>
     where TId : struct
 {
-    private readonly List<IDomainEvent> _domainEvents = [];
+    private readonly List<Abstractions.IDomainEvent> _domainEvents = [];
 
     /// <summary>Domain events raised during this unit of work, in causal order.</summary>
-    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public IReadOnlyCollection<Abstractions.IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     protected AggregateRoot() { }
     protected AggregateRoot(TId id) : base(id) { }
 
     /// <summary>Appends a domain event to the in-process event list.</summary>
-    protected void RaiseDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
+    protected void RaiseDomainEvent(Abstractions.IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
 
     /// <summary>Clears the in-process event list after dispatch.</summary>
     public void ClearDomainEvents() => _domainEvents.Clear();

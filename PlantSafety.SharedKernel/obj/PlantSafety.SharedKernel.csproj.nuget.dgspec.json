@@ -56,9 +56,17 @@
               "target": "Package",
               "version": "[12.1.1, )"
             },
+            "MessagePack": {
+              "target": "Package",
+              "version": "[3.1.7, )"
+            },
             "Microsoft.Extensions.DependencyInjection": {
               "target": "Package",
               "version": "[10.0.8, )"
+            },
+            "MongoDB.Bson": {
+              "target": "Package",
+              "version": "[3.1.0, )"
             },
             "YamlDotNet": {
               "target": "Package",

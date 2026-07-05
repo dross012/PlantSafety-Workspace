@@ -55,9 +55,3 @@ public interface IPropertyValidator
     /// <returns>A collection of validation errors for the property.</returns>
     IEnumerable<ValidationError> Validate(object request);
 }
-
-public class ValidationError(string propertyName, string errorMessage)
-{
-    public string PropertyName { get; } = propertyName;
-    public string ErrorMessage { get; } = errorMessage;
-}

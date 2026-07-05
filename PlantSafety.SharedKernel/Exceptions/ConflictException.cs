@@ -23,7 +23,7 @@ public sealed class ConflictException : BaseException
     public ConflictException(string entityType)
         : base(
             new Error(
-                new ErrorCode($"{entityType.ToUpperInvariant()}_CONFLICT"),
+                ErrorCode.Create($"{entityType}.conflict"),
                 ErrorType.Conflict,
                 $"A conflict occurred with the requested {entityType}."),
             ExceptionSeverity.Warning)

@@ -39,11 +39,13 @@ public static class StrongIdRules
     public static IPropertyValidator UserId() =>
         new StrongIdValidator("UserId");
 
-    private sealed class StrongIdValidator : PropertyValidator<IStrongId>, IPropertyValidator
+    private sealed class StrongIdValidator : FluentValidation.Validators.PropertyValidator<IStrongId, IStrongId>, IPropertyValidator
     {
         private readonly string _name;
 
         public StrongIdValidator(string name) => _name = name;
+
+        public override string Name => "StrongIdValidator";
 
         public override bool IsValid(ValidationContext<IStrongId> context, IStrongId value)
         {
@@ -65,15 +67,17 @@ public static class StrongIdRules
                 yield break;
 
             if (value.Value == Guid.Empty)
-                yield return new ValidationError($"{_name} must not be empty.");
+                yield return new ValidationError(_name, $"{_name} must not be empty.");
         }
     }
 
-    private sealed class NullableStrongIdValidator : PropertyValidator<IStrongId?>, IPropertyValidator
+    private sealed class NullableStrongIdValidator : FluentValidation.Validators.PropertyValidator<IStrongId?, IStrongId?>, IPropertyValidator
     {
         private readonly string _name;
 
         public NullableStrongIdValidator(string name) => _name = name;
+
+        public override string Name => "NullableStrongIdValidator";
 
         public override bool IsValid(ValidationContext<IStrongId?> context, IStrongId? value)
         {
@@ -98,7 +102,7 @@ public static class StrongIdRules
                 yield break;
 
             if (value.Value == Guid.Empty)
-                yield return new ValidationError($"{_name} must not be empty when provided.");
+                yield return new ValidationError(_name, $"{_name} must not be empty when provided.");
         }
     }
 }

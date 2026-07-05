@@ -1,0 +1,43 @@
+Write-Host "=== PRE-DEPLOY CHECKS START ==="
+
+# ---------------------------------------------------------
+# 1. Ensure environment variables are loaded
+# ---------------------------------------------------------
+if (-not $env:PLANTSAFETY_ENV) {
+    Write-Host "Loading environment configuration..."
+    .\build\EnvironmentConfig.ps1
+}
+
+# ---------------------------------------------------------
+# 2. Ensure working directory is clean
+# ---------------------------------------------------------
+Write-Host "Checking for uncommitted changes..."
+$changes = git status --porcelain
+if ($changes) {
+    Write-Host "ERROR: Uncommitted changes detected. Commit or stash before deployment."
+    exit 1
+}
+
+# ---------------------------------------------------------
+# 3. Ensure required directories exist
+# ---------------------------------------------------------
+$required = @(
+    $env:PLANTSAFETY_API_PROJECT,
+    $env:PLANTSAFETY_UI_PROJECT,
+    $env:PLANTSAFETY_SQL_MIGRATIONS
+)
+
+foreach ($path in $required) {
+    if (-not (Test-Path $path)) {
+        Write-Host "ERROR: Required path missing: $path"
+        exit 1
+    }
+}
+
+# ---------------------------------------------------------
+# 4. Optional: Run health check BEFORE deployment
+# ---------------------------------------------------------
+Write-Host "Running pre-deploy health check..."
+.\build\HealthCheck.ps1
+
+Write-Host "=== PRE-DEPLOY CHECKS COMPLETE ==="

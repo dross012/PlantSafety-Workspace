@@ -1,0 +1,27 @@
+Write-Host "=== POST-DEPLOY START ==="
+
+# ---------------------------------------------------------
+# 1. Run health check
+# ---------------------------------------------------------
+Write-Host "Running post-deploy health check..."
+.\build\HealthCheck.ps1
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Post-deploy health check FAILED."
+    exit 1
+}
+
+# ---------------------------------------------------------
+# 2. Log deployment metadata
+# ---------------------------------------------------------
+$logPath = "C:\Deploy\Logs"
+New-Item -ItemType Directory -Path $logPath -Force | Out-Null
+
+$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+$logFile = Join-Path $logPath "deploy-log.txt"
+
+"Deployment successful at $timestamp" | Out-File -FilePath $logFile -Append
+
+Write-Host "Deployment logged to $logFile"
+
+Write-Host "=== POST-DEPLOY COMPLETE ==="

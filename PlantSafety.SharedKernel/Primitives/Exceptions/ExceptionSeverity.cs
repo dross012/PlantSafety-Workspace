@@ -36,5 +36,17 @@ public enum ExceptionSeverity
     /// Critical exception. Represents infrastructure failures, dependency failures,
     /// or unhandled exceptions.
     /// </summary>
-    Critical = 3
+    Critical = 3,
+
+    /// <summary>
+    /// Warning-level exception. Represents expected client-facing failures
+    /// (not found, conflict, forbidden) that do not indicate a system defect.
+    /// </summary>
+    Warning = 4,
+
+    /// <summary>
+    /// Error-level exception. Represents domain rule violations that are more
+    /// severe than a warning but do not indicate infrastructure failure.
+    /// </summary>
+    Error = 5
 }

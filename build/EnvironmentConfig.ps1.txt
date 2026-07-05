@@ -1,0 +1,37 @@
+Write-Host "=== ENVIRONMENT CONFIGURATION ==="
+
+# ---------------------------------------------------------
+# Environment Name
+# ---------------------------------------------------------
+$env:PLANTSAFETY_ENV = "Local"
+
+# ---------------------------------------------------------
+# Paths
+# ---------------------------------------------------------
+$env:PLANTSAFETY_API_PROJECT      = "src/PlantSafety.Api"
+$env:PLANTSAFETY_UI_PROJECT       = "src/PlantSafety.UI"
+$env:PLANTSAFETY_API_PUBLISH      = "artifacts/api"
+$env:PLANTSAFETY_UI_PUBLISH       = "artifacts/ui"
+$env:PLANTSAFETY_API_DEPLOY       = "C:\Deploy\PlantSafety\Api"
+$env:PLANTSAFETY_UI_DEPLOY        = "C:\Deploy\PlantSafety\Ui"
+$env:PLANTSAFETY_BACKUP_ROOT      = "C:\Deploy\Backups\PlantSafety"
+
+# ---------------------------------------------------------
+# Services
+# ---------------------------------------------------------
+$env:PLANTSAFETY_SERVICE_NAME     = "PlantSafety.Api"
+
+# ---------------------------------------------------------
+# Database
+# ---------------------------------------------------------
+$env:PLANTSAFETY_DB_NAME          = "DiagnosticsDB"
+$env:PLANTSAFETY_SQL_MIGRATIONS   = ".\sql\migrations"
+$env:PLANTSAFETY_SQL_ROLLBACK     = ".\sql\rollback.sql"
+
+# ---------------------------------------------------------
+# Health Check
+# ---------------------------------------------------------
+$env:PLANTSAFETY_HEALTH_URL       = "http://localhost:5000/health"
+
+Write-Host "Environment variables configured."
+Write-Host "==================================="

@@ -38,7 +38,7 @@ public static class GuardExtensions
     {
         if (value == Guid.Empty)
             throw new DomainException(
-                error ?? new Error(new ErrorCode($"{paramName.ToUpperInvariant()}_EMPTY"),
+                error ?? new Error(ErrorCode.Create($"{paramName}.empty"),
                                    ErrorType.Validation,
                                    $"{paramName} must not be Guid.Empty."));
         return value;
@@ -52,7 +52,7 @@ public static class GuardExtensions
     {
         if (value <= min)
             throw new DomainException(
-                error ?? new Error(new ErrorCode($"{paramName.ToUpperInvariant()}_OUT_OF_RANGE"),
+                error ?? new Error(ErrorCode.Create($"{paramName}.out_of_range"),
                                    ErrorType.Validation,
                                    $"{paramName} must be greater than {min}."));
         return value;

@@ -31,6 +31,6 @@ public interface IDomainEventDispatcher
     /// Dispatches a single domain event.
     /// </summary>
     Task DispatchAsync(
-        IDomainEvent domainEvent,
+        Abstractions.IDomainEvent domainEvent,
         CancellationToken cancellationToken = default);
 }
