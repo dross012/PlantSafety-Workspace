@@ -39,4 +39,27 @@ public interface IIncidentReadRepository
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Full-text searches Incidents by <paramref name="searchTerm"/> across title, description,
+    /// and location. The returned tuple contains the page items and the total match count.
+    /// </summary>
+    Task<(IReadOnlyList<IncidentReadModel> Items, int TotalCount)> SearchAsync(
+        Guid tenantId,
+        string searchTerm,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns up to <paramref name="maxRecords"/> Incident records matching the given filters,
+    /// for bulk export. Unpaged — the caller is responsible for serialising the result.
+    /// </summary>
+    Task<IReadOnlyList<IncidentReadModel>> ExportAsync(
+        Guid tenantId,
+        Guid? siteId,
+        DateTimeOffset? occurredFromUtc,
+        DateTimeOffset? occurredToUtc,
+        int maxRecords,
+        CancellationToken cancellationToken);
 }

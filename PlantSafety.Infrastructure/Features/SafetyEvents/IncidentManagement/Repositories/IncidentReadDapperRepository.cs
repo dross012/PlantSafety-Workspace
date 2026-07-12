@@ -87,4 +87,58 @@ public sealed class IncidentReadDapperRepository(
 
         return (items, totalCount ?? 0);
     }
+
+    /// <inheritdoc/>
+    public async Task<(IReadOnlyList<IncidentReadModel> Items, int TotalCount)> SearchAsync(
+        Guid tenantId,
+        string searchTerm,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("Search Incidents for tenant {TenantId} term {SearchTerm}", tenantId, searchTerm);
+
+        var searchParameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddString("SearchTerm", searchTerm, size: 200)
+            .AddInt("PageNumber", pageNumber)
+            .AddInt("PageSize", pageSize)
+            .Build();
+
+        var items = await queryExecutor.QueryAsync<IncidentReadModel>(
+            "[SafetyEvents].[usp_IncidentRead_Search]", searchParameters, cancellationToken);
+
+        var countParameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddString("SearchTerm", searchTerm, size: 200)
+            .Build();
+
+        var totalCount = await queryExecutor.QuerySingleOrDefaultAsync<int?>(
+            "[SafetyEvents].[usp_IncidentRead_SearchCount]", countParameters, cancellationToken);
+
+        return (items, totalCount ?? 0);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<IncidentReadModel>> ExportAsync(
+        Guid tenantId,
+        Guid? siteId,
+        DateTimeOffset? occurredFromUtc,
+        DateTimeOffset? occurredToUtc,
+        int maxRecords,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("Export Incidents for tenant {TenantId}, max {MaxRecords}", tenantId, maxRecords);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddGuid("SiteId", siteId)
+            .AddDateTime("OccurredFromUtc", occurredFromUtc?.UtcDateTime)
+            .AddDateTime("OccurredToUtc", occurredToUtc?.UtcDateTime)
+            .AddInt("MaxRecords", maxRecords)
+            .Build();
+
+        return await queryExecutor.QueryAsync<IncidentReadModel>(
+            "[SafetyEvents].[usp_IncidentRead_Export]", parameters, cancellationToken);
+    }
 }
