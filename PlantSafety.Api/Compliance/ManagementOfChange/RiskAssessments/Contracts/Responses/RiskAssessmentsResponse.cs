@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.ManagementOfChange.RiskAssessments.Models;
+
 namespace PlantSafety.Api.Compliance.ManagementOfChange.RiskAssessments.Contracts.Responses;
 
 /// <summary>Response payload for RiskAssessments queries.</summary>
@@ -29,4 +31,4 @@ public sealed record RiskAssessmentsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<RiskAssessmentsItemDto> Items);

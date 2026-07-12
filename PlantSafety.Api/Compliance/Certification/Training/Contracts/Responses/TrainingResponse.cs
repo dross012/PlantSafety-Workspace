@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Certification.Training.Models;
+
 namespace PlantSafety.Api.Compliance.Certification.Training.Contracts.Responses;
 
 /// <summary>Response payload for Training queries.</summary>
@@ -29,4 +31,4 @@ public sealed record TrainingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<TrainingItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.Radiography.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.Radiography.Contracts.Responses;
 
 /// <summary>Response payload for Radiography queries.</summary>
@@ -29,4 +31,4 @@ public sealed record RadiographyResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<RadiographyItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.ColdWork.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.ColdWork.Contracts.Responses;
 
 /// <summary>Response payload for ColdWork queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ColdWorkResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ColdWorkItemDto> Items);

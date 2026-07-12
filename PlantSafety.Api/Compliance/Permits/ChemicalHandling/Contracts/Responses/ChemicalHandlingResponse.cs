@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.ChemicalHandling.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.ChemicalHandling.Contracts.Responses;
 
 /// <summary>Response payload for ChemicalHandling queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ChemicalHandlingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ChemicalHandlingItemDto> Items);

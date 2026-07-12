@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Certification.DOT.Models;
+
 namespace PlantSafety.Api.Compliance.Certification.DOT.Contracts.Responses;
 
 /// <summary>Response payload for DOT queries.</summary>
@@ -29,4 +31,4 @@ public sealed record DOTResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<DOTItemDto> Items);

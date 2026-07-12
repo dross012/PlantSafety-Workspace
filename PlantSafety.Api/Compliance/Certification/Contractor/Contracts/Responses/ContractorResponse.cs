@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Certification.Contractor.Models;
+
 namespace PlantSafety.Api.Compliance.Certification.Contractor.Contracts.Responses;
 
 /// <summary>Response payload for Contractor queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.Compliance.Certification.Contractor.Contracts.Response
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the Contractor read-model.</param>
 public sealed record ContractorResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                              TenantId,
+    Guid?                             SiteId,
+    DateTime                          GeneratedAt,
+    IReadOnlyList<ContractorItemDto> Items);

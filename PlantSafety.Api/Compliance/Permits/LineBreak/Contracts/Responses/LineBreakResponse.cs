@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.LineBreak.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.LineBreak.Contracts.Responses;
 
 /// <summary>Response payload for LineBreak queries.</summary>
@@ -29,4 +31,4 @@ public sealed record LineBreakResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<LineBreakItemDto> Items);

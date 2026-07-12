@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.ConfinedSpace.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.ConfinedSpace.Contracts.Responses;
 
 /// <summary>Response payload for ConfinedSpace queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ConfinedSpaceResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ConfinedSpaceItemDto> Items);

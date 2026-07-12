@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.WorkatHeight.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.WorkatHeight.Contracts.Responses;
 
 /// <summary>Response payload for WorkatHeight queries.</summary>
@@ -29,4 +31,4 @@ public sealed record WorkatHeightResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<WorkatHeightItemDto> Items);

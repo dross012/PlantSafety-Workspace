@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.PressureTesting.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.PressureTesting.Contracts.Responses;
 
 /// <summary>Response payload for PressureTesting queries.</summary>
@@ -29,4 +31,4 @@ public sealed record PressureTestingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<PressureTestingItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.RegulatoryRequirements.Models;
+
 namespace PlantSafety.Api.Compliance.Compliance.RegulatoryRequirements.Contracts.Responses;
 
 /// <summary>Response payload for RegulatoryRequirements queries.</summary>
@@ -29,4 +31,4 @@ public sealed record RegulatoryRequirementsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<RegulatoryRequirementsItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.Excavation.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.Excavation.Contracts.Responses;
 
 /// <summary>Response payload for Excavation queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ExcavationResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ExcavationItemDto> Items);

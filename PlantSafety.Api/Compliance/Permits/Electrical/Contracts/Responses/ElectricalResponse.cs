@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.Electrical.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.Electrical.Contracts.Responses;
 
 /// <summary>Response payload for Electrical queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ElectricalResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ElectricalItemDto> Items);
