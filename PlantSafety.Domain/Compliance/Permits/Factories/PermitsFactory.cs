@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Compliance.Permits.Factories;
 public sealed class PermitsFactory : IPermitsFactory
 {
     /// <inheritdoc/>
-    public Permits Create(
+    public PlantSafety.Domain.Compliance.Permits.Aggregates.Permits Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Permits.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Compliance.Permits.Aggregates.Permits.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

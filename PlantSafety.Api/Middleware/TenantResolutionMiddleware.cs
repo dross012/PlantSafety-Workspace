@@ -31,13 +31,14 @@
 // ============================================================================
 
 using System.Security.Claims;
-using PlantSafety.SharedKernel.MultiTenancy;
+using PlantSafety.Api.CrossDomain;
 
 namespace PlantSafety.Api.Middleware;
 
 /// <summary>
 /// Middleware that extracts tenant and site identifiers from the JWT bearer token
-/// and populates the scoped <see cref="TenantContext"/> for the current request.
+/// and populates <see cref="HttpContext.Items"/> for the current request, using the
+/// key constants defined on <see cref="TenantContextAccessor"/>.
 /// </summary>
 public sealed class TenantResolutionMiddleware
 {
@@ -56,12 +57,12 @@ public sealed class TenantResolutionMiddleware
     }
 
     /// <summary>
-    /// Resolves tenant context from authenticated JWT claims and attaches it to the
-    /// current request scope. Unauthenticated requests pass through without resolution.
+    /// Resolves tenant context from authenticated JWT claims and attaches it to
+    /// <see cref="HttpContext.Items"/> for the current request. Unauthenticated requests
+    /// pass through without resolution.
     /// </summary>
     /// <param name="context">The current <see cref="HttpContext"/>.</param>
-    /// <param name="tenantContext">The scoped <see cref="TenantContext"/> to populate.</param>
-    public async Task InvokeAsync(HttpContext context, TenantContext tenantContext)
+    public async Task InvokeAsync(HttpContext context)
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
@@ -78,8 +79,15 @@ public sealed class TenantResolutionMiddleware
                 return;
             }
 
-            tenantContext.TenantId = tenantId;
-            tenantContext.SiteId = siteId;
+            if (Guid.TryParse(tenantId, out var tenantGuid))
+            {
+                context.Items[TenantContextAccessor.TenantIdKey] = tenantGuid;
+            }
+
+            if (Guid.TryParse(siteId, out var siteGuid))
+            {
+                context.Items[TenantContextAccessor.SiteIdKey] = siteGuid;
+            }
         }
 
         await _next(context);

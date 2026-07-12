@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Compliance.Permits.Policies;
 public static class PermitsArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Permits may be archived.</summary>
-    public static bool IsEligibleForArchival(Permits aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Compliance.Permits.Aggregates.Permits aggregate)
         => aggregate.Status == PermitsStatus.Closed;
 }

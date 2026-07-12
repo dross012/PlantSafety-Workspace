@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Policy.Environmental.Models;
+
 namespace PlantSafety.Api.Compliance.Policy.Environmental.Contracts.Responses;
 
 /// <summary>Response payload for Environmental queries.</summary>
@@ -29,4 +31,4 @@ public sealed record EnvironmentalResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<EnvironmentalItemDto> Items);

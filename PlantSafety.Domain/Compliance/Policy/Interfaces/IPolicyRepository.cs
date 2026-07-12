@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Compliance.Policy.Interfaces;
 public interface IPolicyRepository
 {
     /// <summary>Retrieves a Policy aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Policy?> GetByIdAsync(PolicyId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Compliance.Policy.Aggregates.Policy?> GetByIdAsync(PolicyId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Policy aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Policy>> ListAsync(PolicySpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Compliance.Policy.Aggregates.Policy>> ListAsync(PolicySpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Policy aggregate.</summary>
-    Task AddAsync(Policy aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Compliance.Policy.Aggregates.Policy aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Policy aggregate.</summary>
-    Task UpdateAsync(Policy aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Compliance.Policy.Aggregates.Policy aggregate, CancellationToken cancellationToken = default);
 }

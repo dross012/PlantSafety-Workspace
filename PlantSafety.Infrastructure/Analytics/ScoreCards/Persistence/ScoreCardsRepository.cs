@@ -29,7 +29,7 @@ public sealed class ScoreCardsRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<ScoreCardsReadModel>(
-            conn, $"[Analytics].[usp_ScoreCards_GetById]", parameters);
+            $"[Analytics].[usp_ScoreCards_GetById]", parameters);
     }
 
     /// <summary>Returns all ScoreCards read models for the specified tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class ScoreCardsRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<ScoreCardsReadModel>(
-            conn, $"[Analytics].[usp_ScoreCards_GetAll]", parameters);
+            $"[Analytics].[usp_ScoreCards_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Procedures.SOPs.Models;
+
 namespace PlantSafety.Api.Compliance.Procedures.SOPs.Contracts.Responses;
 
 /// <summary>Response payload for SOPs queries.</summary>
@@ -29,4 +31,4 @@ public sealed record SOPsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<SOPsItemDto> Items);

@@ -32,7 +32,7 @@ public sealed class CultureCreatedConsumer(
         try
         {
             var alreadyProcessed = await conn.ExecuteScalarAsync<int>(
-                sql: \$"SELECT COUNT(1) FROM {SqlConstants.ProcessedEventsTable} WHERE EventId = @EventId",
+                sql: $"SELECT COUNT(1) FROM {SqlConstants.ProcessedEventsTable} WHERE EventId = @EventId",
                 param: new { EventId = eventId },
                 transaction: tx);
 
@@ -46,7 +46,7 @@ public sealed class CultureCreatedConsumer(
             logger.LogInformation("{Mod} {Id} created event consumed.", "Culture", evt.CultureId);
 
             await conn.ExecuteAsync(
-                sql: \$"INSERT INTO {SqlConstants.ProcessedEventsTable} (EventId, ProcessedAt) VALUES (@EventId, @NowUtc)",
+                sql: $"INSERT INTO {SqlConstants.ProcessedEventsTable} (EventId, ProcessedAt) VALUES (@EventId, @NowUtc)",
                 param: new { EventId = eventId, NowUtc = DateTime.UtcNow },
                 transaction: tx);
 

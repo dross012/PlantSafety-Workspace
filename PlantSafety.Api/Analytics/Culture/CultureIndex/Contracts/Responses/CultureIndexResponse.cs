@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Culture.CultureIndex.Models;
+
 namespace PlantSafety.Api.Analytics.Culture.CultureIndex.Contracts.Responses;
 
 /// <summary>Response payload for CultureIndex queries.</summary>
@@ -29,4 +31,4 @@ public sealed record CultureIndexResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<CultureIndexItemDto> Items);

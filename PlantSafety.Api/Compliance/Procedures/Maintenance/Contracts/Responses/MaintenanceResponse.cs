@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Procedures.Maintenance.Models;
+
 namespace PlantSafety.Api.Compliance.Procedures.Maintenance.Contracts.Responses;
 
 /// <summary>Response payload for Maintenance queries.</summary>
@@ -29,4 +31,4 @@ public sealed record MaintenanceResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<MaintenanceItemDto> Items);

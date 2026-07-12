@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Operational.RiskManagement.Interfaces;
 public interface IRiskManagementRepository
 {
     /// <summary>Retrieves a RiskManagement aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<RiskManagement?> GetByIdAsync(RiskManagementId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement?> GetByIdAsync(RiskManagementId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all RiskManagement aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<RiskManagement>> ListAsync(RiskManagementSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement>> ListAsync(RiskManagementSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new RiskManagement aggregate.</summary>
-    Task AddAsync(RiskManagement aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing RiskManagement aggregate.</summary>
-    Task UpdateAsync(RiskManagement aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement aggregate, CancellationToken cancellationToken = default);
 }

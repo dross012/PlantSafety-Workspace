@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Compliance.ManagementOfChange.Interfaces;
 public interface IManagementOfChangeRepository
 {
     /// <summary>Retrieves a ManagementOfChange aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<ManagementOfChange?> GetByIdAsync(ManagementOfChangeId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange?> GetByIdAsync(ManagementOfChangeId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all ManagementOfChange aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<ManagementOfChange>> ListAsync(ManagementOfChangeSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange>> ListAsync(ManagementOfChangeSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new ManagementOfChange aggregate.</summary>
-    Task AddAsync(ManagementOfChange aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing ManagementOfChange aggregate.</summary>
-    Task UpdateAsync(ManagementOfChange aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange aggregate, CancellationToken cancellationToken = default);
 }

@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Analytics.ScoreCards.Interfaces;
 public interface IScoreCardsRepository
 {
     /// <summary>Retrieves a ScoreCards aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<ScoreCards?> GetByIdAsync(ScoreCardsId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Analytics.ScoreCards.Aggregates.ScoreCards?> GetByIdAsync(ScoreCardsId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all ScoreCards aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<ScoreCards>> ListAsync(ScoreCardsSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Analytics.ScoreCards.Aggregates.ScoreCards>> ListAsync(ScoreCardsSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new ScoreCards aggregate.</summary>
-    Task AddAsync(ScoreCards aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Analytics.ScoreCards.Aggregates.ScoreCards aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing ScoreCards aggregate.</summary>
-    Task UpdateAsync(ScoreCards aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Analytics.ScoreCards.Aggregates.ScoreCards aggregate, CancellationToken cancellationToken = default);
 }

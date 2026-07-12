@@ -15,10 +15,10 @@ namespace PlantSafety.Application.Features.SafetyEvents.Queries.NearMisses.Get;
 public sealed record GetNearMissByIdQuery : IQuery<NearMissDto?>, ICacheableQuery
 {
     /// <inheritdoc/>
-    public required Guid TraceId { get; init; }
+    public required string TraceId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid SpanId { get; init; }
+    public required string SpanId { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }

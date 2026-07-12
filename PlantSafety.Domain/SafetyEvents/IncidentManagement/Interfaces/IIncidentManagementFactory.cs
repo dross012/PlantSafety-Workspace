@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.SafetyEvents.IncidentManagement.Interfaces;
 public interface IIncidentManagementFactory
 {
     /// <summary>Creates a new IncidentManagement aggregate with the supplied parameters.</summary>
-    IncidentManagement Create(
+    PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

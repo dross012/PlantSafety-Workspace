@@ -29,7 +29,7 @@ public sealed class ComplianceRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<ComplianceReadModel>(
-            conn, $"[Compliance].[usp_Compliance_GetById]", parameters);
+            $"[Compliance].[usp_Compliance_GetById]", parameters);
     }
 
     /// <summary>Returns all Compliance records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class ComplianceRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<ComplianceReadModel>(
-            conn, $"[Compliance].[usp_Compliance_GetAll]", parameters);
+            $"[Compliance].[usp_Compliance_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

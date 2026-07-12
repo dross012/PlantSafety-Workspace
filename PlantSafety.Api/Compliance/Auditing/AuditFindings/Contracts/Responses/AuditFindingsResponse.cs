@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Auditing.AuditFindings.Models;
+
 namespace PlantSafety.Api.Compliance.Auditing.AuditFindings.Contracts.Responses;
 
 /// <summary>Response payload for AuditFindings queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.Compliance.Auditing.AuditFindings.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the AuditFindings read-model.</param>
 public sealed record AuditFindingsResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                              TenantId,
+    Guid?                             SiteId,
+    DateTime                          GeneratedAt,
+    IReadOnlyList<AuditFindingItemDto> Items);

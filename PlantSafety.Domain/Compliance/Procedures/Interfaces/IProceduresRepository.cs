@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Compliance.Procedures.Interfaces;
 public interface IProceduresRepository
 {
     /// <summary>Retrieves a Procedures aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Procedures?> GetByIdAsync(ProceduresId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Compliance.Procedures.Aggregates.Procedures?> GetByIdAsync(ProceduresId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Procedures aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Procedures>> ListAsync(ProceduresSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Compliance.Procedures.Aggregates.Procedures>> ListAsync(ProceduresSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Procedures aggregate.</summary>
-    Task AddAsync(Procedures aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Compliance.Procedures.Aggregates.Procedures aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Procedures aggregate.</summary>
-    Task UpdateAsync(Procedures aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Compliance.Procedures.Aggregates.Procedures aggregate, CancellationToken cancellationToken = default);
 }

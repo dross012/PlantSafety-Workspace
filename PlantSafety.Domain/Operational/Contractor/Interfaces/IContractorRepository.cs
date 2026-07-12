@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Operational.Contractor.Interfaces;
 public interface IContractorRepository
 {
     /// <summary>Retrieves a Contractor aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Contractor?> GetByIdAsync(ContractorId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Operational.Contractor.Aggregates.Contractor?> GetByIdAsync(ContractorId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Contractor aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Contractor>> ListAsync(ContractorSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Operational.Contractor.Aggregates.Contractor>> ListAsync(ContractorSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Contractor aggregate.</summary>
-    Task AddAsync(Contractor aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Operational.Contractor.Aggregates.Contractor aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Contractor aggregate.</summary>
-    Task UpdateAsync(Contractor aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Operational.Contractor.Aggregates.Contractor aggregate, CancellationToken cancellationToken = default);
 }

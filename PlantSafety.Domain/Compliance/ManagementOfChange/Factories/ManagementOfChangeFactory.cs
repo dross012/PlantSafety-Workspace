@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Compliance.ManagementOfChange.Factories;
 public sealed class ManagementOfChangeFactory : IManagementOfChangeFactory
 {
     /// <inheritdoc/>
-    public ManagementOfChange Create(
+    public PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => ManagementOfChange.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

@@ -29,7 +29,7 @@ public sealed class ManagementOfChangeRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<ManagementOfChangeReadModel>(
-            conn, $"[Compliance].[usp_ManagementOfChange_GetById]", parameters);
+            $"[Compliance].[usp_ManagementOfChange_GetById]", parameters);
     }
 
     /// <summary>Returns all ManagementOfChange records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class ManagementOfChangeRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<ManagementOfChangeReadModel>(
-            conn, $"[Compliance].[usp_ManagementOfChange_GetAll]", parameters);
+            $"[Compliance].[usp_ManagementOfChange_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

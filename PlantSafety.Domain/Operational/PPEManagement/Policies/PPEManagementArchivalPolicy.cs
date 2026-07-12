@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Operational.PPEManagement.Policies;
 public static class PPEManagementArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the PPEManagement may be archived.</summary>
-    public static bool IsEligibleForArchival(PPEManagement aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Operational.PPEManagement.Aggregates.PPEManagement aggregate)
         => aggregate.Status == PPEManagementStatus.Closed;
 }

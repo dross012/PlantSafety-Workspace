@@ -49,7 +49,7 @@ public sealed class PPEManagementDapperRepository(
             .Build();
 
         var result = await queryExecutor.QuerySingleOrDefaultAsync<int?>(
-            conn, "[OperationalSafety].[usp_PPEManagement_Exists]", parameters);
+            "[OperationalSafety].[usp_PPEManagement_Exists]", parameters);
 
         return result.HasValue && result.Value > 0;
     }

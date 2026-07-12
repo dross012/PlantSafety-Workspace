@@ -15,10 +15,10 @@ namespace PlantSafety.Domain.Compliance.ManagementOfChange.Specifications;
 public abstract class ManagementOfChangeSpecification
 {
     /// <summary>Returns the predicate expression for use in repository queries.</summary>
-    public abstract Expression<Func<ManagementOfChange, bool>> ToExpression();
+    public abstract Expression<Func<PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange, bool>> ToExpression();
 
     /// <summary>Compiles the expression into a delegate for in-memory filtering.</summary>
-    public Func<ManagementOfChange, bool> ToPredicate() => ToExpression().Compile();
+    public Func<PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange, bool> ToPredicate() => ToExpression().Compile();
 
     /// <summary>Combines this specification with <paramref name="other"/> using logical AND.</summary>
     public ManagementOfChangeSpecification And(ManagementOfChangeSpecification other) => new AndManagementOfChangeSpecification(this, other);
@@ -29,24 +29,24 @@ public abstract class ManagementOfChangeSpecification
 
 internal sealed class AndManagementOfChangeSpecification(ManagementOfChangeSpecification left, ManagementOfChangeSpecification right) : ManagementOfChangeSpecification
 {
-    public override Expression<Func<ManagementOfChange, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.AndAlso(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<ManagementOfChange, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange, bool>>(body, param);
     }
 }
 
 internal sealed class OrManagementOfChangeSpecification(ManagementOfChangeSpecification left, ManagementOfChangeSpecification right) : ManagementOfChangeSpecification
 {
-    public override Expression<Func<ManagementOfChange, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.OrElse(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<ManagementOfChange, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange, bool>>(body, param);
     }
 }

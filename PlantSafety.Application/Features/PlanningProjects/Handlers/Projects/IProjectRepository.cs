@@ -13,12 +13,14 @@ public interface IProjectRepository
         Guid projectId,
         Guid tenantId,
         Guid siteId,
-        string title,
+        string name,
         string description,
-        string projectType,
+        string priority,
+        Guid projectOwnerId,
+        Guid? projectManagerId,
         DateTimeOffset plannedStartUtc,
-        DateTimeOffset? plannedEndUtc,
-        Guid ownerId,
+        DateTimeOffset plannedEndUtc,
+        decimal? plannedBudget,
         Guid actorId,
         Guid correlationId,
         CancellationToken cancellationToken);
@@ -36,20 +38,28 @@ public sealed record ProjectReadModel
     public required Guid TenantId { get; init; }
     /// <summary>Site identifier.</summary>
     public required Guid SiteId { get; init; }
-    /// <summary>Title.</summary>
-    public required string Title { get; init; }
+    /// <summary>Project name.</summary>
+    public required string Name { get; init; }
     /// <summary>Description.</summary>
     public required string Description { get; init; }
-    /// <summary>Project type.</summary>
-    public required string ProjectType { get; init; }
     /// <summary>Lifecycle status.</summary>
     public required string Status { get; init; }
+    /// <summary>Priority.</summary>
+    public required string Priority { get; init; }
+    /// <summary>Project owner/sponsor identifier.</summary>
+    public required Guid ProjectOwnerId { get; init; }
+    /// <summary>Project manager identifier.</summary>
+    public Guid? ProjectManagerId { get; init; }
     /// <summary>Planned start timestamp.</summary>
     public required DateTimeOffset PlannedStartUtc { get; init; }
     /// <summary>Planned end timestamp.</summary>
-    public required DateTimeOffset? PlannedEndUtc { get; init; }
-    /// <summary>Owner identifier.</summary>
-    public required Guid OwnerId { get; init; }
+    public required DateTimeOffset PlannedEndUtc { get; init; }
+    /// <summary>Actual start timestamp.</summary>
+    public DateTimeOffset? ActualStartUtc { get; init; }
+    /// <summary>Actual end timestamp.</summary>
+    public DateTimeOffset? ActualEndUtc { get; init; }
+    /// <summary>Planned budget.</summary>
+    public decimal? PlannedBudget { get; init; }
     /// <summary>Open milestone count.</summary>
     public required int OpenMilestoneCount { get; init; }
     /// <summary>Last modification timestamp.</summary>

@@ -96,7 +96,7 @@ public abstract class BaseApiController : ControllerBase
         Conflict(ApiResponse<T>.Fail(message, CorrelationId));
 
     /// <summary>
-    /// Maps a <see cref="PlantSafety.SharedKernel.Results.Result{T}"/> to the appropriate
+    /// Maps a <see cref="PlantSafety.SharedKernel.Primitives.Results.Result{T}"/> to the appropriate
     /// <see cref="IActionResult"/> based on success or failure.
     /// </summary>
     /// <typeparam name="TResult">Application-layer result value type.</typeparam>
@@ -104,7 +104,7 @@ public abstract class BaseApiController : ControllerBase
     /// <param name="result">The Application-layer result.</param>
     /// <param name="mapper">Projects the result value to the response DTO.</param>
     protected IActionResult FromResult<TResult, TResponse>(
-        PlantSafety.SharedKernel.Results.Result<TResult> result,
+        PlantSafety.SharedKernel.Primitives.Results.Result<TResult> result,
         Func<TResult, TResponse> mapper)
     {
         if (result.IsFailure)

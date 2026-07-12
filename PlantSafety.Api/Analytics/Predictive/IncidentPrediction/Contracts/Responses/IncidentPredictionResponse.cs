@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Predictive.IncidentPrediction.Models;
+
 namespace PlantSafety.Api.Analytics.Predictive.IncidentPrediction.Contracts.Responses;
 
 /// <summary>Response payload for IncidentPrediction queries.</summary>
@@ -29,4 +31,4 @@ public sealed record IncidentPredictionResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<IncidentPredictionItemDto> Items);

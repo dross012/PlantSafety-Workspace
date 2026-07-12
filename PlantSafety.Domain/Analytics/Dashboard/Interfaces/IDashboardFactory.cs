@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Analytics.Dashboard.Interfaces;
 public interface IDashboardFactory
 {
     /// <summary>Creates a new Dashboard aggregate with the supplied parameters.</summary>
-    Dashboard Create(
+    PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

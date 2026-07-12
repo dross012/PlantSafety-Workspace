@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Procedures.WorkInstructions.Models;
+
 namespace PlantSafety.Api.Compliance.Procedures.WorkInstructions.Contracts.Responses;
 
 /// <summary>Response payload for WorkInstructions queries.</summary>
@@ -29,4 +31,4 @@ public sealed record WorkInstructionsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<WorkInstructionsItemDto> Items);

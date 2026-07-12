@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Compliance.Certification.Interfaces;
 public interface ICertificationRepository
 {
     /// <summary>Retrieves a Certification aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Certification?> GetByIdAsync(CertificationId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Compliance.Certification.Aggregates.Certification?> GetByIdAsync(CertificationId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Certification aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Certification>> ListAsync(CertificationSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Compliance.Certification.Aggregates.Certification>> ListAsync(CertificationSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Certification aggregate.</summary>
-    Task AddAsync(Certification aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Compliance.Certification.Aggregates.Certification aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Certification aggregate.</summary>
-    Task UpdateAsync(Certification aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Compliance.Certification.Aggregates.Certification aggregate, CancellationToken cancellationToken = default);
 }

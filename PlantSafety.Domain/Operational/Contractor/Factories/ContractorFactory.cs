@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Operational.Contractor.Factories;
 public sealed class ContractorFactory : IContractorFactory
 {
     /// <inheritdoc/>
-    public Contractor Create(
+    public PlantSafety.Domain.Operational.Contractor.Aggregates.Contractor Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Contractor.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Operational.Contractor.Aggregates.Contractor.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

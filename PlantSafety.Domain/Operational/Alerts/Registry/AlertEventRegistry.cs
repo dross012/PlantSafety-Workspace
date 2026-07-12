@@ -29,14 +29,28 @@ namespace PlantSafety.Domain.Operational.Alerts.Registry;
 
 public sealed class AlertEventRegistry : IAlertEventRegistry
 {
+    // NOTE: the tuple key's `Version` component corresponds to each event's
+    // `EventVersion` (an int, currently `1` for every Alert*Event — see the
+    // Events folder), NOT `SchemaVersion` (a string like "2026.1"). Both
+    // EventVersion and SchemaVersion are instance members on the event
+    // records (by design — they're read polymorphically off IAlertDomainEvent
+    // instances elsewhere), so they cannot be referenced statically here;
+    // the literal `1` is used to mirror each event's current EventVersion.
+    //
+    // The dictionary also no longer takes a StringComparer: StringComparer
+    // implements IEqualityComparer<string>, not IEqualityComparer<(string,
+    // int)>, so it cannot be used as the comparer for this tuple-keyed
+    // dictionary. Default tuple equality (ordinal, case-sensitive) is used
+    // instead; all registered EventType values below are literal constants
+    // from AlertEventTypes with consistent casing.
     private static readonly Dictionary<(string EventType, int Version), Type> _map =
-        new(StringComparer.OrdinalIgnoreCase)
+        new()
         {
             // ------------------------------------------------------------
             //  AlertCreatedEvent
             // ------------------------------------------------------------
             {
-                (AlertEventTypes.Created, AlertCreatedEvent.SchemaVersion),
+                (AlertEventTypes.Created, 1),
                 typeof(AlertCreatedEvent)
             },
 
@@ -44,7 +58,7 @@ public sealed class AlertEventRegistry : IAlertEventRegistry
             //  AlertAcknowledgedEvent
             // ------------------------------------------------------------
             {
-                (AlertEventTypes.Acknowledged, AlertAcknowledgedEvent.SchemaVersion),
+                (AlertEventTypes.Acknowledged, 1),
                 typeof(AlertAcknowledgedEvent)
             },
 
@@ -52,7 +66,7 @@ public sealed class AlertEventRegistry : IAlertEventRegistry
             //  AlertInProgressEvent
             // ------------------------------------------------------------
             {
-                (AlertEventTypes.InProgress, AlertInProgressEvent.SchemaVersion),
+                (AlertEventTypes.InProgress, 1),
                 typeof(AlertInProgressEvent)
             },
 
@@ -60,7 +74,7 @@ public sealed class AlertEventRegistry : IAlertEventRegistry
             //  AlertEscalatedEvent
             // ------------------------------------------------------------
             {
-                (AlertEventTypes.Escalated, AlertEscalatedEvent.SchemaVersion),
+                (AlertEventTypes.Escalated, 1),
                 typeof(AlertEscalatedEvent)
             },
 
@@ -68,7 +82,7 @@ public sealed class AlertEventRegistry : IAlertEventRegistry
             //  AlertResolvedEvent
             // ------------------------------------------------------------
             {
-                (AlertEventTypes.Resolved, AlertResolvedEvent.SchemaVersion),
+                (AlertEventTypes.Resolved, 1),
                 typeof(AlertResolvedEvent)
             },
 
@@ -76,7 +90,7 @@ public sealed class AlertEventRegistry : IAlertEventRegistry
             //  AlertClosedEvent
             // ------------------------------------------------------------
             {
-                (AlertEventTypes.Closed, AlertClosedEvent.SchemaVersion),
+                (AlertEventTypes.Closed, 1),
                 typeof(AlertClosedEvent)
             },
 
@@ -84,7 +98,7 @@ public sealed class AlertEventRegistry : IAlertEventRegistry
             //  AlertArchivedEvent
             // ------------------------------------------------------------
             {
-                (AlertEventTypes.Archived, AlertArchivedEvent.SchemaVersion),
+                (AlertEventTypes.Archived, 1),
                 typeof(AlertArchivedEvent)
             },
 
@@ -92,20 +106,20 @@ public sealed class AlertEventRegistry : IAlertEventRegistry
             //  AlertAssignedEvent
             // ------------------------------------------------------------
             {
-                (AlertEventTypes.Assigned, AlertAssignedEvent.SchemaVersion),
+                (AlertEventTypes.Assigned, 1),
                 typeof(AlertAssignedEvent)
             },
 
             {
-                ("AlertMetadataAdded", AlertMetadataAddedEvent.SchemaVersion),
+                ("AlertMetadataAdded", 1),
                 typeof(AlertMetadataAddedEvent)
             },
             {
-                ("AlertMetadataUpdated", AlertMetadataUpdatedEvent.SchemaVersion),
+                ("AlertMetadataUpdated", 1),
                 typeof(AlertMetadataUpdatedEvent)
             },
             {
-                ("AlertMetadataRemoved", AlertMetadataRemovedEvent.SchemaVersion),
+                ("AlertMetadataRemoved", 1),
                 typeof(AlertMetadataRemovedEvent)
             }
 

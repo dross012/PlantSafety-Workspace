@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Auditing.CAPATriggers.Models;
+
 namespace PlantSafety.Api.Compliance.Auditing.CAPATriggers.Contracts.Responses;
 
 /// <summary>Response payload for CAPATriggers queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.Compliance.Auditing.CAPATriggers.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the CAPATriggers read-model.</param>
 public sealed record CAPATriggersResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                            TenantId,
+    Guid?                           SiteId,
+    DateTime                        GeneratedAt,
+    IReadOnlyList<CAPATriggerItemDto> Items);

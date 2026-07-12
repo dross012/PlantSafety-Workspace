@@ -6,8 +6,8 @@
 //      retention period following closure.
 // ============================================================================
 
-using PlantSafety.Operational.Alerts.Domain.Alerts.Aggregates;
-using PlantSafety.Operational.Alerts.Domain.Alerts.Enums;
+using PlantSafety.Domain.Operational.Alerts.Aggregates;
+using PlantSafety.Domain.Operational.Alerts.Enums;
 using PlantSafety.SharedKernel.Time;
 
 namespace PlantSafety.Domain.Operational.Alerts.Policies;

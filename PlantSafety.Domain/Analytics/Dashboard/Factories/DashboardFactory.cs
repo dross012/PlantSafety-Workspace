@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Analytics.Dashboard.Factories;
 public sealed class DashboardFactory : IDashboardFactory
 {
     /// <inheritdoc/>
-    public Dashboard Create(
+    public PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Dashboard.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Operational.Checklists.Interfaces;
 public interface IChecklistsFactory
 {
     /// <summary>Creates a new Checklists aggregate with the supplied parameters.</summary>
-    Checklists Create(
+    PlantSafety.Domain.Operational.Checklists.Aggregates.Checklists Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

@@ -22,10 +22,10 @@ public sealed record CreateUserCommand : ICommand<Guid>
     public required Guid CorrelationId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid CausationId { get; init; }
+    public required Guid? CausationId { get; init; }
 
     /// <inheritdoc/>
-    public required DateTimeOffset RequestedAtUtc { get; init; }
+    public required DateTime RequestedAtUtc { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }
@@ -36,8 +36,11 @@ public sealed record CreateUserCommand : ICommand<Guid>
     /// <inheritdoc/>
     public required Guid ActorId { get; init; }
 
-    /// <summary>Display name. Max 200 characters.</summary>
-    public required string DisplayName { get; init; }
+    /// <summary>First name. Max 100 characters.</summary>
+    public required string FirstName { get; init; }
+
+    /// <summary>Last name. Max 100 characters.</summary>
+    public required string LastName { get; init; }
 
     /// <summary>Email address (unique within tenant). Used as login identity.</summary>
     public required string Email { get; init; }

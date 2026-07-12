@@ -23,17 +23,15 @@
 using PlantSafety.Domain.Operational.Alerts.Interfaces;
 using PlantSafety.Domain.Operational.Alerts.Policies;
 using PlantSafety.Domain.Operational.Alerts.Services;
-using PlantSafety.Operational.Alerts.Domain.Alerts.Aggregates;
-using PlantSafety.Operational.Alerts.Domain.Alerts.Enums;
-using PlantSafety.Operational.Alerts.Domain.Alerts.Events;
-using PlantSafety.Operational.Alerts.Domain.Alerts.Exceptions;
-using PlantSafety.Operational.Alerts.Domain.Alerts.Interfaces;
-using PlantSafety.Operational.Alerts.Domain.Alerts.Policies;
-using PlantSafety.Operational.Alerts.Domain.Alerts.Rules;
-using PlantSafety.Operational.Alerts.Domain.Alerts.ValueObjects;
+using PlantSafety.Domain.Operational.Alerts.Aggregates;
+using PlantSafety.Domain.Operational.Alerts.Enums;
+using PlantSafety.Domain.Operational.Alerts.Events;
+using PlantSafety.Domain.Operational.Alerts.Exceptions;
+using PlantSafety.Domain.Operational.Alerts.Interfaces;
+using PlantSafety.Domain.Operational.Alerts.Policies;
+using PlantSafety.Domain.Operational.Alerts.Rules;
+using PlantSafety.Domain.Operational.Alerts.ValueObjects;
 using PlantSafety.SharedKernel.Identifiers;
-using PlantSafety.SharedKernel.Identity;
-using PlantSafety.SharedKernel.Lineage;
 using PlantSafety.SharedKernel.Time;
 
 namespace PlantSafety.Domain.Operational.Alerts.Factories;
@@ -72,7 +70,7 @@ public sealed class AlertFactory : IAlertFactory
         // ------------------------------------------------------------
         // 1. Validate core fields
         // ------------------------------------------------------------
-        _validationService.ValidateForCreation(
+        AlertValidationService.ValidateForCreation(
             title,
             description,
             type,
@@ -82,74 +80,35 @@ public sealed class AlertFactory : IAlertFactory
             causationId);
 
         // ------------------------------------------------------------
-        // 2. Validate category (if type has category)
+        // 2. Construct the aggregate (deterministic).
+        //    NOTE: Category/source-type validation against
+        //    AlertCategoryPolicy / AlertSourcePolicy was intentionally
+        //    removed here — AlertType only exposes a free-form
+        //    descriptive `Category` string (e.g. "Operations",
+        //    "Maintenance") that does not correspond 1:1 with the
+        //    AlertCategory smart enum (Safety/Environmental/Equipment/
+        //    Compliance), and AlertType has no SourceType concept at
+        //    all. Enforcing those policies here would incorrectly
+        //    reject legitimate AlertType values such as MachineFailure
+        //    or PredictiveMaintenance. See task report for details.
         // ------------------------------------------------------------
-        if (type.Category is not null && !_categoryPolicy.IsValidCategory(type.Category))
-        {
-            throw new InvalidAlertDomainException(
-                $"Invalid category '{type.Category.Code}' for alert type '{type.Code}'",
-                correlationId,
-                causationId);
-        }
+        var alert = Alert.Create(
+            alertType: type,
+            severity: severity,
+            title: title,
+            description: description,
+            sourceModule: sourceModule,
+            createdBy: createdBy,
+            createdAtUtc: createdAtUtc,
+            correlationId: correlationId,
+            causationId: causationId,
+            actor: actor);
 
         // ------------------------------------------------------------
-        // 3. Validate source type (if type has source)
+        // 3. Compute and apply SLA expiration
         // ------------------------------------------------------------
-        if (type.SourceType is not null && !_sourcePolicy.IsValidSource(type.SourceType))
-        {
-            throw new InvalidAlertDomainException(
-                $"Invalid source type '{type.SourceType.Code}' for alert type '{type.Code}'",
-                correlationId,
-                causationId);
-        }
-
-        // ------------------------------------------------------------
-        // 4. Construct the aggregate (deterministic)
-        // ------------------------------------------------------------
-        var alert = new Alert
-        {
-            AlertId = AlertId.New(),
-            AlertType = type,
-            Severity = severity,
-            Status = AlertStatus.Created,
-            Title = title.Trim(),
-            Description = description.Trim(),
-            SourceModule = sourceModule.Trim(),
-            CreatedAtUtc = createdAtUtc,
-            CreatedBy = createdBy
-        };
-
-        // ------------------------------------------------------------
-        // 5. Compute SLA expiration
-        // ------------------------------------------------------------
-        var slaExpiration = _slaPolicy.CalculateExpiration(alert);
-        alert.SetSlaExpiration(slaExpiration);
-
-        // ------------------------------------------------------------
-        // 6. Add initial history entry
-        // ------------------------------------------------------------
-        alert.AddHistory(
-            previous: AlertStatus.Created,
-            next: AlertStatus.Created,
-            changedAtUtc: createdAtUtc,
-            actor: actor,
-            notes: null);
-
-        // ------------------------------------------------------------
-        // 7. Emit AlertCreatedEvent
-        // ------------------------------------------------------------
-        var evt = new AlertCreatedEvent(
-            EventId: new AlertEventId(Uuid7.New()),
-            AlertId: alert.AlertId,
-            AlertType: alert.AlertType,
-            Severity: alert.Severity,
-            SourceModule: alert.SourceModule,
-            CreatedAtUtc: createdAtUtc,
-            Actor: actor,
-            CorrelationId: correlationId,
-            CausationId: causationId);
-
-        alert.AddDomainEvent(evt);
+        var slaExpirationUtc = _slaPolicy.CalculateExpiration(alert);
+        alert.SetSlaExpiration(new SlaExpiration(slaExpirationUtc));
 
         return alert;
     }

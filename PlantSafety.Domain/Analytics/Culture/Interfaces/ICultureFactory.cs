@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Analytics.Culture.Interfaces;
 public interface ICultureFactory
 {
     /// <summary>Creates a new Culture aggregate with the supplied parameters.</summary>
-    Culture Create(
+    PlantSafety.Domain.Analytics.Culture.Aggregates.Culture Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

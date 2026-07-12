@@ -19,22 +19,22 @@ public sealed class CreatePermitCommandValidator : AbstractValidator<CreatePermi
     /// <summary>Defines validation rules.</summary>
     public CreatePermitCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreatePermitCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreatePermitCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
         RuleFor(x => x.SiteId).NotEmpty();
-        RuleFor(x => x.Title).NotEmpty().MaximumLength(CommonValidationRules.MaxTitleLength);
-        RuleFor(x => x.Description).NotEmpty().MaximumLength(CommonValidationRules.MaxDescriptionLength);
+        RuleFor(x => x.WorkDescription).NotEmpty().MaximumLength(CommonValidationRules.MaxDescriptionLength);
+        RuleFor(x => x.WorkLocation).NotEmpty().MaximumLength(500);
         RuleFor(x => x.WorkLeadId).NotEmpty();
 
         RuleFor(x => x.PermitType)
             .Must(t => ValidPermitTypes.Contains(t))
             .WithMessage($"PermitType must be one of: {string.Join(", ", ValidPermitTypes)}");
 
-        RuleFor(x => x.ValidFromUtc).MustBeUtc();
-        RuleFor(x => x.ValidToUtc).MustBeUtc();
+        RuleFor(x => x.ValidFromUtc).MustBeUtc("ValidFromUtc");
+        RuleFor(x => x.ValidToUtc).MustBeUtc("ValidToUtc");
 
         RuleFor(x => x).Must(x => x.ValidFromUtc < x.ValidToUtc)
             .WithMessage("ValidFromUtc must be before ValidToUtc.");

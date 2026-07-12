@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Operational.PPEManagement.Factories;
 public sealed class PPEManagementFactory : IPPEManagementFactory
 {
     /// <inheritdoc/>
-    public PPEManagement Create(
+    public PlantSafety.Domain.Operational.PPEManagement.Aggregates.PPEManagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => PPEManagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Operational.PPEManagement.Aggregates.PPEManagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

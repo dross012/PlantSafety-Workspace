@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Operational.Schedules.Factories;
 public sealed class SchedulesFactory : ISchedulesFactory
 {
     /// <inheritdoc/>
-    public Schedules Create(
+    public PlantSafety.Domain.Operational.Schedules.Aggregates.Schedules Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Schedules.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Operational.Schedules.Aggregates.Schedules.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

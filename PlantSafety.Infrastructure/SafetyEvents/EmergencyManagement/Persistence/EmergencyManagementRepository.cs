@@ -29,7 +29,7 @@ public sealed class EmergencyManagementRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<EmergencyManagementReadModel>(
-            conn, $"[SafetyEvents].[usp_EmergencyManagement_GetById]", parameters);
+            $"[SafetyEvents].[usp_EmergencyManagement_GetById]", parameters);
     }
 
     /// <summary>Returns all EmergencyManagement records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class EmergencyManagementRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<EmergencyManagementReadModel>(
-            conn, $"[SafetyEvents].[usp_EmergencyManagement_GetAll]", parameters);
+            $"[SafetyEvents].[usp_EmergencyManagement_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

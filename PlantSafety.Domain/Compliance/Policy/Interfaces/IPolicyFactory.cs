@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Compliance.Policy.Interfaces;
 public interface IPolicyFactory
 {
     /// <summary>Creates a new Policy aggregate with the supplied parameters.</summary>
-    Policy Create(
+    PlantSafety.Domain.Compliance.Policy.Aggregates.Policy Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

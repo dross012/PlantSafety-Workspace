@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Operational.Contractor.Interfaces;
 public interface IContractorFactory
 {
     /// <summary>Creates a new Contractor aggregate with the supplied parameters.</summary>
-    Contractor Create(
+    PlantSafety.Domain.Operational.Contractor.Aggregates.Contractor Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

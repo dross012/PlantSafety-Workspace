@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.RegulatoryCalendar.Inspections.Equipment.Models;
+
 namespace PlantSafety.Api.Compliance.RegulatoryCalendar.Inspections.Equipment.Contracts.Responses;
 
 /// <summary>Response payload for Equipment queries.</summary>
@@ -29,4 +31,4 @@ public sealed record EquipmentResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<EquipmentItemDto> Items);

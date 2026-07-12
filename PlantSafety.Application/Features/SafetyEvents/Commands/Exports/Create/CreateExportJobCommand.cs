@@ -21,10 +21,10 @@ public sealed record CreateExportJobCommand : ICommand<Guid>
     public required Guid CorrelationId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid CausationId { get; init; }
+    public required Guid? CausationId { get; init; }
 
     /// <inheritdoc/>
-    public required DateTimeOffset RequestedAtUtc { get; init; }
+    public required DateTime RequestedAtUtc { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }
@@ -49,4 +49,13 @@ public sealed record CreateExportJobCommand : ICommand<Guid>
 
     /// <summary>Optional site filter.</summary>
     public Guid? SiteId { get; init; }
+
+    /// <summary>Optional status filter.</summary>
+    public string? Status { get; init; }
+
+    /// <summary>Optional severity filter.</summary>
+    public string? Severity { get; init; }
+
+    /// <summary>Maximum number of records to export (1-10,000).</summary>
+    public required int MaxRecords { get; init; }
 }

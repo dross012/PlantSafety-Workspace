@@ -30,7 +30,7 @@
 // ============================================================================
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using PlantSafety.Api.Constants;
 
@@ -70,7 +70,7 @@ public sealed class TenantIdHeaderFilter : IOperationFilter
             Description = "Explicit tenant identifier. If omitted, the tenant is resolved from " +
                           "the JWT tenantId claim by TenantResolutionMiddleware. Required for " +
                           "service-to-service calls authenticated via API key rather than JWT.",
-            Schema      = new OpenApiSchema { Type = "string", Format = "uuid" }
+            Schema      = new OpenApiSchema { Type = JsonSchemaType.String, Format = "uuid" }
         });
     }
 }

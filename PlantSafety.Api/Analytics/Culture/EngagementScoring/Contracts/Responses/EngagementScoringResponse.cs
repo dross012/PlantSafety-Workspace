@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Culture.EngagementScoring.Models;
+
 namespace PlantSafety.Api.Analytics.Culture.EngagementScoring.Contracts.Responses;
 
 /// <summary>Response payload for EngagementScoring queries.</summary>
@@ -29,4 +31,4 @@ public sealed record EngagementScoringResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<EngagementScoringItemDto> Items);

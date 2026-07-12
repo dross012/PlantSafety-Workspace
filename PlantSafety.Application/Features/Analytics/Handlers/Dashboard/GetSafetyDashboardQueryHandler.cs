@@ -38,6 +38,9 @@ public sealed class GetSafetyDashboardQueryHandler : IQueryHandler<GetSafetyDash
         {
             TenantId = model.TenantId,
             SiteId = model.SiteId,
+            SnapshotGeneratedAtUtc = model.CalculatedAtUtc,
+            WindowFromUtc = request.WindowFromUtc ?? model.CalculatedAtUtc.AddDays(-30),
+            WindowToUtc = request.WindowToUtc ?? model.CalculatedAtUtc,
             TotalIncidents = model.TotalIncidents,
             OpenIncidents = model.OpenIncidents,
             CriticalIncidents = model.CriticalIncidents,
@@ -49,7 +52,6 @@ public sealed class GetSafetyDashboardQueryHandler : IQueryHandler<GetSafetyDash
             OpenPermits = model.OpenPermits,
             OverdueObligations = model.OverdueObligations,
             CultureScore = model.CultureScore,
-            CalculatedAtUtc = model.CalculatedAtUtc,
         };
     }
 }

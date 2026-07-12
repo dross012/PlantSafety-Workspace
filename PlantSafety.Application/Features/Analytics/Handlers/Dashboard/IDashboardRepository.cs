@@ -67,10 +67,20 @@ public sealed record SafetyReportReadModel
     public required DateTimeOffset FromUtc { get; init; }
     /// <summary>Report period end.</summary>
     public required DateTimeOffset ToUtc { get; init; }
+    /// <summary>UTC timestamp when this report was generated.</summary>
+    public required DateTimeOffset GeneratedAtUtc { get; init; }
     /// <summary>Total Recordable Incident Rate.</summary>
     public required decimal Trir { get; init; }
     /// <summary>Days Away, Restricted, or Transfer rate.</summary>
     public required decimal Dart { get; init; }
+    /// <summary>Total incidents in the period.</summary>
+    public required int TotalIncidents { get; init; }
+    /// <summary>Total near misses in the period.</summary>
+    public required int TotalNearMisses { get; init; }
+    /// <summary>Total observations in the period.</summary>
+    public required int TotalObservations { get; init; }
+    /// <summary>Open corrective actions.</summary>
+    public required int OpenCAPAs { get; init; }
     /// <summary>Training compliance percentage.</summary>
     public required decimal TrainingComplianceRate { get; init; }
     /// <summary>Safety culture score.</summary>

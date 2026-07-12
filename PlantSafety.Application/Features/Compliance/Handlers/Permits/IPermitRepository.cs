@@ -14,8 +14,8 @@ public interface IPermitRepository
         Guid tenantId,
         Guid siteId,
         string permitType,
-        string title,
-        string description,
+        string workDescription,
+        string workLocation,
         Guid workLeadId,
         DateTimeOffset validFromUtc,
         DateTimeOffset validToUtc,
@@ -62,10 +62,12 @@ public sealed record PermitReadModel
     public required Guid SiteId { get; init; }
     /// <summary>Permit type.</summary>
     public required string PermitType { get; init; }
-    /// <summary>Title.</summary>
-    public required string Title { get; init; }
-    /// <summary>Description.</summary>
-    public required string Description { get; init; }
+    /// <summary>Permit number (human-readable reference).</summary>
+    public required string PermitNumber { get; init; }
+    /// <summary>Description of work to be performed.</summary>
+    public required string WorkDescription { get; init; }
+    /// <summary>Physical location where work will occur.</summary>
+    public required string WorkLocation { get; init; }
     /// <summary>Work lead worker identifier.</summary>
     public required Guid WorkLeadId { get; init; }
     /// <summary>Valid from timestamp.</summary>

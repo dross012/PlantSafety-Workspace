@@ -18,8 +18,8 @@ public sealed class CreateRootCauseAnalysisCommandValidator : AbstractValidator<
     /// <summary>Defines validation rules.</summary>
     public CreateRootCauseAnalysisCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateRootCauseAnalysisCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreateRootCauseAnalysisCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 

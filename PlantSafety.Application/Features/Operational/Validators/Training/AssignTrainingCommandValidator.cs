@@ -18,15 +18,15 @@ public sealed class AssignTrainingCommandValidator : AbstractValidator<AssignTra
     /// <summary>Defines validation rules.</summary>
     public AssignTrainingCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<AssignTrainingCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<AssignTrainingCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
         RuleFor(x => x.WorkerId).NotEmpty();
         RuleFor(x => x.TrainingCourseCode).NotEmpty().MaximumLength(50);
         RuleFor(x => x.TrainingCourseName).NotEmpty().MaximumLength(CommonValidationRules.MaxTitleLength);
-        RuleFor(x => x.DueDateUtc).MustBeUtc();
+        RuleFor(x => x.DueDateUtc).MustBeUtc("DueDateUtc");
 
         RuleFor(x => x.DeliveryMethod)
             .Must(m => ValidDeliveryMethods.Contains(m))

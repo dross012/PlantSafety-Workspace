@@ -20,10 +20,10 @@ public sealed record CreateEmergencyResponseCommand : ICommand<Guid>
     public required Guid CorrelationId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid CausationId { get; init; }
+    public required Guid? CausationId { get; init; }
 
     /// <inheritdoc/>
-    public required DateTimeOffset RequestedAtUtc { get; init; }
+    public required DateTime RequestedAtUtc { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }
@@ -42,6 +42,9 @@ public sealed record CreateEmergencyResponseCommand : ICommand<Guid>
 
     /// <summary>Name of the emergency response plan activated.</summary>
     public required string ResponsePlanName { get; init; }
+
+    /// <summary>Description of the emergency and response. Max 4000 characters.</summary>
+    public required string Description { get; init; }
 
     /// <summary>UTC timestamp of activation.</summary>
     public required DateTimeOffset ActivatedAtUtc { get; init; }

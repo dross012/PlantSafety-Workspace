@@ -29,7 +29,7 @@ public sealed class PlanningProjectsRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<PlanningProjectsReadModel>(
-            conn, "[PlanningProjects].[usp_Project_GetById]", parameters);
+            "[PlanningProjects].[usp_Project_GetById]", parameters);
     }
 
     /// <summary>Returns all projects for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class PlanningProjectsRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<PlanningProjectsReadModel>(
-            conn, "[PlanningProjects].[usp_Project_GetAll]", parameters);
+            "[PlanningProjects].[usp_Project_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

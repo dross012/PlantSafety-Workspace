@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.DigitalTwin.Repositories;
 public interface IDigitalTwinRepository
 {
     /// <summary>Retrieves a DigitalTwin aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<DigitalTwin?> GetByIdAsync(DigitalTwinId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.DigitalTwin.Aggregates.DigitalTwin?> GetByIdAsync(DigitalTwinId id, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new DigitalTwin aggregate.</summary>
-    Task AddAsync(DigitalTwin aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.DigitalTwin.Aggregates.DigitalTwin aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing DigitalTwin aggregate.</summary>
-    Task UpdateAsync(DigitalTwin aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.DigitalTwin.Aggregates.DigitalTwin aggregate, CancellationToken cancellationToken = default);
 }

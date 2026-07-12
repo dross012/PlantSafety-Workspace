@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Dashboard.Executive.Models;
+
 namespace PlantSafety.Api.Analytics.Dashboard.Executive.Contracts.Responses;
 
 /// <summary>Response payload for Executive queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ExecutiveResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ExecutiveItemDto> Items);

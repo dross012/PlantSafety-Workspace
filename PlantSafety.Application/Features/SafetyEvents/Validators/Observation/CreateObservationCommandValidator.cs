@@ -18,8 +18,8 @@ public sealed class CreateObservationCommandValidator : AbstractValidator<Create
     /// <summary>Defines validation rules.</summary>
     public CreateObservationCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateObservationCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreateObservationCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
@@ -33,7 +33,7 @@ public sealed class CreateObservationCommandValidator : AbstractValidator<Create
             .WithMessage($"ObservationType must be one of: {string.Join(", ", ValidObservationTypes)}");
 
         RuleFor(x => x.ObservedAtUtc)
-            .MustBeUtc()
-            .MustNotBeInFuture();
+            .MustBeUtc("ObservedAtUtc")
+            .MustNotBeInFuture("ObservedAtUtc");
     }
 }

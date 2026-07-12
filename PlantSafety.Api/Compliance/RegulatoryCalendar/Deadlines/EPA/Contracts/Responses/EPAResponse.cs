@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.RegulatoryCalendar.Deadlines.EPA.Models;
+
 namespace PlantSafety.Api.Compliance.RegulatoryCalendar.Deadlines.EPA.Contracts.Responses;
 
 /// <summary>Response payload for EPA queries.</summary>
@@ -29,4 +31,4 @@ public sealed record EPAResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<EPAItemDto> Items);

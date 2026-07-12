@@ -29,7 +29,7 @@ public sealed class PermitsRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<PermitsReadModel>(
-            conn, $"[Compliance].[usp_Permits_GetById]", parameters);
+            $"[Compliance].[usp_Permits_GetById]", parameters);
     }
 
     /// <summary>Returns all Permits records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class PermitsRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<PermitsReadModel>(
-            conn, $"[Compliance].[usp_Permits_GetAll]", parameters);
+            $"[Compliance].[usp_Permits_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

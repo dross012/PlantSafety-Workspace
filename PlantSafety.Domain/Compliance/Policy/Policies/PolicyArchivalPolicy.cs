@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Compliance.Policy.Policies;
 public static class PolicyArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Policy may be archived.</summary>
-    public static bool IsEligibleForArchival(Policy aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Compliance.Policy.Aggregates.Policy aggregate)
         => aggregate.Status == PolicyStatus.Closed;
 }

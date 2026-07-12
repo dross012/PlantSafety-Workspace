@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Compliance.Procedures.Policies;
 public static class ProceduresArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Procedures may be archived.</summary>
-    public static bool IsEligibleForArchival(Procedures aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Compliance.Procedures.Aggregates.Procedures aggregate)
         => aggregate.Status == ProceduresStatus.Closed;
 }

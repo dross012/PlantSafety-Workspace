@@ -52,13 +52,15 @@ public static class AlertToMetadataMapper
         AlertId alertId,
         AlertMetadataKey key)
     {
-        // Removal entries typically store an empty value to maintain
-        // deterministic replay and snapshot consistency.
+        // Removal entries store a non-empty placeholder value to maintain
+        // deterministic replay and snapshot consistency. AlertMetadataValue
+        // deliberately forbids null/empty/whitespace (Rule 3.2), so a real
+        // sentinel string is used instead of a true "empty" value.
         return new AlertMetadataEntry(
             alertMetadataId: AlertMetadataId.New(),
             alertId: alertId,
             key: key,
-            value: AlertMetadataValue.Empty());
+            value: new AlertMetadataValue("(removed)"));
     }
 }
 

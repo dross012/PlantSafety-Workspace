@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Operational.Schedules.Policies;
 public static class SchedulesArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Schedules may be archived.</summary>
-    public static bool IsEligibleForArchival(Schedules aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Operational.Schedules.Aggregates.Schedules aggregate)
         => aggregate.Status == SchedulesStatus.Closed;
 }

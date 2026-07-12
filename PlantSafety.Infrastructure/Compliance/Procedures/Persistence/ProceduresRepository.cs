@@ -29,7 +29,7 @@ public sealed class ProceduresRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<ProceduresReadModel>(
-            conn, $"[Compliance].[usp_Procedures_GetById]", parameters);
+            $"[Compliance].[usp_Procedures_GetById]", parameters);
     }
 
     /// <summary>Returns all Procedures records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class ProceduresRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<ProceduresReadModel>(
-            conn, $"[Compliance].[usp_Procedures_GetAll]", parameters);
+            $"[Compliance].[usp_Procedures_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Dashboard.KPISnapshots.Models;
+
 namespace PlantSafety.Api.Analytics.Dashboard.KPISnapshots.Contracts.Responses;
 
 /// <summary>Response payload for KPISnapshots queries.</summary>
@@ -29,4 +31,4 @@ public sealed record KPISnapshotsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<KPISnapshotsItemDto> Items);

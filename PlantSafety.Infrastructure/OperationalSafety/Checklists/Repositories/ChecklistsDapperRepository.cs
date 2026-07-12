@@ -49,7 +49,7 @@ public sealed class ChecklistsDapperRepository(
             .Build();
 
         var result = await queryExecutor.QuerySingleOrDefaultAsync<int?>(
-            conn, "[OperationalSafety].[usp_Checklists_Exists]", parameters);
+            "[OperationalSafety].[usp_Checklists_Exists]", parameters);
 
         return result.HasValue && result.Value > 0;
     }

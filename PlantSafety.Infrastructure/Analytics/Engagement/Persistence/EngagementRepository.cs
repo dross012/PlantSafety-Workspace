@@ -29,7 +29,7 @@ public sealed class EngagementRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<EngagementReadModel>(
-            conn, $"[Analytics].[usp_Engagement_GetById]", parameters);
+            $"[Analytics].[usp_Engagement_GetById]", parameters);
     }
 
     /// <summary>Returns all Engagement read models for the specified tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class EngagementRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<EngagementReadModel>(
-            conn, $"[Analytics].[usp_Engagement_GetAll]", parameters);
+            $"[Analytics].[usp_Engagement_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

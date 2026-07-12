@@ -15,10 +15,10 @@ namespace PlantSafety.Domain.Analytics.Dashboard.Specifications;
 public abstract class DashboardSpecification
 {
     /// <summary>Returns the predicate expression for use in repository queries.</summary>
-    public abstract Expression<Func<Dashboard, bool>> ToExpression();
+    public abstract Expression<Func<PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard, bool>> ToExpression();
 
     /// <summary>Compiles the expression into a delegate for in-memory filtering.</summary>
-    public Func<Dashboard, bool> ToPredicate() => ToExpression().Compile();
+    public Func<PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard, bool> ToPredicate() => ToExpression().Compile();
 
     /// <summary>Combines this specification with <paramref name="other"/> using logical AND.</summary>
     public DashboardSpecification And(DashboardSpecification other) => new AndDashboardSpecification(this, other);
@@ -29,24 +29,24 @@ public abstract class DashboardSpecification
 
 internal sealed class AndDashboardSpecification(DashboardSpecification left, DashboardSpecification right) : DashboardSpecification
 {
-    public override Expression<Func<Dashboard, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.AndAlso(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<Dashboard, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard, bool>>(body, param);
     }
 }
 
 internal sealed class OrDashboardSpecification(DashboardSpecification left, DashboardSpecification right) : DashboardSpecification
 {
-    public override Expression<Func<Dashboard, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.OrElse(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<Dashboard, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard, bool>>(body, param);
     }
 }

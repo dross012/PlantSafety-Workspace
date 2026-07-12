@@ -29,7 +29,7 @@ public sealed class ObservationRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<ObservationReadModel>(
-            conn, $"[SafetyEvents].[usp_Observation_GetById]", parameters);
+            $"[SafetyEvents].[usp_Observation_GetById]", parameters);
     }
 
     /// <summary>Returns all Observation records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class ObservationRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<ObservationReadModel>(
-            conn, $"[SafetyEvents].[usp_Observation_GetAll]", parameters);
+            $"[SafetyEvents].[usp_Observation_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

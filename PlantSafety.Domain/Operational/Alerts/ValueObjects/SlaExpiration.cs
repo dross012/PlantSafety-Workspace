@@ -29,7 +29,7 @@
 //        enter the domain.
 // ============================================================================
 
-using PlantSafety.SharedKernel.Types;
+using PlantSafety.SharedKernel.Primitives.ValueTypes;
 
 namespace PlantSafety.Domain.Operational.Alerts.ValueObjects;
 

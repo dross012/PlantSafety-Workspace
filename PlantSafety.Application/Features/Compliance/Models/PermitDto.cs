@@ -38,6 +38,9 @@ public sealed record PermitDto
     /// <summary>Approver who authorised the permit.</summary>
     public Guid? ApprovedByActorId { get; init; }
 
+    /// <summary>UTC timestamp when the permit was approved, if applicable.</summary>
+    public DateTimeOffset? ApprovedAtUtc { get; init; }
+
     /// <summary>UTC timestamp when the permit becomes valid.</summary>
     public required DateTimeOffset ValidFromUtc { get; init; }
 

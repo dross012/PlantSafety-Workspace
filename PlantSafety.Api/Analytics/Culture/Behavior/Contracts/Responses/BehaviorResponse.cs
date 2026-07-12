@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Culture.Behavior.Models;
+
 namespace PlantSafety.Api.Analytics.Culture.Behavior.Contracts.Responses;
 
 /// <summary>Response payload for Behavior queries.</summary>
@@ -29,4 +31,4 @@ public sealed record BehaviorResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<BehaviorItemDto> Items);

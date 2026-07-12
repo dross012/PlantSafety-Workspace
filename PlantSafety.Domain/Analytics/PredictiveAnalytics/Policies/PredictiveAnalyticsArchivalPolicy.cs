@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Analytics.PredictiveAnalytics.Policies;
 public static class PredictiveAnalyticsArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the PredictiveAnalytics may be archived.</summary>
-    public static bool IsEligibleForArchival(PredictiveAnalytics aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Analytics.PredictiveAnalytics.Aggregates.PredictiveAnalytics aggregate)
         => aggregate.Status == PredictiveAnalyticsStatus.Closed;
 }

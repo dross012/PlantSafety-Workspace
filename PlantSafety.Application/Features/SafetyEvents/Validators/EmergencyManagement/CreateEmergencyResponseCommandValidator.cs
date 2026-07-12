@@ -16,14 +16,14 @@ public sealed class CreateEmergencyResponseCommandValidator : AbstractValidator<
     /// <summary>Defines validation rules.</summary>
     public CreateEmergencyResponseCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateEmergencyResponseCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreateEmergencyResponseCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
         RuleFor(x => x.SiteId).NotEmpty();
         RuleFor(x => x.ResponsePlanName).NotEmpty().MaximumLength(CommonValidationRules.MaxTitleLength);
         RuleFor(x => x.Description).NotEmpty().MaximumLength(CommonValidationRules.MaxDescriptionLength);
-        RuleFor(x => x.ActivatedAtUtc).MustBeUtc().MustNotBeInFuture();
+        RuleFor(x => x.ActivatedAtUtc).MustBeUtc("ActivatedAtUtc").MustNotBeInFuture("ActivatedAtUtc");
     }
 }

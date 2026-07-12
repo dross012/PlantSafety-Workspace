@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Procedures.EmergencyProcedure.Models;
+
 namespace PlantSafety.Api.Compliance.Procedures.EmergencyProcedure.Contracts.Responses;
 
 /// <summary>Response payload for EmergencyProcedure queries.</summary>
@@ -29,4 +31,4 @@ public sealed record EmergencyProcedureResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<EmergencyProcedureItemDto> Items);

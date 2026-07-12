@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Compliance.Policy.Factories;
 public sealed class PolicyFactory : IPolicyFactory
 {
     /// <inheritdoc/>
-    public Policy Create(
+    public PlantSafety.Domain.Compliance.Policy.Aggregates.Policy Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Policy.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Compliance.Policy.Aggregates.Policy.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

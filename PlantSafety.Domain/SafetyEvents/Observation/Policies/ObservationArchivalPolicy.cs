@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.SafetyEvents.Observation.Policies;
 public static class ObservationArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Observation may be archived.</summary>
-    public static bool IsEligibleForArchival(Observation aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation aggregate)
         => aggregate.Status == ObservationStatus.Closed;
 }

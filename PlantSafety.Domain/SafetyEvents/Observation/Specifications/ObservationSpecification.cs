@@ -15,10 +15,10 @@ namespace PlantSafety.Domain.SafetyEvents.Observation.Specifications;
 public abstract class ObservationSpecification
 {
     /// <summary>Returns the predicate expression for use in repository queries.</summary>
-    public abstract Expression<Func<Observation, bool>> ToExpression();
+    public abstract Expression<Func<PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation, bool>> ToExpression();
 
     /// <summary>Compiles the expression into a delegate for in-memory filtering.</summary>
-    public Func<Observation, bool> ToPredicate() => ToExpression().Compile();
+    public Func<PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation, bool> ToPredicate() => ToExpression().Compile();
 
     /// <summary>Combines this specification with <paramref name="other"/> using logical AND.</summary>
     public ObservationSpecification And(ObservationSpecification other) => new AndObservationSpecification(this, other);
@@ -29,24 +29,24 @@ public abstract class ObservationSpecification
 
 internal sealed class AndObservationSpecification(ObservationSpecification left, ObservationSpecification right) : ObservationSpecification
 {
-    public override Expression<Func<Observation, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.AndAlso(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<Observation, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation, bool>>(body, param);
     }
 }
 
 internal sealed class OrObservationSpecification(ObservationSpecification left, ObservationSpecification right) : ObservationSpecification
 {
-    public override Expression<Func<Observation, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.OrElse(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<Observation, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation, bool>>(body, param);
     }
 }

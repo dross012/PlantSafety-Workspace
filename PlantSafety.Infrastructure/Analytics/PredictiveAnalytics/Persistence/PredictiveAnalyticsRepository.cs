@@ -29,7 +29,7 @@ public sealed class PredictiveAnalyticsRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<PredictiveAnalyticsReadModel>(
-            conn, $"[Analytics].[usp_PredictiveAnalytics_GetById]", parameters);
+            $"[Analytics].[usp_PredictiveAnalytics_GetById]", parameters);
     }
 
     /// <summary>Returns all PredictiveAnalytics read models for the specified tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class PredictiveAnalyticsRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<PredictiveAnalyticsReadModel>(
-            conn, $"[Analytics].[usp_PredictiveAnalytics_GetAll]", parameters);
+            $"[Analytics].[usp_PredictiveAnalytics_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

@@ -27,7 +27,7 @@
 //
 // ============================================================================
 
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace PlantSafety.Api.Extensions;
@@ -82,17 +82,10 @@ public static class SwaggerExtensions
                 Description = "Enter your Azure AD JWT Bearer token. Example: Bearer {token}"
             });
 
-            options.AddSecurityRequirement(new OpenApiSecurityRequirement
+            options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
             {
                 {
-                    new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference
-                        {
-                            Type = ReferenceType.SecurityScheme,
-                            Id = SecurityDefinitionName
-                        }
-                    },
+                    new OpenApiSecuritySchemeReference(SecurityDefinitionName),
                     []
                 }
             });

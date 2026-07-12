@@ -43,6 +43,7 @@ public sealed class GetRcaByIdQueryHandler : IQueryHandler<GetRcaByIdQuery, Root
             Methodology = model.Methodology,
             RootCauses = model.RootCauses,
             CorrectiveActions = model.CorrectiveActions,
+            LeadInvestigatorId = model.LeadInvestigatorId,
             Status = model.Status,
             LastModifiedAtUtc = model.LastModifiedAtUtc,
             ETag = model.ETag,

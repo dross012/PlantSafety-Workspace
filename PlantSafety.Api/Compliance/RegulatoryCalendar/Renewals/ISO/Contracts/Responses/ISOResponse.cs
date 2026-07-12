@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.RegulatoryCalendar.Renewals.ISO.Models;
+
 namespace PlantSafety.Api.Compliance.RegulatoryCalendar.Renewals.ISO.Contracts.Responses;
 
 /// <summary>Response payload for ISO queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ISOResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ISOItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Policy.Revisions.Models;
+
 namespace PlantSafety.Api.Compliance.Policy.Revisions.Contracts.Responses;
 
 /// <summary>Response payload for Revisions queries.</summary>
@@ -29,4 +31,4 @@ public sealed record RevisionsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<RevisionsItemDto> Items);

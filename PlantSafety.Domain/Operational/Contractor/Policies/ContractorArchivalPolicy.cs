@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Operational.Contractor.Policies;
 public static class ContractorArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Contractor may be archived.</summary>
-    public static bool IsEligibleForArchival(Contractor aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Operational.Contractor.Aggregates.Contractor aggregate)
         => aggregate.Status == ContractorStatus.Closed;
 }

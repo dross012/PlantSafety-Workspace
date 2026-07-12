@@ -36,7 +36,7 @@ public sealed record SafetyProjectCreatedEvent : IIntegrationEvent
     public required Guid CausationId { get; init; }
 
     /// <inheritdoc/>
-    public required DateTimeOffset TimestampUtc { get; init; }
+    public required DateTime TimestampUtc { get; init; }
 
     /// <inheritdoc/>
     public required Guid ActorId { get; init; }

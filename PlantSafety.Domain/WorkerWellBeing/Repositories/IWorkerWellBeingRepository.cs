@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.WorkerWellBeing.Repositories;
 public interface IWorkerWellBeingRepository
 {
     /// <summary>Retrieves a WorkerWellBeing aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<WorkerWellBeing?> GetByIdAsync(WorkerWellBeingId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.WorkerWellBeing.Aggregates.WorkerWellBeing?> GetByIdAsync(WorkerWellBeingId id, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new WorkerWellBeing aggregate.</summary>
-    Task AddAsync(WorkerWellBeing aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.WorkerWellBeing.Aggregates.WorkerWellBeing aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing WorkerWellBeing aggregate.</summary>
-    Task UpdateAsync(WorkerWellBeing aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.WorkerWellBeing.Aggregates.WorkerWellBeing aggregate, CancellationToken cancellationToken = default);
 }

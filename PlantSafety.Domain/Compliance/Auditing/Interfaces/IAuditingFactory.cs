@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Compliance.Auditing.Interfaces;
 public interface IAuditingFactory
 {
     /// <summary>Creates a new Auditing aggregate with the supplied parameters.</summary>
-    Auditing Create(
+    PlantSafety.Domain.Compliance.Auditing.Aggregates.Auditing Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

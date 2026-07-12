@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Analytics.ScoreCards.Factories;
 public sealed class ScoreCardsFactory : IScoreCardsFactory
 {
     /// <inheritdoc/>
-    public ScoreCards Create(
+    public PlantSafety.Domain.Analytics.ScoreCards.Aggregates.ScoreCards Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => ScoreCards.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Analytics.ScoreCards.Aggregates.ScoreCards.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

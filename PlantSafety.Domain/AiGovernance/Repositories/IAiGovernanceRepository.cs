@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.AiGovernance.Repositories;
 public interface IAiGovernanceRepository
 {
     /// <summary>Retrieves a AiGovernance aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<AiGovernance?> GetByIdAsync(AiGovernanceId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.AiGovernance.Aggregates.AiGovernance?> GetByIdAsync(AiGovernanceId id, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new AiGovernance aggregate.</summary>
-    Task AddAsync(AiGovernance aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.AiGovernance.Aggregates.AiGovernance aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing AiGovernance aggregate.</summary>
-    Task UpdateAsync(AiGovernance aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.AiGovernance.Aggregates.AiGovernance aggregate, CancellationToken cancellationToken = default);
 }

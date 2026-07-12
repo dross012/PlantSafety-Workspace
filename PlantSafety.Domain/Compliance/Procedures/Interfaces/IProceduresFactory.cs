@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Compliance.Procedures.Interfaces;
 public interface IProceduresFactory
 {
     /// <summary>Creates a new Procedures aggregate with the supplied parameters.</summary>
-    Procedures Create(
+    PlantSafety.Domain.Compliance.Procedures.Aggregates.Procedures Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

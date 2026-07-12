@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.OperationalSafety.Repositories;
 public interface IOperationalSafetyRepository
 {
     /// <summary>Retrieves a OperationalSafety aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<OperationalSafety?> GetByIdAsync(OperationalSafetyId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.OperationalSafety.Aggregates.OperationalSafety?> GetByIdAsync(OperationalSafetyId id, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new OperationalSafety aggregate.</summary>
-    Task AddAsync(OperationalSafety aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.OperationalSafety.Aggregates.OperationalSafety aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing OperationalSafety aggregate.</summary>
-    Task UpdateAsync(OperationalSafety aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.OperationalSafety.Aggregates.OperationalSafety aggregate, CancellationToken cancellationToken = default);
 }

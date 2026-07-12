@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Policy.HR.Models;
+
 namespace PlantSafety.Api.Compliance.Policy.HR.Contracts.Responses;
 
 /// <summary>Response payload for HR queries.</summary>
@@ -29,4 +31,4 @@ public sealed record HRResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<HRItemDto> Items);

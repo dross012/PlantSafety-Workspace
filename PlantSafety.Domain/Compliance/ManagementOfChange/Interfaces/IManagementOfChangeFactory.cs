@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Compliance.ManagementOfChange.Interfaces;
 public interface IManagementOfChangeFactory
 {
     /// <summary>Creates a new ManagementOfChange aggregate with the supplied parameters.</summary>
-    ManagementOfChange Create(
+    PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

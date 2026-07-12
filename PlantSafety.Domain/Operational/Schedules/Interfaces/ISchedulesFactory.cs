@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Operational.Schedules.Interfaces;
 public interface ISchedulesFactory
 {
     /// <summary>Creates a new Schedules aggregate with the supplied parameters.</summary>
-    Schedules Create(
+    PlantSafety.Domain.Operational.Schedules.Aggregates.Schedules Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

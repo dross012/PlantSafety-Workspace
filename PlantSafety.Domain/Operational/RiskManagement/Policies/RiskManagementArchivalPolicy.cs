@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Operational.RiskManagement.Policies;
 public static class RiskManagementArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the RiskManagement may be archived.</summary>
-    public static bool IsEligibleForArchival(RiskManagement aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement aggregate)
         => aggregate.Status == RiskManagementStatus.Closed;
 }

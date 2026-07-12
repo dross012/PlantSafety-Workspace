@@ -29,7 +29,7 @@ public sealed class AuditingRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<AuditingReadModel>(
-            conn, $"[Compliance].[usp_Auditing_GetById]", parameters);
+            $"[Compliance].[usp_Auditing_GetById]", parameters);
     }
 
     /// <summary>Returns all Auditing records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class AuditingRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<AuditingReadModel>(
-            conn, $"[Compliance].[usp_Auditing_GetAll]", parameters);
+            $"[Compliance].[usp_Auditing_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

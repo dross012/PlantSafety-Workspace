@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.SafetyEvents.Observation.Interfaces;
 public interface IObservationFactory
 {
     /// <summary>Creates a new Observation aggregate with the supplied parameters.</summary>
-    Observation Create(
+    PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

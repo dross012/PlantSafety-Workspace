@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Analytics.Engagement.Policies;
 public static class EngagementArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Engagement may be archived.</summary>
-    public static bool IsEligibleForArchival(Engagement aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Analytics.Engagement.Aggregates.Engagement aggregate)
         => aggregate.Status == EngagementStatus.Closed;
 }

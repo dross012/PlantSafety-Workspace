@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.AiSafetyIntelligence.Repositories;
 public interface IAiSafetyIntelligenceRepository
 {
     /// <summary>Retrieves a AiSafetyIntelligence aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<AiSafetyIntelligence?> GetByIdAsync(AiSafetyIntelligenceId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.AiSafetyIntelligence.Aggregates.AiSafetyIntelligence?> GetByIdAsync(AiSafetyIntelligenceId id, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new AiSafetyIntelligence aggregate.</summary>
-    Task AddAsync(AiSafetyIntelligence aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.AiSafetyIntelligence.Aggregates.AiSafetyIntelligence aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing AiSafetyIntelligence aggregate.</summary>
-    Task UpdateAsync(AiSafetyIntelligence aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.AiSafetyIntelligence.Aggregates.AiSafetyIntelligence aggregate, CancellationToken cancellationToken = default);
 }

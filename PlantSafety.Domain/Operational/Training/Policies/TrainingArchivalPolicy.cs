@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Operational.Training.Policies;
 public static class TrainingArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Training may be archived.</summary>
-    public static bool IsEligibleForArchival(Training aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Operational.Training.Aggregates.Training aggregate)
         => aggregate.Status == TrainingStatus.Closed;
 }

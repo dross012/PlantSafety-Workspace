@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Operational.RiskManagement.Interfaces;
 public interface IRiskManagementFactory
 {
     /// <summary>Creates a new RiskManagement aggregate with the supplied parameters.</summary>
-    RiskManagement Create(
+    PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

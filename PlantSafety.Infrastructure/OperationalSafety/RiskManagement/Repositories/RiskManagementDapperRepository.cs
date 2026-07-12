@@ -49,7 +49,7 @@ public sealed class RiskManagementDapperRepository(
             .Build();
 
         var result = await queryExecutor.QuerySingleOrDefaultAsync<int?>(
-            conn, "[OperationalSafety].[usp_RiskManagement_Exists]", parameters);
+            "[OperationalSafety].[usp_RiskManagement_Exists]", parameters);
 
         return result.HasValue && result.Value > 0;
     }

@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Analytics.ScoreCards.Interfaces;
 public interface IScoreCardsFactory
 {
     /// <summary>Creates a new ScoreCards aggregate with the supplied parameters.</summary>
-    ScoreCards Create(
+    PlantSafety.Domain.Analytics.ScoreCards.Aggregates.ScoreCards Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

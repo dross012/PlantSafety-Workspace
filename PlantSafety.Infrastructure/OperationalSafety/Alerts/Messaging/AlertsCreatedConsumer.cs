@@ -12,16 +12,16 @@
 namespace PlantSafety.Infrastructure.OperationalSafety.Alerts.Messaging;
 
 /// <summary>
-/// Idempotent MassTransit consumer for <c>AlertsCreatedEvent</c>.
+/// Idempotent MassTransit consumer for <c>AlertCreatedEvent</c>.
 /// Checks <c>System.ProcessedEvents</c> before executing side-effects.
 /// </summary>
 public sealed class AlertsCreatedConsumer(
     ISqlConnectionFactory connectionFactory,
     ILogger<AlertsCreatedConsumer> logger)
-    : IConsumer<AlertsCreatedEvent>
+    : IConsumer<AlertCreatedEvent>
 {
     /// <inheritdoc/>
-    public async Task Consume(ConsumeContext<AlertsCreatedEvent> context)
+    public async Task Consume(ConsumeContext<AlertCreatedEvent> context)
     {
         var evt     = context.Message;
         var eventId = evt.EventId.Value;
@@ -32,7 +32,7 @@ public sealed class AlertsCreatedConsumer(
         try
         {
             var alreadyProcessed = await conn.ExecuteScalarAsync<int>(
-                sql: \$"SELECT COUNT(1) FROM {SqlConstants.ProcessedEventsTable} WHERE EventId = @EventId",
+                sql: $"SELECT COUNT(1) FROM {SqlConstants.ProcessedEventsTable} WHERE EventId = @EventId",
                 param: new { EventId = eventId },
                 transaction: tx);
 
@@ -42,10 +42,10 @@ public sealed class AlertsCreatedConsumer(
                 return;
             }
 
-            logger.LogInformation("{Mod} {Id} created event consumed.", "Alerts", evt.AlertsId);
+            logger.LogInformation("{Mod} {Id} created event consumed.", "Alerts", evt.AlertId);
 
             await conn.ExecuteAsync(
-                sql: \$"INSERT INTO {SqlConstants.ProcessedEventsTable} (EventId, ProcessedAt) VALUES (@EventId, @NowUtc)",
+                sql: $"INSERT INTO {SqlConstants.ProcessedEventsTable} (EventId, ProcessedAt) VALUES (@EventId, @NowUtc)",
                 param: new { EventId = eventId, NowUtc = DateTime.UtcNow },
                 transaction: tx);
 

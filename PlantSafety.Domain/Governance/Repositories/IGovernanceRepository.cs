@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Governance.Repositories;
 public interface IGovernanceRepository
 {
     /// <summary>Retrieves a Governance aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Governance?> GetByIdAsync(GovernanceId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Governance.Aggregates.Governance?> GetByIdAsync(GovernanceId id, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Governance aggregate.</summary>
-    Task AddAsync(Governance aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Governance.Aggregates.Governance aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Governance aggregate.</summary>
-    Task UpdateAsync(Governance aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Governance.Aggregates.Governance aggregate, CancellationToken cancellationToken = default);
 }

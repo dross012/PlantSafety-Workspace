@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Policy.Emergency.Models;
+
 namespace PlantSafety.Api.Compliance.Policy.Emergency.Contracts.Responses;
 
 /// <summary>Response payload for Emergency queries.</summary>
@@ -29,4 +31,4 @@ public sealed record EmergencyResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<EmergencyItemDto> Items);

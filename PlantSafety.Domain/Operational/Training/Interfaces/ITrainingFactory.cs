@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Operational.Training.Interfaces;
 public interface ITrainingFactory
 {
     /// <summary>Creates a new Training aggregate with the supplied parameters.</summary>
-    Training Create(
+    PlantSafety.Domain.Operational.Training.Aggregates.Training Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

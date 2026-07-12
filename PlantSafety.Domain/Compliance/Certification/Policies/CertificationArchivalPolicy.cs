@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Compliance.Certification.Policies;
 public static class CertificationArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Certification may be archived.</summary>
-    public static bool IsEligibleForArchival(Certification aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Compliance.Certification.Aggregates.Certification aggregate)
         => aggregate.Status == CertificationStatus.Closed;
 }

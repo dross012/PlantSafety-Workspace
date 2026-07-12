@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Compliance.Certification.Interfaces;
 public interface ICertificationFactory
 {
     /// <summary>Creates a new Certification aggregate with the supplied parameters.</summary>
-    Certification Create(
+    PlantSafety.Domain.Compliance.Certification.Aggregates.Certification Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

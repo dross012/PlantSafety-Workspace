@@ -193,10 +193,31 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PlantSafety.Api\PlantSafety.Api.csproj" />
     <ProjectReference Include="..\PlantSafety.Application\PlantSafety.Application.csproj" />
     <ProjectReference Include="..\PlantSafety.Domain\PlantSafety.Domain.csproj" />
     <ProjectReference Include="..\PlantSafety.SharedKernel\PlantSafety.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="MassTransit" Version="8.4.1" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
+    <PackageReference Include="StackExchange.Redis" Version="2.13.1" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.24.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Class library (Microsoft.NET.Sdk, not .Web) needs the ASP.NET Core shared
+         framework for HttpContext / RequestDelegate / IHttpContextAccessor used by
+         Common\Middleware and Identity\ActorContextResolver. FrameworkReference (not a
+         PackageReference to the deprecated netstandard2.0-era Microsoft.AspNetCore.Http.Abstractions
+         package) guarantees these types are binary-identical to the ones PlantSafety.Api
+         (Microsoft.NET.Sdk.Web) passes in at runtime. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>

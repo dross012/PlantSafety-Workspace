@@ -12,9 +12,8 @@ public interface IBudgetRepository
     Task CreateAsync(
         Guid budgetId,
         Guid tenantId,
-        Guid siteId,
-        string title,
-        string description,
+        Guid? siteId,
+        string category,
         decimal allocatedAmount,
         string currencyCode,
         int fiscalYear,
@@ -45,12 +44,10 @@ public sealed record BudgetReadModel
     public required Guid BudgetId { get; init; }
     /// <summary>Tenant identifier.</summary>
     public required Guid TenantId { get; init; }
-    /// <summary>Site identifier.</summary>
-    public required Guid SiteId { get; init; }
-    /// <summary>Title.</summary>
-    public required string Title { get; init; }
-    /// <summary>Description.</summary>
-    public required string Description { get; init; }
+    /// <summary>Site identifier. Null means enterprise-level.</summary>
+    public Guid? SiteId { get; init; }
+    /// <summary>Budget category.</summary>
+    public required string Category { get; init; }
     /// <summary>Allocated amount.</summary>
     public required decimal AllocatedAmount { get; init; }
     /// <summary>Actual spend to date.</summary>

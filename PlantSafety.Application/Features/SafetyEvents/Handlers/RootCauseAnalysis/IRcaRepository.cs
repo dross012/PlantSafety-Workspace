@@ -17,6 +17,7 @@ public interface IRcaRepository
         string methodology,
         string rootCauses,
         string correctiveActions,
+        Guid leadInvestigatorId,
         Guid actorId,
         Guid correlationId,
         CancellationToken cancellationToken);
@@ -42,6 +43,8 @@ public sealed record RcaReadModel
     public required string RootCauses { get; init; }
     /// <summary>Corrective actions (serialised).</summary>
     public required string CorrectiveActions { get; init; }
+    /// <summary>Worker leading this RCA.</summary>
+    public required Guid LeadInvestigatorId { get; init; }
     /// <summary>Status.</summary>
     public required string Status { get; init; }
     /// <summary>Last modification timestamp.</summary>

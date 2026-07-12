@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Compliance.Certification.Factories;
 public sealed class CertificationFactory : ICertificationFactory
 {
     /// <inheritdoc/>
-    public Certification Create(
+    public PlantSafety.Domain.Compliance.Certification.Aggregates.Certification Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Certification.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Compliance.Certification.Aggregates.Certification.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

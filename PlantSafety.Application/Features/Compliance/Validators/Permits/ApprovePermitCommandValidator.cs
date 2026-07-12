@@ -16,7 +16,7 @@ public sealed class ApprovePermitCommandValidator : AbstractValidator<ApprovePer
     /// <summary>Defines validation rules.</summary>
     public ApprovePermitCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<ApprovePermitCommand, Guid>(x => x.CommandId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
         RuleFor(x => x.PermitId).NotEmpty();

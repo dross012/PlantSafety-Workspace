@@ -16,16 +16,14 @@ public sealed class CreateBudgetCommandValidator : AbstractValidator<CreateBudge
     /// <summary>Defines validation rules.</summary>
     public CreateBudgetCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateBudgetCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreateBudgetCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
-        RuleFor(x => x.SiteId).NotEmpty();
-        RuleFor(x => x.Title).NotEmpty().MaximumLength(CommonValidationRules.MaxTitleLength);
-        RuleFor(x => x.Description).NotEmpty().MaximumLength(CommonValidationRules.MaxDescriptionLength);
+        RuleFor(x => x.Category).NotEmpty().MaximumLength(CommonValidationRules.MaxTitleLength);
 
-        RuleFor(x => x.AllocatedAmount).MustBePositiveAmount();
+        RuleFor(x => x.AllocatedAmount).MustBePositiveAmount("AllocatedAmount");
         RuleFor(x => x.CurrencyCode).IsValidCurrencyCode();
         RuleFor(x => x.FiscalYear).InclusiveBetween(2000, 2100);
     }

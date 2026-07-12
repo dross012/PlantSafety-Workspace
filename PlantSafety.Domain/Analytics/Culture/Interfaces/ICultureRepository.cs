@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Analytics.Culture.Interfaces;
 public interface ICultureRepository
 {
     /// <summary>Retrieves a Culture aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Culture?> GetByIdAsync(CultureId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Analytics.Culture.Aggregates.Culture?> GetByIdAsync(CultureId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Culture aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Culture>> ListAsync(CultureSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Analytics.Culture.Aggregates.Culture>> ListAsync(CultureSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Culture aggregate.</summary>
-    Task AddAsync(Culture aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Analytics.Culture.Aggregates.Culture aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Culture aggregate.</summary>
-    Task UpdateAsync(Culture aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Analytics.Culture.Aggregates.Culture aggregate, CancellationToken cancellationToken = default);
 }

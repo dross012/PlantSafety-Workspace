@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.SafetyEvents.EmergencyManagement.Factories;
 public sealed class EmergencyManagementFactory : IEmergencyManagementFactory
 {
     /// <inheritdoc/>
-    public EmergencyManagement Create(
+    public PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => EmergencyManagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.ScoreCards.Compliance.Models;
+
 namespace PlantSafety.Api.Analytics.ScoreCards.Compliance.Contracts.Responses;
 
 /// <summary>Response payload for Compliance queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ComplianceResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ComplianceItemDto> Items);

@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Analytics.Engagement.Factories;
 public sealed class EngagementFactory : IEngagementFactory
 {
     /// <inheritdoc/>
-    public Engagement Create(
+    public PlantSafety.Domain.Analytics.Engagement.Aggregates.Engagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Engagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Analytics.Engagement.Aggregates.Engagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

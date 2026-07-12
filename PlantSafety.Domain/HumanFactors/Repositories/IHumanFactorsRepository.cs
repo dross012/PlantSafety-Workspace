@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.HumanFactors.Repositories;
 public interface IHumanFactorsRepository
 {
     /// <summary>Retrieves a HumanFactors aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<HumanFactors?> GetByIdAsync(HumanFactorsId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.HumanFactors.Aggregates.HumanFactors?> GetByIdAsync(HumanFactorsId id, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new HumanFactors aggregate.</summary>
-    Task AddAsync(HumanFactors aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.HumanFactors.Aggregates.HumanFactors aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing HumanFactors aggregate.</summary>
-    Task UpdateAsync(HumanFactors aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.HumanFactors.Aggregates.HumanFactors aggregate, CancellationToken cancellationToken = default);
 }

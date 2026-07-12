@@ -29,7 +29,7 @@ public sealed class PolicyRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<PolicyReadModel>(
-            conn, $"[Compliance].[usp_Policy_GetById]", parameters);
+            $"[Compliance].[usp_Policy_GetById]", parameters);
     }
 
     /// <summary>Returns all Policy records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class PolicyRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<PolicyReadModel>(
-            conn, $"[Compliance].[usp_Policy_GetAll]", parameters);
+            $"[Compliance].[usp_Policy_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

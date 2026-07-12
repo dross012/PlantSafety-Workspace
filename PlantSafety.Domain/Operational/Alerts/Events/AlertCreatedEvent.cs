@@ -13,6 +13,8 @@ public sealed record AlertCreatedEvent(
     AlertId AlertId,
     AlertType AlertType,
     AlertSeverity Severity,
+    string Title,
+    string Description,
     string SourceModule,
     UtcTimestamp CreatedAtUtc,
     PerformedByActor Actor,

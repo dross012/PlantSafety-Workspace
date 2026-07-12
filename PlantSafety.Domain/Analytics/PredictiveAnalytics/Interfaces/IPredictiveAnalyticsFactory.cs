@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Analytics.PredictiveAnalytics.Interfaces;
 public interface IPredictiveAnalyticsFactory
 {
     /// <summary>Creates a new PredictiveAnalytics aggregate with the supplied parameters.</summary>
-    PredictiveAnalytics Create(
+    PlantSafety.Domain.Analytics.PredictiveAnalytics.Aggregates.PredictiveAnalytics Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

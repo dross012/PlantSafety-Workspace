@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Operational.Checklists.Factories;
 public sealed class ChecklistsFactory : IChecklistsFactory
 {
     /// <inheritdoc/>
-    public Checklists Create(
+    public PlantSafety.Domain.Operational.Checklists.Aggregates.Checklists Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Checklists.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Operational.Checklists.Aggregates.Checklists.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

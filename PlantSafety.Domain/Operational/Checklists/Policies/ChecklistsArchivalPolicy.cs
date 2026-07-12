@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Operational.Checklists.Policies;
 public static class ChecklistsArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Checklists may be archived.</summary>
-    public static bool IsEligibleForArchival(Checklists aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Operational.Checklists.Aggregates.Checklists aggregate)
         => aggregate.Status == ChecklistsStatus.Closed;
 }

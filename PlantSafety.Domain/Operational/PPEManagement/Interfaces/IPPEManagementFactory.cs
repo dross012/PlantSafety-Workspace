@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Operational.PPEManagement.Interfaces;
 public interface IPPEManagementFactory
 {
     /// <summary>Creates a new PPEManagement aggregate with the supplied parameters.</summary>
-    PPEManagement Create(
+    PlantSafety.Domain.Operational.PPEManagement.Aggregates.PPEManagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

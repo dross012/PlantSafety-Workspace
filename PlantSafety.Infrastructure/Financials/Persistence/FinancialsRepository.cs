@@ -29,6 +29,6 @@ public sealed class FinancialsRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<FinancialsReadModel>(
-            conn, "[Financials].[usp_Financial_GetById]", parameters);
+            "[Financials].[usp_Financial_GetById]", parameters);
     }
 }

@@ -3,7 +3,7 @@
 // FILE DESCRIPTION: Integration event published when a new permit-to-work is created.
 // SchemaVersion: 1
 
-using PlantSafety.Application.Abstractions.Events;
+using PlantSafety.Application.Abstractions.Messaging;
 
 namespace PlantSafety.Application.Features.Compliance.Events.Permits;
 
@@ -11,19 +11,34 @@ namespace PlantSafety.Application.Features.Compliance.Events.Permits;
 public sealed record PermitCreatedEvent : IIntegrationEvent
 {
     /// <inheritdoc/>
-    public Guid EventId { get; init; } = Guid.CreateVersion7();
+    public required Guid EventId { get; init; }
 
     /// <inheritdoc/>
     public string EventType => "Compliance.PermitCreated.v1";
 
     /// <inheritdoc/>
-    public DateTimeOffset OccurredAtUtc { get; init; }
+    public int EventVersion => 1;
 
     /// <inheritdoc/>
-    public Guid TenantId { get; init; }
+    public required Guid AggregateId { get; init; }
 
     /// <inheritdoc/>
-    public Guid CorrelationId { get; init; }
+    public string AggregateName => "Permit";
+
+    /// <inheritdoc/>
+    public required Guid CorrelationId { get; init; }
+
+    /// <inheritdoc/>
+    public required Guid CausationId { get; init; }
+
+    /// <inheritdoc/>
+    public required DateTime TimestampUtc { get; init; }
+
+    /// <inheritdoc/>
+    public required Guid ActorId { get; init; }
+
+    /// <inheritdoc/>
+    public required Guid TenantId { get; init; }
 
     /// <summary>New permit identifier.</summary>
     public required Guid PermitId { get; init; }

@@ -13,7 +13,8 @@
 //      Maps an Alert aggregate into a snapshot object for rebuild or analytics.
 // ============================================================================
 
-using PlantSafety.Operational.Alerts.Domain.Alerts.Aggregates;
+using PlantSafety.Domain.Operational.Alerts.Aggregates;
+using PlantSafety.Domain.Operational.Alerts.Snapshots;
 
 namespace PlantSafety.Domain.Operational.Alerts.Mappers;
 
@@ -37,7 +38,7 @@ public static class AlertSnapshotMapper
             resolvedAtUtc: alert.ResolvedAtUtc,
             closedAtUtc: alert.ClosedAtUtc,
             archivedAtUtc: alert.ArchivedAtUtc,
-            slaExpiration: alert.SlaExpiration,
+            slaExpiration: alert.SlaExpiration?.Value,
             assignments: alert.Assignments.ToList(),
             metadata: alert.Metadata.ToList(),
             history: alert.History.ToList());

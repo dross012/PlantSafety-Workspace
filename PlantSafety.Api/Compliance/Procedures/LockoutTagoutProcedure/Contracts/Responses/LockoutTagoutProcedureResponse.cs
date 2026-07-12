@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Procedures.LockoutTagoutProcedure.Models;
+
 namespace PlantSafety.Api.Compliance.Procedures.LockoutTagoutProcedure.Contracts.Responses;
 
 /// <summary>Response payload for LockoutTagoutProcedure queries.</summary>
@@ -29,4 +31,4 @@ public sealed record LockoutTagoutProcedureResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<LockoutTagoutProcedureItemDto> Items);

@@ -20,10 +20,10 @@ public sealed record CreateRootCauseAnalysisCommand : ICommand<Guid>
     public required Guid CorrelationId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid CausationId { get; init; }
+    public required Guid? CausationId { get; init; }
 
     /// <inheritdoc/>
-    public required DateTimeOffset RequestedAtUtc { get; init; }
+    public required DateTime RequestedAtUtc { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }
@@ -45,4 +45,10 @@ public sealed record CreateRootCauseAnalysisCommand : ICommand<Guid>
 
     /// <summary>Worker leading this RCA.</summary>
     public required Guid LeadInvestigatorId { get; init; }
+
+    /// <summary>Root causes identified (serialised). Max 4000 characters.</summary>
+    public required string RootCauses { get; init; }
+
+    /// <summary>Corrective actions recommended (serialised). Max 4000 characters.</summary>
+    public required string CorrectiveActions { get; init; }
 }

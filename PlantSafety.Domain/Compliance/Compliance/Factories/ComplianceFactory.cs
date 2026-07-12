@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Compliance.Compliance.Factories;
 public sealed class ComplianceFactory : IComplianceFactory
 {
     /// <inheritdoc/>
-    public Compliance Create(
+    public PlantSafety.Domain.Compliance.Compliance.Aggregates.Compliance Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Compliance.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Compliance.Compliance.Aggregates.Compliance.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

@@ -16,7 +16,7 @@ public sealed class CreateExportJobCommandValidator : AbstractValidator<CreateEx
     /// <summary>Defines validation rules.</summary>
     public CreateExportJobCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateExportJobCommand, Guid>(x => x.CommandId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
@@ -26,8 +26,8 @@ public sealed class CreateExportJobCommandValidator : AbstractValidator<CreateEx
 
         RuleFor(x => x.MaxRecords).InclusiveBetween(1, 10_000);
 
-        RuleFor(x => x.FromUtc).MustBeUtcWhenProvided();
-        RuleFor(x => x.ToUtc).MustBeUtcWhenProvided();
+        RuleFor(x => x.FromUtc).MustBeUtcWhenProvided("FromUtc");
+        RuleFor(x => x.ToUtc).MustBeUtcWhenProvided("ToUtc");
 
         RuleFor(x => x).Must(x =>
             x.FromUtc is null || x.ToUtc is null || x.FromUtc <= x.ToUtc)

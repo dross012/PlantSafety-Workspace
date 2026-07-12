@@ -19,8 +19,8 @@ public sealed class CreateMocCommandValidator : AbstractValidator<CreateMocComma
     /// <summary>Defines validation rules.</summary>
     public CreateMocCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateMocCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreateMocCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
@@ -37,8 +37,8 @@ public sealed class CreateMocCommandValidator : AbstractValidator<CreateMocComma
             .Must(l => ValidRiskLevels.Contains(l))
             .WithMessage($"RiskLevel must be one of: {string.Join(", ", ValidRiskLevels)}");
 
-        RuleFor(x => x.ProposedStartUtc).MustBeUtc();
-        RuleFor(x => x.ProposedEndUtc).MustBeUtcWhenProvided();
+        RuleFor(x => x.ProposedStartUtc).MustBeUtc("ProposedStartUtc");
+        RuleFor(x => x.ProposedEndUtc).MustBeUtcWhenProvided("ProposedEndUtc");
 
         RuleFor(x => x).Must(x =>
             x.ProposedEndUtc is null || x.ProposedStartUtc < x.ProposedEndUtc)

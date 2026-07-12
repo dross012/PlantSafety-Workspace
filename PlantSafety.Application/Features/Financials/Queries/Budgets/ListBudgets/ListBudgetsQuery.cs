@@ -13,10 +13,10 @@ namespace PlantSafety.Application.Features.Financials.Queries.Budgets.ListBudget
 public sealed record ListBudgetsQuery : IQuery<PaginatedResult<SafetyBudgetDto>>
 {
     /// <inheritdoc/>
-    public required Guid TraceId { get; init; }
+    public required string TraceId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid SpanId { get; init; }
+    public required string SpanId { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }
@@ -47,6 +47,12 @@ public sealed record ListBudgetsQuery : IQuery<PaginatedResult<SafetyBudgetDto>>
 
     /// <summary>Items per page.</summary>
     public int PageSize { get; init; } = 25;
+
+    /// <summary>Sort field (FiscalYear, AllocatedAmount, Status).</summary>
+    public string OrderBy { get; init; } = "FiscalYear";
+
+    /// <summary>Sort direction.</summary>
+    public string SortDirection { get; init; } = "DESC";
 
     /// <summary>Optional fiscal year filter.</summary>
     public int? FiscalYear { get; init; }

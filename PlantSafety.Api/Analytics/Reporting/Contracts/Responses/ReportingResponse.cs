@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Reporting.Models;
+
 namespace PlantSafety.Api.Analytics.Reporting.Contracts.Responses;
 
 /// <summary>Response payload for Reporting queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ReportingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ReportingItemDto> Items);

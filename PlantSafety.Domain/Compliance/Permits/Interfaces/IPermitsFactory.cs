@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Compliance.Permits.Interfaces;
 public interface IPermitsFactory
 {
     /// <summary>Creates a new Permits aggregate with the supplied parameters.</summary>
-    Permits Create(
+    PlantSafety.Domain.Compliance.Permits.Aggregates.Permits Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

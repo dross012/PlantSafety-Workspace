@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.RegulatoryCalendar.Inspections.EnvironmentalSampling.Models;
+
 namespace PlantSafety.Api.Compliance.RegulatoryCalendar.Inspections.EnvironmentalSampling.Contracts.Responses;
 
 /// <summary>Response payload for EnvironmentalSampling queries.</summary>
@@ -29,4 +31,4 @@ public sealed record EnvironmentalSamplingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<EnvironmentalSamplingItemDto> Items);

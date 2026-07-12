@@ -16,8 +16,8 @@ public sealed class CreateCorrectiveActionCommandValidator : AbstractValidator<C
     /// <summary>Defines validation rules.</summary>
     public CreateCorrectiveActionCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateCorrectiveActionCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreateCorrectiveActionCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
@@ -26,7 +26,7 @@ public sealed class CreateCorrectiveActionCommandValidator : AbstractValidator<C
         RuleFor(x => x.Title).NotEmpty().MaximumLength(CommonValidationRules.MaxTitleLength);
         RuleFor(x => x.Description).NotEmpty().MaximumLength(CommonValidationRules.MaxDescriptionLength);
         RuleFor(x => x.AssignedToWorkerId).NotEmpty();
-        RuleFor(x => x.DueAtUtc).MustBeUtc();
+        RuleFor(x => x.DueAtUtc).MustBeUtc("DueAtUtc");
 
         RuleFor(x => x.ActionType)
             .Must(t => CommonValidationRules.ValidActionTypes.Contains(t))

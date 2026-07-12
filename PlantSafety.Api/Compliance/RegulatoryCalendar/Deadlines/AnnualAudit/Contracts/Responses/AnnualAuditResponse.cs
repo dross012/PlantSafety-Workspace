@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.RegulatoryCalendar.Deadlines.AnnualAudit.Models;
+
 namespace PlantSafety.Api.Compliance.RegulatoryCalendar.Deadlines.AnnualAudit.Contracts.Responses;
 
 /// <summary>Response payload for AnnualAudit queries.</summary>
@@ -29,4 +31,4 @@ public sealed record AnnualAuditResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<AnnualAuditItemDto> Items);

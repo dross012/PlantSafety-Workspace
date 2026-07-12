@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Procedures.HazMatProcedures.Models;
+
 namespace PlantSafety.Api.Compliance.Procedures.HazMatProcedures.Contracts.Responses;
 
 /// <summary>Response payload for HazMatProcedures queries.</summary>
@@ -29,4 +31,4 @@ public sealed record HazMatProceduresResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<HazMatProceduresItemDto> Items);

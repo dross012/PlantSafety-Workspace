@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Schedules.Models;
+
 namespace PlantSafety.Api.Analytics.Schedules.Contracts.Responses;
 
 /// <summary>Response payload for Schedules queries.</summary>
@@ -29,4 +31,4 @@ public sealed record SchedulesResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<SchedulesItemDto> Items);

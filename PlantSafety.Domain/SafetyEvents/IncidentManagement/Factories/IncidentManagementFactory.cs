@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.SafetyEvents.IncidentManagement.Factories;
 public sealed class IncidentManagementFactory : IIncidentManagementFactory
 {
     /// <inheritdoc/>
-    public IncidentManagement Create(
+    public PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => IncidentManagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

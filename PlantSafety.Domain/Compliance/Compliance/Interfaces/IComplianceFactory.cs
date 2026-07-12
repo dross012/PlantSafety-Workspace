@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Compliance.Compliance.Interfaces;
 public interface IComplianceFactory
 {
     /// <summary>Creates a new Compliance aggregate with the supplied parameters.</summary>
-    Compliance Create(
+    PlantSafety.Domain.Compliance.Compliance.Aggregates.Compliance Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Compliance.RegulatoryCalendar.Factories;
 public sealed class RegulatoryCalendarFactory : IRegulatoryCalendarFactory
 {
     /// <inheritdoc/>
-    public RegulatoryCalendar Create(
+    public PlantSafety.Domain.Compliance.RegulatoryCalendar.Aggregates.RegulatoryCalendar Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => RegulatoryCalendar.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Compliance.RegulatoryCalendar.Aggregates.RegulatoryCalendar.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

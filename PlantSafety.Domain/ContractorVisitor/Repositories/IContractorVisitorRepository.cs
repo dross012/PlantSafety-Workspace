@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.ContractorVisitor.Repositories;
 public interface IContractorVisitorRepository
 {
     /// <summary>Retrieves a ContractorVisitor aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<ContractorVisitor?> GetByIdAsync(ContractorVisitorId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.ContractorVisitor.Aggregates.ContractorVisitor?> GetByIdAsync(ContractorVisitorId id, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new ContractorVisitor aggregate.</summary>
-    Task AddAsync(ContractorVisitor aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.ContractorVisitor.Aggregates.ContractorVisitor aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing ContractorVisitor aggregate.</summary>
-    Task UpdateAsync(ContractorVisitor aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.ContractorVisitor.Aggregates.ContractorVisitor aggregate, CancellationToken cancellationToken = default);
 }

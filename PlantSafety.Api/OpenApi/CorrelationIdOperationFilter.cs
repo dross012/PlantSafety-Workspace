@@ -30,7 +30,7 @@
 //
 // ============================================================================
 
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using PlantSafety.Api.Constants;
 
@@ -60,7 +60,7 @@ public sealed class CorrelationIdOperationFilter : IOperationFilter
                 Required    = false,
                 Description = "Client-supplied correlation identifier that is echoed back in the " +
                               "response header. A UUID v4/v7 is generated server-side if omitted.",
-                Schema      = new OpenApiSchema { Type = "string", Format = "uuid" }
+                Schema      = new OpenApiSchema { Type = JsonSchemaType.String, Format = "uuid" }
             });
         }
 
@@ -69,15 +69,18 @@ public sealed class CorrelationIdOperationFilter : IOperationFilter
             if (statusCode is not ("200" or "201" or "202" or "204"))
                 continue;
 
-            response.Headers ??= new Dictionary<string, OpenApiHeader>();
+            if (response.Headers is null && response is OpenApiResponse concreteResponse)
+            {
+                concreteResponse.Headers = new Dictionary<string, IOpenApiHeader>();
+            }
 
-            if (!response.Headers.ContainsKey(ApiHeaderConstants.CorrelationId))
+            if (response.Headers is not null && !response.Headers.ContainsKey(ApiHeaderConstants.CorrelationId))
             {
                 response.Headers[ApiHeaderConstants.CorrelationId] = new OpenApiHeader
                 {
                     Description = "The correlation identifier echoed from the request, or a " +
                                   "server-generated UUID if none was supplied.",
-                    Schema = new OpenApiSchema { Type = "string", Format = "uuid" }
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, Format = "uuid" }
                 };
             }
         }

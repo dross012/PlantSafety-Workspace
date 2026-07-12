@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Compliance.Auditing.Factories;
 public sealed class AuditingFactory : IAuditingFactory
 {
     /// <inheritdoc/>
-    public Auditing Create(
+    public PlantSafety.Domain.Compliance.Auditing.Aggregates.Auditing Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Auditing.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Compliance.Auditing.Aggregates.Auditing.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

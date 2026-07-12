@@ -16,22 +16,23 @@ public sealed class CreateSafetyProjectCommandValidator : AbstractValidator<Crea
     /// <summary>Defines validation rules.</summary>
     public CreateSafetyProjectCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateSafetyProjectCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreateSafetyProjectCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
         RuleFor(x => x.SiteId).NotEmpty();
-        RuleFor(x => x.Title).NotEmpty().MaximumLength(CommonValidationRules.MaxTitleLength);
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(CommonValidationRules.MaxTitleLength);
         RuleFor(x => x.Description).NotEmpty().MaximumLength(CommonValidationRules.MaxDescriptionLength);
-        RuleFor(x => x.ProjectType).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.OwnerId).NotEmpty();
+        RuleFor(x => x.Priority)
+            .Must(p => CommonValidationRules.ValidPriorities.Contains(p))
+            .WithMessage($"Priority must be one of: {string.Join(", ", CommonValidationRules.ValidPriorities)}");
+        RuleFor(x => x.ProjectOwnerId).NotEmpty();
 
-        RuleFor(x => x.PlannedStartUtc).MustBeUtc();
-        RuleFor(x => x.PlannedEndUtc).MustBeUtcWhenProvided();
+        RuleFor(x => x.PlannedStartUtc).MustBeUtc("PlannedStartUtc");
+        RuleFor(x => x.PlannedEndUtc).MustBeUtc("PlannedEndUtc");
 
-        RuleFor(x => x).Must(x =>
-            x.PlannedEndUtc is null || x.PlannedStartUtc < x.PlannedEndUtc)
-            .WithMessage("PlannedStartUtc must be before PlannedEndUtc when both are provided.");
+        RuleFor(x => x).Must(x => x.PlannedStartUtc < x.PlannedEndUtc)
+            .WithMessage("PlannedStartUtc must be before PlannedEndUtc.");
     }
 }

@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.SafetyEvents.Observation.Interfaces;
 public interface IObservationRepository
 {
     /// <summary>Retrieves a Observation aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Observation?> GetByIdAsync(ObservationId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation?> GetByIdAsync(ObservationId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Observation aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Observation>> ListAsync(ObservationSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation>> ListAsync(ObservationSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Observation aggregate.</summary>
-    Task AddAsync(Observation aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Observation aggregate.</summary>
-    Task UpdateAsync(Observation aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation aggregate, CancellationToken cancellationToken = default);
 }

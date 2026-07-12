@@ -9,6 +9,8 @@
 //  Description:    MassTransit consumer for CompetencyManagementCreatedEvent.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Domain.Operational.CompetencyManagement.Events;
+
 namespace PlantSafety.Infrastructure.Training.CompetencyManagement.Messaging;
 
 /// <summary>Idempotent consumer for <c>CompetencyManagementCreatedEvent</c>.</summary>
@@ -29,7 +31,7 @@ public sealed class CompetencyManagementCreatedConsumer(
         try
         {
             var alreadyProcessed = await conn.ExecuteScalarAsync<int>(
-                sql: \$"SELECT COUNT(1) FROM {SqlConstants.ProcessedEventsTable} WHERE EventId = @EventId",
+                sql: $"SELECT COUNT(1) FROM {SqlConstants.ProcessedEventsTable} WHERE EventId = @EventId",
                 param: new { EventId = eventId },
                 transaction: tx);
 
@@ -42,7 +44,7 @@ public sealed class CompetencyManagementCreatedConsumer(
             logger.LogInformation("CompetencyManagement {Id} created — event consumed.", evt.CompetencyManagementId);
 
             await conn.ExecuteAsync(
-                sql: \$"INSERT INTO {SqlConstants.ProcessedEventsTable} (EventId, ProcessedAt) VALUES (@EventId, @NowUtc)",
+                sql: $"INSERT INTO {SqlConstants.ProcessedEventsTable} (EventId, ProcessedAt) VALUES (@EventId, @NowUtc)",
                 param: new { EventId = eventId, NowUtc = DateTime.UtcNow },
                 transaction: tx);
 

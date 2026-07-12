@@ -20,10 +20,10 @@ public sealed record AssignTrainingCommand : ICommand<Guid>
     public required Guid CorrelationId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid CausationId { get; init; }
+    public required Guid? CausationId { get; init; }
 
     /// <inheritdoc/>
-    public required DateTimeOffset RequestedAtUtc { get; init; }
+    public required DateTime RequestedAtUtc { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }
@@ -37,12 +37,15 @@ public sealed record AssignTrainingCommand : ICommand<Guid>
     /// <summary>Worker being assigned the training.</summary>
     public required Guid WorkerId { get; init; }
 
-    /// <summary>Training course to assign.</summary>
-    public required Guid CourseId { get; init; }
+    /// <summary>Training course code. Max 50 characters.</summary>
+    public required string TrainingCourseCode { get; init; }
+
+    /// <summary>Training course name.</summary>
+    public required string TrainingCourseName { get; init; }
 
     /// <summary>Delivery method (InPerson, Online, OJT).</summary>
     public required string DeliveryMethod { get; init; }
 
-    /// <summary>Optional due date for completion (UTC).</summary>
-    public DateTimeOffset? DueByUtc { get; init; }
+    /// <summary>Due date for completion (UTC).</summary>
+    public required DateTimeOffset DueDateUtc { get; init; }
 }

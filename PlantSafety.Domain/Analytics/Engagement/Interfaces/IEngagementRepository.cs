@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Analytics.Engagement.Interfaces;
 public interface IEngagementRepository
 {
     /// <summary>Retrieves a Engagement aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Engagement?> GetByIdAsync(EngagementId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Analytics.Engagement.Aggregates.Engagement?> GetByIdAsync(EngagementId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Engagement aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Engagement>> ListAsync(EngagementSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Analytics.Engagement.Aggregates.Engagement>> ListAsync(EngagementSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Engagement aggregate.</summary>
-    Task AddAsync(Engagement aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Analytics.Engagement.Aggregates.Engagement aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Engagement aggregate.</summary>
-    Task UpdateAsync(Engagement aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Analytics.Engagement.Aggregates.Engagement aggregate, CancellationToken cancellationToken = default);
 }

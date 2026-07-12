@@ -42,6 +42,7 @@ public sealed class CreateRcaCommandHandler : ICommandHandler<CreateRootCauseAna
             methodology: request.Methodology,
             rootCauses: request.RootCauses,
             correctiveActions: request.CorrectiveActions,
+            leadInvestigatorId: request.LeadInvestigatorId,
             actorId: request.ActorId,
             correlationId: request.CorrelationId,
             cancellationToken: cancellationToken);

@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Operational.RiskManagement.Factories;
 public sealed class RiskManagementFactory : IRiskManagementFactory
 {
     /// <inheritdoc/>
-    public RiskManagement Create(
+    public PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => RiskManagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

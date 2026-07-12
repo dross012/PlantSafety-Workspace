@@ -20,10 +20,10 @@ public sealed record CreateMocCommand : ICommand<Guid>
     public required Guid CorrelationId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid CausationId { get; init; }
+    public required Guid? CausationId { get; init; }
 
     /// <inheritdoc/>
-    public required DateTimeOffset RequestedAtUtc { get; init; }
+    public required DateTime RequestedAtUtc { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }
@@ -41,11 +41,20 @@ public sealed record CreateMocCommand : ICommand<Guid>
     public required string Title { get; init; }
 
     /// <summary>Description of the change. Max 4000 characters.</summary>
-    public required string ChangeDescription { get; init; }
+    public required string Description { get; init; }
 
     /// <summary>Change type (Permanent, Temporary, Emergency).</summary>
     public required string ChangeType { get; init; }
 
     /// <summary>Risk level (Low, Medium, High, Critical).</summary>
     public required string RiskLevel { get; init; }
+
+    /// <summary>Initiator worker identifier.</summary>
+    public required Guid InitiatorId { get; init; }
+
+    /// <summary>Proposed start timestamp for the change.</summary>
+    public required DateTimeOffset ProposedStartUtc { get; init; }
+
+    /// <summary>Proposed end timestamp for the change, if known.</summary>
+    public DateTimeOffset? ProposedEndUtc { get; init; }
 }

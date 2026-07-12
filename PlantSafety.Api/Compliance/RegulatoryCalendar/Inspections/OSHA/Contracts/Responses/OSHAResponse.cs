@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.RegulatoryCalendar.Inspections.OSHA.Models;
+
 namespace PlantSafety.Api.Compliance.RegulatoryCalendar.Inspections.OSHA.Contracts.Responses;
 
 /// <summary>Response payload for OSHA queries.</summary>
@@ -29,4 +31,4 @@ public sealed record OSHAResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<OSHAItemDto> Items);

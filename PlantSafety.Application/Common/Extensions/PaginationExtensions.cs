@@ -33,13 +33,15 @@ public static class PaginationExtensions
         Math.Clamp(pageSize, PaginationConstants.MinPageSize, PaginationConstants.MaxPageSize);
 
     /// <summary>
-    /// Returns a safe ORDER BY field name. Returns <see cref="PaginationConstants.DefaultOrderByField"/> when null or whitespace.
+    /// Returns a safe ORDER BY field name. Returns <paramref name="defaultField"/> (or
+    /// <see cref="PaginationConstants.DefaultOrderByField"/> when not supplied) if null or whitespace.
     /// Never passes caller-controlled SQL fragments; callers must use whitelist validation.
     /// </summary>
     /// <param name="orderBy">The caller-supplied order-by field name.</param>
+    /// <param name="defaultField">The field to fall back to when <paramref name="orderBy"/> is null or whitespace.</param>
     /// <returns>A non-null, trimmed order-by field name.</returns>
-    public static string SafeOrderBy(this string? orderBy) =>
-        string.IsNullOrWhiteSpace(orderBy) ? PaginationConstants.DefaultOrderByField : orderBy.Trim();
+    public static string SafeOrderBy(this string? orderBy, string? defaultField = null) =>
+        string.IsNullOrWhiteSpace(orderBy) ? defaultField ?? PaginationConstants.DefaultOrderByField : orderBy.Trim();
 
     /// <summary>
     /// Returns a safe sort direction. Returns <see cref="PaginationConstants.DefaultSortDirection"/> when null or invalid.

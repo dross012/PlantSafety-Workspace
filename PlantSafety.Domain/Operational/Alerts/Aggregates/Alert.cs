@@ -80,7 +80,7 @@ public sealed partial class Alert
     private readonly List<IAlertDomainEvent> _domainEvents = [];
     public IReadOnlyCollection<IAlertDomainEvent> DomainEvents => new ReadOnlyCollection<IAlertDomainEvent>(_domainEvents);
 
-    private Alert() { } // For rehydration only
+    internal Alert() { } // For rehydration only (accessible within PlantSafety.Domain to rebuild/rehydration infrastructure)
 
     // ------------------------------------------------------------------------
     // Factory
@@ -127,6 +127,8 @@ public sealed partial class Alert
             AlertId: alert.AlertId,
             AlertType: alert.AlertType,
             Severity: alert.Severity,
+            Title: alert.Title,
+            Description: alert.Description,
             SourceModule: alert.SourceModule,
             CreatedAtUtc: createdAtUtc,
             Actor: actor,
@@ -136,6 +138,40 @@ public sealed partial class Alert
         alert.AddDomainEvent(evt);
 
         return alert;
+    }
+
+    // ------------------------------------------------------------------------
+    // SLA
+    // ------------------------------------------------------------------------
+
+    /// <summary>
+    /// Sets the SLA expiration for this alert. Invoked by the factory/SLA
+    /// policy immediately after creation (or by re-evaluation policies later
+    /// in the lifecycle). Does not itself emit a domain event; SLA changes
+    /// are considered derived/computed state rather than a lifecycle transition.
+    /// </summary>
+    public void SetSlaExpiration(SlaExpiration slaExpiration)
+    {
+        SlaExpiration = slaExpiration;
+    }
+
+    // ------------------------------------------------------------------------
+    // Metadata
+    // ------------------------------------------------------------------------
+
+    /// <summary>
+    /// Adds a metadata entry to this alert. Key uniqueness and normalization
+    /// are enforced by the caller (see <c>AlertMetadataService</c>).
+    /// </summary>
+    public void AddMetadata(AlertMetadataKey key, AlertMetadataValue value)
+    {
+        var entry = new AlertMetadataEntry(
+            alertMetadataId: AlertMetadataId.New(),
+            alertId: AlertId,
+            key: key,
+            value: value);
+
+        _metadata.Add(entry);
     }
 
     // ------------------------------------------------------------------------
@@ -320,7 +356,7 @@ public sealed partial class Alert
             alertAssignmentId: AlertAssignmentId.New(),
             alertId: AlertId,
             assignedTo: assignedTo.Trim(),
-            assignedAtUtc: assignedAtUtc.Value,
+            assignedAtUtc: assignedAtUtc,
             assignedBy: actor.ToString());
 
         _assignments.Add(assignment);
@@ -361,11 +397,11 @@ public sealed partial class Alert
         string? notes)
     {
         var entry = new AlertHistoryEntry(
-            alertHistoryId: AlertHistoryId.New().Value,
+            alertHistoryId: AlertHistoryId.New(),
             alertId: AlertId,
             previousStatus: previous,
             newStatus: next,
-            changedAtUtc: changedAtUtc.Value,
+            changedAtUtc: changedAtUtc,
             changedBy: actor.ToString(),
             notes: notes);
 
@@ -410,7 +446,9 @@ public sealed partial class Alert
         // ------------------------------------------------------------
         // 5. SLA
         // ------------------------------------------------------------
-        SlaExpiration = snapshot.SlaExpiration;
+        SlaExpiration = snapshot.SlaExpiration.HasValue
+            ? new SlaExpiration(snapshot.SlaExpiration.Value)
+            : null;
 
         // ------------------------------------------------------------
         // 6. Assignments
@@ -461,9 +499,19 @@ public sealed partial class Alert
         Description = e.Description ?? Description;
         SourceModule = e.SourceModule;
         CreatedAtUtc = e.CreatedAtUtc;
-        CreatedBy = e.Actor.UserId;
+        // Actor.UserId is only populated for human actors (ActorKind.User);
+        // system/AI/external-originated alerts carry no UserId, so fall back
+        // to the current (default/empty) value rather than throw during replay.
+        CreatedBy = e.Actor.UserId ?? CreatedBy;
 
         // SLA may be set later by factory or policy
+    }
+
+    internal void ApplyAcknowledged(AlertAcknowledgedEvent e)
+    {
+        Status = AlertStatus.Acknowledged;
+        AcknowledgedAtUtc = e.AcknowledgedAtUtc;
+        AcknowledgedBy = e.Actor;
     }
 
     internal void ApplyInProgress(AlertInProgressEvent e)
@@ -489,11 +537,30 @@ public sealed partial class Alert
         ResolutionSummary = e.Summary;
     }
 
+    internal void ApplyClosed(AlertClosedEvent e)
+    {
+        Status = AlertStatus.Closed;
+        ClosedAtUtc = e.ClosedAtUtc;
+        ClosedBy = e.Actor;
+    }
+
     internal void ApplyArchived(AlertArchivedEvent e)
     {
         Status = AlertStatus.Archived;
         ArchivedAtUtc = e.ArchivedAtUtc;
         ArchivedBy = e.Actor;
+    }
+
+    internal void ApplyAssigned(AlertAssignedEvent e)
+    {
+        var assignment = new AlertAssignment(
+            alertAssignmentId: AlertAssignmentId.New(),
+            alertId: AlertId,
+            assignedTo: e.AssignedTo,
+            assignedAtUtc: e.AssignedAtUtc,
+            assignedBy: e.Actor.ToString());
+
+        _assignments.Add(assignment);
     }
 
     internal void ApplyMetadataAdded(AlertMetadataAddedEvent e)
@@ -513,10 +580,18 @@ public sealed partial class Alert
 
     internal void ApplyMetadataUpdated(AlertMetadataUpdatedEvent e)
     {
-        var entry = _metadata.FirstOrDefault(m => m.Key == e.Key);
-        if (entry != null)
+        // AlertMetadataEntry is an immutable entity (ValueObject Rule 2.8),
+        // so updates are applied by replacing the entry rather than mutating
+        // it in place.
+        var index = _metadata.FindIndex(m => m.Key == e.Key);
+        if (index >= 0)
         {
-            entry.UpdateValue(e.NewValue);
+            var existing = _metadata[index];
+            _metadata[index] = new AlertMetadataEntry(
+                alertMetadataId: existing.AlertMetadataId,
+                alertId: existing.AlertId,
+                key: existing.Key,
+                value: e.NewValue);
         }
     }
 

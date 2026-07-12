@@ -29,7 +29,7 @@ public sealed class RegulatoryCalendarRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<RegulatoryCalendarReadModel>(
-            conn, $"[Compliance].[usp_RegulatoryCalendar_GetById]", parameters);
+            $"[Compliance].[usp_RegulatoryCalendar_GetById]", parameters);
     }
 
     /// <summary>Returns all RegulatoryCalendar records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class RegulatoryCalendarRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<RegulatoryCalendarReadModel>(
-            conn, $"[Compliance].[usp_RegulatoryCalendar_GetAll]", parameters);
+            $"[Compliance].[usp_RegulatoryCalendar_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

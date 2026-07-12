@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.SafetyEvents.Observation.Factories;
 public sealed class ObservationFactory : IObservationFactory
 {
     /// <inheritdoc/>
-    public Observation Create(
+    public PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Observation.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.SafetyEvents.Observation.Aggregates.Observation.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

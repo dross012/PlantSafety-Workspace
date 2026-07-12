@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Analytics.Culture.Factories;
 public sealed class CultureFactory : ICultureFactory
 {
     /// <inheritdoc/>
-    public Culture Create(
+    public PlantSafety.Domain.Analytics.Culture.Aggregates.Culture Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Culture.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Analytics.Culture.Aggregates.Culture.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

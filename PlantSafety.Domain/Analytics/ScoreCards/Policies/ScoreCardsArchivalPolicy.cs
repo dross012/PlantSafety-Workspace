@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Analytics.ScoreCards.Policies;
 public static class ScoreCardsArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the ScoreCards may be archived.</summary>
-    public static bool IsEligibleForArchival(ScoreCards aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Analytics.ScoreCards.Aggregates.ScoreCards aggregate)
         => aggregate.Status == ScoreCardsStatus.Closed;
 }

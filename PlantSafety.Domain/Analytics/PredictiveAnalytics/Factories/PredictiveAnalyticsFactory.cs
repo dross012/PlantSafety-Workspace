@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Analytics.PredictiveAnalytics.Factories;
 public sealed class PredictiveAnalyticsFactory : IPredictiveAnalyticsFactory
 {
     /// <inheritdoc/>
-    public PredictiveAnalytics Create(
+    public PlantSafety.Domain.Analytics.PredictiveAnalytics.Aggregates.PredictiveAnalytics Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => PredictiveAnalytics.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Analytics.PredictiveAnalytics.Aggregates.PredictiveAnalytics.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

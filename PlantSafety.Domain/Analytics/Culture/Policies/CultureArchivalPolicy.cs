@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Analytics.Culture.Policies;
 public static class CultureArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Culture may be archived.</summary>
-    public static bool IsEligibleForArchival(Culture aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Analytics.Culture.Aggregates.Culture aggregate)
         => aggregate.Status == CultureStatus.Closed;
 }

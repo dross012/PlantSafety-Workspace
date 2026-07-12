@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.ScoreCards.Department.Models;
+
 namespace PlantSafety.Api.Analytics.ScoreCards.Department.Contracts.Responses;
 
 /// <summary>Response payload for Department queries.</summary>
@@ -29,4 +31,4 @@ public sealed record DepartmentResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<DepartmentItemDto> Items);

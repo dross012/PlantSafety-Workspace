@@ -38,6 +38,8 @@
 
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 
+[assembly: ApiConventionType(typeof(PlantSafety.Api.Conventions.PlantSafetyApiConventions))]
+
 namespace PlantSafety.Api.Conventions;
 
 /// <summary>
@@ -45,7 +47,6 @@ namespace PlantSafety.Api.Conventions;
 /// codes for common action patterns, eliminating per-action ProducesResponseType
 /// attributes across all module controllers.
 /// </summary>
-[ApiConventionType]
 public static class PlantSafetyApiConventions
 {
     /// <summary>Convention for paginated list GET actions (e.g. GetListAsync).</summary>

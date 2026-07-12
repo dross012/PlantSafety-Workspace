@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Analytics.Engagement.Interfaces;
 public interface IEngagementFactory
 {
     /// <summary>Creates a new Engagement aggregate with the supplied parameters.</summary>
-    Engagement Create(
+    PlantSafety.Domain.Analytics.Engagement.Aggregates.Engagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

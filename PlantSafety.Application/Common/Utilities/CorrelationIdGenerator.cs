@@ -20,17 +20,36 @@ public static class CorrelationIdGenerator
     /// Generates a new UUIDv7 identifier using the current UTC time.
     /// </summary>
     /// <returns>A new time-ordered <see cref="Guid"/>.</returns>
-    public static Guid NewId() => Guid.CreateVersion7();
+    public static Guid NewId() => NewId(DateTimeOffset.UtcNow);
 
     /// <summary>
     /// Generates a new UUIDv7 identifier anchored to the given UTC timestamp.
     /// Used when the timestamp is injected externally (e.g., in tests or saga compensation steps).
+    /// Implemented manually (rather than via <c>Guid.CreateVersion7</c>) because this project
+    /// targets net8.0, and that API was introduced in .NET 9.
     /// </summary>
     /// <param name="timestamp">The UTC timestamp to embed in the UUIDv7.</param>
     /// <returns>A new time-ordered <see cref="Guid"/> anchored to the specified timestamp.</returns>
     public static Guid NewId(DateTimeOffset timestamp)
     {
-        return Guid.CreateVersion7(timestamp);
+        long unixMs = timestamp.ToUnixTimeMilliseconds();
+        uint high = (uint)(unixMs >> 16);
+        ushort mid = (ushort)(unixMs & 0xFFFF);
+
+        var bytes = new byte[16];
+        bytes[0] = (byte)high;
+        bytes[1] = (byte)(high >> 8);
+        bytes[2] = (byte)(high >> 16);
+        bytes[3] = (byte)(high >> 24);
+        bytes[4] = (byte)mid;
+        bytes[5] = (byte)(mid >> 8);
+
+        System.Security.Cryptography.RandomNumberGenerator.Fill(bytes.AsSpan(6, 10));
+
+        bytes[7] = (byte)((bytes[7] & 0x0F) | 0x70); // Version 7 marker.
+        bytes[8] = (byte)((bytes[8] & 0x3F) | 0x80); // RFC 4122 variant marker.
+
+        return new Guid(bytes);
     }
 
     /// <summary>

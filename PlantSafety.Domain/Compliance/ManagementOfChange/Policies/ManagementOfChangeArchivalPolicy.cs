@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Compliance.ManagementOfChange.Policies;
 public static class ManagementOfChangeArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the ManagementOfChange may be archived.</summary>
-    public static bool IsEligibleForArchival(ManagementOfChange aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Compliance.ManagementOfChange.Aggregates.ManagementOfChange aggregate)
         => aggregate.Status == ManagementOfChangeStatus.Closed;
 }

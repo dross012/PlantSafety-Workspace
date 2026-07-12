@@ -29,7 +29,7 @@ public sealed class CultureRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<CultureReadModel>(
-            conn, $"[Analytics].[usp_Culture_GetById]", parameters);
+            $"[Analytics].[usp_Culture_GetById]", parameters);
     }
 
     /// <summary>Returns all Culture read models for the specified tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class CultureRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<CultureReadModel>(
-            conn, $"[Analytics].[usp_Culture_GetAll]", parameters);
+            $"[Analytics].[usp_Culture_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

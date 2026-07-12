@@ -29,7 +29,7 @@ public sealed class DashboardRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<DashboardReadModel>(
-            conn, $"[Analytics].[usp_Dashboard_GetById]", parameters);
+            $"[Analytics].[usp_Dashboard_GetById]", parameters);
     }
 
     /// <summary>Returns all Dashboard read models for the specified tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class DashboardRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<DashboardReadModel>(
-            conn, $"[Analytics].[usp_Dashboard_GetAll]", parameters);
+            $"[Analytics].[usp_Dashboard_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

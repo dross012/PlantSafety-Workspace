@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Auditing.InternalSafetyAudit.Models;
+
 namespace PlantSafety.Api.Compliance.Auditing.InternalSafetyAudit.Contracts.Responses;
 
 /// <summary>Response payload for InternalSafetyAudit queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.Compliance.Auditing.InternalSafetyAudit.Contracts.Resp
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the InternalSafetyAudit read-model.</param>
 public sealed record InternalSafetyAuditResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                                  TenantId,
+    Guid?                                 SiteId,
+    DateTime                              GeneratedAt,
+    IReadOnlyList<InternalSafetyAuditItemDto> Items);

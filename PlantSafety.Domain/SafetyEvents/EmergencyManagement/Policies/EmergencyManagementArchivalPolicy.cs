@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.SafetyEvents.EmergencyManagement.Policies;
 public static class EmergencyManagementArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the EmergencyManagement may be archived.</summary>
-    public static bool IsEligibleForArchival(EmergencyManagement aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement aggregate)
         => aggregate.Status == EmergencyManagementStatus.Closed;
 }

@@ -38,9 +38,11 @@ global using System.Threading.Tasks;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Http;
 global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.AspNetCore.Mvc.Filters;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
+global using Microsoft.Extensions.Options;
 
 // ── MediatR ──────────────────────────────────────────────────────────────────
 global using MediatR;
@@ -53,7 +55,6 @@ global using PlantSafety.Api.Models;
 global using PlantSafety.Api.Middleware;
 
 // ── PlantSafety Shared Kernel ─────────────────────────────────────────────────
-// Result pattern, StrongId, TenantContext — core cross-cutting types
+// Result pattern, StrongId — core cross-cutting types
 global using PlantSafety.SharedKernel;
-global using PlantSafety.SharedKernel.MultiTenancy;
-global using PlantSafety.SharedKernel.Results;
+global using PlantSafety.SharedKernel.Primitives.Results;

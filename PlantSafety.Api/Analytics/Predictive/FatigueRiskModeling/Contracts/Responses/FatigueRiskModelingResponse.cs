@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Predictive.FatigueRiskModeling.Models;
+
 namespace PlantSafety.Api.Analytics.Predictive.FatigueRiskModeling.Contracts.Responses;
 
 /// <summary>Response payload for FatigueRiskModeling queries.</summary>
@@ -29,4 +31,4 @@ public sealed record FatigueRiskModelingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<FatigueRiskModelingItemDto> Items);

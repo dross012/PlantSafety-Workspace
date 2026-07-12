@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.SafetyEvents.EmergencyManagement.Interfaces;
 public interface IEmergencyManagementFactory
 {
     /// <summary>Creates a new EmergencyManagement aggregate with the supplied parameters.</summary>
-    EmergencyManagement Create(
+    PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

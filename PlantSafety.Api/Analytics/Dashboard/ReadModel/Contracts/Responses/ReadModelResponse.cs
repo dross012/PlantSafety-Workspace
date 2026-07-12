@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Dashboard.ReadModel.Models;
+
 namespace PlantSafety.Api.Analytics.Dashboard.ReadModel.Contracts.Responses;
 
 /// <summary>Response payload for ReadModel queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ReadModelResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ReadModelItemDto> Items);

@@ -29,7 +29,7 @@ public sealed class CertificationRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<CertificationReadModel>(
-            conn, $"[Compliance].[usp_Certification_GetById]", parameters);
+            $"[Compliance].[usp_Certification_GetById]", parameters);
     }
 
     /// <summary>Returns all Certification records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class CertificationRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<CertificationReadModel>(
-            conn, $"[Compliance].[usp_Certification_GetAll]", parameters);
+            $"[Compliance].[usp_Certification_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

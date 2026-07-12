@@ -15,10 +15,10 @@ namespace PlantSafety.Domain.Analytics.Culture.Specifications;
 public abstract class CultureSpecification
 {
     /// <summary>Returns the predicate expression for use in repository queries.</summary>
-    public abstract Expression<Func<Culture, bool>> ToExpression();
+    public abstract Expression<Func<PlantSafety.Domain.Analytics.Culture.Aggregates.Culture, bool>> ToExpression();
 
     /// <summary>Compiles the expression into a delegate for in-memory filtering.</summary>
-    public Func<Culture, bool> ToPredicate() => ToExpression().Compile();
+    public Func<PlantSafety.Domain.Analytics.Culture.Aggregates.Culture, bool> ToPredicate() => ToExpression().Compile();
 
     /// <summary>Combines this specification with <paramref name="other"/> using logical AND.</summary>
     public CultureSpecification And(CultureSpecification other) => new AndCultureSpecification(this, other);
@@ -29,24 +29,24 @@ public abstract class CultureSpecification
 
 internal sealed class AndCultureSpecification(CultureSpecification left, CultureSpecification right) : CultureSpecification
 {
-    public override Expression<Func<Culture, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.Analytics.Culture.Aggregates.Culture, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.AndAlso(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<Culture, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.Analytics.Culture.Aggregates.Culture, bool>>(body, param);
     }
 }
 
 internal sealed class OrCultureSpecification(CultureSpecification left, CultureSpecification right) : CultureSpecification
 {
-    public override Expression<Func<Culture, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.Analytics.Culture.Aggregates.Culture, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.OrElse(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<Culture, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.Analytics.Culture.Aggregates.Culture, bool>>(body, param);
     }
 }

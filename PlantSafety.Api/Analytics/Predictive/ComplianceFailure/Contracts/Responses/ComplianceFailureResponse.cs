@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Predictive.ComplianceFailure.Models;
+
 namespace PlantSafety.Api.Analytics.Predictive.ComplianceFailure.Contracts.Responses;
 
 /// <summary>Response payload for ComplianceFailure queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ComplianceFailureResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ComplianceFailureItemDto> Items);

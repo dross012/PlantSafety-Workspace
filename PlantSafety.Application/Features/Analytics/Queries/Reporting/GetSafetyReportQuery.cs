@@ -16,10 +16,10 @@ namespace PlantSafety.Application.Features.Analytics.Queries.Reporting;
 public sealed record GetSafetyReportQuery : IQuery<SafetyReportDto>
 {
     /// <inheritdoc/>
-    public required Guid TraceId { get; init; }
+    public required string TraceId { get; init; }
 
     /// <inheritdoc/>
-    public required Guid SpanId { get; init; }
+    public required string SpanId { get; init; }
 
     /// <inheritdoc/>
     public required string ApiVersionToken { get; init; }

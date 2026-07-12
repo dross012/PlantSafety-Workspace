@@ -13,6 +13,10 @@ namespace PlantSafety.Application.Features.SafetyEvents.Validators.NearMisses;
 /// <summary>Validates <see cref="UpdateNearMissCommand"/> structural fields.</summary>
 public sealed class UpdateNearMissCommandValidator : AbstractValidator<UpdateNearMissCommand>
 {
+    private static readonly string[] ValidSeverities = ["Minor", "Moderate", "Serious", "Critical"];
+    private static readonly string[] ValidHazardCategories =
+        ["Chemical", "Mechanical", "Electrical", "Ergonomic", "Biological", "Radiation", "Thermal", "Other"];
+
     /// <summary>Defines validation rules.</summary>
     public UpdateNearMissCommandValidator()
     {
@@ -34,11 +38,11 @@ public sealed class UpdateNearMissCommandValidator : AbstractValidator<UpdateNea
             RuleFor(x => x.Description!).NotEmpty().MaximumLength(CommonValidationRules.MaxDescriptionLength));
 
         When(x => x.PotentialSeverity is not null, () =>
-            RuleFor(x => x.PotentialSeverity!).Must(s => CreateNearMissCommand.ValidSeverities.Contains(s))
-                .WithMessage($"PotentialSeverity must be one of: {string.Join(", ", CreateNearMissCommand.ValidSeverities)}"));
+            RuleFor(x => x.PotentialSeverity!).Must(s => ValidSeverities.Contains(s))
+                .WithMessage($"PotentialSeverity must be one of: {string.Join(", ", ValidSeverities)}"));
 
         When(x => x.HazardCategory is not null, () =>
-            RuleFor(x => x.HazardCategory!).Must(c => CreateNearMissCommand.ValidHazardCategories.Contains(c))
-                .WithMessage($"HazardCategory must be one of: {string.Join(", ", CreateNearMissCommand.ValidHazardCategories)}"));
+            RuleFor(x => x.HazardCategory!).Must(c => ValidHazardCategories.Contains(c))
+                .WithMessage($"HazardCategory must be one of: {string.Join(", ", ValidHazardCategories)}"));
     }
 }

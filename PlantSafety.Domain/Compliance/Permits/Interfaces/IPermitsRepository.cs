@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Compliance.Permits.Interfaces;
 public interface IPermitsRepository
 {
     /// <summary>Retrieves a Permits aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Permits?> GetByIdAsync(PermitsId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Compliance.Permits.Aggregates.Permits?> GetByIdAsync(PermitsId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Permits aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Permits>> ListAsync(PermitsSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Compliance.Permits.Aggregates.Permits>> ListAsync(PermitsSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Permits aggregate.</summary>
-    Task AddAsync(Permits aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Compliance.Permits.Aggregates.Permits aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Permits aggregate.</summary>
-    Task UpdateAsync(Permits aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Compliance.Permits.Aggregates.Permits aggregate, CancellationToken cancellationToken = default);
 }

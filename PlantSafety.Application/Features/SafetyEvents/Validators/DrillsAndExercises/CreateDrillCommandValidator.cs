@@ -19,8 +19,8 @@ public sealed class CreateDrillCommandValidator : AbstractValidator<CreateDrillC
     /// <summary>Defines validation rules.</summary>
     public CreateDrillCommandValidator()
     {
-        RuleFor(x => x.CommandId).IsValidId<CreateDrillCommand, Guid>(x => x.CommandId);
-        RuleFor(x => x.CorrelationId).IsValidId<CreateDrillCommand, Guid>(x => x.CorrelationId);
+        RuleFor(x => x.CommandId).IsValidId("CommandId");
+        RuleFor(x => x.CorrelationId).IsValidId("CorrelationId");
         RuleFor(x => x.TenantId).NotEmpty();
         RuleFor(x => x.ActorId).NotEmpty();
 
@@ -31,6 +31,6 @@ public sealed class CreateDrillCommandValidator : AbstractValidator<CreateDrillC
             .Must(t => ValidDrillTypes.Contains(t))
             .WithMessage($"DrillType must be one of: {string.Join(", ", ValidDrillTypes)}");
 
-        RuleFor(x => x.ScheduledAtUtc).MustBeUtc();
+        RuleFor(x => x.ScheduledAtUtc).MustBeUtc("ScheduledAtUtc");
     }
 }

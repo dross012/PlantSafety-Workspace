@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.ScoreCards.Supervisor.Models;
+
 namespace PlantSafety.Api.Analytics.ScoreCards.Supervisor.Contracts.Responses;
 
 /// <summary>Response payload for Supervisor queries.</summary>
@@ -29,4 +31,4 @@ public sealed record SupervisorResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<SupervisorItemDto> Items);

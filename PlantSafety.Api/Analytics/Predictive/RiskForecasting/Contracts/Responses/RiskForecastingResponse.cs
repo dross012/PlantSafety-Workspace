@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Predictive.RiskForecasting.Models;
+
 namespace PlantSafety.Api.Analytics.Predictive.RiskForecasting.Contracts.Responses;
 
 /// <summary>Response payload for RiskForecasting queries.</summary>
@@ -29,4 +31,4 @@ public sealed record RiskForecastingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<RiskForecastingItemDto> Items);

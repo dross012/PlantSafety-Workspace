@@ -45,7 +45,7 @@ public sealed class CompetencyManagementDapperRepository(
             .Build();
 
         var result = await queryExecutor.QuerySingleOrDefaultAsync<int?>(
-            conn, "[Training].[usp_CompetencyManagement_Exists]", parameters);
+            "[Training].[usp_CompetencyManagement_Exists]", parameters);
 
         return result.HasValue && result.Value > 0;
     }

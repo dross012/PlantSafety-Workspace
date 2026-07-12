@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Operational.Checklists.Interfaces;
 public interface IChecklistsRepository
 {
     /// <summary>Retrieves a Checklists aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Checklists?> GetByIdAsync(ChecklistsId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Operational.Checklists.Aggregates.Checklists?> GetByIdAsync(ChecklistsId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Checklists aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Checklists>> ListAsync(ChecklistsSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Operational.Checklists.Aggregates.Checklists>> ListAsync(ChecklistsSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Checklists aggregate.</summary>
-    Task AddAsync(Checklists aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Operational.Checklists.Aggregates.Checklists aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Checklists aggregate.</summary>
-    Task UpdateAsync(Checklists aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Operational.Checklists.Aggregates.Checklists aggregate, CancellationToken cancellationToken = default);
 }

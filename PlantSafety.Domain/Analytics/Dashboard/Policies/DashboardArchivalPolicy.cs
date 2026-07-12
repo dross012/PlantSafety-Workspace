@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Analytics.Dashboard.Policies;
 public static class DashboardArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Dashboard may be archived.</summary>
-    public static bool IsEligibleForArchival(Dashboard aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard aggregate)
         => aggregate.Status == DashboardStatus.Closed;
 }

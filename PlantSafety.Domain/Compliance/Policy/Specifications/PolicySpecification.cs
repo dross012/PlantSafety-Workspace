@@ -15,10 +15,10 @@ namespace PlantSafety.Domain.Compliance.Policy.Specifications;
 public abstract class PolicySpecification
 {
     /// <summary>Returns the predicate expression for use in repository queries.</summary>
-    public abstract Expression<Func<Policy, bool>> ToExpression();
+    public abstract Expression<Func<PlantSafety.Domain.Compliance.Policy.Aggregates.Policy, bool>> ToExpression();
 
     /// <summary>Compiles the expression into a delegate for in-memory filtering.</summary>
-    public Func<Policy, bool> ToPredicate() => ToExpression().Compile();
+    public Func<PlantSafety.Domain.Compliance.Policy.Aggregates.Policy, bool> ToPredicate() => ToExpression().Compile();
 
     /// <summary>Combines this specification with <paramref name="other"/> using logical AND.</summary>
     public PolicySpecification And(PolicySpecification other) => new AndPolicySpecification(this, other);
@@ -29,24 +29,24 @@ public abstract class PolicySpecification
 
 internal sealed class AndPolicySpecification(PolicySpecification left, PolicySpecification right) : PolicySpecification
 {
-    public override Expression<Func<Policy, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.Compliance.Policy.Aggregates.Policy, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.AndAlso(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<Policy, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.Compliance.Policy.Aggregates.Policy, bool>>(body, param);
     }
 }
 
 internal sealed class OrPolicySpecification(PolicySpecification left, PolicySpecification right) : PolicySpecification
 {
-    public override Expression<Func<Policy, bool>> ToExpression()
+    public override Expression<Func<PlantSafety.Domain.Compliance.Policy.Aggregates.Policy, bool>> ToExpression()
     {
         var l = left.ToExpression();
         var r = right.ToExpression();
         var param = l.Parameters[0];
         var body = Expression.OrElse(l.Body, Expression.Invoke(r, param));
-        return Expression.Lambda<Func<Policy, bool>>(body, param);
+        return Expression.Lambda<Func<PlantSafety.Domain.Compliance.Policy.Aggregates.Policy, bool>>(body, param);
     }
 }

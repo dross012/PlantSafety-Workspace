@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Analytics.Culture.TrendModeling.Models;
+
 namespace PlantSafety.Api.Analytics.Culture.TrendModeling.Contracts.Responses;
 
 /// <summary>Response payload for TrendModeling queries.</summary>
@@ -29,4 +31,4 @@ public sealed record TrendModelingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<TrendModelingItemDto> Items);

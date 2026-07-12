@@ -15,11 +15,11 @@ namespace PlantSafety.Domain.Operational.Training.Factories;
 public sealed class TrainingFactory : ITrainingFactory
 {
     /// <inheritdoc/>
-    public Training Create(
+    public PlantSafety.Domain.Operational.Training.Aggregates.Training Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
         PerformedByActor actor)
-        => Training.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
+        => PlantSafety.Domain.Operational.Training.Aggregates.Training.Create(createdBy, createdAtUtc, correlationId, causationId, actor);
 }

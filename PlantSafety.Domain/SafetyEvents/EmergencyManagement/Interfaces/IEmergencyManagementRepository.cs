@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.SafetyEvents.EmergencyManagement.Interfaces;
 public interface IEmergencyManagementRepository
 {
     /// <summary>Retrieves a EmergencyManagement aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<EmergencyManagement?> GetByIdAsync(EmergencyManagementId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement?> GetByIdAsync(EmergencyManagementId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all EmergencyManagement aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<EmergencyManagement>> ListAsync(EmergencyManagementSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement>> ListAsync(EmergencyManagementSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new EmergencyManagement aggregate.</summary>
-    Task AddAsync(EmergencyManagement aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing EmergencyManagement aggregate.</summary>
-    Task UpdateAsync(EmergencyManagement aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement aggregate, CancellationToken cancellationToken = default);
 }

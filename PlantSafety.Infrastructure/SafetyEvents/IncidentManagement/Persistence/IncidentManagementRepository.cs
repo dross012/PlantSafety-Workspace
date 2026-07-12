@@ -29,7 +29,7 @@ public sealed class IncidentManagementRepository(
             .Build();
 
         return await queryExecutor.QuerySingleOrDefaultAsync<IncidentManagementReadModel>(
-            conn, $"[SafetyEvents].[usp_IncidentManagement_GetById]", parameters);
+            $"[SafetyEvents].[usp_IncidentManagement_GetById]", parameters);
     }
 
     /// <summary>Returns all IncidentManagement records for the tenant.</summary>
@@ -43,7 +43,7 @@ public sealed class IncidentManagementRepository(
             .Build();
 
         var result = await queryExecutor.QueryAsync<IncidentManagementReadModel>(
-            conn, $"[SafetyEvents].[usp_IncidentManagement_GetAll]", parameters);
+            $"[SafetyEvents].[usp_IncidentManagement_GetAll]", parameters);
 
         return result.ToList().AsReadOnly();
     }

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Procedures.IncidentResponse.Models;
+
 namespace PlantSafety.Api.Compliance.Procedures.IncidentResponse.Contracts.Responses;
 
 /// <summary>Response payload for IncidentResponse queries.</summary>
@@ -29,4 +31,4 @@ public sealed record IncidentResponseResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<IncidentResponseItemDto> Items);

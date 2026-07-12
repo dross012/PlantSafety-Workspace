@@ -49,7 +49,7 @@ public sealed class AlertsDapperRepository(
             .Build();
 
         var result = await queryExecutor.QuerySingleOrDefaultAsync<int?>(
-            conn, "[OperationalSafety].[usp_Alerts_Exists]", parameters);
+            "[OperationalSafety].[usp_Alerts_Exists]", parameters);
 
         return result.HasValue && result.Value > 0;
     }

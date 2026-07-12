@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Compliance.Auditing.Policies;
 public static class AuditingArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the Auditing may be archived.</summary>
-    public static bool IsEligibleForArchival(Auditing aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Compliance.Auditing.Aggregates.Auditing aggregate)
         => aggregate.Status == AuditingStatus.Closed;
 }

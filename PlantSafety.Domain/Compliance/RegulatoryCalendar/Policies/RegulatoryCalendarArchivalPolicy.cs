@@ -15,6 +15,6 @@ namespace PlantSafety.Domain.Compliance.RegulatoryCalendar.Policies;
 public static class RegulatoryCalendarArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the RegulatoryCalendar may be archived.</summary>
-    public static bool IsEligibleForArchival(RegulatoryCalendar aggregate)
+    public static bool IsEligibleForArchival(PlantSafety.Domain.Compliance.RegulatoryCalendar.Aggregates.RegulatoryCalendar aggregate)
         => aggregate.Status == RegulatoryCalendarStatus.Closed;
 }

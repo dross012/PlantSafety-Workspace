@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Analytics.Dashboard.Interfaces;
 public interface IDashboardRepository
 {
     /// <summary>Retrieves a Dashboard aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Dashboard?> GetByIdAsync(DashboardId id, CancellationToken cancellationToken = default);
+    Task<PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard?> GetByIdAsync(DashboardId id, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Dashboard aggregates matching the given specification.</summary>
-    Task<IReadOnlyList<Dashboard>> ListAsync(DashboardSpecification specification, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard>> ListAsync(DashboardSpecification specification, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Dashboard aggregate.</summary>
-    Task AddAsync(Dashboard aggregate, CancellationToken cancellationToken = default);
+    Task AddAsync(PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>Persists changes to an existing Dashboard aggregate.</summary>
-    Task UpdateAsync(Dashboard aggregate, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PlantSafety.Domain.Analytics.Dashboard.Aggregates.Dashboard aggregate, CancellationToken cancellationToken = default);
 }

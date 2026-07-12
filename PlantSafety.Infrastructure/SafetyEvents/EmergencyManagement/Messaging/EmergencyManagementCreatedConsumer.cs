@@ -32,7 +32,7 @@ public sealed class EmergencyManagementCreatedConsumer(
         try
         {
             var alreadyProcessed = await conn.ExecuteScalarAsync<int>(
-                sql: \$"SELECT COUNT(1) FROM {SqlConstants.ProcessedEventsTable} WHERE EventId = @EventId",
+                sql: $"SELECT COUNT(1) FROM {SqlConstants.ProcessedEventsTable} WHERE EventId = @EventId",
                 param: new { EventId = eventId },
                 transaction: tx);
 
@@ -45,7 +45,7 @@ public sealed class EmergencyManagementCreatedConsumer(
             logger.LogInformation("{Mod} {Id} created — event consumed.", "EmergencyManagement", evt.EmergencyManagementId);
 
             await conn.ExecuteAsync(
-                sql: \$"INSERT INTO {SqlConstants.ProcessedEventsTable} (EventId, ProcessedAt) VALUES (@EventId, @NowUtc)",
+                sql: $"INSERT INTO {SqlConstants.ProcessedEventsTable} (EventId, ProcessedAt) VALUES (@EventId, @NowUtc)",
                 param: new { EventId = eventId, NowUtc = DateTime.UtcNow },
                 transaction: tx);
 

@@ -15,7 +15,7 @@ namespace PlantSafety.Domain.Compliance.RegulatoryCalendar.Interfaces;
 public interface IRegulatoryCalendarFactory
 {
     /// <summary>Creates a new RegulatoryCalendar aggregate with the supplied parameters.</summary>
-    RegulatoryCalendar Create(
+    PlantSafety.Domain.Compliance.RegulatoryCalendar.Aggregates.RegulatoryCalendar Create(
         UserId createdBy,
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,

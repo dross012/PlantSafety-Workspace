@@ -38,7 +38,7 @@ public sealed partial class Alert
     /// <summary>
     /// Applies the AlertMetadataAddedDomainEvent to mutate the aggregate state.
     /// </summary>
-    internal void Apply(AlertMetadataAddedDomainEvent e)
+    internal void Apply(AlertMetadataAddedEvent e)
     {
         var entry = new AlertMetadataEntry(
             alertMetadataId: AlertMetadataId.New(),
