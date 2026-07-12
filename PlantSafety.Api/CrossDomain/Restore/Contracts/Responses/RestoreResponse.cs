@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.Restore.Models;
+
 namespace PlantSafety.Api.CrossDomain.Restore.Contracts.Responses;
 
 /// <summary>Response payload for Restore queries.</summary>
@@ -29,4 +31,4 @@ public sealed record RestoreResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<RestoreItemDto> Items);

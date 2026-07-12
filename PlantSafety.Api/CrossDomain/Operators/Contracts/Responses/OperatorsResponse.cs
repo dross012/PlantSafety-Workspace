@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.Operators.Models;
+
 namespace PlantSafety.Api.CrossDomain.Operators.Contracts.Responses;
 
 /// <summary>Response payload for Operators queries.</summary>
@@ -29,4 +31,4 @@ public sealed record OperatorsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<OperatorsItemDto> Items);

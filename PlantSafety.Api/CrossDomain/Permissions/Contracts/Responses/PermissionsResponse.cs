@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.Permissions.Models;
+
 namespace PlantSafety.Api.CrossDomain.Permissions.Contracts.Responses;
 
 /// <summary>Response payload for Permissions queries.</summary>
@@ -29,4 +31,4 @@ public sealed record PermissionsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<PermissionsItemDto> Items);

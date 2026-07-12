@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.Roles.Models;
+
 namespace PlantSafety.Api.CrossDomain.Roles.Contracts.Responses;
 
 /// <summary>Response payload for Roles queries.</summary>
@@ -29,4 +31,4 @@ public sealed record RolesResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<RolesItemDto> Items);
