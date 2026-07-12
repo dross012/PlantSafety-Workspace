@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.Backup.Models;
+
 namespace PlantSafety.Api.CrossDomain.Backup.Contracts.Responses;
 
 /// <summary>Response payload for Backup queries.</summary>
@@ -29,4 +31,4 @@ public sealed record BackupResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<BackupItemDto> Items);

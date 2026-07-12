@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.Administration.Models;
+
 namespace PlantSafety.Api.CrossDomain.Administration.Contracts.Responses;
 
 /// <summary>Response payload for Administration queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.CrossDomain.Administration.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the Administration read-model.</param>
 public sealed record AdministrationResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                          TenantId,
+    Guid?                         SiteId,
+    DateTime                      GeneratedAt,
+    IReadOnlyList<AdministrationItemDto> Items);

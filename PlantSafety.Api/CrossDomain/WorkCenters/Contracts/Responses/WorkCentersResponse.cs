@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.WorkCenters.Models;
+
 namespace PlantSafety.Api.CrossDomain.WorkCenters.Contracts.Responses;
 
 /// <summary>Response payload for WorkCenters queries.</summary>
@@ -29,4 +31,4 @@ public sealed record WorkCentersResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<WorkCentersItemDto> Items);

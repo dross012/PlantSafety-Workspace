@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.Machines.Models;
+
 namespace PlantSafety.Api.CrossDomain.Machines.Contracts.Responses;
 
 /// <summary>Response payload for Machines queries.</summary>
@@ -29,4 +31,4 @@ public sealed record MachinesResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<MachinesItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.CrossDomain.Cleanup.Models;
+
 namespace PlantSafety.Api.CrossDomain.Cleanup.Contracts.Responses;
 
 /// <summary>Response payload for Cleanup queries.</summary>
@@ -29,4 +31,4 @@ public sealed record CleanupResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<CleanupItemDto> Items);
