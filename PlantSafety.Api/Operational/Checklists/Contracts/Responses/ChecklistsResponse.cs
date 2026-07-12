@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.Checklists.Models;
+
 namespace PlantSafety.Api.Operational.Checklists.Contracts.Responses;
 
 /// <summary>Response payload for Checklists queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ChecklistsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ChecklistsItemDto> Items);

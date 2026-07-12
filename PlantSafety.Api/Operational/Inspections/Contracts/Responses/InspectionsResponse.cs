@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.Inspections.Models;
+
 namespace PlantSafety.Api.Operational.Inspections.Contracts.Responses;
 
 /// <summary>Response payload for Inspections queries.</summary>
@@ -29,4 +31,4 @@ public sealed record InspectionsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<InspectionsItemDto> Items);

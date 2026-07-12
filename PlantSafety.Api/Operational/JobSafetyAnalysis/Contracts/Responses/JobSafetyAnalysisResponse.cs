@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.JobSafetyAnalysis.Models;
+
 namespace PlantSafety.Api.Operational.JobSafetyAnalysis.Contracts.Responses;
 
 /// <summary>Response payload for JobSafetyAnalysis queries.</summary>
@@ -29,4 +31,4 @@ public sealed record JobSafetyAnalysisResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<JobSafetyAnalysisItemDto> Items);

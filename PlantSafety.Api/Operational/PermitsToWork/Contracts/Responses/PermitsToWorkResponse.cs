@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.PermitsToWork.Models;
+
 namespace PlantSafety.Api.Operational.PermitsToWork.Contracts.Responses;
 
 /// <summary>Response payload for PermitsToWork queries.</summary>
@@ -29,4 +31,4 @@ public sealed record PermitsToWorkResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<PermitsToWorkItemDto> Items);

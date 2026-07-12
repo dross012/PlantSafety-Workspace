@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.HazardousMaterials.Models;
+
 namespace PlantSafety.Api.Operational.HazardousMaterials.Contracts.Responses;
 
 /// <summary>Response payload for HazardousMaterials queries.</summary>
@@ -29,4 +31,4 @@ public sealed record HazardousMaterialsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<HazardousMaterialsItemDto> Items);

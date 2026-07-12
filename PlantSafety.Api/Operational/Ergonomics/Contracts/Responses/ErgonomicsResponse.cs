@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.Ergonomics.Models;
+
 namespace PlantSafety.Api.Operational.Ergonomics.Contracts.Responses;
 
 /// <summary>Response payload for Ergonomics queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ErgonomicsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ErgonomicsItemDto> Items);

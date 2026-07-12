@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.PPEManagement.Models;
+
 namespace PlantSafety.Api.Operational.PPEManagement.Contracts.Responses;
 
 /// <summary>Response payload for PPEManagement queries.</summary>
@@ -29,4 +31,4 @@ public sealed record PPEManagementResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<PPEManagementItemDto> Items);

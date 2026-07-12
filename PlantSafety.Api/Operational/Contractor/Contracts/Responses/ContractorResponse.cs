@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.Contractor.Models;
+
 namespace PlantSafety.Api.Operational.Contractor.Contracts.Responses;
 
 /// <summary>Response payload for Contractor queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ContractorResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ContractorItemDto> Items);
