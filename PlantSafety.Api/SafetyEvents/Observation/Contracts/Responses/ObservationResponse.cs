@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.SafetyEvents.Observation.Models;
+
 namespace PlantSafety.Api.SafetyEvents.Observation.Contracts.Responses;
 
 /// <summary>Response payload for Observation queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.SafetyEvents.Observation.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the Observation read-model.</param>
 public sealed record ObservationResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                              TenantId,
+    Guid?                             SiteId,
+    DateTime                          GeneratedAt,
+    IReadOnlyList<ObservationItemDto> Items);

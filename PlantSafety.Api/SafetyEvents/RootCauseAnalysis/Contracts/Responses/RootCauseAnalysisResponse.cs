@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.SafetyEvents.RootCauseAnalysis.Models;
+
 namespace PlantSafety.Api.SafetyEvents.RootCauseAnalysis.Contracts.Responses;
 
 /// <summary>Response payload for RootCauseAnalysis queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.SafetyEvents.RootCauseAnalysis.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the RootCauseAnalysis read-model.</param>
 public sealed record RootCauseAnalysisResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                                     TenantId,
+    Guid?                                    SiteId,
+    DateTime                                 GeneratedAt,
+    IReadOnlyList<RootCauseAnalysisItemDto>  Items);

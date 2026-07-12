@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.ContinuousImprovement.RCA.Models;
+
 namespace PlantSafety.Api.ContinuousImprovement.RCA.Contracts.Responses;
 
 /// <summary>Response payload for RCA queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.ContinuousImprovement.RCA.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the RCA read-model.</param>
 public sealed record RCAResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                      TenantId,
+    Guid?                     SiteId,
+    DateTime                  GeneratedAt,
+    IReadOnlyList<RCAItemDto> Items);

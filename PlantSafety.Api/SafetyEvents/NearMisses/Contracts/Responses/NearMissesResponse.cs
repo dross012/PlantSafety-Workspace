@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.SafetyEvents.NearMisses.Models;
+
 namespace PlantSafety.Api.SafetyEvents.NearMisses.Contracts.Responses;
 
 /// <summary>Response payload for NearMisses queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.SafetyEvents.NearMisses.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the NearMisses read-model.</param>
 public sealed record NearMissesResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                              TenantId,
+    Guid?                             SiteId,
+    DateTime                          GeneratedAt,
+    IReadOnlyList<NearMissesItemDto>  Items);

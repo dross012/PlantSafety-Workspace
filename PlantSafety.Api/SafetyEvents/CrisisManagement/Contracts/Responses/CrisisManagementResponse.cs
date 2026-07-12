@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.SafetyEvents.CrisisManagement.Models;
+
 namespace PlantSafety.Api.SafetyEvents.CrisisManagement.Contracts.Responses;
 
 /// <summary>Response payload for CrisisManagement queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.SafetyEvents.CrisisManagement.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the CrisisManagement read-model.</param>
 public sealed record CrisisManagementResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                                    TenantId,
+    Guid?                                   SiteId,
+    DateTime                                GeneratedAt,
+    IReadOnlyList<CrisisManagementItemDto>  Items);

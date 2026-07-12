@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.ContinuousImprovement.CAPA.Models;
+
 namespace PlantSafety.Api.ContinuousImprovement.CAPA.Contracts.Responses;
 
 /// <summary>Response payload for CAPA queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.ContinuousImprovement.CAPA.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the CAPA read-model.</param>
 public sealed record CAPAResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                       TenantId,
+    Guid?                      SiteId,
+    DateTime                   GeneratedAt,
+    IReadOnlyList<CAPAItemDto> Items);

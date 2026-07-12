@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.SafetyEvents.DrillsAndExercises.Models;
+
 namespace PlantSafety.Api.SafetyEvents.DrillsAndExercises.Contracts.Responses;
 
 /// <summary>Response payload for DrillsAndExercises queries.</summary>
@@ -26,7 +28,7 @@ namespace PlantSafety.Api.SafetyEvents.DrillsAndExercises.Contracts.Responses;
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
 /// <param name="Items">Result items from the DrillsAndExercises read-model.</param>
 public sealed record DrillsAndExercisesResponse(
-    Guid                  TenantId,
-    Guid?                 SiteId,
-    DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    Guid                                     TenantId,
+    Guid?                                    SiteId,
+    DateTime                                 GeneratedAt,
+    IReadOnlyList<DrillsAndExercisesItemDto> Items);
