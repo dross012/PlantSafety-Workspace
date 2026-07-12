@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.HazardAssessments.Models;
+
 namespace PlantSafety.Api.Operational.HazardAssessments.Contracts.Responses;
 
 /// <summary>Response payload for HazardAssessments queries.</summary>
@@ -29,4 +31,4 @@ public sealed record HazardAssessmentsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<HazardAssessmentsItemDto> Items);

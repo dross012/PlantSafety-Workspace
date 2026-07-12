@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.FatigueManagement.Models;
+
 namespace PlantSafety.Api.Operational.FatigueManagement.Contracts.Responses;
 
 /// <summary>Response payload for FatigueManagement queries.</summary>
@@ -29,4 +31,4 @@ public sealed record FatigueManagementResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<FatigueManagementItemDto> Items);

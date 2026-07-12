@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.Alerts.Models;
+
 namespace PlantSafety.Api.Operational.Alerts.Contracts.Responses;
 
 /// <summary>Response payload for Alerts queries.</summary>
@@ -29,4 +31,4 @@ public sealed record AlertsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<AlertsItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.PredictiveMaintenance.Models;
+
 namespace PlantSafety.Api.Operational.PredictiveMaintenance.Contracts.Responses;
 
 /// <summary>Response payload for PredictiveMaintenance queries.</summary>
@@ -29,4 +31,4 @@ public sealed record PredictiveMaintenanceResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<PredictiveMaintenanceItemDto> Items);

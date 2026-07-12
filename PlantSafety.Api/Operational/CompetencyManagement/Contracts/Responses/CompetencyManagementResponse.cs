@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.CompetencyManagement.Models;
+
 namespace PlantSafety.Api.Operational.CompetencyManagement.Contracts.Responses;
 
 /// <summary>Response payload for CompetencyManagement queries.</summary>
@@ -29,4 +31,4 @@ public sealed record CompetencyManagementResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<CompetencyManagementItemDto> Items);

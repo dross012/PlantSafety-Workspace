@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.IndustrialHygiene.Models;
+
 namespace PlantSafety.Api.Operational.IndustrialHygiene.Contracts.Responses;
 
 /// <summary>Response payload for IndustrialHygiene queries.</summary>
@@ -29,4 +31,4 @@ public sealed record IndustrialHygieneResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<IndustrialHygieneItemDto> Items);

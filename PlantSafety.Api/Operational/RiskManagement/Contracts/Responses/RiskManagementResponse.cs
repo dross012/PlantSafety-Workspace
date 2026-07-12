@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Operational.RiskManagement.Models;
+
 namespace PlantSafety.Api.Operational.RiskManagement.Contracts.Responses;
 
 /// <summary>Response payload for RiskManagement queries.</summary>
@@ -29,4 +31,4 @@ public sealed record RiskManagementResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<RiskManagementItemDto> Items);
