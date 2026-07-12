@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Certification.ISO14001.Models;
+
 namespace PlantSafety.Api.Compliance.Certification.ISO14001.Contracts.Responses;
 
 /// <summary>Response payload for ISO14001 queries.</summary>
@@ -29,4 +31,4 @@ public sealed record ISO14001Response(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<ISO14001ItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Tracking.Models;
+
 namespace PlantSafety.Api.Compliance.Compliance.Tracking.Contracts.Responses;
 
 /// <summary>Response payload for Tracking queries.</summary>
@@ -29,4 +31,4 @@ public sealed record TrackingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<TrackingItemDto> Items);

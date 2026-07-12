@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Certification.OSHACertifications.Models;
+
 namespace PlantSafety.Api.Compliance.Certification.OSHACertifications.Contracts.Responses;
 
 /// <summary>Response payload for OSHACertifications queries.</summary>
@@ -29,4 +31,4 @@ public sealed record OSHACertificationsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<OSHACertificationsItemDto> Items);

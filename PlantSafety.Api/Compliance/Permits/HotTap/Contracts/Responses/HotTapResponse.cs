@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.HotTap.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.HotTap.Contracts.Responses;
 
 /// <summary>Response payload for HotTap queries.</summary>
@@ -29,4 +31,4 @@ public sealed record HotTapResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<HotTapItemDto> Items);

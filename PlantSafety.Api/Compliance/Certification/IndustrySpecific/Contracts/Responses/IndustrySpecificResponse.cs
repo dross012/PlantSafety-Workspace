@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Certification.IndustrySpecific.Models;
+
 namespace PlantSafety.Api.Compliance.Certification.IndustrySpecific.Contracts.Responses;
 
 /// <summary>Response payload for IndustrySpecific queries.</summary>
@@ -29,4 +31,4 @@ public sealed record IndustrySpecificResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<IndustrySpecificItemDto> Items);

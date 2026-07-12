@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.HotWork.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.HotWork.Contracts.Responses;
 
 /// <summary>Response payload for HotWork queries.</summary>
@@ -29,4 +31,4 @@ public sealed record HotWorkResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<HotWorkItemDto> Items);

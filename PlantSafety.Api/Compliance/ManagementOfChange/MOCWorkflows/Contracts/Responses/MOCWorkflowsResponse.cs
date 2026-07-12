@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.ManagementOfChange.MOCWorkflows.Models;
+
 namespace PlantSafety.Api.Compliance.ManagementOfChange.MOCWorkflows.Contracts.Responses;
 
 /// <summary>Response payload for MOCWorkflows queries.</summary>
@@ -29,4 +31,4 @@ public sealed record MOCWorkflowsResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<MOCWorkflowsItemDto> Items);

@@ -18,6 +18,8 @@
 //
 // ============================================================================
 
+using PlantSafety.Application.Compliance.Permits.Lifting.Models;
+
 namespace PlantSafety.Api.Compliance.Permits.Lifting.Contracts.Responses;
 
 /// <summary>Response payload for Lifting queries.</summary>
@@ -29,4 +31,4 @@ public sealed record LiftingResponse(
     Guid                  TenantId,
     Guid?                 SiteId,
     DateTime              GeneratedAt,
-    IReadOnlyList<object> Items);
+    IReadOnlyList<LiftingItemDto> Items);
