@@ -156,7 +156,9 @@
       "Bash(ls \"C:\\\\NugetLocalFeed\" | grep -i \"Configuration\" | head -10)",
       "Bash(ls \"C:\\\\Users\\\\dross\\\\.nuget\\\\packages\\\\microsoft.extensions.configuration.memory\" 2>/dev/null | head -20)",
       "Bash(ls \"C:\\\\Users\\\\dross\\\\.nuget\\\\packages\\\\\" | grep -i \"configuration\" | head -20)",
-      "PowerShell(dotnet test \"C:\\\\Users\\\\dross\\\\source\\\\Azure\\\\Observability.Tests\\\\Observability.Tests.csproj\" --no-build -v q 2>&1)"
+      "PowerShell(dotnet test \"C:\\\\Users\\\\dross\\\\source\\\\Azure\\\\Observability.Tests\\\\Observability.Tests.csproj\" --no-build -v q 2>&1)",
+      "Bash(cp C:/Users/dross/AppData/Local/Temp/claude/C--Users-dross-source-PlantSafety/e7ffb348-67db-4a53-a906-47333ee66c85/scratchpad/filelist.txt C:/Users/dross/AppData/Local/Temp/claude/C--Users-dross-source-PlantSafety/e7ffb348-67db-4a53-a906-47333ee66c85/scratchpad/safe_to_delete_verified_314.txt)",
+      "Bash(wc -l C:/Users/dross/AppData/Local/Temp/claude/C--Users-dross-source-PlantSafety/e7ffb348-67db-4a53-a906-47333ee66c85/scratchpad/safe_to_delete_verified_314.txt)"
     ]
   }
 }

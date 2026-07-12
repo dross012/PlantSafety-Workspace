@@ -19,6 +19,8 @@ using PlantSafety.Infrastructure.ExternalServices;
 using PlantSafety.Infrastructure.FileStorage;
 using PlantSafety.Infrastructure.Financials.Persistence;
 using PlantSafety.Infrastructure.Financials.Services;
+using PlantSafety.Application.Abstractions.CurrentUser;
+using PlantSafety.Application.Abstractions.Security;
 using PlantSafety.Infrastructure.Identity;
 using PlantSafety.Infrastructure.Messaging.Publishers;
 using PlantSafety.Infrastructure.OperationalSafety.Alerts.Interfaces;
@@ -40,6 +42,38 @@ using PlantSafety.Infrastructure.PlanningProjects.Services;
 using PlantSafety.Infrastructure.Search;
 using PlantSafety.Infrastructure.Training.CompetencyManagement.Interfaces;
 using PlantSafety.Infrastructure.Training.CompetencyManagement.Repositories;
+using PlantSafety.Application.Features.SafetyEvents.Handlers.RootCauseAnalysis;
+using PlantSafety.Infrastructure.Features.SafetyEvents.RootCauseAnalysis.Repositories;
+using PlantSafety.Application.Features.SafetyEvents.Handlers.Exports;
+using PlantSafety.Infrastructure.Features.SafetyEvents.Exports.Repositories;
+using PlantSafety.Application.Features.SafetyEvents.Handlers.DrillsAndExercises;
+using PlantSafety.Infrastructure.Features.SafetyEvents.DrillsAndExercises.Repositories;
+using PlantSafety.Application.Features.SafetyEvents.Handlers.EmergencyManagement;
+using PlantSafety.Infrastructure.Features.SafetyEvents.EmergencyManagement.Repositories;
+using PlantSafety.Application.Features.SafetyEvents.Handlers.CrisisManagement;
+using PlantSafety.Infrastructure.Features.SafetyEvents.CrisisManagement.Repositories;
+using PlantSafety.Application.Features.SafetyEvents.Handlers.Observation;
+using PlantSafety.Infrastructure.Features.SafetyEvents.Observation.Repositories;
+using PlantSafety.Application.Features.SafetyEvents.Handlers.NearMisses;
+using PlantSafety.Infrastructure.Features.SafetyEvents.NearMisses.Repositories;
+using PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement;
+using PlantSafety.Infrastructure.Features.SafetyEvents.IncidentManagement.Repositories;
+using PlantSafety.Application.Features.Compliance.Handlers.Permits;
+using PlantSafety.Infrastructure.Features.Compliance.Permits.Repositories;
+using PlantSafety.Application.Features.Compliance.Handlers.ManagementOfChange;
+using PlantSafety.Infrastructure.Features.Compliance.ManagementOfChange.Repositories;
+using PlantSafety.Application.Features.Analytics.Handlers.Dashboard;
+using PlantSafety.Infrastructure.Features.Analytics.Dashboard.Repositories;
+using PlantSafety.Application.Features.PlanningProjects.Handlers.Projects;
+using PlantSafety.Infrastructure.Features.PlanningProjects.Projects.Repositories;
+using PlantSafety.Application.Features.Financials.Handlers.Budgets;
+using PlantSafety.Infrastructure.Features.Financials.Budgets.Repositories;
+using PlantSafety.Application.Features.EnterpriseFabric.Handlers.Users;
+using PlantSafety.Infrastructure.Features.EnterpriseFabric.Users.Repositories;
+using PlantSafety.Application.Features.ContinuousImprovement.Handlers.CAPA;
+using PlantSafety.Infrastructure.Features.ContinuousImprovement.CAPA.Repositories;
+using PlantSafety.Application.Features.Operational.Handlers.Training;
+using PlantSafety.Infrastructure.Features.Operational.Training.Repositories;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -76,6 +110,8 @@ public static class InfrastructureServiceRegistration
         services.AddHttpContextAccessor();
         services.AddScoped<ITokenValidationService, TokenValidationService>();
         services.AddScoped<ActorContextResolver>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IPermissionService, PermissionService>();
 
         // File storage
         services.AddSingleton<IBlobStorageService, AzureBlobStorageService>();
@@ -107,6 +143,39 @@ public static class InfrastructureServiceRegistration
         // PlanningProjects
         services.AddScoped<PlanningProjectsRepository>();
         services.AddScoped<PlanningProjectsService>();
+
+        // Features tree — SafetyEvents module repositories
+        services.AddScoped<IRcaRepository, RcaDapperRepository>();
+        services.AddScoped<IExportJobRepository, ExportJobDapperRepository>();
+        services.AddScoped<IDrillRepository, DrillDapperRepository>();
+        services.AddScoped<IEmergencyResponseRepository, EmergencyResponseDapperRepository>();
+        services.AddScoped<ICrisisEventRepository, CrisisEventDapperRepository>();
+        services.AddScoped<IObservationRepository, ObservationDapperRepository>();
+        services.AddScoped<INearMissRepository, NearMissDapperRepository>();
+        services.AddScoped<IIncidentReadRepository, IncidentReadDapperRepository>();
+        services.AddScoped<IIncidentRepository, IncidentDapperRepository>();
+
+        // Features tree — Compliance module repositories
+        services.AddScoped<IPermitRepository, PermitDapperRepository>();
+        services.AddScoped<IMocRepository, MocDapperRepository>();
+
+        // Features tree — Analytics module repositories
+        services.AddScoped<IDashboardRepository, DashboardDapperRepository>();
+
+        // Features tree — PlanningProjects module repositories
+        services.AddScoped<IProjectRepository, ProjectDapperRepository>();
+
+        // Features tree — Financials module repositories
+        services.AddScoped<IBudgetRepository, BudgetDapperRepository>();
+
+        // Features tree — EnterpriseFabric module repositories
+        services.AddScoped<IUserRepository, UserDapperRepository>();
+
+        // Features tree — ContinuousImprovement module repositories
+        services.AddScoped<ICorrectiveActionRepository, CorrectiveActionDapperRepository>();
+
+        // Features tree — Operational module repositories
+        services.AddScoped<ITrainingRepository, TrainingDapperRepository>();
 
         return services;
     }

@@ -79,6 +79,34 @@ public sealed class StoredProcedureBuilder
         return this;
     }
 
+    /// <summary>Adds a nullable INT parameter.</summary>
+    public StoredProcedureBuilder AddInt(string name, int? value)
+    {
+        _params.Add(name, value, DbType.Int32);
+        return this;
+    }
+
+    /// <summary>Adds a nullable BIT parameter.</summary>
+    public StoredProcedureBuilder AddBool(string name, bool? value)
+    {
+        _params.Add(name, value, DbType.Boolean);
+        return this;
+    }
+
+    /// <summary>Adds a DECIMAL parameter.</summary>
+    public StoredProcedureBuilder AddDecimal(string name, decimal value)
+    {
+        _params.Add(name, value, DbType.Decimal);
+        return this;
+    }
+
+    /// <summary>Adds a nullable DECIMAL parameter.</summary>
+    public StoredProcedureBuilder AddDecimal(string name, decimal? value)
+    {
+        _params.Add(name, value, DbType.Decimal);
+        return this;
+    }
+
     /// <summary>Builds the <see cref="DynamicParameters"/> instance.</summary>
     public DynamicParameters Build() => _params;
 }

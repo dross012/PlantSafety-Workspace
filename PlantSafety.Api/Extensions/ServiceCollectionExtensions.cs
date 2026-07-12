@@ -33,8 +33,10 @@
 
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Filters;
 using PlantSafety.Api.HealthChecks;
+using PlantSafety.Application.Abstractions.Context;
 
 namespace PlantSafety.Api.Extensions;
 
@@ -72,6 +74,8 @@ public static class ServiceCollectionExtensions
 
         services.AddEndpointsApiExplorer();
         services.AddHttpContextAccessor();
+        services.AddScoped<IOperationContext, OperationContextAccessor>();
+        services.AddScoped<RequestEnvelopeFactory>();
 
         return services;
     }

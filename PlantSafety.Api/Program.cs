@@ -36,6 +36,8 @@
 
 using Azure.Identity;
 using PlantSafety.Api.Extensions;
+using PlantSafety.Application.DependencyInjection;
+using PlantSafety.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,10 +56,10 @@ if (!string.IsNullOrWhiteSpace(keyVaultUri))
 builder.Services.AddPlantSafetyApi(builder.Configuration);
 
 // Application layer — MediatR pipeline, FluentValidation, AutoMapper, domain event dispatch
-// builder.Services.AddPlantSafetyApplication();  // Registered in PlantSafety.Application
+builder.Services.AddApplicationServices();
 
 // Infrastructure layer — Dapper, Redis, MassTransit, Serilog sinks, OpenTelemetry exporters
-// builder.Services.AddPlantSafetyInfrastructure(builder.Configuration); // Registered in PlantSafety.Infrastructure
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // ── Build ─────────────────────────────────────────────────────────────────────
 var app = builder.Build();
