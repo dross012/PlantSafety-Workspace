@@ -1,0 +1,128 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Routing Version History page (Volume R1 §4). Standalone
+     deep-linkable chronological version timeline. Built from the canonical
+     Shared component library (DataGridComponent, StatusIndicatorComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/routing/{RoutingId:guid}/versions"
+
+@inject RoutingDetailState State
+@inject RoutingApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Routing.ApiClients
+@using PlantSafety.UI.Modules.Routing.Models
+@using PlantSafety.UI.Modules.Routing.State
+
+<PageTitle>Routing Version History — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The routing version history could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/routing/@RoutingId" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Routing Detail</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoadingTab)
+        {
+            <LoadingIndicatorComponent Message="Loading version history…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="RoutingVersionDto"
+                                Items="State.Versions"
+                                Headers="_headers"
+                                KeySelector="v => v.VersionId"
+                                EmptyMessage="No version history available."
+                                AriaLabel="Version history">
+                <RowTemplate Context="version">
+                    <td>@version.VersionLabel</td>
+                    <td>@version.EffectiveDateUtc.ToString("yyyy-MM-dd") UTC</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(version.Status)" Label="@version.Status" /></td>
+                    <td>
+                        @if (State.Routing is { } routing && routing.VersionId != version.VersionId)
+                        {
+                            <a href="/modules/routing/@RoutingId/diff?previous=@version.VersionId&current=@routing.VersionId" class="ps-btn ps-btn-ghost ps-btn-sm">View Diff</a>
+                        }
+                        else
+                        {
+                            <span class="ps-chip">Current</span>
+                        }
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RoutingId { get; set; }
+
+    private static readonly string[] _headers = ["Version", "Effective Date", "Status", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Routing Version History",
+            activeModuleCode: "routing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Routing", Href = RouteDefinitions.RoutingList },
+                new BreadcrumbItem { Label = "Version History" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginTabLoad();
+
+        if (State.Routing is null || State.Routing.RoutingId != RoutingId)
+        {
+            var detailEnvelope = await ApiClient.GetRoutingDetailAsync(RoutingId);
+            if (detailEnvelope.IsSuccess)
+                State.SetRouting(detailEnvelope.Data!);
+        }
+
+        var envelope = await ApiClient.GetVersionHistoryAsync(RoutingId);
+
+        if (envelope.IsSuccess)
+            State.SetVersions(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load version history: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "approved" => "Healthy",
+        "pending" => "Warning",
+        "rejected" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

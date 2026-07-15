@@ -1,0 +1,40 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical loading spinner — one of the 11 non-forkable
+      shared components mandated by the Platform UI Architecture Master
+      Specification (Volume 0) §4. Used for the "Loading" state of every
+      page (Blazor Hybrid UI Standards §5). Backed by the existing
+      .ps-loading-panel / .ps-spinner utility classes already used across
+      Modules/Admin and Modules/Alerts pages.
+      Pure/stateless/parameter-driven per UI001-UI005.
+    Inputs: Message (optional), Inline (optional; compact inline variant)
+    Outputs: none
+    Accessibility: role="status" + aria-live="polite" + aria-busy="true"
+      announces loading to screen readers per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+@if (Inline)
+{
+    <span class="ps-loading-inline" role="status" aria-live="polite" aria-busy="true">
+        <span class="ps-spinner-sm" aria-hidden="true"></span>@Message
+    </span>
+}
+else
+{
+    <div class="ps-loading-panel" role="status" aria-live="polite" aria-busy="true">
+        <div class="ps-spinner" aria-hidden="true"></div>
+        <span>@Message</span>
+    </div>
+}
+
+@code {
+    /// <summary>Loading message announced to screen readers and shown visually.</summary>
+    [Parameter]
+    public string Message { get; set; } = "Loading...";
+
+    /// <summary>When true, renders a compact inline spinner instead of the full panel.</summary>
+    [Parameter]
+    public bool Inline { get; set; }
+}

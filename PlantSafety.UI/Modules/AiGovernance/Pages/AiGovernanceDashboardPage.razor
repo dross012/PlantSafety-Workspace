@@ -1,0 +1,140 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: AI Governance dashboard/list page. No PlantSafety.Api
+     read-model endpoint exists yet for this module (PlantSafety.Domain
+     /AiGovernance is a thin scaffold aggregate) — this page is built against
+     the best-inferable DTO shape (AiGovernanceModels.cs, per Intelligence.ML
+     Manual model governance rules ML1-4/D1-3) and degrades gracefully to a
+     "needs backend wiring" Error/Empty state rather than blocking. Built
+     entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ai-governance"
+
+@inject AiGovernanceState State
+@inject AiGovernanceApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.AiGovernance.ApiClients
+@using PlantSafety.UI.Modules.AiGovernance.Models
+
+<PageTitle>AI Governance — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The AI Governance dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+            <p class="ps-needs-backend">
+                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                AI Governance needs backend wiring — no PlantSafety.Api read-model endpoint exists yet
+                for GET v1/ai-governance/models.
+            </p>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading governed model registry…" />
+        }
+        else if (State.LoadError is null)
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Governed Models"><span class="ps-field-value">@State.Models.Count</span></CardComponent>
+                <CardComponent Title="Pending Review"><span class="ps-field-value">@CountByStatus("pendingreview")</span></CardComponent>
+                <CardComponent Title="Approved"><span class="ps-field-value">@CountByStatus("approved")</span></CardComponent>
+                <CardComponent Title="Drifting"><span class="ps-field-value">@CountByDrift("drifting")</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="GovernedModelDto"
+                                Items="State.Models"
+                                Headers="_headers"
+                                KeySelector="m => m.ModelId"
+                                EmptyMessage="No governed models registered for this tenant."
+                                AriaLabel="Governed AI Models">
+                <RowTemplate Context="model">
+                    <td><StatusIndicatorComponent Status="@MapGovernanceStatus(model.GovernanceStatus)" Label="@model.GovernanceStatus" /></td>
+                    <td>@model.ModelName</td>
+                    <td>@model.ModelVersion</td>
+                    <td><SeverityBadgeComponent Severity="@model.RiskTier" /></td>
+                    <td><span class="ps-chip">@model.DriftStatus</span></td>
+                    <td>@model.LastReviewedAtUtc.ToString("yyyy-MM-dd") UTC</td>
+                    <td>
+                        <a href="/modules/ai-governance/@model.ModelId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Status", "Model", "Version", "Risk Tier", "Drift", "Last Reviewed", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "AI Governance",
+            activeModuleCode: "ai-governance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "AI Governance" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetGovernedModelsAsync(tenantId, siteId: null);
+
+        if (envelope.IsSuccess)
+            State.SetModels(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"AI Governance service is not yet available: {envelope.FaultType}");
+    }
+
+    private int CountByStatus(string status) =>
+        State.Models.Count(m => string.Equals(m.GovernanceStatus, status, StringComparison.OrdinalIgnoreCase));
+
+    private int CountByDrift(string driftStatus) =>
+        State.Models.Count(m => string.Equals(m.DriftStatus, driftStatus, StringComparison.OrdinalIgnoreCase));
+
+    private static string MapGovernanceStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "approved" => "Healthy",
+        "pendingreview" or "pending review" => "Warning",
+        "rejected" or "deprecated" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

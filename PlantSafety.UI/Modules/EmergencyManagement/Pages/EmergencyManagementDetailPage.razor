@@ -1,0 +1,118 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Emergency response detail/drilldown page. Calls the real
+     GetById endpoint at /v1/features/safety-events/emergency-responses/{id};
+     falls back to the standard error state via ErrorBoundaryComponent on
+     Problem/Fault responses.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/emergency-management/{EmergencyResponseId:guid}"
+
+@inject EmergencyManagementState State
+@inject EmergencyManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.EmergencyManagement.State
+@using PlantSafety.UI.Modules.EmergencyManagement.ApiClients
+@using PlantSafety.UI.Modules.EmergencyManagement.Mappings
+
+<PageTitle>Emergency Response Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The emergency response detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading emergency response…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                @State.DetailError
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    Emergency response drilldown needs backend wiring — no GetById endpoint exists yet.
+                </p>
+            </div>
+        }
+        else if (State.Selected is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@item.ResponsePlanName</h2>
+                    <SeverityBadgeComponent Severity="@vm.SeverityForBadge" />
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <CardComponent Title="Summary">
+                    <dl class="ps-detail-fields">
+                        <dt>Site</dt>              <dd class="ps-mono">@item.SiteId</dd>
+                        <dt>Coordinator</dt>       <dd class="ps-mono">@item.CoordinatorId</dd>
+                        @if (item.LinkedCrisisEventId is not null)
+                        {
+                            <dt>Linked Crisis</dt> <dd><a href="@RouteDefinitions.CrisisManagementDashboard/@item.LinkedCrisisEventId">@item.LinkedCrisisEventId</a></dd>
+                        }
+                        <dt>Activated</dt>         <dd>@item.ActivatedAtUtc.ToString("u") UTC</dd>
+                        @if (item.StandDownAtUtc is not null)
+                        {
+                            <dt>Stand-Down</dt> <dd>@item.StandDownAtUtc?.ToString("u") UTC</dd>
+                        }
+                        <dt>Record ID</dt>         <dd class="ps-mono">@item.EmergencyResponseId</dd>
+                    </dl>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.EmergencyManagementDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Emergency Management
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid EmergencyResponseId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Emergency Response Detail",
+            activeModuleCode: "emergency-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Emergency Management", Href = RouteDefinitions.EmergencyManagementDashboard },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetEmergencyResponseAsync(EmergencyResponseId);
+
+        if (envelope.IsSuccess)
+            State.SetSelected(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load emergency response: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

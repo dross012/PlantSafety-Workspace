@@ -1,0 +1,140 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Exports list page. Loads scheduled/automated data export
+     runs via ExportsApiClient for a selectable date window, shows KPI summary
+     cards (Total/Completed/Failed/Records Exported), and a sortable export
+     run grid. Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/exports"
+
+@inject ExportsState State
+@inject ExportsApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Exports.ApiClients
+@using PlantSafety.UI.Modules.Exports.Models
+
+<PageTitle>Exports — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Exports list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading export runs…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Total Runs"><span class="ps-field-value">@State.Runs.Count</span></CardComponent>
+                <CardComponent Title="Completed"><span class="ps-field-value">@CountByStatus("completed")</span></CardComponent>
+                <CardComponent Title="Failed"><span class="ps-field-value">@CountByStatus("failed")</span></CardComponent>
+                <CardComponent Title="Records Exported"><span class="ps-field-value">@State.Runs.Sum(r => r.RecordCount).ToString("N0")</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="ExportItemDto"
+                                Items="State.Runs"
+                                Headers="_headers"
+                                KeySelector="r => r.ExportRunId"
+                                EmptyMessage="No export runs found for the selected window."
+                                AriaLabel="Export Runs">
+                <RowTemplate Context="run">
+                    <td><StatusIndicatorComponent Status="@MapStatus(run.Status)" Label="@run.Status" /></td>
+                    <td>@run.TargetSystem</td>
+                    <td>@run.ExportType</td>
+                    <td>@run.RecordCount.ToString("N0")</td>
+                    <td>@run.CompletedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="/modules/exports/@run.ExportRunId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Status", "Target System", "Export Type", "Records", "Completed", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Exports",
+            activeModuleCode: "exports",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Exports" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetExportRunsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetRuns(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"Failed to load export runs: {envelope.FaultType}");
+    }
+
+    private int CountByStatus(string status) =>
+        State.Runs.Count(r => string.Equals(r.Status, status, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Maps an export run status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "running" or "queued" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

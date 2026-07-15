@@ -1,0 +1,407 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Administrative Setup page. Tabbed shell covering:
+     Tenant/Organization settings, User & Role management, Feature flags /
+     system options, Integration/webhook settings, Audit log viewer, and
+     About/version info. Wired to the existing PlantSafety.Api read-model
+     endpoints where they exist (Users, Roles, Permissions, Administration,
+     Integrations.Auditing — all GET-only today); write actions (role
+     assignment, permission edits, setting edits, webhook config) are
+     rendered per Volume UA1/UA2 but intentionally disabled with a
+     "needs backend wiring" indicator because no command endpoints exist yet.
+     Built entirely from the canonical Shared component library (Platform UI
+     Architecture Master Specification §4: ErrorBoundaryComponent,
+     TabControlComponent, CardComponent, DataGridComponent,
+     LoadingIndicatorComponent) rather than ad-hoc ps-table/ps-tabs markup.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/setup"
+
+@inject AdminSetupState State
+@inject AdminApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject CorrelationContext Correlation
+
+@implements IDisposable
+
+@using PlantSafety.UI.Infrastructure.Correlation
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+@using PlantSafety.UI.Modules.Admin.State
+
+<PageTitle>Administrative Setup — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Administrative Setup page could not be displayed.">
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Administrative Setup sections" />
+
+        <div class="ps-tab-panel" role="tabpanel">
+
+            @* ── Tenant / Organization ─────────────────────────────────────────── *@
+            @if (State.ActiveTab == AdminSetupTab.Tenant)
+            {
+                <CardComponent Title="Tenant / Organization">
+                    @if (TenantCtx.IsLoaded)
+                    {
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Tenant Name</span>
+                            <span class="ps-field-value">@TenantCtx.Tenant!.TenantName</span>
+                        </div>
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Tenant Slug</span>
+                            <span class="ps-field-value">@TenantCtx.Tenant!.TenantSlug</span>
+                        </div>
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Enabled Modules</span>
+                            <span>
+                                @foreach (var m in TenantCtx.Tenant!.EnabledModules)
+                                {
+                                    <span class="ps-chip" style="margin-right:4px;">@m</span>
+                                }
+                                @if (TenantCtx.Tenant!.EnabledModules.Count == 0)
+                                {
+                                    <span class="ps-field-value">All modules enabled (no restriction list loaded)</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Feature Flags</span>
+                            <span>
+                                @foreach (var f in TenantCtx.Tenant!.FeatureFlags)
+                                {
+                                    <span class="ps-chip" style="margin-right:4px;">@f</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Brand Color</span>
+                            <span class="ps-field-value">
+                                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:@TenantCtx.Tenant!.BrandColor;vertical-align:middle;margin-right:6px;" aria-hidden="true"></span>
+                                @TenantCtx.Tenant!.BrandColor
+                            </span>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="ps-field-value">Tenant descriptor not yet loaded for this session.</p>
+                    }
+                    <p class="ps-needs-backend">
+                        <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                        Editing tenant/organization settings needs backend wiring — no tenant update endpoint exists yet.
+                    </p>
+                </CardComponent>
+            }
+
+            @* ── Users & Roles ────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == AdminSetupTab.UsersAndRoles)
+            {
+                @if (State.UsersAndRolesError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.UsersAndRolesError</div>
+                }
+
+                @if (State.IsLoadingUsersAndRoles)
+                {
+                    <LoadingIndicatorComponent Message="Loading users and roles…" />
+                }
+                else
+                {
+                    <CardComponent Title="Users">
+                        <DataGridComponent TItem="AdminUserDto"
+                                            Items="State.Users"
+                                            Headers="_userHeaders"
+                                            KeySelector="u => u.UserId"
+                                            EmptyMessage="No users found for this tenant."
+                                            AriaLabel="Users">
+                            <RowTemplate Context="user">
+                                <td>@user.DisplayName</td>
+                                <td>@user.Email</td>
+                                <td><span class="ps-chip">@user.Status</span></td>
+                                <td>@user.LastLoginAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+
+                    <CardComponent Title="Roles">
+                        <DataGridComponent TItem="AdminRoleDto"
+                                            Items="State.Roles"
+                                            Headers="_roleHeaders"
+                                            KeySelector="r => r.RoleId"
+                                            EmptyMessage="No roles found for this tenant."
+                                            AriaLabel="Roles">
+                            <RowTemplate Context="role">
+                                <td>@role.RoleName</td>
+                                <td>@role.Description</td>
+                                <td>@role.PermissionCount</td>
+                                <td><span class="ps-chip">@role.Status</span></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+
+                    <CardComponent Title="Role Assignment">
+                        <p class="ps-field-value">Select a user and assign or remove roles (per Volume UA1 §4.1 Role Assignment).</p>
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="admin-user-select">User</label>
+                            <select id="admin-user-select" class="ps-btn ps-btn-ghost ps-btn-sm" aria-label="Select user" disabled>
+                                @foreach (var user in State.Users)
+                                {
+                                    <option>@user.DisplayName</option>
+                                }
+                            </select>
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Save role assignment">Save</button>
+                        <p class="ps-needs-backend">
+                            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                            Role assignment needs backend wiring — no role-assignment command endpoint exists yet
+                            (only GET v1/cross-domain/users and v1/cross-domain/roles are available today).
+                        </p>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Feature Flags / System Options ──────────────────────────────── *@
+            @if (State.ActiveTab == AdminSetupTab.FeatureFlags)
+            {
+                @if (State.FeatureFlagsError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.FeatureFlagsError</div>
+                }
+
+                @if (State.IsLoadingFeatureFlags)
+                {
+                    <LoadingIndicatorComponent Message="Loading system options…" />
+                }
+                else
+                {
+                    <CardComponent Title="Feature Flags &amp; System Options">
+                        <DataGridComponent TItem="AdminSettingDto"
+                                            Items="State.Settings"
+                                            Headers="_settingHeaders"
+                                            KeySelector="s => s.RecordId"
+                                            EmptyMessage="No system options found for this tenant."
+                                            AriaLabel="System options">
+                            <RowTemplate Context="setting">
+                                <td>@setting.Category</td>
+                                <td>@setting.SettingKey</td>
+                                <td>@setting.SettingValue</td>
+                                <td><span class="ps-chip">@setting.Status</span></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                        <p class="ps-needs-backend">
+                            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                            Editing system options needs backend wiring — no settings update command endpoint exists yet.
+                        </p>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Integrations / Webhooks ─────────────────────────────────────── *@
+            @if (State.ActiveTab == AdminSetupTab.Integrations)
+            {
+                <CardComponent Title="Integration / Webhook Settings">
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="admin-webhook-url">Webhook URL</label>
+                        <input id="admin-webhook-url" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" type="url"
+                               placeholder="https://example.com/webhooks/plantsafety" disabled aria-label="Webhook URL" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="admin-webhook-secret">Signing Secret</label>
+                        <input id="admin-webhook-secret" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" type="password"
+                               placeholder="••••••••••••" disabled aria-label="Webhook signing secret" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Save integration settings">Save</button>
+                    <p class="ps-needs-backend">
+                        <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                        Integration/webhook settings need backend wiring — no PlantSafety.Api endpoint exists yet
+                        for tenant-level webhook configuration.
+                    </p>
+                </CardComponent>
+            }
+
+            @* ── Audit Log ────────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == AdminSetupTab.AuditLog)
+            {
+                @if (State.AuditLogError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.AuditLogError</div>
+                }
+
+                @if (State.IsLoadingAuditLog)
+                {
+                    <LoadingIndicatorComponent Message="Loading audit log…" />
+                }
+                else
+                {
+                    <CardComponent Title="Audit Log">
+                        <DataGridComponent TItem="AdminAuditLogEntryDto"
+                                            Items="State.AuditEntries"
+                                            Headers="_auditHeaders"
+                                            KeySelector="e => e.LogId"
+                                            EmptyMessage="No audit log entries found for this tenant."
+                                            AriaLabel="Audit log">
+                            <RowTemplate Context="entry">
+                                <td>@entry.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@entry.ExternalSystem</td>
+                                <td>@entry.Direction</td>
+                                <td>@entry.Endpoint</td>
+                                <td><span class="ps-chip">@entry.Status</span></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── About / Version ─────────────────────────────────────────────── *@
+            @if (State.ActiveTab == AdminSetupTab.About)
+            {
+                <CardComponent Title="About PlantSafety">
+                    <div class="ps-field-row">
+                        <span class="ps-field-label">Application Version</span>
+                        <span class="ps-field-value">5.0</span>
+                    </div>
+                    <div class="ps-field-row">
+                        <span class="ps-field-label">Build Configuration</span>
+                        <span class="ps-field-value">@BuildConfiguration</span>
+                    </div>
+                    <div class="ps-field-row">
+                        <span class="ps-field-label">Signed-in User</span>
+                        <span class="ps-field-value">@UserSession.User.DisplayName (@UserSession.User.Email)</span>
+                    </div>
+                    <div class="ps-field-row">
+                        <span class="ps-field-label">Tenant</span>
+                        <span class="ps-field-value">@(TenantCtx.Tenant?.TenantName ?? "Not loaded")</span>
+                    </div>
+                    <div class="ps-field-row">
+                        <span class="ps-field-label">Correlation ID</span>
+                        <span class="ps-field-value">@Correlation.CorrelationId</span>
+                    </div>
+                </CardComponent>
+            }
+
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels =
+        ["Tenant / Organization", "Users & Roles", "Feature Flags", "Integrations", "Audit Log", "About"];
+
+    private static readonly string[] _userHeaders = ["Name", "Email", "Status", "Last Login"];
+    private static readonly string[] _roleHeaders = ["Role", "Description", "Permissions", "Status"];
+    private static readonly string[] _settingHeaders = ["Category", "Key", "Value", "Status"];
+    private static readonly string[] _auditHeaders = ["Occurred", "External System", "Direction", "Endpoint", "Status"];
+
+    private static string BuildConfiguration =>
+#if DEBUG
+        "Debug";
+#else
+        "Release";
+#endif
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Administrative Setup",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Administrative Setup" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private Task OnTabIndexChangedAsync(int index) => SelectTab((AdminSetupTab)index);
+
+    private async Task SelectTab(AdminSetupTab tab)
+    {
+        State.SetActiveTab(tab);
+
+        switch (tab)
+        {
+            case AdminSetupTab.UsersAndRoles when State.Users.Count == 0 && !State.IsLoadingUsersAndRoles:
+                await LoadUsersAndRolesAsync();
+                break;
+            case AdminSetupTab.FeatureFlags when State.Settings.Count == 0 && !State.IsLoadingFeatureFlags:
+                await LoadFeatureFlagsAsync();
+                break;
+            case AdminSetupTab.AuditLog when State.AuditEntries.Count == 0 && !State.IsLoadingAuditLog:
+                await LoadAuditLogAsync();
+                break;
+        }
+    }
+
+    private async Task LoadUsersAndRolesAsync()
+    {
+        State.BeginUsersAndRolesLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+        var usersEnvelope = await ApiClient.GetUsersAsync(tenantId);
+        var rolesEnvelope = await ApiClient.GetRolesAsync(tenantId);
+        var permissionsEnvelope = await ApiClient.GetPermissionsAsync(tenantId);
+
+        if (usersEnvelope.IsSuccess && rolesEnvelope.IsSuccess && permissionsEnvelope.IsSuccess)
+        {
+            State.SetUsersAndRoles(usersEnvelope.Data!.Items, rolesEnvelope.Data!.Items, permissionsEnvelope.Data!.Items);
+        }
+        else if (!usersEnvelope.IsSuccess)
+        {
+            State.SetUsersAndRolesError(DescribeFailure(usersEnvelope));
+        }
+        else if (!rolesEnvelope.IsSuccess)
+        {
+            State.SetUsersAndRolesError(DescribeFailure(rolesEnvelope));
+        }
+        else
+        {
+            State.SetUsersAndRolesError(DescribeFailure(permissionsEnvelope));
+        }
+    }
+
+    private async Task LoadFeatureFlagsAsync()
+    {
+        State.BeginFeatureFlagsLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetSettingsAsync(tenantId);
+
+        if (envelope.IsSuccess)
+            State.SetSettings(envelope.Data!.Items);
+        else
+            State.SetFeatureFlagsError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadAuditLogAsync()
+    {
+        State.BeginAuditLogLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetAuditLogAsync(tenantId);
+
+        if (envelope.IsSuccess)
+            State.SetAuditEntries(envelope.Data!.Items);
+        else
+            State.SetAuditLogError(DescribeFailure(envelope));
+    }
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem
+            ? envelope.Problem!.Detail
+            : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,316 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Scorecards dashboard page (Volume A1 §Page 3 —
+     Scorecard: Score Tiles + Detailed Metrics Table). Wires the four
+     PlantSafety.Api.Analytics.ScoreCards.* read-model sections (Compliance,
+     Department, Supervisor, Training) via ScorecardsApiClient, populates
+     ScorecardsState, and renders CardComponent score tiles (score/target/
+     status) plus DataGridComponent detailed metrics tables across four tabs
+     — built entirely from the canonical Shared component library, following
+     the Modules/Alerts and Modules/Admin exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/scorecards"
+
+@inject ScorecardsState State
+@inject ScorecardsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Scorecards.ApiClients
+@using PlantSafety.UI.Modules.Scorecards.Models
+@using PlantSafety.UI.Modules.Scorecards.State
+
+<PageTitle>Scorecards — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Scorecards page could not be displayed." OnRetry="() => LoadActiveTabAsync()">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Scorecards sections" />
+
+        <div class="ps-tab-panel" role="tabpanel">
+
+            @* ── Compliance ───────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == ScorecardsTab.Compliance)
+            {
+                @if (State.ComplianceError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ComplianceError</div>
+                }
+
+                @if (State.IsLoadingCompliance)
+                {
+                    <LoadingIndicatorComponent Message="Loading compliance scorecards…" />
+                }
+                else if (State.Compliance.Count == 0)
+                {
+                    <CardComponent Title="Compliance Scorecard"><p class="ps-chart-empty">No compliance scorecard entries found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+                        @foreach (var entry in State.Compliance)
+                        {
+                            <CardComponent Title="@entry.ComplianceArea">
+                                <div class="ps-field-row">
+                                    <span class="ps-field-label">Score</span>
+                                    <span class="ps-field-value">@entry.ScoreValue.ToString("N0") / @entry.MaxScore.ToString("N0")</span>
+                                </div>
+                                <SeverityBadgeComponent Severity="@MapScoreSeverity(entry.ScoreValue, entry.MaxScore)" Text="@MapScoreTarget(entry.ScoreValue, entry.MaxScore)" />
+                            </CardComponent>
+                        }
+                    </div>
+
+                    <CardComponent Title="Compliance — Detailed Metrics">
+                        <DataGridComponent TItem="ComplianceScorecardDto"
+                                            Items="State.Compliance"
+                                            Headers="_complianceHeaders"
+                                            KeySelector="c => c.ScoreCardId"
+                                            EmptyMessage="No compliance scorecard entries found."
+                                            AriaLabel="Compliance scorecard detail">
+                            <RowTemplate Context="entry">
+                                <td>@entry.ComplianceArea</td>
+                                <td>@entry.ScoreValue.ToString("N0")</td>
+                                <td>@entry.MaxScore.ToString("N0")</td>
+                                <td>@MapScoreTarget(entry.ScoreValue, entry.MaxScore)</td>
+                                <td><span class="ps-chip">@entry.Status</span></td>
+                                <td>@entry.ScoredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Department ───────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == ScorecardsTab.Department)
+            {
+                @if (State.DepartmentError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.DepartmentError</div>
+                }
+
+                @if (State.IsLoadingDepartment)
+                {
+                    <LoadingIndicatorComponent Message="Loading department scorecards…" />
+                }
+                else
+                {
+                    <CardComponent Title="Department Scorecard">
+                        <DataGridComponent TItem="DepartmentScorecardDto"
+                                            Items="@(State.Department.OrderByDescending(d => d.ScoreValue).ToList())"
+                                            Headers="_departmentHeaders"
+                                            KeySelector="d => d.ScoreCardId"
+                                            EmptyMessage="No department scorecard entries found for the selected range."
+                                            AriaLabel="Department scorecard">
+                            <RowTemplate Context="entry">
+                                <td>@entry.DepartmentName</td>
+                                <td>@entry.ScoreValue.ToString("N1")</td>
+                                <td>@(entry.RankPercentile is { } pct ? $"{pct:N0} pct" : "—")</td>
+                                <td><span class="ps-chip">@entry.Status</span></td>
+                                <td>@entry.ScoredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Supervisor ───────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == ScorecardsTab.Supervisor)
+            {
+                @if (State.SupervisorError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.SupervisorError</div>
+                }
+
+                @if (State.IsLoadingSupervisor)
+                {
+                    <LoadingIndicatorComponent Message="Loading supervisor scorecards…" />
+                }
+                else
+                {
+                    <CardComponent Title="Supervisor Scorecard">
+                        <DataGridComponent TItem="SupervisorScorecardDto"
+                                            Items="@(State.Supervisor.OrderByDescending(s => s.ScoreValue).ToList())"
+                                            Headers="_supervisorHeaders"
+                                            KeySelector="s => s.ScoreCardId"
+                                            EmptyMessage="No supervisor scorecard entries found for the selected range."
+                                            AriaLabel="Supervisor scorecard">
+                            <RowTemplate Context="entry">
+                                <td>@entry.ScoreValue.ToString("N1")</td>
+                                <td>@entry.TeamSize</td>
+                                <td><span class="ps-chip">@entry.Status</span></td>
+                                <td>@entry.ScoredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Training ─────────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == ScorecardsTab.Training)
+            {
+                @if (State.TrainingError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.TrainingError</div>
+                }
+
+                @if (State.IsLoadingTraining)
+                {
+                    <LoadingIndicatorComponent Message="Loading training scorecards…" />
+                }
+                else
+                {
+                    <CardComponent Title="Training Scorecard">
+                        <DataGridComponent TItem="TrainingScorecardDto"
+                                            Items="State.Training"
+                                            Headers="_trainingHeaders"
+                                            KeySelector="t => t.ScoreCardId"
+                                            EmptyMessage="No training scorecard entries found for the selected range."
+                                            AriaLabel="Training scorecard">
+                            <RowTemplate Context="entry">
+                                <td>@((entry.CompletionRate * 100).ToString("N0"))%</td>
+                                <td>@entry.CoursesCompleted</td>
+                                <td><span class="ps-chip">@entry.Status</span></td>
+                                <td>@entry.ScoredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Compliance", "Department", "Supervisor", "Training"];
+    private static readonly string[] _complianceHeaders = ["Area", "Score", "Max", "Target", "Status", "Scored"];
+    private static readonly string[] _departmentHeaders = ["Department", "Score", "Rank Percentile", "Status", "Scored"];
+    private static readonly string[] _supervisorHeaders = ["Score", "Team Size", "Status", "Scored"];
+    private static readonly string[] _trainingHeaders = ["Completion Rate", "Courses Completed", "Status", "Scored"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Scorecards",
+            activeModuleCode: "scorecards",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "Scorecards" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadActiveTabAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private Task OnTabIndexChangedAsync(int index) => SelectTabAsync((ScorecardsTab)index);
+
+    private async Task SelectTabAsync(ScorecardsTab tab)
+    {
+        State.SetActiveTab(tab);
+        await LoadActiveTabAsync();
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadActiveTabAsync();
+    }
+
+    private Task LoadActiveTabAsync() => State.ActiveTab switch
+    {
+        ScorecardsTab.Compliance when State.Compliance.Count == 0 && !State.IsLoadingCompliance => LoadComplianceAsync(),
+        ScorecardsTab.Department when State.Department.Count == 0 && !State.IsLoadingDepartment => LoadDepartmentAsync(),
+        ScorecardsTab.Supervisor when State.Supervisor.Count == 0 && !State.IsLoadingSupervisor => LoadSupervisorAsync(),
+        ScorecardsTab.Training when State.Training.Count == 0 && !State.IsLoadingTraining => LoadTrainingAsync(),
+        _ => Task.CompletedTask,
+    };
+
+    private async Task LoadComplianceAsync()
+    {
+        State.BeginComplianceLoad();
+        var envelope = await ApiClient.GetComplianceAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetCompliance(envelope.Data!.Items);
+        else
+            State.SetComplianceError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadDepartmentAsync()
+    {
+        State.BeginDepartmentLoad();
+        var envelope = await ApiClient.GetDepartmentAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetDepartment(envelope.Data!.Items);
+        else
+            State.SetDepartmentError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadSupervisorAsync()
+    {
+        State.BeginSupervisorLoad();
+        var envelope = await ApiClient.GetSupervisorAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetSupervisor(envelope.Data!.Items);
+        else
+            State.SetSupervisorError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadTrainingAsync()
+    {
+        State.BeginTrainingLoad();
+        var envelope = await ApiClient.GetTrainingAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetTraining(envelope.Data!.Items);
+        else
+            State.SetTrainingError(DescribeFailure(envelope));
+    }
+
+    private static string MapScoreTarget(decimal score, decimal max) =>
+        max <= 0 ? "Unknown" : (score / max) switch
+        {
+            >= 0.9m => "Met",
+            >= 0.7m => "Warning",
+            _ => "Missed",
+        };
+
+    private static string MapScoreSeverity(decimal score, decimal max) =>
+        max <= 0 ? "Info" : (score / max) switch
+        {
+            >= 0.9m => "Low",
+            >= 0.7m => "Medium",
+            _ => "High",
+        };
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,125 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Safety Policy detail page. Approval-workflow-style
+     detail view with StatusIndicatorComponent for the policy's approval
+     status. Resolves from the PoliciesState in-memory cache populated by
+     the list page's last load; falls back to a full reload when navigated
+     to directly.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/policies/policy/{PolicyId:guid}"
+
+@inject PoliciesState State
+@inject PoliciesApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Policies.ApiClients
+@using PlantSafety.UI.Modules.Policies.State
+
+<PageTitle>Policy Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The policy could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading policy…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedPolicy is { } policy)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@policy.PolicyName</h2>
+                    <StatusIndicatorComponent Status="@policy.StatusIndicatorState" Label="@policy.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Category</dt>   <dd>@policy.Category</dd>
+                    <dt>Effective</dt>  <dd>@policy.EffectiveAtUtc.ToString("yyyy-MM-dd")</dd>
+                    <dt>Owner</dt>      <dd class="ps-mono">@policy.OwnerId</dd>
+                    <dt>Site</dt>       <dd>@(policy.SiteId?.ToString() ?? "Tenant-wide")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PoliciesList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Policies &amp; Procedures
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid PolicyId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Policy Detail",
+            activeModuleCode: "policies",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Policies & Procedures", Href = RouteDefinitions.PoliciesList },
+                new BreadcrumbItem { Label = "Policy" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+
+        if (State.TryGetCachedPolicy(PolicyId, out var cached) && cached is not null)
+        {
+            State.SetSelectedPolicy(cached);
+            return;
+        }
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow.AddYears(2);
+
+        var policiesEnvelope = await ApiClient.GetPoliciesAsync(tenantId, null, fromUtc, toUtc);
+        var proceduresEnvelope = await ApiClient.GetProceduresAsync(tenantId, null, fromUtc, toUtc);
+
+        if (policiesEnvelope.IsSuccess && proceduresEnvelope.IsSuccess)
+        {
+            State.SetListData(policiesEnvelope.Data!.Items, proceduresEnvelope.Data!.Items);
+
+            if (State.TryGetCachedPolicy(PolicyId, out var reloaded) && reloaded is not null)
+            {
+                State.SetSelectedPolicy(reloaded);
+            }
+            else
+            {
+                State.SetDetailError("Policy not found.");
+            }
+        }
+        else
+        {
+            State.SetDetailError("Unable to load policy data at this time.");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

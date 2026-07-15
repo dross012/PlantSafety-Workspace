@@ -1,0 +1,73 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical date range selector — one of the 11
+      non-forkable shared components mandated by the Platform UI Architecture
+      Master Specification (Volume 0) §4. Backed by the .ps-form-field /
+      .ps-date-range utility classes (wwwroot/css/plantsafety.css).
+      Pure/stateless/parameter-driven per UI001-UI005.
+    Inputs: StartDate, EndDate (required)
+    Outputs: RangeChanged (fired with (start, end) once both are valid and
+      Start &lt;= End)
+    Accessibility: labeled start/end inputs (native date input keyboard nav),
+      inline validation message announced via role="alert" per WCAG 2.2 AA
+      (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+<div class="ps-date-range" role="group" aria-label="Date range">
+    <div class="ps-form-field">
+        <label for="@_startId">Start date</label>
+        <input id="@_startId" type="date" value="@StartDate.ToString("yyyy-MM-dd")" @onchange="OnStartChanged" />
+    </div>
+    <div class="ps-form-field">
+        <label for="@_endId">End date</label>
+        <input id="@_endId" type="date" value="@EndDate.ToString("yyyy-MM-dd")" @onchange="OnEndChanged" />
+    </div>
+    @if (StartDate > EndDate)
+    {
+        <span class="ps-form-error" role="alert">Start date must be on or before end date.</span>
+    }
+</div>
+
+@code {
+    private readonly string _startId = $"range-start-{Guid.NewGuid():N}";
+    private readonly string _endId = $"range-end-{Guid.NewGuid():N}";
+
+    /// <summary>Inclusive range start date.</summary>
+    [Parameter, EditorRequired]
+    public DateOnly StartDate { get; set; }
+
+    /// <summary>Inclusive range end date.</summary>
+    [Parameter, EditorRequired]
+    public DateOnly EndDate { get; set; }
+
+    /// <summary>Fired with the (start, end) tuple whenever a valid range (start &lt;= end) is selected.</summary>
+    [Parameter]
+    public EventCallback<(DateOnly Start, DateOnly End)> RangeChanged { get; set; }
+
+    private Task OnStartChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var parsed))
+        {
+            StartDate = parsed;
+            return RaiseIfValid();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnEndChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var parsed))
+        {
+            EndDate = parsed;
+            return RaiseIfValid();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task RaiseIfValid()
+        => StartDate <= EndDate ? RangeChanged.InvokeAsync((StartDate, EndDate)) : Task.CompletedTask;
+}

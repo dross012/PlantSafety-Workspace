@@ -1,0 +1,112 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Safety Budget detail page. Loads the full BudgetDto by
+     route parameter via GET v1/features/financials/budgets/{id} (a real
+     GetById endpoint, unlike the sibling scaffold-backed modules), and
+     displays all fields with a StatusIndicatorComponent for the workflow
+     status. Built from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/financials/budgets/{BudgetId:guid}"
+
+@inject FinancialsState State
+@inject FinancialsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Financials.ApiClients
+@using PlantSafety.UI.Modules.Financials.Mappings
+@using PlantSafety.UI.Modules.Financials.State
+
+<PageTitle>Budget Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The budget could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading budget…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedBudget is { } budget)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@budget.Category — FY@(budget.FiscalYear)</h2>
+                    <StatusIndicatorComponent Status="@budget.StatusIndicatorState" Label="@budget.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Allocated</dt>       <dd>@budget.AllocatedAmount.ToString("N2") @budget.CurrencyCode</dd>
+                    <dt>Actual Spend</dt>    <dd>@budget.ActualSpend.ToString("N2") @budget.CurrencyCode</dd>
+                    <dt>Remaining</dt>       <dd>@budget.RemainingBalance.ToString("N2") @budget.CurrencyCode</dd>
+                    <dt>Spend %</dt>         <dd>@budget.SpendPercentage.ToString("N1")%</dd>
+                    <dt>Last Modified</dt>   <dd>@budget.LastModifiedAtUtc.ToString("u")</dd>
+                    <dt>Site</dt>            <dd>@(budget.SiteId?.ToString() ?? "Enterprise-wide")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="NavigateToBudgets">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Budgets
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid BudgetId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Budget Detail",
+            activeModuleCode: "financials",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Financials", Href = RouteDefinitions.FinancialsDashboard },
+                new BreadcrumbItem { Label = "Budgets", Href = $"{RouteDefinitions.FinancialsDashboard}/budgets" },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private void NavigateToBudgets() => Nav.NavigateTo($"{RouteDefinitions.FinancialsDashboard}/budgets");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetBudgetByIdAsync(BudgetId);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetSelectedBudget(envelope.Data!.ToViewModel());
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetDetailError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetDetailError($"Failed to load budget: {envelope.FaultType}");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

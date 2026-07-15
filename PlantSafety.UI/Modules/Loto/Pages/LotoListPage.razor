@@ -1,0 +1,149 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: LOTO (Lockout/Tagout) list page. Loads records from the
+     real GET api/v1/operational/lockout-tagout read-model endpoint for the
+     active tenant/date-range, populates LotoState, and renders the grid
+     with status indicators, search, date-range filtering, and client-side
+     pagination (the endpoint has no server-side paging). Built entirely
+     from the canonical Shared component library, following the
+     Modules/Alerts/Pages/AlertsListPage.razor exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/loto"
+
+@inject LotoState State
+@inject LotoApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Loto.ApiClients
+@using PlantSafety.UI.Modules.Loto.Models
+@using PlantSafety.UI.Modules.Loto.Services
+@using PlantSafety.UI.Modules.Loto.State
+
+<PageTitle>LOTO — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The LOTO list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <SearchBoxComponent Value="State.SearchText" Placeholder="Search lock type or status" ValueChanged="OnSearchChangedAsync" />
+            <DateRangePickerComponent StartDate="State.StartDate" EndDate="State.EndDate" RangeChanged="OnRangeChangedAsync" />
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading LOTO records…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="LotoDto"
+                                Items="State.PagedItems"
+                                Headers="_headers"
+                                KeySelector="i => i.LockoutTagoutId"
+                                EmptyMessage="No LOTO records found for the selected range."
+                                AriaLabel="LOTO records">
+                <RowTemplate Context="item">
+                    <td class="ps-mono">@item.EquipmentId</td>
+                    <td><span class="ps-chip">@item.LockType</span></td>
+                    <td><StatusIndicatorComponent Status="@LotoUiService.MapStatusToOperationalState(item.Status)" Label="@item.Status" /></td>
+                    <td>@item.LockedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="@RouteDefinitions.LotoList/@item.LockoutTagoutId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage"
+                                      TotalPages="State.TotalPages"
+                                      TotalCount="State.TotalCount"
+                                      PageChanged="OnPageChangedAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Equipment", "Lock Type", "Status", "Locked", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "LOTO",
+            activeModuleCode: "loto",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "LOTO" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginListLoad();
+
+        var tenantId = ResolveTenantId();
+        var fromUtc = State.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var toUtc = State.EndDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetLockoutTagoutAsync(tenantId, siteId: null, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetListError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetListError($"Failed to load LOTO records: {envelope.FaultType}");
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task OnSearchChangedAsync(string text)
+    {
+        State.SetSearchText(text);
+        await Task.CompletedTask;
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetDateRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task OnPageChangedAsync(int page)
+    {
+        State.SetPage(page);
+        await Task.CompletedTask;
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -23,6 +23,21 @@ public interface ICrisisEventRepository
 
     /// <summary>Returns the read model, or null if not found.</summary>
     Task<CrisisEventReadModel?> GetByIdAsync(Guid tenantId, Guid crisisEventId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns a page of <see cref="CrisisEventReadModel"/> records matching the given filters.
+    /// The returned tuple contains the page items and the total count (for pagination metadata).
+    /// </summary>
+    Task<(IReadOnlyList<CrisisEventReadModel> Items, int TotalCount)> ListAsync(
+        Guid tenantId,
+        Guid? siteId,
+        string? status,
+        string? crisisCategory,
+        string orderBy,
+        string sortDirection,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>Infrastructure read model for CrisisEvent stored-procedure result sets.</summary>
@@ -40,10 +55,14 @@ public sealed record CrisisEventReadModel
     public required string Description { get; init; }
     /// <summary>Crisis category.</summary>
     public required string CrisisCategory { get; init; }
+    /// <summary>UTC timestamp when the crisis was declared.</summary>
+    public required DateTimeOffset DeclaredAtUtc { get; init; }
     /// <summary>Incident commander worker identifier.</summary>
     public required Guid IncidentCommanderId { get; init; }
     /// <summary>Status.</summary>
     public required string Status { get; init; }
+    /// <summary>UTC timestamp when the crisis was resolved, if applicable.</summary>
+    public DateTimeOffset? ResolvedAtUtc { get; init; }
     /// <summary>Last modification timestamp.</summary>
     public required DateTimeOffset LastModifiedAtUtc { get; init; }
     /// <summary>Row version.</summary>

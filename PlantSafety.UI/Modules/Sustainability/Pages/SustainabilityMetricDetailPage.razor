@@ -1,0 +1,148 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Sustainability metric detail page — the natural
+     single-entity drilldown for this module. No by-id endpoint exists yet, so
+     this page ensures the parent metric window is loaded (via
+     SustainabilityState) and looks the metric up client-side by MetricId,
+     degrading gracefully when the backend is unavailable.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/sustainability/{MetricId:guid}"
+
+@inject SustainabilityState State
+@inject SustainabilityApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Sustainability.ApiClients
+
+<PageTitle>Sustainability Metric Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The sustainability metric detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading metric…" />
+        }
+        else if (_loadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_loadError</div>
+            <p class="ps-needs-backend">
+                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                Sustainability needs backend wiring — no PlantSafety.Api read-model endpoint exists yet.
+            </p>
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                Metric @MetricId was not found in the current reporting window.
+            </div>
+        }
+        else if (State.Selected is { } metric)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@metric.MetricName</h2>
+                    <span class="ps-chip">@metric.Category</span>
+                    <StatusIndicatorComponent Status="@MapStatus(metric.Status)" Label="@metric.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Metric ID</dt>   <dd class="ps-mono">@metric.MetricId</dd>
+                    <dt>Category</dt>    <dd>@metric.Category</dd>
+                    <dt>Value</dt>       <dd>@metric.Value.ToString("N1") @metric.Unit</dd>
+                    <dt>Target</dt>      <dd>@(metric.Target.HasValue ? $"{metric.Target:N1} {metric.Unit}" : "—")</dd>
+                    <dt>Status</dt>      <dd>@metric.Status</dd>
+                    <dt>Period End</dt>  <dd>@metric.PeriodEndUtc.ToString("u") UTC</dd>
+                    @if (metric.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@metric.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.SustainabilityDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Sustainability
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid MetricId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+    private string? _loadError;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Sustainability Metric Detail",
+            activeModuleCode: "sustainability",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Sustainability", Href = RouteDefinitions.SustainabilityDashboard },
+                new BreadcrumbItem { Label = "Metric Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(MetricId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetMetricsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetMetrics(envelope.Data!.Items);
+            _notFound = !State.SelectById(MetricId);
+        }
+        else if (envelope.IsProblem)
+        {
+            _loadError = envelope.Problem!.Detail;
+        }
+        else
+        {
+            _loadError = $"Sustainability service is not yet available: {envelope.FaultType}";
+        }
+
+        _isLoading = false;
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "ontrack" or "on track" => "Healthy",
+        "atrisk" or "at risk" => "Warning",
+        "exceeded" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

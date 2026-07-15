@@ -1,0 +1,278 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Prediction Detail page (Volume P1 §2). Two-column
+     header (Prediction Summary / Model Explanation) + 5-tab strip (Forecast/
+     Sensors/Factors/Recommendations/Metadata), lazy-loaded, explainability-
+     first. Built from the canonical Shared component library (CardComponent,
+     TabControlComponent, DataGridComponent, SeverityBadgeComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/predictions/{PredictionId:guid}"
+
+@inject PredictionDetailState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.Models
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Prediction Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The prediction detail could not be displayed.">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading prediction…" />
+        }
+        else if (State.ErrorMessage is not null && State.Summary is null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+            <a href="/modules/predictive-maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Return to Dashboard</a>
+        }
+        else if (State.Summary is { } summary)
+        {
+            <div class="ps-detail-header" role="region" aria-label="@($"Risk Score for Equipment {summary.EquipmentCode}")">
+                <h2 class="ps-detail-title">@summary.PredictionCode</h2>
+                <SeverityBadgeComponent Severity="@RiskLevelFromScore(summary.RiskScore)" Text="@($"{summary.RiskScore:P0} risk")" />
+            </div>
+
+            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+                <CardComponent Title="Prediction Summary">
+                    <div class="ps-field-row"><span class="ps-field-label">Equipment</span><span class="ps-field-value"><a href="/modules/predictive-maintenance/equipment/@summary.EquipmentId">@summary.EquipmentCode</a></span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Confidence</span><span class="ps-field-value">@summary.ConfidencePercent.ToString("F0")%</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Updated</span><span class="ps-field-value">@summary.UpdatedAtUtc.ToString("u") UTC</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Data Freshness</span><span class="ps-field-value">@summary.DataFreshness</span></div>
+                </CardComponent>
+
+                <CardComponent Title="Model Explanation">
+                    @if (State.Explanation is { } explanation)
+                    {
+                        <div class="ps-field-row"><span class="ps-field-label">Top Factors</span>
+                            <span class="ps-field-value">
+                                @foreach (var factor in explanation.Factors.OrderByDescending(f => f.Contribution).Take(3))
+                                {
+                                    <div>@factor.FeatureName @(factor.IsPositiveInfluence ? "↑" : "↓") (@factor.Contribution.ToString("P0"))</div>
+                                }
+                            </span>
+                        </div>
+                        <div class="ps-field-row"><span class="ps-field-label">Model Version</span><span class="ps-field-value ps-mono">@explanation.ModelVersion</span></div>
+                    }
+                    else
+                    {
+                        <span class="ps-text-muted">No explanation available</span>
+                    }
+                </CardComponent>
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="(int)State.ActiveTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Prediction detail sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (State.ActiveTab == PredictionDetailTab.Forecast)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading forecast…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="ForecastPointDto" Items="State.Forecast" Headers="_forecastHeaders" KeySelector="f => f.TimestampUtc"
+                                            EmptyMessage="No forecast data available." AriaLabel="Risk forecast">
+                            <RowTemplate Context="point">
+                                <td>@point.TimestampUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@point.RiskScore.ToString("P0")</td>
+                                <td>@point.ConfidenceLower.ToString("P0") – @point.ConfidenceUpper.ToString("P0")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == PredictionDetailTab.Sensors)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading sensor data…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="SensorDataPointDto" Items="State.SensorData" Headers="_sensorHeaders" KeySelector="s => (s.ChannelName, s.TimestampUtc)"
+                                            EmptyMessage="No sensor data available." AriaLabel="Sensor data" EnableVirtualization="true">
+                            <RowTemplate Context="s">
+                                <td>@s.ChannelName</td>
+                                <td>@s.TimestampUtc.ToString("HH:mm:ss") UTC</td>
+                                <td>@s.Value.ToString("F2") @s.Unit</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == PredictionDetailTab.Factors)
+                {
+                    @if (State.Explanation is { } explanation)
+                    {
+                        <DataGridComponent TItem="FeatureImportanceDto" Items="explanation.Factors" Headers="_factorHeaders" KeySelector="f => f.FeatureName"
+                                            EmptyMessage="No contributing factors reported." AriaLabel="Feature importance">
+                            <RowTemplate Context="factor">
+                                <td>@factor.FeatureName</td>
+                                <td>@factor.Contribution.ToString("P0")</td>
+                                <td>@(factor.IsPositiveInfluence ? "Increases Risk" : "Decreases Risk")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                        <p class="ps-text-sm ps-text-muted">@explanation.ExplanationSummary</p>
+                    }
+                    else
+                    {
+                        <div class="ps-alert" role="status">No model explanation available.</div>
+                    }
+                }
+                else if (State.ActiveTab == PredictionDetailTab.Recommendations)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading recommendations…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="RecommendationDto" Items="State.Recommendations" Headers="_recHeaders" KeySelector="r => r.RecommendationId"
+                                            EmptyMessage="No recommendations available." AriaLabel="Recommendations">
+                            <RowTemplate Context="rec">
+                                <td>@rec.Title</td>
+                                <td><SeverityBadgeComponent Severity="@rec.Priority" /></td>
+                                <td>@rec.EstimatedRiskReduction.ToString("P0")</td>
+                                <td><a href="/modules/predictive-maintenance/recommendations/@rec.RecommendationId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == PredictionDetailTab.Metadata)
+                {
+                    <CardComponent Title="Prediction Metadata">
+                        <div class="ps-field-row"><span class="ps-field-label">Prediction ID</span><span class="ps-field-value ps-mono">@summary.PredictionId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Equipment ID</span><span class="ps-field-value ps-mono">@summary.EquipmentId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Model Version</span><span class="ps-field-value ps-mono">@(State.Explanation?.ModelVersion ?? "—")</span></div>
+                    </CardComponent>
+                }
+
+            </div>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PredictiveMaintenanceDashboard)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid PredictionId { get; set; }
+
+    private static readonly string[] _tabLabels = ["Forecast", "Sensors", "Factors", "Recommendations", "Metadata"];
+    private static readonly string[] _forecastHeaders = ["Time", "Risk Score", "Confidence Interval"];
+    private static readonly string[] _sensorHeaders = ["Channel", "Time", "Value"];
+    private static readonly string[] _factorHeaders = ["Feature", "Contribution", "Influence"];
+    private static readonly string[] _recHeaders = ["Recommendation", "Priority", "Risk Reduction", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Prediction Detail",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Prediction Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginLoad();
+        var summaryEnvelope = await ApiClient.GetPredictionSummaryAsync(PredictionId);
+        var explanationEnvelope = await ApiClient.GetModelExplanationAsync(PredictionId);
+
+        if (summaryEnvelope.IsSuccess)
+        {
+            State.SetSummary(summaryEnvelope.Data!, explanationEnvelope.IsSuccess ? explanationEnvelope.Data! : new ModelExplanationDto());
+            await LoadForecastAsync();
+        }
+        else if (summaryEnvelope.IsProblem)
+            State.SetError(summaryEnvelope.Problem!.Detail);
+        else
+            State.SetError($"Prediction not found: {summaryEnvelope.FaultType}");
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        var tab = (PredictionDetailTab)index;
+        State.SetActiveTab(tab);
+
+        switch (tab)
+        {
+            case PredictionDetailTab.Forecast when State.Forecast.Count == 0:
+                await LoadForecastAsync();
+                break;
+            case PredictionDetailTab.Sensors when State.SensorData.Count == 0:
+                await LoadSensorsAsync();
+                break;
+            case PredictionDetailTab.Recommendations when State.Recommendations.Count == 0:
+                await LoadRecommendationsAsync();
+                break;
+        }
+    }
+
+    private async Task LoadForecastAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetForecastAsync(PredictionId);
+        if (envelope.IsSuccess)
+            State.SetForecast(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Forecast load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadSensorsAsync()
+    {
+        State.BeginTabLoad();
+        var equipmentId = State.Summary?.EquipmentId;
+        var envelope = await ApiClient.GetSensorDataAsync(equipmentId);
+        if (envelope.IsSuccess)
+            State.SetSensorData(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Sensor data load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadRecommendationsAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetRecommendationsAsync(PredictionId);
+        if (envelope.IsSuccess)
+            State.SetRecommendations(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Recommendations load failed: {envelope.FaultType}");
+    }
+
+    private static string RiskLevelFromScore(double score) => score switch
+    {
+        >= 0.66 => "High",
+        >= 0.33 => "Medium",
+        _ => "Low",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

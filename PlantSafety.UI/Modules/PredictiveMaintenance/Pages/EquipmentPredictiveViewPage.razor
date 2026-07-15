@@ -1,0 +1,109 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Equipment Detail (Predictive View) page (Volume P1 §2).
+     Sensor data, model outputs, and health trend for one asset. Built from
+     the canonical Shared component library (CardComponent,
+     StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/equipment/{EquipmentId:guid}"
+
+@inject EquipmentPredictiveViewState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Equipment Predictive View — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The equipment predictive view could not be displayed." OnRetry="LoadAsync">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading equipment…" />
+        }
+        else if (State.ErrorMessage is not null && State.Equipment is null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+            <a href="/modules/predictive-maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Return to Dashboard</a>
+        }
+        else if (State.Equipment is { } eq)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@eq.EquipmentCode — @eq.EquipmentName</h2>
+                <StatusIndicatorComponent Status="@eq.HealthStatus" Label="@eq.HealthStatus" />
+            </div>
+
+            <CardComponent Title="Predictive Summary">
+                <div class="ps-field-row"><span class="ps-field-label">Current Risk Score</span><span class="ps-field-value">@eq.RiskScore.ToString("P0")</span></div>
+                @if (eq.LatestPredictionId is { } predictionId)
+                {
+                    <div class="ps-field-row">
+                        <span class="ps-field-label">Latest Prediction</span>
+                        <a href="/modules/predictive-maintenance/predictions/@predictionId" class="ps-btn ps-btn-ghost ps-btn-sm">View Prediction</a>
+                    </div>
+                }
+                else
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Latest Prediction</span><span class="ps-text-muted">None available</span></div>
+                }
+            </CardComponent>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PredictiveMaintenanceDashboard)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid EquipmentId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Equipment Predictive View",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Equipment" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetEquipmentPredictiveViewAsync(EquipmentId);
+
+        if (envelope.IsSuccess)
+            State.SetEquipment(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Equipment not found: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

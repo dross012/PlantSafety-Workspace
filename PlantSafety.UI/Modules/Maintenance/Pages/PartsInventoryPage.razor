@@ -1,0 +1,107 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Parts Usage & Inventory View page (Volume M1 high-
+     fidelity notes). Inventory table with reorder thresholds and
+     availability badges. Built from the canonical Shared component library
+     (DataGridComponent, StatusIndicatorComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/maintenance/parts"
+
+@inject PartsInventoryState State
+@inject MaintenanceApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Maintenance.ApiClients
+@using PlantSafety.UI.Modules.Maintenance.Models
+@using PlantSafety.UI.Modules.Maintenance.State
+
+<PageTitle>Parts Inventory — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The parts inventory could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading parts inventory…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="PartInventoryDto"
+                                Items="State.Parts"
+                                Headers="_headers"
+                                KeySelector="p => p.PartId"
+                                EmptyMessage="No parts found in inventory."
+                                AriaLabel="Parts inventory">
+                <RowTemplate Context="part">
+                    <td>@part.PartNumber</td>
+                    <td>@part.PartName</td>
+                    <td>@part.QuantityOnHand</td>
+                    <td>@part.ReorderThreshold</td>
+                    <td>@part.Location</td>
+                    <td><StatusIndicatorComponent Status="@(part.NeedsReorder ? "Critical" : "Healthy")" Label="@(part.NeedsReorder ? "Reorder Needed" : "In Stock")" /></td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Part #", "Name", "On Hand", "Reorder At", "Location", "Status"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Parts Inventory",
+            activeModuleCode: "maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Maintenance", Href = RouteDefinitions.MaintenanceList },
+                new BreadcrumbItem { Label = "Parts Inventory" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetPartsInventoryAsync();
+
+        if (envelope.IsSuccess)
+            State.SetParts(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load parts inventory: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -72,12 +72,18 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.DiagnosticsViewer.State.SelectedResultState>();
         builder.Services.AddSingleton<Modules.DiagnosticsViewer.State.ExportState>();
         builder.Services.AddSingleton<Modules.DiagnosticsViewer.State.ComparisonState>();
+        builder.Services.AddSingleton<Modules.ProcessManagement.State.ProcessManagementState>();
+        builder.Services.AddSingleton<Modules.WorkerWellBeing.State.WorkerWellBeingState>();
+        builder.Services.AddSingleton<Modules.EnvironmentalHealth.State.EnvironmentalHealthState>();
 
         // ── Typed HttpClients ──────────────────────────────────────────────────
         // Handler pipeline: CorrelationHandler → AuthorizationMessageHandler → HttpClientHandler
         // Base address is read from configuration; must end with trailing slash.
         RegisterApiClient<AlertsApiClient>(builder, "alerts");
         RegisterApiClient<DiagnosticsApiClient>(builder, "diagnostics");
+        RegisterApiClient<Modules.ProcessManagement.ApiClients.ProcessManagementApiClient>(builder, "process-management");
+        RegisterApiClient<Modules.WorkerWellBeing.ApiClients.WorkerWellBeingApiClient>(builder, "worker-wellbeing");
+        RegisterApiClient<Modules.EnvironmentalHealth.ApiClients.EnvironmentalHealthApiClient>(builder, "environmental-health");
 
         // ── Logging ────────────────────────────────────────────────────────────
 #if DEBUG

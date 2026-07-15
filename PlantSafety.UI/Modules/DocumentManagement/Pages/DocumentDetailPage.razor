@@ -1,0 +1,128 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Document detail page. Generic detail template built
+     from the canonical Shared component library (StatusIndicatorComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/document-management/{DocumentId:guid}"
+
+@inject DocumentManagementState State
+@inject DocumentManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DocumentManagement.ApiClients
+@using PlantSafety.UI.Modules.DocumentManagement.State
+
+<PageTitle>Document Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The document detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading document…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedDocument is { } doc)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@doc.Title</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(doc.Status)" Label="@doc.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Description</dt>   <dd>@doc.Description</dd>
+                    <dt>Category</dt>      <dd>@doc.Category</dd>
+                    <dt>Version</dt>       <dd>@doc.Version</dd>
+                    <dt>File</dt>          <dd>@doc.FileType — @FormatBytes(doc.FileSizeBytes)</dd>
+                    <dt>Created</dt>       <dd>@doc.CreatedAtUtc.ToString("u") UTC</dd>
+                    <dt>Last Updated</dt>  <dd>@doc.LastUpdatedUtc.ToString("u") UTC</dd>
+                    @if (doc.ExpiresAtUtc is { } expires)
+                    {
+                        <dt>Expires</dt><dd>@expires.ToString("u") UTC</dd>
+                    }
+                    <dt>Owner</dt>         <dd>@doc.OwnerName</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.DocumentManagementList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Documents
+                    </button>
+                    <button class="ps-btn ps-btn-primary" disabled aria-label="Download document">
+                        <span class="bi bi-download" aria-hidden="true"></span> Download
+                    </button>
+                </div>
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    Download needs backend wiring — no document download/content endpoint exists yet.
+                </p>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid DocumentId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Document Detail",
+            activeModuleCode: "document-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Document Management", Href = RouteDefinitions.DocumentManagementList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetDocumentAsync(DocumentId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedDocument(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load document: {envelope.FaultType}");
+    }
+
+    private static string FormatBytes(long bytes) => bytes switch
+    {
+        >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
+        >= 1_024 => $"{bytes / 1_024.0:F1} KB",
+        _ => $"{bytes} bytes",
+    };
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "published" => "Healthy",
+        "underreview" or "under review" or "draft" => "Warning",
+        "expired" => "Critical",
+        "archived" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

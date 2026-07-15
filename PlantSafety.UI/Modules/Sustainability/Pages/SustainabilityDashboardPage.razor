@@ -1,0 +1,148 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Sustainability dashboard/list page. No PlantSafety.Api
+     read-model endpoint exists yet for this module (PlantSafety.Domain
+     /Sustainability is a thin scaffold aggregate) — this page is built
+     against the best-inferable DTO shape (SustainabilityModels.cs) and
+     degrades gracefully to a "needs backend wiring" Error/Empty state rather
+     than blocking. Built entirely from the canonical Shared component
+     library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/sustainability"
+
+@inject SustainabilityState State
+@inject SustainabilityApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Sustainability.ApiClients
+@using PlantSafety.UI.Modules.Sustainability.Models
+
+<PageTitle>Sustainability — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Sustainability dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+            <p class="ps-needs-backend">
+                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                Sustainability needs backend wiring — no PlantSafety.Api read-model endpoint exists yet
+                for GET v1/sustainability/metrics.
+            </p>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading sustainability metrics…" />
+        }
+        else if (State.LoadError is null)
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Metrics Tracked"><span class="ps-field-value">@State.Metrics.Count</span></CardComponent>
+                <CardComponent Title="On Track"><span class="ps-field-value">@CountByStatus("ontrack")</span></CardComponent>
+                <CardComponent Title="At Risk"><span class="ps-field-value">@CountByStatus("atrisk")</span></CardComponent>
+                <CardComponent Title="Exceeded"><span class="ps-field-value">@CountByStatus("exceeded")</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="SustainabilityMetricDto"
+                                Items="State.Metrics"
+                                Headers="_headers"
+                                KeySelector="m => m.MetricId"
+                                EmptyMessage="No sustainability metrics found for the selected window."
+                                AriaLabel="Sustainability Metrics">
+                <RowTemplate Context="metric">
+                    <td><StatusIndicatorComponent Status="@MapStatus(metric.Status)" Label="@metric.Status" /></td>
+                    <td>@metric.MetricName</td>
+                    <td><span class="ps-chip">@metric.Category</span></td>
+                    <td>@metric.Value.ToString("N1") @metric.Unit</td>
+                    <td>@(metric.Target.HasValue ? $"{metric.Target:N1} {metric.Unit}" : "—")</td>
+                    <td>@metric.PeriodEndUtc.ToString("yyyy-MM-dd") UTC</td>
+                    <td>
+                        <a href="/modules/sustainability/@metric.MetricId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Status", "Metric", "Category", "Value", "Target", "Period End", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Sustainability",
+            activeModuleCode: "sustainability",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Sustainability" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetMetricsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetMetrics(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"Sustainability service is not yet available: {envelope.FaultType}");
+    }
+
+    private int CountByStatus(string status) =>
+        State.Metrics.Count(m => string.Equals(m.Status, status, StringComparison.OrdinalIgnoreCase));
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "ontrack" or "on track" => "Healthy",
+        "atrisk" or "at risk" => "Warning",
+        "exceeded" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

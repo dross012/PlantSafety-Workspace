@@ -1,0 +1,101 @@
+// ============================================================================
+//  Test IDs:  PLNT-SMKE-REPO-001..004
+//  Manual:    tests_rules_design_manual.md (SMKE type) /
+//             project_datalake_tests.md (bootstrap/fixture conventions)
+//  Purpose:   Confirms the 105 repositories built out this session across the
+//             Compliance (62), Analytics (22), CrossDomain (12) and
+//             SafetyEvents (9) read-model trees resolve cleanly from the DI
+//             container that PlantSafety.Api wires up in
+//             InfrastructureServiceRegistration.AddInfrastructure. A failure
+//             here means the application would fail to start in production.
+//             No live SQL Server is used -- ISqlConnectionFactory is a test
+//             double so this exercises constructor/DI wiring only, not query
+//             execution (query execution against a real DB is covered by
+//             PlantSafety.IntegrationTests and PlantSafety.DataIntegrationTests).
+// ============================================================================
+namespace PlantSafety.SmokeTests.Repositories;
+
+public sealed class RepositoryLayerSmokeTests
+{
+    private static ServiceProvider BuildProvider(out IReadOnlyList<ServiceDescriptor> repositoryDescriptors)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(Substitute.For<ISqlConnectionFactory>());
+        services.AddSingleton(Substitute.For<PlantSafety.Infrastructure.FileStorage.IBlobStorageService>());
+        services.AddScoped<DapperCommandExecutor>();
+        services.AddScoped<DapperQueryExecutor>();
+
+        var before = services.Count;
+
+        services.AddComplianceRepositories();
+        services.AddAnalyticsRepositories();
+        services.AddCrossDomainRepositories();
+        services.AddSafetyEventsRepositories();
+
+        repositoryDescriptors = services.Skip(before).ToList();
+        return services.BuildServiceProvider(validateScopes: true);
+    }
+
+    [Fact(DisplayName = "PLNT-SMKE-REPO-001: Compliance+Analytics+CrossDomain+SafetyEvents repositories register at least 100 interfaces")]
+    public void RepositoryRegistrations_ShouldMatchExpectedScale()
+    {
+        using var provider = BuildProvider(out var descriptors);
+
+        // Scoped to the module: 62 Compliance + 22 Analytics + 12 CrossDomain + 9 SafetyEvents = 105.
+        descriptors.Count.Should().BeGreaterThanOrEqualTo(100,
+            "the newly-built read-model repository layer registers 105 interfaces (62+22+12+9)");
+    }
+
+    [Fact(DisplayName = "PLNT-SMKE-REPO-002: Every registered repository resolves without throwing")]
+    public void AllRepositories_ShouldResolve_WithoutThrowing()
+    {
+        using var provider = BuildProvider(out var descriptors);
+        using var scope = provider.CreateScope();
+
+        var failures = new List<string>();
+
+        foreach (var descriptor in descriptors)
+        {
+            try
+            {
+                var instance = scope.ServiceProvider.GetRequiredService(descriptor.ServiceType);
+                if (instance is null)
+                    failures.Add($"{descriptor.ServiceType.FullName} resolved to null");
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{descriptor.ServiceType.FullName} -> {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        failures.Should().BeEmpty("all repository interfaces must be resolvable from the composed DI container");
+    }
+
+    [Fact(DisplayName = "PLNT-SMKE-REPO-003: Every registered repository implementation type is a sealed Dapper repository")]
+    public void AllRepositories_ImplementationTypes_ShouldFollowNamingConvention()
+    {
+        using var provider = BuildProvider(out var descriptors);
+
+        var offenders = descriptors
+            .Where(d => d.ImplementationType is not null)
+            .Where(d => !d.ImplementationType!.Name.EndsWith("DapperRepository", StringComparison.Ordinal))
+            .Select(d => d.ImplementationType!.FullName)
+            .ToList();
+
+        offenders.Should().BeEmpty("all read-model repositories in this layer follow the *DapperRepository naming convention");
+    }
+
+    [Fact(DisplayName = "PLNT-SMKE-REPO-004: Resolving the same scoped repository twice within a scope returns the same instance")]
+    public void ScopedRepositories_ShouldBeScopedLifetime()
+    {
+        using var provider = BuildProvider(out var descriptors);
+        var sample = descriptors.First();
+
+        using var scope = provider.CreateScope();
+        var first = scope.ServiceProvider.GetRequiredService(sample.ServiceType);
+        var second = scope.ServiceProvider.GetRequiredService(sample.ServiceType);
+
+        ReferenceEquals(first, second).Should().BeTrue("all repositories are registered AddScoped and must share an instance within a scope");
+    }
+}

@@ -1,0 +1,131 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: AI Training job detail page. The read-model endpoint has no
+     by-id GET, so the detail view ensures the parent job window is loaded (via
+     AiTrainingState) and looks the job up client-side by TrainingJobId — the
+     natural single-entity drilldown for this module. Built from the canonical
+     Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ai-training/{TrainingJobId:guid}"
+
+@inject AiTrainingState State
+@inject AiTrainingApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.AiTraining.ApiClients
+
+<PageTitle>Training Job Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The training job detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading training job…" />
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                Training job @TrainingJobId was not found in the current 90-day window.
+                Try widening the date range on the AI Training dashboard.
+            </div>
+        }
+        else if (State.Selected is { } job)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@job.ModelName @job.ModelVersion</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(job.Status)" Label="@job.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Training Job ID</dt> <dd class="ps-mono">@job.TrainingJobId</dd>
+                    <dt>Model Name</dt>      <dd>@job.ModelName</dd>
+                    <dt>Model Version</dt>   <dd>@job.ModelVersion</dd>
+                    <dt>Dataset Reference</dt><dd>@(job.DatasetReference ?? "—")</dd>
+                    <dt>Status</dt>          <dd>@job.Status</dd>
+                    <dt>Started</dt>         <dd>@job.StartedAtUtc.ToString("u") UTC</dd>
+                    <dt>Initiated By</dt>    <dd class="ps-mono">@job.InitiatedBy</dd>
+                    @if (job.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@job.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AiTrainingDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to AI Training
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid TrainingJobId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Training Job Detail",
+            activeModuleCode: "ai-training",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "AI Training", Href = RouteDefinitions.AiTrainingDashboard },
+                new BreadcrumbItem { Label = "Job Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(TrainingJobId))
+            return;
+
+        // Not yet loaded (e.g., deep link) — load the default window then retry lookup.
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetTrainingJobsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetJobs(envelope.Data!.Items);
+
+        _notFound = !State.SelectById(TrainingJobId);
+        _isLoading = false;
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "running" or "queued" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

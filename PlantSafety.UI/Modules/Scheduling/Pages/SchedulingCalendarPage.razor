@@ -1,0 +1,154 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Scheduling Calendar page (Volume S1 §3). 7-column
+     week grid (Sun-Sat) of job chips with prev/next week navigation.
+     Built from the canonical Shared component library (CardComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent, StatusIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/scheduling/calendar"
+
+@inject SchedulingCalendarState State
+@inject SchedulingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Scheduling.ApiClients
+@using PlantSafety.UI.Modules.Scheduling.State
+
+<PageTitle>Scheduling Calendar — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The scheduling calendar could not be displayed." OnRetry="() => LoadWeekAsync(_weekStart)">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="GoToPreviousWeekAsync">
+                <span class="bi bi-chevron-left" aria-hidden="true"></span> Previous Week
+            </button>
+            <span class="ps-field-value">Week of @_weekStart.ToString("yyyy-MM-dd")</span>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="GoToNextWeekAsync">
+                Next Week <span class="bi bi-chevron-right" aria-hidden="true"></span>
+            </button>
+            <a href="/modules/scheduling" class="ps-btn ps-btn-ghost ps-btn-sm">Back to Dashboard</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading calendar week…" />
+        }
+        else if (State.Week is { } week)
+        {
+            @if (week.Days.Count == 0 || week.Days.All(d => d.Jobs.Count == 0))
+            {
+                <div class="ps-alert" role="status">No jobs scheduled this week.</div>
+            }
+            else
+            {
+                <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px;" role="grid" aria-label="Scheduling calendar week">
+                    @foreach (var day in week.Days)
+                    {
+                        <CardComponent Title="@day.Date.ToString("ddd MM/dd")">
+                            @if (day.Jobs.Count == 0)
+                            {
+                                <span class="ps-text-muted ps-text-sm">No jobs</span>
+                            }
+                            else
+                            {
+                                @foreach (var chip in day.Jobs)
+                                {
+                                    <div role="gridcell" tabindex="0"
+                                         aria-label="@($"Job {chip.JobCode} assigned to {chip.ResourceName} from {chip.StartUtc:HH:mm} to {chip.EndUtc:HH:mm}, status {chip.Status}")"
+                                         style="margin-bottom:6px; cursor:pointer;"
+                                         @onclick="() => NavigateToJob(chip.JobId)">
+                                        <StatusIndicatorComponent Status="@MapJobStatus(chip.Status)" Label="@($"{chip.JobCode} · {chip.StartUtc:HH:mm}-{chip.EndUtc:HH:mm}")" />
+                                        <div class="ps-text-sm ps-text-muted">@chip.ResourceName</div>
+                                    </div>
+                                }
+                            }
+                        </CardComponent>
+                    }
+                </div>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private DateOnly _weekStart = StartOfWeek(DateOnly.FromDateTime(DateTime.UtcNow));
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Scheduling Calendar",
+            activeModuleCode: "scheduling",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Scheduling", Href = RouteDefinitions.SchedulingList },
+                new BreadcrumbItem { Label = "Calendar" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadWeekAsync(_weekStart);
+    }
+
+    private async Task LoadWeekAsync(DateOnly weekStart)
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetCalendarWeekAsync(weekStart);
+
+        if (envelope.IsSuccess)
+            State.SetWeek(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load calendar week: {envelope.FaultType}");
+    }
+
+    private Task GoToPreviousWeekAsync()
+    {
+        _weekStart = _weekStart.AddDays(-7);
+        return LoadWeekAsync(_weekStart);
+    }
+
+    private Task GoToNextWeekAsync()
+    {
+        _weekStart = _weekStart.AddDays(7);
+        return LoadWeekAsync(_weekStart);
+    }
+
+    private void NavigateToJob(Guid jobId) => Nav.NavigateTo($"/modules/scheduling/{jobId}");
+
+    private static DateOnly StartOfWeek(DateOnly date)
+    {
+        var diff = (int)date.DayOfWeek;
+        return date.AddDays(-diff);
+    }
+
+    private static string MapJobStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "inprogress" or "in progress" => "Warning",
+        "pending" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

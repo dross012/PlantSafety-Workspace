@@ -1,0 +1,117 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Batch Tracking View page (Volume T1 §3). Batch/lot
+     genealogy and traceability list. Built from the canonical Shared
+     component library (DataGridComponent, StatusIndicatorComponent,
+     PaginationComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/production-tracking/batches"
+
+@inject BatchTrackingState State
+@inject ProductionTrackingApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.ProductionTracking.ApiClients
+@using PlantSafety.UI.Modules.ProductionTracking.Models
+@using PlantSafety.UI.Modules.ProductionTracking.State
+
+<PageTitle>Batch Tracking — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The batch tracking view could not be displayed." OnRetry="() => GoToPageAsync(1)">
+
+        <div class="ps-page-actions">
+            <a href="/modules/production-tracking" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading batches…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="BatchRowDto"
+                                Items="State.Batches"
+                                Headers="_headers"
+                                KeySelector="b => b.BatchId"
+                                EmptyMessage="No batches found."
+                                AriaLabel="Batches"
+                                EnableVirtualization="true">
+                <RowTemplate Context="batch">
+                    <td>@batch.BatchCode</td>
+                    <td>@batch.RunCode</td>
+                    <td>@batch.Line</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(batch.Status)" Label="@batch.Status" /></td>
+                    <td>@batch.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><a href="/modules/production-tracking/runs/@batch.RunId" class="ps-btn ps-btn-ghost ps-btn-sm">Open</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Batch", "Run", "Line", "Status", "Start", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Batch Tracking",
+            activeModuleCode: "production-tracking",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Production Tracking", Href = RouteDefinitions.ProductionTrackingDashboard },
+                new BreadcrumbItem { Label = "Batch Tracking" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await GoToPageAsync(1);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetBatchesAsync(pageNumber: page, pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetBatches(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load batches: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "active" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

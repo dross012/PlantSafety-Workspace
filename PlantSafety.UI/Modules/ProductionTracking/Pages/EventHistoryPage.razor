@@ -1,0 +1,124 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Production Event History page (Volume T1 §6).
+     Searchable/filterable event log with drill-down. Built from the
+     canonical Shared component library (DataGridComponent,
+     SearchBoxComponent, PaginationComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/production-tracking/events"
+
+@inject EventHistoryState State
+@inject ProductionTrackingApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.ProductionTracking.ApiClients
+@using PlantSafety.UI.Modules.ProductionTracking.Models
+@using PlantSafety.UI.Modules.ProductionTracking.State
+
+<PageTitle>Production Event History — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The production event history could not be displayed." OnRetry="() => GoToPageAsync(1)">
+
+        <div class="ps-page-actions">
+            <a href="/modules/production-tracking" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+        </div>
+
+        <SearchBoxComponent Value="_search" Placeholder="Search event descriptions" ValueChanged="OnSearchChangedAsync" />
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading event history…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="EventRowDto"
+                                Items="_filteredEvents"
+                                Headers="_headers"
+                                KeySelector="e => e.EventId"
+                                EmptyMessage="No events found."
+                                AriaLabel="Production event history"
+                                EnableVirtualization="true">
+                <RowTemplate Context="ev">
+                    <td>@ev.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                    <td>@ev.RunCode</td>
+                    <td>@ev.EventType</td>
+                    <td>@ev.Description</td>
+                    <td><a href="/modules/production-tracking/runs/@ev.RunId" class="ps-btn ps-btn-ghost ps-btn-sm">Open Run</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Time", "Run", "Type", "Description", "Actions"];
+    private string _search = string.Empty;
+
+    private IReadOnlyList<EventRowDto> _filteredEvents =>
+        string.IsNullOrWhiteSpace(_search)
+            ? State.Events
+            : [.. State.Events.Where(e => e.Description.Contains(_search, StringComparison.OrdinalIgnoreCase))];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Production Event History",
+            activeModuleCode: "production-tracking",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Production Tracking", Href = RouteDefinitions.ProductionTrackingDashboard },
+                new BreadcrumbItem { Label = "Event History" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await GoToPageAsync(1);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetEventHistoryAsync(pageNumber: page, pageSize: 50);
+
+        if (envelope.IsSuccess)
+            State.SetEvents(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load event history: {envelope.FaultType}");
+    }
+
+    private Task OnSearchChangedAsync(string value)
+    {
+        _search = value;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,101 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Predictive Reports page (Volume P1 §7). Exportable
+     summaries for reliability engineering/compliance. Built from the
+     canonical Shared component library (DataGridComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/reports"
+
+@inject PredictiveReportsState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.Models
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Predictive Reports — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The predictive reports list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/predictive-maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading predictive reports…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="PredictiveReportDto"
+                                Items="State.Reports"
+                                Headers="_headers"
+                                KeySelector="r => r.ReportId"
+                                EmptyMessage="No predictive reports available."
+                                AriaLabel="Predictive reports">
+                <RowTemplate Context="report">
+                    <td>@report.Title</td>
+                    <td>@report.PeriodStart.ToString("yyyy-MM-dd") – @report.PeriodEnd.ToString("yyyy-MM-dd")</td>
+                    <td>@report.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@report.Format</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Report", "Period", "Generated", "Format"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Predictive Reports",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Reports" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetReportsAsync();
+
+        if (envelope.IsSuccess)
+            State.SetReports(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load predictive reports: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

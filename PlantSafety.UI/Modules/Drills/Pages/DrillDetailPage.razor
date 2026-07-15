@@ -1,0 +1,116 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Drill detail/drilldown page. Calls the real GetById
+     endpoint at /v1/features/safety-events/drills/{id}; falls back to the
+     standard error state via ErrorBoundaryComponent on Problem/Fault
+     responses.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/drills/{DrillId:guid}"
+
+@inject DrillsState State
+@inject DrillsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Drills.State
+@using PlantSafety.UI.Modules.Drills.ApiClients
+@using PlantSafety.UI.Modules.Drills.Mappings
+
+<PageTitle>Drill Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The drill detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading drill…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                @State.DetailError
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    Drill drilldown needs backend wiring — no GetById endpoint exists yet.
+                </p>
+            </div>
+        }
+        else if (State.Selected is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@item.Title</h2>
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <CardComponent Title="Summary">
+                    <dl class="ps-detail-fields">
+                        <dt>Description</dt>   <dd>@item.Description</dd>
+                        <dt>Drill Type</dt>    <dd>@item.DrillType</dd>
+                        <dt>Site</dt>          <dd class="ps-mono">@item.SiteId</dd>
+                        <dt>Coordinator</dt>   <dd class="ps-mono">@item.CoordinatorId</dd>
+                        <dt>Scheduled</dt>     <dd>@item.ScheduledAtUtc.ToString("u") UTC</dd>
+                        @if (item.ExecutedAtUtc is not null)
+                        {
+                            <dt>Executed</dt> <dd>@item.ExecutedAtUtc?.ToString("u") UTC</dd>
+                        }
+                        <dt>Outcome Score</dt> <dd>@(item.OutcomeScore?.ToString() ?? "Not yet evaluated")</dd>
+                        <dt>Record ID</dt>     <dd class="ps-mono">@item.DrillId</dd>
+                    </dl>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.DrillsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Drills &amp; Exercises
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid DrillId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Drill Detail",
+            activeModuleCode: "drills",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Drills & Exercises", Href = RouteDefinitions.DrillsList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetDrillAsync(DrillId);
+
+        if (envelope.IsSuccess)
+            State.SetSelected(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load drill: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

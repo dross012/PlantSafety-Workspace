@@ -37,6 +37,13 @@
     </div>
 
     <div class="ps-topbar-right">
+        <a href="@RouteDefinitions.Home" class="ps-btn ps-btn-ghost ps-btn-sm">
+            <span class="bi bi-grid-1x2" aria-hidden="true"></span> Main Menu
+        </a>
+        <a href="@RouteDefinitions.AdminSetup" class="ps-btn ps-btn-ghost ps-btn-sm">
+            <span class="bi bi-gear" aria-hidden="true"></span> Admin Setup
+        </a>
+
         @if (TenantCtx.IsLoaded)
         {
             <span class="ps-tenant-badge">@TenantCtx.Tenant!.TenantName</span>

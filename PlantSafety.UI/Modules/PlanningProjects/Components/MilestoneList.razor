@@ -1,0 +1,61 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Project milestone list. Adapted from the original
+      orphaned Components/ProjectPlanning/MilestoneList.razor stub and
+      moved into Modules/PlanningProjects/Components (shared by the
+      Planning Projects detail page and the Project Scheduling module).
+      Built from the canonical Shared component library (CardComponent,
+      DataGridComponent, StatusIndicatorComponent).
+      GRACEFUL DEGRADATION: PlantSafety.Api does not yet expose a
+      per-project milestone list endpoint — SafetyProjectDto only carries
+      an aggregate OpenMilestoneCount. When Milestones is empty this
+      component renders the count as a stat plus a "needs backend wiring"
+      note (matching the established AdminSetupPage.razor pattern) instead
+      of a misleading empty grid, per the Blazor UI graceful-degradation
+      rule (Loading/Error/Empty/Ready states — never block on missing data).
+      Pure/stateless/parameter-driven — no injected services.
+    ============================================================ *@
+@using PlantSafety.UI.Modules.PlanningProjects.Models
+
+<CardComponent Title="Milestones">
+    @if (Milestones.Count > 0)
+    {
+        <DataGridComponent TItem="MilestoneViewModel"
+                            Items="Milestones"
+                            Headers="_headers"
+                            KeySelector="m => m.MilestoneId"
+                            EmptyMessage="No milestones found."
+                            AriaLabel="Project milestones">
+            <RowTemplate Context="milestone">
+                <td>@milestone.Name</td>
+                <td>@milestone.TargetDateUtc.ToString("yyyy-MM-dd")</td>
+                <td><StatusIndicatorComponent Status="@(milestone.IsAchieved ? "Healthy" : "Warning")" Label="@(milestone.IsAchieved ? "Achieved" : "Pending")" /></td>
+            </RowTemplate>
+        </DataGridComponent>
+    }
+    else
+    {
+        <div class="ps-field-row">
+            <span class="ps-field-label">Open Milestones</span>
+            <span class="ps-field-value">@(OpenMilestoneCount?.ToString() ?? "—")</span>
+        </div>
+        <p class="ps-needs-backend">
+            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+            Individual milestone records need backend wiring — no per-project milestone list
+            endpoint exists yet (only the aggregate open-milestone count shown above).
+        </p>
+    }
+</CardComponent>
+
+@code {
+    private static readonly string[] _headers = ["Milestone", "Target Date", "Status"];
+
+    /// <summary>The individual milestone rows to render, when the backend provides them.</summary>
+    [Parameter]
+    public IReadOnlyList<MilestoneViewModel> Milestones { get; set; } = [];
+
+    /// <summary>Aggregate open-milestone count fallback, used when <see cref="Milestones"/> is empty.</summary>
+    [Parameter]
+    public int? OpenMilestoneCount { get; set; }
+}

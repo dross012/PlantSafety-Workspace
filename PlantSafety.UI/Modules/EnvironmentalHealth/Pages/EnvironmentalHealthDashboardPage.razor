@@ -1,0 +1,143 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   UPDATED: 2026-07-15 — repointed at the new dedicated Environmental Health
+     monitoring-reading endpoint (GET v1/features/environmental-health/readings)
+     now that PlantSafety.Domain/Application/Api/Infrastructure own a real
+     EnvironmentalHealth aggregate. Previously this page borrowed the
+     Compliance/Policy/Environmental read-model as a stand-in.
+   FILE DESCRIPTION: Environmental Health dashboard/list page. Loads
+     environmental monitoring readings via EnvironmentalHealthApiClient for a
+     selectable date window, shows KPI summary cards, and a sortable readings
+     grid. Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/environmental-health"
+
+@inject EnvironmentalHealthState State
+@inject EnvironmentalHealthApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.EnvironmentalHealth.ApiClients
+@using PlantSafety.UI.Modules.EnvironmentalHealth.Models
+
+<PageTitle>Environmental Health — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Environmental Health dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading environmental policies…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Total Readings"><span class="ps-field-value">@State.Policies.Count</span></CardComponent>
+                <CardComponent Title="Normal"><span class="ps-field-value">@CountByStatus("normal")</span></CardComponent>
+                <CardComponent Title="Warning"><span class="ps-field-value">@CountByStatus("warning")</span></CardComponent>
+                <CardComponent Title="Critical"><span class="ps-field-value">@CountByStatus("critical")</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="EnvironmentalHealthItemDto"
+                                Items="State.Policies"
+                                Headers="_headers"
+                                KeySelector="p => p.EnvironmentalHealthId"
+                                EmptyMessage="No environmental health readings found for the selected window."
+                                AriaLabel="Environmental Health Readings">
+                <RowTemplate Context="reading">
+                    <td><StatusIndicatorComponent Status="@MapStatus(reading.Status)" Label="@reading.Status" /></td>
+                    <td>@reading.MetricType</td>
+                    <td>@reading.MeasurementValue.ToString("0.##") @reading.Unit (threshold @reading.Threshold.ToString("0.##"))</td>
+                    <td>@reading.RecordedAtUtc.ToString("yyyy-MM-dd") UTC</td>
+                    <td>
+                        <a href="/modules/environmental-health/@reading.EnvironmentalHealthId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Status", "Metric", "Measurement", "Recorded", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Environmental Health",
+            activeModuleCode: "environmental-health",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Environmental Health" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.ListReadingsAsync(siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetPolicies(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"Failed to load environmental health readings: {envelope.FaultType}");
+    }
+
+    private int CountByStatus(string status) =>
+        State.Policies.Count(p => string.Equals(p.Status, status, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Maps an environmental health reading status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "normal" => "Healthy",
+        "warning" => "Warning",
+        "critical" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

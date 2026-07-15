@@ -1,0 +1,167 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Human Factors dashboard. Human Factors has no dedicated
+     backend read-model of its own (only a Domain aggregate exists) — this
+     page instead aggregates the three sibling read-models that DO have
+     working backends (Fatigue Management, Ergonomics, Industrial Hygiene)
+     into a single cross-module risk summary, plus navigation tiles into
+     each Human Factors sub-module (including Worker WellBeing, which
+     degrades gracefully as "not yet available").
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/human-factors"
+
+@inject HumanFactorsState State
+@inject PlantSafety.UI.Modules.FatigueManagement.ApiClients.FatigueManagementApiClient FatigueApiClient
+@inject PlantSafety.UI.Modules.Ergonomics.ApiClients.ErgonomicsApiClient ErgonomicsApiClient
+@inject PlantSafety.UI.Modules.IndustrialHygiene.ApiClients.IndustrialHygieneApiClient IndustrialHygieneApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.HumanFactors.State
+
+<PageTitle>Human Factors — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Human Factors dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <div class="ps-kpi-row">
+            <CardComponent Title="Combined High Risk (30d)" Subtitle="@State.TotalHighRiskCount.ToString()" />
+        </div>
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading Human Factors summary…" />
+        }
+        else
+        {
+            <div class="ps-kpi-row">
+                <CardComponent Title="Fatigue Management" OnClick="() => Nav.NavigateTo(RouteDefinitions.FatigueManagementDashboard)">
+                    @if (State.Fatigue.Error is not null)
+                    {
+                        <p class="ps-needs-backend"><span class="bi bi-exclamation-circle" aria-hidden="true"></span> @State.Fatigue.Error</p>
+                    }
+                    else
+                    {
+                        <p>High: @State.Fatigue.HighCount &nbsp; Medium: @State.Fatigue.MediumCount &nbsp; Low: @State.Fatigue.LowCount</p>
+                    }
+                </CardComponent>
+
+                <CardComponent Title="Ergonomics" OnClick="() => Nav.NavigateTo(RouteDefinitions.ErgonomicsList)">
+                    @if (State.Ergonomics.Error is not null)
+                    {
+                        <p class="ps-needs-backend"><span class="bi bi-exclamation-circle" aria-hidden="true"></span> @State.Ergonomics.Error</p>
+                    }
+                    else
+                    {
+                        <p>High: @State.Ergonomics.HighCount &nbsp; Medium: @State.Ergonomics.MediumCount &nbsp; Low: @State.Ergonomics.LowCount</p>
+                    }
+                </CardComponent>
+
+                <CardComponent Title="Industrial Hygiene" OnClick="() => Nav.NavigateTo(RouteDefinitions.IndustrialHygieneList)">
+                    @if (State.IndustrialHygiene.Error is not null)
+                    {
+                        <p class="ps-needs-backend"><span class="bi bi-exclamation-circle" aria-hidden="true"></span> @State.IndustrialHygiene.Error</p>
+                    }
+                    else
+                    {
+                        <p>High: @State.IndustrialHygiene.HighCount &nbsp; Medium: @State.IndustrialHygiene.MediumCount &nbsp; Low: @State.IndustrialHygiene.LowCount</p>
+                    }
+                </CardComponent>
+
+                <CardComponent Title="Worker WellBeing" OnClick="() => Nav.NavigateTo(RouteDefinitions.WorkerWellBeingDashboard)">
+                    <p class="ps-needs-backend">
+                        <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                        No backend read-model exists yet for Worker WellBeing (Domain aggregate only).
+                    </p>
+                </CardComponent>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Human Factors",
+            activeModuleCode: "human-factors",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Human Factors" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = DateTime.UtcNow.AddDays(-30);
+        var to = DateTime.UtcNow;
+
+        var fatigueTask = FatigueApiClient.GetFatigueRecordsAsync(tenantId, siteId: null, fromUtc: from, toUtc: to);
+        var ergonomicsTask = ErgonomicsApiClient.GetErgonomicsAssessmentsAsync(tenantId, siteId: null, fromUtc: from, toUtc: to);
+        var hygieneTask = IndustrialHygieneApiClient.GetIndustrialHygieneSamplesAsync(tenantId, siteId: null, fromUtc: from, toUtc: to);
+
+        await Task.WhenAll(fatigueTask, ergonomicsTask, hygieneTask);
+
+        var fatigueEnvelope = await fatigueTask;
+        State.SetFatigue(fatigueEnvelope.IsSuccess
+            ? new HumanFactorsSectionSummary
+            {
+                HighCount = fatigueEnvelope.Data!.Items.Count(i => i.FatigueRiskLevel.Equals("High", StringComparison.OrdinalIgnoreCase)),
+                MediumCount = fatigueEnvelope.Data!.Items.Count(i => i.FatigueRiskLevel.Equals("Medium", StringComparison.OrdinalIgnoreCase)),
+                LowCount = fatigueEnvelope.Data!.Items.Count(i => i.FatigueRiskLevel.Equals("Low", StringComparison.OrdinalIgnoreCase)),
+            }
+            : new HumanFactorsSectionSummary { Error = "Fatigue Management summary unavailable." });
+
+        var ergonomicsEnvelope = await ergonomicsTask;
+        State.SetErgonomics(ergonomicsEnvelope.IsSuccess
+            ? new HumanFactorsSectionSummary
+            {
+                HighCount = ergonomicsEnvelope.Data!.Items.Count(i => i.RiskLevel.Equals("High", StringComparison.OrdinalIgnoreCase)),
+                MediumCount = ergonomicsEnvelope.Data!.Items.Count(i => i.RiskLevel.Equals("Medium", StringComparison.OrdinalIgnoreCase)),
+                LowCount = ergonomicsEnvelope.Data!.Items.Count(i => i.RiskLevel.Equals("Low", StringComparison.OrdinalIgnoreCase)),
+            }
+            : new HumanFactorsSectionSummary { Error = "Ergonomics summary unavailable." });
+
+        var hygieneEnvelope = await hygieneTask;
+        State.SetIndustrialHygiene(hygieneEnvelope.IsSuccess
+            ? new HumanFactorsSectionSummary
+            {
+                HighCount = hygieneEnvelope.Data!.Items.Count(i => i.ExposureLevel.Equals("High", StringComparison.OrdinalIgnoreCase)),
+                MediumCount = hygieneEnvelope.Data!.Items.Count(i => i.ExposureLevel.Equals("Medium", StringComparison.OrdinalIgnoreCase)),
+                LowCount = hygieneEnvelope.Data!.Items.Count(i => i.ExposureLevel.Equals("Low", StringComparison.OrdinalIgnoreCase)),
+            }
+            : new HumanFactorsSectionSummary { Error = "Industrial Hygiene summary unavailable." });
+
+        State.EndLoad();
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

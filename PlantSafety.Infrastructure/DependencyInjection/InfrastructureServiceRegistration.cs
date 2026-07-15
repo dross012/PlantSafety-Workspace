@@ -136,6 +136,18 @@ public static class InfrastructureServiceRegistration
         // Training module repositories
         services.AddScoped<ICompetencyManagementInfrastructure, CompetencyManagementDapperRepository>();
 
+        // Features tree — ProcessManagement module repositories
+        services.AddScoped<PlantSafety.Application.Features.ProcessManagement.Handlers.Processes.IProcessRepository,
+            PlantSafety.Infrastructure.Features.ProcessManagement.Processes.Repositories.ProcessDapperRepository>();
+
+        // Features tree — WorkerWellBeing module repositories
+        services.AddScoped<PlantSafety.Application.Features.WorkerWellBeing.Handlers.Records.IWorkerWellBeingRecordRepository,
+            PlantSafety.Infrastructure.Features.WorkerWellBeing.Records.Repositories.WorkerWellBeingDapperRepository>();
+
+        // Features tree — EnvironmentalHealth module repositories
+        services.AddScoped<PlantSafety.Application.Features.EnvironmentalHealth.Handlers.Readings.IEnvironmentalHealthReadingRepository,
+            PlantSafety.Infrastructure.Features.EnvironmentalHealth.Readings.Repositories.EnvironmentalHealthDapperRepository>();
+
         // Financials
         services.AddScoped<FinancialsRepository>();
         services.AddScoped<FinancialsService>();

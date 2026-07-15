@@ -1,0 +1,138 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Incidents list page. Generic list/filter template built
+     from the canonical Shared component library (DataGridComponent,
+     SeverityBadgeComponent, StatusIndicatorComponent, PaginationComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent), following the
+     Alerts exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/incident-management"
+
+@inject IncidentsListState State
+@inject IncidentManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.IncidentManagement.ApiClients
+@using PlantSafety.UI.Modules.IncidentManagement.Models
+@using PlantSafety.UI.Modules.IncidentManagement.State
+
+<PageTitle>Incident Management — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The incidents list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/incident-management/sla-monitor" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-stopwatch" aria-hidden="true"></span> SLA Monitor</a>
+            <label class="ps-field-label" for="incident-severity-filter">Severity</label>
+            <select id="incident-severity-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnSeverityChangedAsync">
+                <option value="">All</option>
+                <option value="Critical">Critical</option>
+                <option value="Serious">Serious</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Minor">Minor</option>
+            </select>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading incidents…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="IncidentSummaryDto"
+                                Items="State.Incidents"
+                                Headers="_headers"
+                                KeySelector="i => i.IncidentId"
+                                EmptyMessage="No incidents found."
+                                AriaLabel="Incidents">
+                <RowTemplate Context="incident">
+                    <td><SeverityBadgeComponent Severity="@incident.Severity" /></td>
+                    <td>@incident.Title</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(incident.Status)" Label="@incident.Status" /></td>
+                    <td>@incident.Location</td>
+                    <td>@incident.IncidentOccurredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><a href="/modules/incident-management/@incident.IncidentId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Severity", "Title", "Status", "Location", "Occurred", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Incident Management",
+            activeModuleCode: "incident-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Incident Management" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private Task LoadPageAsync() => GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetIncidentsAsync(pageNumber: page, pageSize: 25, severityFilter: State.SeverityFilter, statusFilter: State.StatusFilter);
+
+        if (envelope.IsSuccess)
+            State.SetIncidents(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load incidents: {envelope.FaultType}");
+    }
+
+    private async Task OnSeverityChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetFilters(string.IsNullOrWhiteSpace(value) ? null : value, State.StatusFilter);
+        await GoToPageAsync(1);
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "closed" or "resolved" => "Healthy",
+        "underinvestigation" or "under investigation" or "inprogress" => "Warning",
+        "escalated" => "Critical",
+        "reported" or "open" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

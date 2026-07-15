@@ -1,0 +1,130 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Routing Steps View page (Volume R1 §3). Standalone
+     deep-linkable step list + detail view. Built from the canonical Shared
+     component library (DataGridComponent, CardComponent,
+     StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/routing/{RoutingId:guid}/steps"
+
+@inject RoutingDetailState State
+@inject RoutingApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Routing.ApiClients
+@using PlantSafety.UI.Modules.Routing.Models
+@using PlantSafety.UI.Modules.Routing.State
+
+<PageTitle>Routing Steps — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The routing steps could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/routing/@RoutingId" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Routing Detail</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoadingTab)
+        {
+            <LoadingIndicatorComponent Message="Loading steps…" />
+        }
+        else
+        {
+            <div style="display:flex; gap:16px;">
+                <div style="flex:0 0 280px;">
+                    <DataGridComponent TItem="RoutingStepDto" Items="State.Steps" Headers="_headers" KeySelector="s => s.StepNumber"
+                                        EmptyMessage="No steps defined." AriaLabel="Steps list">
+                        <RowTemplate Context="step">
+                            <td>@step.StepNumber</td>
+                            <td>
+                                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _selectedStep = step">@step.Name</button>
+                            </td>
+                            <td><StatusIndicatorComponent Status="@MapStepStatus(step.Status)" Label="@step.Status" /></td>
+                        </RowTemplate>
+                    </DataGridComponent>
+                </div>
+                <div style="flex:1;">
+                    @if (_selectedStep is { } step)
+                    {
+                        <CardComponent Title="@($"Step {step.StepNumber}: {step.Name}")">
+                            <div class="ps-field-row"><span class="ps-field-label">Status</span><StatusIndicatorComponent Status="@MapStepStatus(step.Status)" Label="@step.Status" /></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Instructions</span><span class="ps-field-value">@step.Instructions</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Resources</span><span class="ps-field-value">@string.Join(", ", step.Resources)</span></div>
+                        </CardComponent>
+                    }
+                    else
+                    {
+                        <span class="ps-text-muted">Select a step to view its detail.</span>
+                    }
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RoutingId { get; set; }
+
+    private static readonly string[] _headers = ["#", "Name", "Status"];
+    private RoutingStepDto? _selectedStep;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Routing Steps",
+            activeModuleCode: "routing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Routing", Href = RouteDefinitions.RoutingList },
+                new BreadcrumbItem { Label = "Steps" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetStepsAsync(RoutingId);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetSteps(envelope.Data!.Items);
+            _selectedStep = State.Steps.Count > 0 ? State.Steps[0] : null;
+        }
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load steps: {envelope.FaultType}");
+    }
+
+    private static string MapStepStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "valid" => "Healthy",
+        "warning" => "Warning",
+        "blocked" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,129 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: AI Investigation detail page. The read-model endpoint has
+     no by-id GET, so the detail view ensures the parent investigation window
+     is loaded (via AiInvestigationState) and looks the record up client-side
+     by InvestigationId — the natural single-entity drilldown for this module.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ai-investigation/{InvestigationId:guid}"
+
+@inject AiInvestigationState State
+@inject AiInvestigationApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.AiInvestigation.ApiClients
+
+<PageTitle>Investigation Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The investigation detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading investigation…" />
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                Investigation @InvestigationId was not found in the current 90-day window.
+                Try widening the date range on the AI Investigation dashboard.
+            </div>
+        }
+        else if (State.Selected is { } investigation)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">Investigation @investigation.IncidentReference</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(investigation.Status)" Label="@investigation.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Investigation ID</dt>  <dd class="ps-mono">@investigation.InvestigationId</dd>
+                    <dt>Incident Reference</dt><dd>@investigation.IncidentReference</dd>
+                    <dt>AI Confidence</dt>     <dd>@investigation.AiConfidenceScore.ToString("P0")</dd>
+                    <dt>Summary</dt>           <dd>@(investigation.Summary ?? "No AI-generated summary available.")</dd>
+                    <dt>Status</dt>            <dd>@investigation.Status</dd>
+                    <dt>Opened</dt>            <dd>@investigation.OpenedAtUtc.ToString("u") UTC</dd>
+                    <dt>Assigned To</dt>       <dd class="ps-mono">@investigation.AssignedTo</dd>
+                    @if (investigation.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@investigation.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AiInvestigationList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to AI Investigation
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid InvestigationId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Investigation Detail",
+            activeModuleCode: "ai-investigation",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "AI Investigation", Href = RouteDefinitions.AiInvestigationList },
+                new BreadcrumbItem { Label = "Investigation Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(InvestigationId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetInvestigationsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetInvestigations(envelope.Data!.Items);
+
+        _notFound = !State.SelectById(InvestigationId);
+        _isLoading = false;
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "closed" => "Healthy",
+        "inprogress" or "in progress" => "Warning",
+        "open" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

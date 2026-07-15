@@ -1,0 +1,41 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical breadcrumb trail — one of the 11 non-forkable
+      shared components mandated by the Platform UI Architecture Master
+      Specification (Volume 0) §4. Reuses PlantSafety.UI.State.BreadcrumbItem
+      (the model already populated by every page via NavigationState.SetContext)
+      rather than introducing a duplicate shared-library-local type, and reuses
+      the existing .ps-breadcrumb/.ps-breadcrumb-link/.ps-breadcrumb-sep/
+      .ps-breadcrumb-current classes already rendered inline by TopBar.razor —
+      this component is a drop-in replacement for that inline markup.
+      Pure/stateless/parameter-driven per UI001-UI005 — uses declarative
+      anchors, not imperative navigation.
+    Inputs: Items (required, ordered breadcrumb segments; the final entry
+      renders as the current, non-linked page)
+    Outputs: none
+    Accessibility: nav landmark with aria-label, current page marked
+      aria-current="page" per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+<nav aria-label="Breadcrumb" class="ps-breadcrumb">
+    @foreach (var crumb in Items)
+    {
+        if (crumb.Href is not null)
+        {
+            <a href="@crumb.Href" class="ps-breadcrumb-link">@crumb.Label</a>
+            <span class="ps-breadcrumb-sep" aria-hidden="true">/</span>
+        }
+        else
+        {
+            <span class="ps-breadcrumb-current" aria-current="page">@crumb.Label</span>
+        }
+    }
+</nav>
+
+@code {
+    /// <summary>Ordered breadcrumb entries; the final entry represents the current page.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<PlantSafety.UI.State.BreadcrumbItem> Items { get; set; } = Array.Empty<PlantSafety.UI.State.BreadcrumbItem>();
+}

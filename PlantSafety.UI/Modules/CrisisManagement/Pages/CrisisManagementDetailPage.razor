@@ -1,0 +1,116 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Crisis event detail/drilldown page. Calls the real
+     GetById endpoint at /v1/features/safety-events/crisis-events/{id};
+     falls back to the standard error state via ErrorBoundaryComponent
+     on Problem/Fault responses.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/crisis-management/{CrisisEventId:guid}"
+
+@inject CrisisManagementState State
+@inject CrisisManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.CrisisManagement.State
+@using PlantSafety.UI.Modules.CrisisManagement.ApiClients
+@using PlantSafety.UI.Modules.CrisisManagement.Mappings
+
+<PageTitle>Crisis Event Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The crisis event detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading crisis event…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                @State.DetailError
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    Crisis event drilldown needs backend wiring — no GetById endpoint exists yet.
+                </p>
+            </div>
+        }
+        else if (State.Selected is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@item.Title</h2>
+                    <SeverityBadgeComponent Severity="@vm.SeverityForBadge" />
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <CardComponent Title="Summary">
+                    <dl class="ps-detail-fields">
+                        <dt>Description</dt>          <dd>@item.Description</dd>
+                        <dt>Category</dt>             <dd>@item.CrisisCategory</dd>
+                        <dt>Site</dt>                 <dd class="ps-mono">@item.SiteId</dd>
+                        <dt>Incident Commander</dt>    <dd class="ps-mono">@item.IncidentCommanderId</dd>
+                        <dt>Declared</dt>             <dd>@item.DeclaredAtUtc.ToString("u") UTC</dd>
+                        @if (item.ResolvedAtUtc is not null)
+                        {
+                            <dt>Resolved</dt> <dd>@item.ResolvedAtUtc?.ToString("u") UTC</dd>
+                        }
+                        <dt>Record ID</dt>            <dd class="ps-mono">@item.CrisisEventId</dd>
+                    </dl>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.CrisisManagementDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Crisis Management
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid CrisisEventId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Crisis Event Detail",
+            activeModuleCode: "crisis-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Crisis Management", Href = RouteDefinitions.CrisisManagementDashboard },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetCrisisEventAsync(CrisisEventId);
+
+        if (envelope.IsSuccess)
+            State.SetSelected(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load crisis event: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

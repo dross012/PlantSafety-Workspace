@@ -1,0 +1,186 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Scheduling Dashboard page (Volume S1 §1). Summary cards
+     (Job Summary / Resource Summary / Filters) + Upcoming Jobs table. Built
+     entirely from the canonical Shared component library (CardComponent,
+     DataGridComponent, StatusIndicatorComponent, PaginationComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/scheduling"
+
+@inject SchedulingDashboardState State
+@inject SchedulingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Scheduling.ApiClients
+@using PlantSafety.UI.Modules.Scheduling.Models
+@using PlantSafety.UI.Modules.Scheduling.State
+
+<PageTitle>Scheduling — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Scheduling dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/scheduling/calendar" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-calendar3" aria-hidden="true"></span> Calendar View
+            </a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+            <CardComponent Title="Job Summary" CssClass="ps-summary-card">
+                @if (State.JobSummary is { } js)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Pending</span><span class="ps-field-value">@js.PendingCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">In Progress</span><span class="ps-field-value">@js.InProgressCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Completed</span><span class="ps-field-value">@js.CompletedCount</span></div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No data</span>
+                }
+            </CardComponent>
+
+            <CardComponent Title="Resource Summary" CssClass="ps-summary-card">
+                @if (State.ResourceSummary is { } rs)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Active</span><span class="ps-field-value">@rs.ActiveCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Overallocated</span><span class="ps-field-value">@rs.OverallocatedCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Idle</span><span class="ps-field-value">@rs.IdleCount</span></div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No data</span>
+                }
+            </CardComponent>
+
+            <CardComponent Title="Filters" CssClass="ps-summary-card">
+                <div class="ps-field-row">
+                    <label class="ps-field-label" for="status-filter">Status</label>
+                    <select id="status-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnStatusFilterChangedAsync">
+                        <option value="">All</option>
+                        <option value="Pending">Pending</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+            </CardComponent>
+        </div>
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading upcoming jobs…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="UpcomingJobDto"
+                                Items="State.UpcomingJobs"
+                                Headers="_headers"
+                                KeySelector="j => j.JobId"
+                                EmptyMessage="No upcoming jobs found."
+                                AriaLabel="Upcoming jobs">
+                <RowTemplate Context="job">
+                    <td>@job.JobCode</td>
+                    <td>@job.ResourceName</td>
+                    <td>@job.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@job.EndUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><StatusIndicatorComponent Status="@MapJobStatus(job.Status)" Label="@job.Status" /></td>
+                    <td><a href="/modules/scheduling/@job.JobId" class="ps-btn ps-btn-ghost ps-btn-sm">Open</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage"
+                                      TotalPages="State.TotalPages"
+                                      TotalCount="State.TotalCount"
+                                      PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Job", "Resource", "Start", "End", "Status", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Scheduling",
+            activeModuleCode: "scheduling",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Scheduling" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var summaryEnvelope = await ApiClient.GetJobSummaryAsync();
+        var resourceEnvelope = await ApiClient.GetResourceSummaryAsync();
+
+        if (summaryEnvelope.IsSuccess && resourceEnvelope.IsSuccess)
+        {
+            State.SetSummaries(summaryEnvelope.Data!, resourceEnvelope.Data!);
+        }
+
+        await GoToPageAsync(1);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        var envelope = await ApiClient.GetUpcomingJobsAsync(pageNumber: page, pageSize: 25, statusFilter: State.StatusFilter);
+
+        if (envelope.IsSuccess)
+            State.SetUpcomingJobs(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load upcoming jobs: {envelope.FaultType}");
+    }
+
+    private async Task OnStatusFilterChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetStatusFilter(string.IsNullOrWhiteSpace(value) ? null : value);
+        await GoToPageAsync(1);
+    }
+
+    private static string MapJobStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "inprogress" or "in progress" => "Warning",
+        "pending" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

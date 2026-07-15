@@ -1,0 +1,134 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Fatigue Management record detail page. The backend has
+     no single-record GetById endpoint — this page reloads the last 90 days
+     of records and looks up the requested record client-side, degrading
+     gracefully to an empty state if the record falls outside that window.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/fatigue-management/{FatigueRecordId:guid}"
+
+@inject FatigueManagementState State
+@inject FatigueManagementApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.FatigueManagement.State
+@using PlantSafety.UI.Modules.FatigueManagement.ApiClients
+@using PlantSafety.UI.Modules.FatigueManagement.Mappings
+@using PlantSafety.UI.Modules.FatigueManagement.Models
+
+<PageTitle>Fatigue Record Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The fatigue management record could not be displayed.">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading fatigue record…" />
+        }
+        else if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+        else if (_record is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">Fatigue Record</h2>
+                    <SeverityBadgeComponent Severity="@vm.SeverityForBadge" Text="@item.FatigueRiskLevel" />
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <CardComponent Title="Summary">
+                    <dl class="ps-detail-fields">
+                        <dt>Employee</dt>   <dd class="ps-mono">@item.EmployeeId</dd>
+                        <dt>Site</dt>       <dd class="ps-mono">@(item.SiteId?.ToString() ?? "Tenant-wide")</dd>
+                        <dt>Recorded</dt>   <dd>@item.RecordedAtUtc.ToString("u") UTC</dd>
+                        <dt>Recorded By</dt><dd class="ps-mono">@item.RecordedBy</dd>
+                        <dt>Record ID</dt>  <dd class="ps-mono">@item.FatigueRecordId</dd>
+                    </dl>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.FatigueManagementDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Fatigue Management
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">
+                No fatigue record with this identifier was found in the most recent 90-day window.
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    Fatigue Management has no single-record GetById endpoint yet — detail lookup is
+                    performed client-side against the date-range read-model.
+                </p>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid FatigueRecordId { get; set; }
+
+    private FatigueManagementItemDto? _record;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Fatigue Record Detail",
+            activeModuleCode: "fatigue-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Fatigue Management", Href = RouteDefinitions.FatigueManagementDashboard },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetFatigueRecordsAsync(
+            tenantId,
+            siteId: null,
+            fromUtc: DateTime.UtcNow.AddDays(-90),
+            toUtc: DateTime.UtcNow);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetItems(envelope.Data!);
+            _record = State.Find(FatigueRecordId);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetError($"Failed to load fatigue records: {envelope.FaultType}");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

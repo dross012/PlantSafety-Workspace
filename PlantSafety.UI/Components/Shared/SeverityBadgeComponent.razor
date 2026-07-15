@@ -1,0 +1,43 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical severity badge — one of the 11 non-forkable
+      shared components mandated by the Platform UI Architecture Master
+      Specification (Volume 0) §4. Renders a severity level as a colored
+      pill badge using the shared ECS SeverityPalette (Critical/High/Medium/
+      Low/Info), backed by PlantSafety's existing --ps-color-severity-*
+      design tokens and .ps-badge--* utility classes (wwwroot/css/plantsafety.css).
+      Pure/stateless/parameter-driven per UI001-UI005 — no injected services,
+      no navigation, no domain logic.
+    Inputs: Severity (required), Text (optional label override)
+    Outputs: none
+    Accessibility: text is always rendered (never color-only); role="status"
+      with a descriptive aria-label per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+<span class="ps-badge @CssClass" role="status" aria-label="@AriaLabel">@LabelText</span>
+
+@code {
+    /// <summary>The severity level driving badge color (case-insensitive: Critical, High, Medium, Low, Info).</summary>
+    [Parameter, EditorRequired]
+    public string Severity { get; set; } = "Low";
+
+    /// <summary>Optional display text override; defaults to <see cref="Severity"/>.</summary>
+    [Parameter]
+    public string? Text { get; set; }
+
+    private string LabelText => Text ?? Severity;
+
+    private string AriaLabel => $"Severity: {LabelText}";
+
+    private string CssClass => Severity.Trim().ToLowerInvariant() switch
+    {
+        "critical" => "ps-badge--critical",
+        "high" => "ps-badge--high",
+        "medium" or "warning" => "ps-badge--medium",
+        "low" or "success" => "ps-badge--low",
+        "info" => "ps-badge--info",
+        _ => "ps-badge--neutral",
+    };
+}

@@ -1,0 +1,131 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Routing Dashboard page (Volume R1 §1). Search/filter
+     bar + routing summary list with Open/Simulate/Versions actions. Built
+     from the canonical Shared component library (SearchBoxComponent,
+     DataGridComponent, StatusIndicatorComponent, PaginationComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/routing"
+
+@inject RoutingDashboardState State
+@inject RoutingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Routing.ApiClients
+@using PlantSafety.UI.Modules.Routing.Models
+@using PlantSafety.UI.Modules.Routing.State
+
+<PageTitle>Routing — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Routing dashboard could not be displayed." OnRetry="() => GoToPageAsync(1)">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="() => GoToPageAsync(1)" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <SearchBoxComponent Value="State.SearchText" Placeholder="Search routings" ValueChanged="OnSearchChangedAsync" />
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading routings…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="RoutingSummaryDto"
+                                Items="State.Routings"
+                                Headers="_headers"
+                                KeySelector="r => r.RoutingId"
+                                EmptyMessage="No routings found."
+                                AriaLabel="Routings">
+                <RowTemplate Context="routing">
+                    <td>@routing.Name</td>
+                    <td>@routing.Version</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(routing.Status)" Label="@routing.Status" /></td>
+                    <td>@routing.LastUpdatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@routing.Owner</td>
+                    <td>
+                        <a href="/modules/routing/@routing.RoutingId" class="ps-btn ps-btn-ghost ps-btn-sm">Open</a>
+                        <a href="/modules/routing/@routing.RoutingId/simulation" class="ps-btn ps-btn-ghost ps-btn-sm">Simulate</a>
+                        <a href="/modules/routing/@routing.RoutingId/versions" class="ps-btn ps-btn-ghost ps-btn-sm">Versions</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Routing", "Version", "Status", "Last Updated", "Owner", "View Details"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Routing",
+            activeModuleCode: "routing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Routing" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await GoToPageAsync(1);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetRoutingsAsync(pageNumber: page, pageSize: 25, search: State.SearchText);
+
+        if (envelope.IsSuccess)
+            State.SetRoutings(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load routings: {envelope.FaultType}");
+    }
+
+    private Task OnSearchChangedAsync(string value)
+    {
+        State.SetSearchText(value);
+        return GoToPageAsync(1);
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "approved" => "Healthy",
+        "submitted" or "review" or "draft" => "Warning",
+        "rejected" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

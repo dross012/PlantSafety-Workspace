@@ -1,0 +1,198 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Trend Analysis dashboard page (Volume A1 §Page 2 — Trend
+     Explorer: Metric selector + Trend Chart + Breakdown Table with
+     sparkline-style category summaries). Wires the single top-level
+     PlantSafety.Api.Analytics.TrendAnalysis read-model endpoint via
+     TrendAnalysisApiClient, populates TrendAnalysisState, and renders a
+     metric selector, TrendChartComponent, and a client-grouped
+     Category/Count/Trend DataGridComponent breakdown table across two tabs
+     — built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/trend-analysis"
+
+@inject TrendAnalysisState State
+@inject TrendAnalysisApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.TrendAnalysis.ApiClients
+@using PlantSafety.UI.Modules.TrendAnalysis.Models
+@using PlantSafety.UI.Modules.TrendAnalysis.State
+@using PlantSafety.UI.Modules.DashboardAnalytics.Components
+@using PlantSafety.UI.Modules.DashboardAnalytics.Models
+
+<PageTitle>Trend Analysis — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Trend Analysis page could not be displayed." OnRetry="LoadAsync">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="metric-select">Metric</label>
+                <select id="metric-select" class="ps-btn ps-btn-ghost ps-btn-sm" aria-label="Filter by metric" @onchange="OnMetricChanged">
+                    <option value="">All metrics</option>
+                    @foreach (var metric in AvailableMetrics)
+                    {
+                        <option value="@metric" selected="@(metric == State.SelectedMetric)">@metric</option>
+                    }
+                </select>
+            </div>
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Trend Analysis sections" />
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading trend analysis…" />
+        }
+        else
+        {
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @* ── Trend Chart ──────────────────────────────────────────────── *@
+                @if (State.ActiveTab == TrendAnalysisTab.TrendChart)
+                {
+                    <TrendChartComponent Title="@(State.SelectedMetric ?? "All Metrics")" Points="BuildTrendPoints()" />
+                }
+
+                @* ── Breakdown ────────────────────────────────────────────────── *@
+                @if (State.ActiveTab == TrendAnalysisTab.Breakdown)
+                {
+                    <CardComponent Title="Trend Breakdown — by Metric">
+                        <DataGridComponent TItem="TrendBreakdownRow"
+                                            Items="BuildBreakdown()"
+                                            Headers="_breakdownHeaders"
+                                            KeySelector="b => b.MetricName"
+                                            EmptyMessage="No trend data found for the selected range."
+                                            AriaLabel="Trend breakdown by metric">
+                            <RowTemplate Context="row">
+                                <td>@row.MetricName</td>
+                                <td>@row.Count</td>
+                                <td>@row.LatestValue.ToString("N1")</td>
+                                <td><SeverityBadgeComponent Severity="@MapTrendSeverity(row.LatestTrendDirection)" Text="@row.LatestTrendDirection" /></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Trend Chart", "Breakdown"];
+    private static readonly string[] _breakdownHeaders = ["Metric", "Count", "Latest Value", "Trend"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Trend Analysis",
+            activeModuleCode: "trend-analysis",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "Trend Analysis" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private IEnumerable<string> AvailableMetrics =>
+        State.Points.Select(p => p.MetricName).Distinct().OrderBy(m => m);
+
+    private Task OnTabIndexChangedAsync(int index)
+    {
+        State.SetActiveTab((TrendAnalysisTab)index);
+        return Task.CompletedTask;
+    }
+
+    private Task OnMetricChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetSelectedMetric(string.IsNullOrWhiteSpace(value) ? null : value);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetTrendAnalysisAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetPoints(envelope.Data!.Items);
+        else
+            State.SetError(DescribeFailure(envelope));
+    }
+
+    private IEnumerable<TrendAnalysisPointDto> FilteredPoints =>
+        State.SelectedMetric is null
+            ? State.Points
+            : State.Points.Where(p => p.MetricName == State.SelectedMetric);
+
+    private List<TrendChartPoint> BuildTrendPoints() =>
+        FilteredPoints
+            .OrderBy(p => p.CalculatedAtUtc)
+            .Select(p => new TrendChartPoint(p.CalculatedAtUtc.ToString("MM/dd"), p.MetricValue))
+            .ToList();
+
+    private List<TrendBreakdownRow> BuildBreakdown() =>
+        FilteredPoints
+            .GroupBy(p => p.MetricName)
+            .Select(g =>
+            {
+                var latest = g.OrderByDescending(p => p.CalculatedAtUtc).First();
+                return new TrendBreakdownRow(g.Key, g.Count(), latest.MetricValue, latest.TrendDirection);
+            })
+            .OrderBy(b => b.MetricName)
+            .ToList();
+
+    private static string MapTrendSeverity(string trendDirection) => trendDirection.ToLowerInvariant() switch
+    {
+        "improving" => "Low",
+        "stable" => "Info",
+        "declining" => "High",
+        _ => "Medium",
+    };
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

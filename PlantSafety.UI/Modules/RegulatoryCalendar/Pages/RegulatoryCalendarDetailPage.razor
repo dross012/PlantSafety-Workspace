@@ -1,0 +1,110 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Regulatory Calendar entry detail page. Serves the
+     single-entity detail view for any of the nine source types — the
+     {Source} route segment selects which. Resolves from the
+     RegulatoryCalendarState in-memory cache populated by the list page's
+     last load; if not cached (e.g. deep link), redirects back to the list
+     page since a targeted re-fetch would require re-querying all nine
+     sources across an unbounded date range.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/regulatory-calendar/{Source}/{EntryId:guid}"
+
+@inject RegulatoryCalendarState State
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.RegulatoryCalendar.Models
+@using PlantSafety.UI.Modules.RegulatoryCalendar.State
+
+<PageTitle>Regulatory Calendar Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The regulatory calendar entry could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading calendar entry…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                @State.DetailError
+                <p class="ps-text-sm">
+                    <a href="@RouteDefinitions.RegulatoryCalendar">Return to the Regulatory Calendar</a> and reload the range containing this entry.
+                </p>
+            </div>
+        }
+        else if (State.SelectedEntry is { } entry)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@entry.Label</h2>
+                    <StatusIndicatorComponent Status="@entry.StatusIndicatorState" Label="@entry.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Group</dt>            <dd>@entry.Group</dd>
+                    <dt>Source</dt>           <dd>@entry.Source</dd>
+                    <dt>@entry.DateLabel</dt> <dd>@entry.DateUtc.ToString("yyyy-MM-dd")</dd>
+                    <dt>Responsible Party</dt><dd class="ps-mono">@entry.ResponsiblePartyId</dd>
+                    <dt>Site</dt>             <dd>@(entry.SiteId?.ToString() ?? "Tenant-wide")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.RegulatoryCalendar)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Regulatory Calendar
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public string Source { get; set; } = string.Empty;
+    [Parameter] public Guid EntryId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Regulatory Calendar Detail",
+            activeModuleCode: "regulatory-calendar",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Regulatory Calendar", Href = RouteDefinitions.RegulatoryCalendar },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+
+        if (Enum.TryParse<CalendarEntrySource>(Source, ignoreCase: true, out var source) &&
+            State.TryGetCachedEntry(source, EntryId, out var cached) && cached is not null)
+        {
+            State.SetSelectedEntry(cached);
+        }
+        else
+        {
+            State.SetDetailError("This calendar entry is not currently loaded. It may be outside the active date range.");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

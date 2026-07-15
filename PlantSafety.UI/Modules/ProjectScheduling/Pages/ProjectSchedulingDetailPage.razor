@@ -1,0 +1,106 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Project Scheduling detail page. Loads the full
+     SafetyProjectDto by route parameter via ProjectSchedulingState.LoadDetailAsync
+     and renders a single-project ProjectTimeline bar, a ScheduleCalendar of
+     planned/actual key dates, and a MilestoneList card — built entirely from
+     the canonical Shared component library (ErrorBoundaryComponent,
+     LoadingIndicatorComponent, SeverityBadgeComponent, StatusIndicatorComponent)
+     plus the shared ProjectTimeline / ScheduleCalendar / MilestoneList components.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/project-scheduling/{ProjectId:guid}"
+
+@inject ProjectSchedulingState State
+@inject ProjectSchedulingUiService UiService
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PlanningProjects.Components
+@using PlantSafety.UI.Modules.ProjectScheduling.Services
+@using PlantSafety.UI.Modules.ProjectScheduling.State
+
+<PageTitle>Project Schedule Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The project schedule detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading project schedule…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+            <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ProjectSchedulingDashboard)">
+                <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Project Scheduling
+            </button>
+        }
+        else if (State.SelectedProject is { } project)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@project.Name</h2>
+                    <StatusIndicatorComponent Status="@project.StatusIndicatorState" Label="@project.Status" />
+                    @if (project.IsOverdue)
+                    {
+                        <SeverityBadgeComponent Severity="High" Text="Overdue" />
+                    }
+                </div>
+                <dl class="ps-detail-fields">
+                    <dt>Planned Start</dt> <dd>@project.PlannedStartUtc.ToString("u") UTC</dd>
+                    <dt>Planned End</dt>   <dd>@project.PlannedEndUtc.ToString("u") UTC</dd>
+                    <dt>Actual Start</dt>  <dd>@(project.ActualStartUtc?.ToString("u") is { } s ? $"{s} UTC" : "Not started")</dd>
+                    <dt>Actual End</dt>    <dd>@(project.ActualEndUtc?.ToString("u") is { } e ? $"{e} UTC" : "Not completed")</dd>
+                </dl>
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ProjectSchedulingDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Project Scheduling
+                    </button>
+                </div>
+            </div>
+
+            <ProjectTimeline Items="State.DetailTimelineItems" Title="Project Schedule" EmptyMessage="No schedule data available." />
+
+            <div class="ps-detail-panels" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--ps-space-4);">
+                <ScheduleCalendar Events="State.DetailEvents" />
+                <MilestoneList OpenMilestoneCount="project.OpenMilestoneCount" />
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Project Schedule Detail",
+            activeModuleCode: "project-scheduling",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Project Scheduling", Href = RouteDefinitions.ProjectSchedulingDashboard },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnParametersSetAsync() => await State.LoadDetailAsync(UiService, ProjectId);
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        State.ClearSelection();
+    }
+}

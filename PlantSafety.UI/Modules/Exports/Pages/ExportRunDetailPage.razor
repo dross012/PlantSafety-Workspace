@@ -1,0 +1,129 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Export run detail page. The read-model endpoint has no
+     by-id GET, so the detail view ensures the parent run window is loaded
+     (via ExportsState) and looks the record up client-side by ExportRunId —
+     the natural single-entity drilldown for this module.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/exports/{ExportRunId:guid}"
+
+@inject ExportsState State
+@inject ExportsApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Exports.ApiClients
+
+<PageTitle>Export Run Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The export run detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading export run…" />
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                Export run @ExportRunId was not found in the current 90-day window.
+                Try widening the date range on the Exports list.
+            </div>
+        }
+        else if (State.Selected is { } run)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@run.ExportType → @run.TargetSystem</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(run.Status)" Label="@run.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Export Run ID</dt>  <dd class="ps-mono">@run.ExportRunId</dd>
+                    <dt>Target System</dt>  <dd>@run.TargetSystem</dd>
+                    <dt>Export Type</dt>    <dd>@run.ExportType</dd>
+                    <dt>Record Count</dt>   <dd>@run.RecordCount.ToString("N0")</dd>
+                    <dt>Status</dt>         <dd>@run.Status</dd>
+                    <dt>Completed</dt>      <dd>@run.CompletedAtUtc.ToString("u") UTC</dd>
+                    <dt>Initiated By</dt>   <dd class="ps-mono">@run.InitiatedBy</dd>
+                    @if (run.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@run.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ExportsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Exports
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ExportRunId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Export Run Detail",
+            activeModuleCode: "exports",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Exports", Href = RouteDefinitions.ExportsList },
+                new BreadcrumbItem { Label = "Run Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(ExportRunId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetExportRunsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetRuns(envelope.Data!.Items);
+
+        _notFound = !State.SelectById(ExportRunId);
+        _isLoading = false;
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "running" or "queued" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

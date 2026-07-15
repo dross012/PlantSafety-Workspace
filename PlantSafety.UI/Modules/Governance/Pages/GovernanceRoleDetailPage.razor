@@ -1,0 +1,129 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Governance role detail / drilldown page — the natural
+     single-entity concept for this module (a security role and the
+     permissions granted to it). Reuses AdminApiClient/GovernanceState rather
+     than duplicating a parallel client. Sub-route beneath /modules/governance.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/governance/roles/{RoleId:guid}"
+
+@inject GovernanceState State
+@inject AdminApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+
+<PageTitle>Role Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The role detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading role…" />
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">Role @RoleId was not found for this tenant.</div>
+        }
+        else if (State.SelectedRole is { } role)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@role.RoleName</h2>
+                    <span class="ps-chip">@role.Status</span>
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Role ID</dt>      <dd class="ps-mono">@role.RoleId</dd>
+                    <dt>Description</dt>  <dd>@role.Description</dd>
+                    <dt>Status</dt>       <dd>@role.Status</dd>
+                    <dt>Permission Count</dt><dd>@role.PermissionCount</dd>
+                </dl>
+
+                <CardComponent Title="Granted Permissions">
+                    <DataGridComponent TItem="AdminPermissionDto"
+                                        Items="State.PermissionsForRole(role.RoleId)"
+                                        Headers="_permissionHeaders"
+                                        KeySelector="p => p.PermissionId"
+                                        EmptyMessage="No permission grants found for this role."
+                                        AriaLabel="Role Permissions">
+                        <RowTemplate Context="permission">
+                            <td>@permission.PermissionName</td>
+                            <td>@permission.Scope</td>
+                            <td><span class="ps-chip">@permission.Status</span></td>
+                        </RowTemplate>
+                    </DataGridComponent>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.GovernanceDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Governance
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RoleId { get; set; }
+
+    private static readonly string[] _permissionHeaders = ["Permission", "Scope", "Status"];
+
+    private bool _isLoading;
+    private bool _notFound;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Role Detail",
+            activeModuleCode: "governance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Governance & Access Control", Href = RouteDefinitions.GovernanceDashboard },
+                new BreadcrumbItem { Label = "Role Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectRoleById(RoleId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+        var usersEnvelope = await ApiClient.GetUsersAsync(tenantId);
+        var rolesEnvelope = await ApiClient.GetRolesAsync(tenantId);
+        var permissionsEnvelope = await ApiClient.GetPermissionsAsync(tenantId);
+
+        if (usersEnvelope.IsSuccess && rolesEnvelope.IsSuccess && permissionsEnvelope.IsSuccess)
+            State.SetGovernanceData(usersEnvelope.Data!.Items, rolesEnvelope.Data!.Items, permissionsEnvelope.Data!.Items);
+
+        _notFound = !State.SelectRoleById(RoleId);
+        _isLoading = false;
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

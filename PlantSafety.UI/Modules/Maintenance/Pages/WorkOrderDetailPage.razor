@@ -1,0 +1,292 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Work Order Detail page (Volume M1 §2). Two-column
+     header (Summary/Metadata) + 5-tab strip (Tasks/Parts/History/
+     Predictive/Metadata), lazy-loaded. Built from the canonical Shared
+     component library (CardComponent, TabControlComponent, DataGridComponent,
+     SeverityBadgeComponent, StatusIndicatorComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/maintenance/work-orders/{WorkOrderId:guid}"
+
+@inject WorkOrderDetailState State
+@inject MaintenanceApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Maintenance.ApiClients
+@using PlantSafety.UI.Modules.Maintenance.Models
+@using PlantSafety.UI.Modules.Maintenance.State
+
+<PageTitle>Work Order Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The work order detail could not be displayed.">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading work order…" />
+        }
+        else if (State.ErrorMessage is not null && State.WorkOrder is null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+            <a href="/modules/maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Return to Dashboard</a>
+        }
+        else if (State.WorkOrder is { } wo)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@wo.WorkOrderCode</h2>
+                <SeverityBadgeComponent Severity="@wo.Priority" />
+                <StatusIndicatorComponent Status="@MapStatus(wo.Status)" Label="@wo.Status" />
+            </div>
+
+            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+                <CardComponent Title="Work Order Summary">
+                    <div class="ps-field-row"><span class="ps-field-label">Machine</span><span class="ps-field-value"><a href="/modules/maintenance/machines/@wo.MachineId/history">@wo.MachineCode</a></span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Technician</span><span class="ps-field-value">@wo.TechnicianName</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Status</span><span class="ps-field-value">@wo.Status</span></div>
+                </CardComponent>
+                <CardComponent Title="Metadata">
+                    <div class="ps-field-row"><span class="ps-field-label">Created</span><span class="ps-field-value">@wo.CreatedAtUtc.ToString("u") UTC</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Updated</span><span class="ps-field-value">@wo.UpdatedAtUtc.ToString("u") UTC</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Due</span><span class="ps-field-value">@wo.DueAtUtc.ToString("u") UTC</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Priority</span><span class="ps-field-value">@wo.Priority</span></div>
+                </CardComponent>
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="(int)State.ActiveTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Work order sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (State.ActiveTab == WorkOrderDetailTab.Tasks)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading tasks…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="TaskStepDto" Items="State.Tasks" Headers="_taskHeaders" KeySelector="t => t.StepNumber"
+                                            EmptyMessage="No tasks recorded." AriaLabel="Work order tasks">
+                            <RowTemplate Context="task">
+                                <td>@task.StepNumber</td>
+                                <td>@task.Description</td>
+                                <td>@task.DurationMinutes min</td>
+                                <td><StatusIndicatorComponent Status="@MapStatus(task.Status)" Label="@task.Status" /></td>
+                                <td>@(task.TechnicianNotes ?? "—")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == WorkOrderDetailTab.Parts)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading parts…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="PartUsageDto" Items="State.Parts" Headers="_partHeaders" KeySelector="p => p.PartId"
+                                            EmptyMessage="No parts used." AriaLabel="Parts used">
+                            <RowTemplate Context="part">
+                                <td>@part.PartNumber</td>
+                                <td>@part.PartName</td>
+                                <td>@part.QuantityUsed</td>
+                                <td><StatusIndicatorComponent Status="@(part.WasAvailable ? "Healthy" : "Critical")" Label="@(part.WasAvailable ? "Available" : "Unavailable")" /></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == WorkOrderDetailTab.History)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading history…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="MaintenanceEventDto" Items="State.History" Headers="_historyHeaders" KeySelector="h => h.EventId"
+                                            EmptyMessage="No history events." AriaLabel="Work order history">
+                            <RowTemplate Context="ev">
+                                <td>@ev.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@ev.TechnicianName</td>
+                                <td>@ev.Summary</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == WorkOrderDetailTab.Predictive)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Evaluating predictive model…" Inline="true" />
+                    }
+                    else if (State.Predictive is { } predictive)
+                    {
+                        <CardComponent Title="Predictive Maintenance Insights">
+                            <div class="ps-field-row"><span class="ps-field-label">Risk Score</span><span class="ps-field-value">@predictive.RiskScore.ToString("P0")</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Contributing Factors</span>
+                                <span class="ps-field-value">
+                                    @foreach (var factor in predictive.ContributingFactors)
+                                    {
+                                        <span class="ps-chip" style="margin-right:4px;">@factor</span>
+                                    }
+                                    @if (predictive.ContributingFactors.Count == 0)
+                                    {
+                                        <span class="ps-text-muted">None reported</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="ps-field-row"><span class="ps-field-label">Recommended Action</span><span class="ps-field-value">@predictive.RecommendedAction</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Model Version</span><span class="ps-field-value ps-mono">@predictive.ModelVersion</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Generated</span><span class="ps-field-value">@predictive.GeneratedAtUtc.ToString("u") UTC</span></div>
+                        </CardComponent>
+                    }
+                    else
+                    {
+                        <div class="ps-alert" role="status">No predictive insights available for this work order.</div>
+                    }
+                }
+                else if (State.ActiveTab == WorkOrderDetailTab.Metadata)
+                {
+                    <CardComponent Title="Work Order Metadata">
+                        <div class="ps-field-row"><span class="ps-field-label">Work Order ID</span><span class="ps-field-value ps-mono">@wo.WorkOrderId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Machine ID</span><span class="ps-field-value ps-mono">@wo.MachineId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Created</span><span class="ps-field-value">@wo.CreatedAtUtc.ToString("u") UTC</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Updated</span><span class="ps-field-value">@wo.UpdatedAtUtc.ToString("u") UTC</span></div>
+                    </CardComponent>
+                }
+
+            </div>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.MaintenanceList)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid WorkOrderId { get; set; }
+
+    private static readonly string[] _tabLabels = ["Tasks", "Parts", "History", "Predictive", "Metadata"];
+    private static readonly string[] _taskHeaders = ["Step", "Description", "Duration", "Status", "Technician Notes"];
+    private static readonly string[] _partHeaders = ["Part #", "Name", "Qty Used", "Availability"];
+    private static readonly string[] _historyHeaders = ["Date", "Technician", "Summary"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Work Order Detail",
+            activeModuleCode: "maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Maintenance", Href = RouteDefinitions.MaintenanceList },
+                new BreadcrumbItem { Label = "Work Order Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginLoad();
+        var envelope = await ApiClient.GetWorkOrderAsync(WorkOrderId);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetWorkOrder(envelope.Data!);
+            await LoadTasksAsync();
+        }
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Work order not found: {envelope.FaultType}");
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        var tab = (WorkOrderDetailTab)index;
+        State.SetActiveTab(tab);
+
+        switch (tab)
+        {
+            case WorkOrderDetailTab.Tasks when State.Tasks.Count == 0:
+                await LoadTasksAsync();
+                break;
+            case WorkOrderDetailTab.Parts when State.Parts.Count == 0:
+                await LoadPartsAsync();
+                break;
+            case WorkOrderDetailTab.History when State.History.Count == 0:
+                await LoadHistoryAsync();
+                break;
+            case WorkOrderDetailTab.Predictive when State.Predictive is null:
+                await LoadPredictiveAsync();
+                break;
+        }
+    }
+
+    private async Task LoadTasksAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetTasksAsync(WorkOrderId);
+        if (envelope.IsSuccess)
+            State.SetTasks(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Task load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadPartsAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetPartsAsync(WorkOrderId);
+        if (envelope.IsSuccess)
+            State.SetParts(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Parts load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetWorkOrderHistoryAsync(WorkOrderId);
+        if (envelope.IsSuccess)
+            State.SetHistory(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"History load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadPredictiveAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetPredictiveInsightsAsync(WorkOrderId);
+        if (envelope.IsSuccess)
+            State.SetPredictive(envelope.Data!);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Predictive engine failure: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "inprogress" or "in progress" => "Warning",
+        "open" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

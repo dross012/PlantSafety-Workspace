@@ -1,0 +1,126 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: RCA (Root Cause Analysis) list page. The backend does not
+     yet expose a list endpoint for RCAs (Create/GetById only) — this page
+     calls the conventional collection route and degrades gracefully to the
+     standard error/empty state until that endpoint ships.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/rca"
+
+@inject RcaState State
+@inject RcaApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Rca.State
+@using PlantSafety.UI.Modules.Rca.ApiClients
+@using PlantSafety.UI.Modules.Rca.Mappings
+@using PlantSafety.UI.Modules.Rca.Models
+
+<PageTitle>RCA — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The RCA list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">
+                @State.ListError
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    The RCA list needs backend wiring — no list endpoint exists yet
+                    (only Create/GetById are available today). Use a direct link to
+                    <code>/modules/rca/&#123;id&#125;</code> to view a known record.
+                </p>
+            </div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading root cause analyses…" />
+        }
+        else if (State.ListError is null)
+        {
+            <DataGridComponent TItem="RootCauseAnalysisDto"
+                                Items="State.Items"
+                                Headers="_headers"
+                                KeySelector="r => r.RcaId"
+                                EmptyMessage="No root cause analyses found."
+                                AriaLabel="Root cause analyses">
+                <RowTemplate Context="item">
+                    @{ var vm = item.ToViewModel(); }
+                    <td>@item.LinkedEventType</td>
+                    <td>@item.Methodology</td>
+                    <td><StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" /></td>
+                    <td>@(item.CompletedAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "In progress") @(item.CompletedAtUtc is not null ? "UTC" : "")</td>
+                    <td>
+                        <a href="@RouteDefinitions.RcaList/@item.RcaId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage"
+                                      TotalPages="State.TotalPages"
+                                      TotalCount="State.TotalCount"
+                                      PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Linked Event", "Methodology", "Status", "Completed", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "RCA",
+            activeModuleCode: "rca",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "RCA" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync() => await GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.ListRcasAsync(pageNumber: page, pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load RCA records: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

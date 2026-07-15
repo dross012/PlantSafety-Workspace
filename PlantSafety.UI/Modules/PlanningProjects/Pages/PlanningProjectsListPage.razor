@@ -1,0 +1,142 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Planning Projects dashboard. Loads the tenant's planning
+     project list via PlanningProjectsState.LoadAsync (PlanningProjectsApiClient),
+     and renders a summary stat row, a Gantt-style ProjectTimeline overview, a
+     PlanCard grid, and a search box — built entirely from the canonical
+     Shared component library (ErrorBoundaryComponent, LoadingIndicatorComponent,
+     CardComponent, SearchBoxComponent) plus the module's own PlanCard /
+     ProjectTimeline components. Exemplar list/dashboard pattern for the
+     Project Budgeting and Project Scheduling sibling modules.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/planning-projects"
+
+@inject PlanningProjectsState State
+@inject PlanningProjectsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PlanningProjects.ApiClients
+@using PlantSafety.UI.Modules.PlanningProjects.Components
+@using PlantSafety.UI.Modules.PlanningProjects.Models
+@using PlantSafety.UI.Modules.PlanningProjects.State
+
+<PageTitle>Planning Projects — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Planning Projects dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <SearchBoxComponent Value="_searchText" ValueChanged="OnSearchChangedAsync" Placeholder="Search projects" />
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading planning projects…" />
+        }
+        else if (State.Projects.Count == 0)
+        {
+            <CardComponent Title="No Planning Projects Found">
+                <p class="ps-field-value">No planning projects were found for the current tenant and date range.</p>
+            </CardComponent>
+        }
+        else
+        {
+            <div class="ps-summary-row" style="display:flex;gap:var(--ps-space-4);flex-wrap:wrap;">
+                <CardComponent Title="Total Projects" CssClass="ps-stat-card">
+                    <span class="ps-field-value" style="font-size:var(--ps-font-size-2xl);">@State.Projects.Count</span>
+                </CardComponent>
+                <CardComponent Title="Overdue" CssClass="ps-stat-card">
+                    <span class="ps-field-value" style="font-size:var(--ps-font-size-2xl);">@State.Projects.Count(p => p.IsOverdue)</span>
+                </CardComponent>
+                <CardComponent Title="On Track" CssClass="ps-stat-card">
+                    <span class="ps-field-value" style="font-size:var(--ps-font-size-2xl);">@State.Projects.Count(p => !p.IsOverdue)</span>
+                </CardComponent>
+            </div>
+
+            <ProjectTimeline Items="State.TimelineItems" Title="Project Timeline Overview" EmptyMessage="No project schedule data available." />
+
+            <div class="ps-plan-card-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--ps-space-4);">
+                @foreach (var project in _filteredProjects)
+                {
+                    <PlanCard Project="project" OnSelect="NavigateToDetail" />
+                }
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private string _searchText = string.Empty;
+    private IReadOnlyList<ProjectCardViewModel> _filteredProjects = [];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Planning Projects",
+            activeModuleCode: "planning-projects",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Planning Projects" }
+            ]);
+
+        State.OnChange += OnStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Task LoadAsync()
+    {
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var nowUtc = DateTime.UtcNow;
+        return State.LoadAsync(ApiClient, tenantId, nowUtc.AddDays(-365), nowUtc.AddDays(365));
+    }
+
+    private Task OnSearchChangedAsync(string text)
+    {
+        _searchText = text;
+        ApplyFilter();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ApplyFilter()
+    {
+        _filteredProjects = string.IsNullOrWhiteSpace(_searchText)
+            ? State.Projects
+            : State.Projects.Where(p => p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private void NavigateToDetail(Guid projectId) => Nav.NavigateTo($"{RouteDefinitions.PlanningProjectsList}/{projectId}");
+
+    private void OnStateChanged()
+    {
+        ApplyFilter();
+        StateHasChanged();
+    }
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}

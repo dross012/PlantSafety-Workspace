@@ -1,0 +1,138 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Reports list page for PlantSafety's general-purpose
+     Reporting module (distinct from the separate Reporting.UI app). Generic
+     list/filter template built from the canonical Shared component library
+     (DataGridComponent, StatusIndicatorComponent, PaginationComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent), following the
+     Alerts exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/reporting"
+
+@inject ReportingState State
+@inject ReportingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Reporting.ApiClients
+@using PlantSafety.UI.Modules.Reporting.Models
+@using PlantSafety.UI.Modules.Reporting.State
+
+<PageTitle>Reporting — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The reports list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <label class="ps-field-label" for="report-type-filter">Type</label>
+            <select id="report-type-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnFilterChangedAsync">
+                <option value="">All</option>
+                <option value="Safety">Safety</option>
+                <option value="Compliance">Compliance</option>
+                <option value="Operational">Operational</option>
+                <option value="Financial">Financial</option>
+            </select>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading reports…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="ReportListItemDto"
+                                Items="State.Reports"
+                                Headers="_headers"
+                                KeySelector="r => r.ReportId"
+                                EmptyMessage="No reports found."
+                                AriaLabel="Reports">
+                <RowTemplate Context="report">
+                    <td>@report.Title</td>
+                    <td>@report.ReportType</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(report.Status)" Label="@report.Status" /></td>
+                    <td>@report.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@report.OwnerName</td>
+                    <td><a href="/modules/reporting/@report.ReportId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Title", "Type", "Status", "Generated", "Owner", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Reporting",
+            activeModuleCode: "reporting",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Reporting" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private Task LoadPageAsync() => GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.GetReportsAsync(pageNumber: page, pageSize: 25, typeFilter: State.TypeFilter);
+
+        if (envelope.IsSuccess)
+            State.SetReports(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load reports: {envelope.FaultType}");
+    }
+
+    private async Task OnFilterChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetTypeFilter(string.IsNullOrWhiteSpace(value) ? null : value);
+        await GoToPageAsync(1);
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "published" => "Healthy",
+        "generated" => "Warning",
+        "draft" => "Offline",
+        "archived" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

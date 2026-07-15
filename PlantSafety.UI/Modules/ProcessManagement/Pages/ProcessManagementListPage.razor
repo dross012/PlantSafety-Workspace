@@ -1,0 +1,131 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   UPDATED: 2026-07-15 — PlantSafety.Domain/Application/Api/Infrastructure now own a
+     real ProcessManagement Features/ CQRS slice (List/GetById/Create), backed by
+     [ProcessManagement].[Processes]. This page consumes the live
+     v1/features/process-management/processes endpoint instead of the prior
+     "needs backend wiring" placeholder state.
+   FILE DESCRIPTION: Process Management list page. Built from the canonical
+     Shared component library (ErrorBoundaryComponent, CardComponent,
+     DataGridComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/process-management"
+
+@inject ProcessManagementState State
+@inject ProcessManagementApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.ProcessManagement.ApiClients
+@using PlantSafety.UI.Modules.ProcessManagement.Models
+@using PlantSafety.UI.Modules.ProcessManagement.State
+
+<PageTitle>Process Management — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Process Management page could not be displayed." OnRetry="LoadAsync">
+
+        <CardComponent Title="Process Management">
+            <p class="ps-field-value">
+                Process Management tracks manufacturing/operational process definitions, revisions,
+                and safety-critical process parameters across sites.
+            </p>
+            <div class="ps-page-actions">
+                <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                    <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+                </button>
+            </div>
+        </CardComponent>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading process definitions…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="ProcessDefinitionDto"
+                                Items="State.Items"
+                                Headers="_headers"
+                                KeySelector="p => p.ProcessId"
+                                EmptyMessage="No process definitions found."
+                                AriaLabel="Process definitions">
+                <RowTemplate Context="row">
+                    <td>@row.ProcessName</td>
+                    <td>@row.Category</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(row.Status)" Label="@row.Status" /></td>
+                    <td>@row.Version</td>
+                    <td>@row.LastModifiedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage"
+                                      TotalPages="State.TotalPages"
+                                      TotalCount="State.TotalCount"
+                                      PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Process", "Category", "Status", "Version", "Last Modified"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Process Management",
+            activeModuleCode: "process-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Process Management" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync() => await GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.ListProcessesAsync(pageNumber: page, pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load process definitions: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "underreview" => "Warning",
+        "retired" => "Offline",
+        _ => "Info",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

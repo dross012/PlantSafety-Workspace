@@ -1,0 +1,141 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Management of Change list page. KPI CardComponent row
+     summarizing Open/On Hold/Completed workflow counts, a SearchBoxComponent
+     client-side title filter, and a DataGridComponent listing of MOC
+     workflow instances with StatusIndicatorComponent per row. Built
+     entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/moc"
+
+@inject MocState State
+@inject MocApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.MOC.ApiClients
+@using PlantSafety.UI.Modules.MOC.Models
+@using PlantSafety.UI.Modules.MOC.State
+
+<PageTitle>Management of Change — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Management of Change list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <div class="ps-kpi-row">
+            <CardComponent Title="Open" Subtitle="@State.OpenCount.ToString()" />
+            <CardComponent Title="On Hold" Subtitle="@State.OnHoldCount.ToString()" />
+            <CardComponent Title="Completed" Subtitle="@State.CompletedCount.ToString()" />
+        </div>
+
+        <SearchBoxComponent Value="State.SearchText" Placeholder="Search by change title" ValueChanged="text => State.SetSearchText(text)" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading MOC workflows…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="MocRowViewModel"
+                                Items="State.PageItems"
+                                Headers="_headers"
+                                KeySelector="w => w.WorkflowId"
+                                EmptyMessage="No Management of Change workflows found."
+                                AriaLabel="Management of Change workflows">
+                <RowTemplate Context="w">
+                    <td>@w.ChangeTitle</td>
+                    <td>@w.CurrentStage</td>
+                    <td><StatusIndicatorComponent Status="@w.StatusIndicatorState" Label="@w.Status" /></td>
+                    <td>@w.InitiatedAtUtc.ToString("yyyy-MM-dd")</td>
+                    <td><a href="@RouteDefinitions.MocList/@w.WorkflowId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages"
+                                      TotalCount="State.FilteredCount" PageChanged="p => State.GoToPage(p)" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Change Title", "Stage", "Status", "Initiated", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Management of Change",
+            activeModuleCode: "moc",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "MOC" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync()
+    {
+        State.BeginListLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow.AddYears(2);
+
+        var workflowsEnvelope = await ApiClient.GetWorkflowsAsync(tenantId, null, fromUtc, toUtc);
+        var approvalsEnvelope = await ApiClient.GetApprovalsAsync(tenantId, null, fromUtc, toUtc);
+        var riskEnvelope = await ApiClient.GetRiskAssessmentsAsync(tenantId, null, fromUtc, toUtc);
+
+        if (workflowsEnvelope.IsSuccess && approvalsEnvelope.IsSuccess && riskEnvelope.IsSuccess)
+        {
+            State.SetListData(workflowsEnvelope.Data!.Items, approvalsEnvelope.Data!.Items, riskEnvelope.Data!.Items);
+        }
+        else if (!workflowsEnvelope.IsSuccess)
+        {
+            State.SetListError(DescribeFailure(workflowsEnvelope));
+        }
+        else if (!approvalsEnvelope.IsSuccess)
+        {
+            State.SetListError(DescribeFailure(approvalsEnvelope));
+        }
+        else
+        {
+            State.SetListError(DescribeFailure(riskEnvelope));
+        }
+    }
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

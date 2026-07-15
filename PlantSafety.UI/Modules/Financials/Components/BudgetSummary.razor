@@ -1,0 +1,46 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: KPI CardComponent row summarizing a set of Safety
+     Budgets (Total Allocated / Total Spend / Total Remaining / Over-Budget
+     Count). Pure/stateless/parameter-driven per UI001-UI005 — no injected
+     services. Rebuilt from the previously orphaned stub at
+     Components/Financials/BudgetSummary.razor and relocated under
+     Modules/Financials/Components to match the established per-module
+     component placement convention; wired into FinancialsDashboardPage.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@using PlantSafety.UI.Modules.Financials.Models
+
+<div class="ps-kpi-row">
+    <CardComponent Title="Total Allocated" Subtitle="@FormatCurrency(TotalAllocated)" />
+    <CardComponent Title="Total Spend" Subtitle="@FormatCurrency(TotalSpend)" />
+    <CardComponent Title="Total Remaining" Subtitle="@FormatCurrency(TotalRemaining)" />
+    <CardComponent Title="Over-Budget Categories" Subtitle="@OverBudgetCount.ToString()" />
+</div>
+
+@code {
+    /// <summary>Gets the aggregate allocated amount to display.</summary>
+    [Parameter, EditorRequired]
+    public decimal TotalAllocated { get; set; }
+
+    /// <summary>Gets the aggregate actual spend to display.</summary>
+    [Parameter, EditorRequired]
+    public decimal TotalSpend { get; set; }
+
+    /// <summary>Gets the aggregate remaining balance to display.</summary>
+    [Parameter, EditorRequired]
+    public decimal TotalRemaining { get; set; }
+
+    /// <summary>Gets the count of budgets whose spend exceeds their allocation.</summary>
+    [Parameter, EditorRequired]
+    public int OverBudgetCount { get; set; }
+
+    /// <summary>Currency code used to format the KPI values; defaults to USD when not supplied.</summary>
+    [Parameter]
+    public string CurrencyCode { get; set; } = "USD";
+
+    private string FormatCurrency(decimal value) => $"{value:N0} {CurrencyCode}";
+}

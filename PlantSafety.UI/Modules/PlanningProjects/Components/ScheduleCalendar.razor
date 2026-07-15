@@ -1,0 +1,71 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Compact key-date schedule list ("calendar" of planned/
+      actual start, planned/actual end, and milestone target dates), sorted
+      chronologically. Adapted from the original orphaned
+      Components/ProjectPlanning/ScheduleCalendar.razor stub and moved into
+      Modules/PlanningProjects/Components (shared by the Planning Projects
+      detail page and the Project Scheduling module). Loosely borrows the
+      "calendar shows dated events with type/status" concept from the
+      Maintenance Calendar wireframe reference, scaled down to a date-sorted
+      list (rather than a full month/week grid) since the PlanningProjects
+      backend exposes single key dates per project, not a stream of
+      discrete scheduled events. Built from the canonical Shared component
+      library (CardComponent, DataGridComponent, SeverityBadgeComponent).
+      Pure/stateless/parameter-driven — no injected services.
+    ============================================================ *@
+@using PlantSafety.UI.Modules.PlanningProjects.Models
+
+<CardComponent Title="Schedule">
+    <DataGridComponent TItem="ScheduleEventViewModel"
+                        Items="_sorted"
+                        Headers="_headers"
+                        KeySelector="e => (object)(e.Kind, e.DateUtc)"
+                        EmptyMessage="No schedule dates available."
+                        AriaLabel="Project schedule dates">
+        <RowTemplate Context="evt">
+            <td>@KindLabel(evt.Kind)</td>
+            <td>@evt.Label</td>
+            <td>@evt.DateUtc.ToString("yyyy-MM-dd")</td>
+            <td>
+                @if (evt.IsOverdue)
+                {
+                    <SeverityBadgeComponent Severity="High" Text="Overdue" />
+                }
+                else if (evt.DateUtc <= DateTimeOffset.UtcNow)
+                {
+                    <SeverityBadgeComponent Severity="Low" Text="Passed" />
+                }
+                else
+                {
+                    <SeverityBadgeComponent Severity="Info" Text="Upcoming" />
+                }
+            </td>
+        </RowTemplate>
+    </DataGridComponent>
+</CardComponent>
+
+@code {
+    private static readonly string[] _headers = ["Type", "Description", "Date", "Status"];
+    private IReadOnlyList<ScheduleEventViewModel> _sorted = [];
+
+    /// <summary>The key-date events to render.</summary>
+    [Parameter]
+    public IReadOnlyList<ScheduleEventViewModel> Events { get; set; } = [];
+
+    protected override void OnParametersSet()
+    {
+        _sorted = Events.OrderBy(e => e.DateUtc).ToList();
+    }
+
+    private static string KindLabel(ScheduleEventKind kind) => kind switch
+    {
+        ScheduleEventKind.PlannedStart => "Planned Start",
+        ScheduleEventKind.PlannedEnd => "Planned End",
+        ScheduleEventKind.ActualStart => "Actual Start",
+        ScheduleEventKind.ActualEnd => "Actual End",
+        ScheduleEventKind.Milestone => "Milestone",
+        _ => kind.ToString(),
+    };
+}

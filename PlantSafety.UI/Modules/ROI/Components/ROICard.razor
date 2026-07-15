@@ -1,0 +1,34 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: KPI card summarizing a computed Safety ROI calculation
+     (Investment / Avoided Costs / Net Benefit / ROI %) with a
+     StatusIndicatorComponent reflecting whether the ROI is strongly
+     positive, marginal, or negative. Rebuilt from the previously orphaned
+     stub at Components/Financials/ROICard.razor and relocated under
+     Modules/ROI/Components (the module that actually owns the ROI concept)
+     rather than Modules/Financials. Pure/stateless/parameter-driven per
+     UI001-UI005 — no injected services.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@using PlantSafety.UI.Modules.ROI.Models
+
+<CardComponent Title="@($"Safety ROI — FY{Roi.FiscalYear}")">
+    <div class="ps-detail-header">
+        <StatusIndicatorComponent Status="@Roi.StatusIndicatorState" Label="@($"{Roi.RoiPercentage:N1}% ROI")" />
+    </div>
+    <dl class="ps-detail-fields">
+        <dt>Total Investment</dt>        <dd>@Roi.TotalInvestment.ToString("N0") @Roi.CurrencyCode</dd>
+        <dt>Estimated Avoided Costs</dt> <dd>@Roi.EstimatedAvoidedCosts.ToString("N0") @Roi.CurrencyCode</dd>
+        <dt>Net Benefit</dt>             <dd>@Roi.NetBenefit.ToString("N0") @Roi.CurrencyCode</dd>
+        <dt>Calculated</dt>              <dd>@Roi.CalculatedAtUtc.ToString("yyyy-MM-dd")</dd>
+    </dl>
+</CardComponent>
+
+@code {
+    /// <summary>The computed Safety ROI view model to display.</summary>
+    [Parameter, EditorRequired]
+    public required RoiViewModel Roi { get; set; }
+}

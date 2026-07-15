@@ -1,0 +1,162 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Policies & Procedures list page. TabControlComponent
+     switching between Safety Policies and Standard Operating Procedures,
+     each rendered as a DataGridComponent with StatusIndicatorComponent per
+     row, a shared SearchBoxComponent title filter, and client-side
+     PaginationComponent. Built entirely from the canonical Shared component
+     library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/policies"
+
+@inject PoliciesState State
+@inject PoliciesApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Policies.ApiClients
+@using PlantSafety.UI.Modules.Policies.Models
+@using PlantSafety.UI.Modules.Policies.State
+
+<PageTitle>Policies &amp; Procedures — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Policies & Procedures list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <SearchBoxComponent Value="State.SearchText" Placeholder="Search by title" ValueChanged="text => State.SetSearchText(text)" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="i => _activeTab = i" AriaLabel="Policies and Procedures" />
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading policies and procedures…" />
+        }
+        else
+        {
+            <div class="ps-tab-panel" role="tabpanel">
+                @if (_activeTab == 0)
+                {
+                    <DataGridComponent TItem="PolicyDetailViewModel"
+                                        Items="State.PoliciesPageItems"
+                                        Headers="_policyHeaders"
+                                        KeySelector="p => p.PolicyId"
+                                        EmptyMessage="No safety policies found."
+                                        AriaLabel="Safety Policies">
+                        <RowTemplate Context="p">
+                            <td>@p.PolicyName</td>
+                            <td>@p.Category</td>
+                            <td><StatusIndicatorComponent Status="@p.StatusIndicatorState" Label="@p.Status" /></td>
+                            <td>@p.EffectiveAtUtc.ToString("yyyy-MM-dd")</td>
+                            <td><a href="@RouteDefinitions.PoliciesList/policy/@p.PolicyId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                        </RowTemplate>
+                    </DataGridComponent>
+                    @if (State.PoliciesTotalPages > 1)
+                    {
+                        <PaginationComponent CurrentPage="State.PoliciesPage" TotalPages="State.PoliciesTotalPages"
+                                              TotalCount="State.Policies.Count" PageChanged="p => State.GoToPoliciesPage(p)" />
+                    }
+                }
+                else
+                {
+                    <DataGridComponent TItem="ProcedureDetailViewModel"
+                                        Items="State.ProceduresPageItems"
+                                        Headers="_procedureHeaders"
+                                        KeySelector="p => p.SOPId"
+                                        EmptyMessage="No standard operating procedures found."
+                                        AriaLabel="Standard Operating Procedures">
+                        <RowTemplate Context="p">
+                            <td>@p.Title</td>
+                            <td>@p.ProcessArea</td>
+                            <td><StatusIndicatorComponent Status="@p.StatusIndicatorState" Label="@p.Status" /></td>
+                            <td>@p.EffectiveAtUtc.ToString("yyyy-MM-dd")</td>
+                            <td><a href="@RouteDefinitions.PoliciesList/procedure/@p.SOPId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                        </RowTemplate>
+                    </DataGridComponent>
+                    @if (State.ProceduresTotalPages > 1)
+                    {
+                        <PaginationComponent CurrentPage="State.ProceduresPage" TotalPages="State.ProceduresTotalPages"
+                                              TotalCount="State.Procedures.Count" PageChanged="p => State.GoToProceduresPage(p)" />
+                    }
+                }
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Policies", "Procedures"];
+    private static readonly string[] _policyHeaders = ["Policy Name", "Category", "Status", "Effective", "Actions"];
+    private static readonly string[] _procedureHeaders = ["Title", "Process Area", "Status", "Effective", "Actions"];
+    private int _activeTab;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Policies & Procedures",
+            activeModuleCode: "policies",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Policies & Procedures" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync()
+    {
+        State.BeginListLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow.AddYears(2);
+
+        var policiesEnvelope = await ApiClient.GetPoliciesAsync(tenantId, null, fromUtc, toUtc);
+        var proceduresEnvelope = await ApiClient.GetProceduresAsync(tenantId, null, fromUtc, toUtc);
+
+        if (policiesEnvelope.IsSuccess && proceduresEnvelope.IsSuccess)
+        {
+            State.SetListData(policiesEnvelope.Data!.Items, proceduresEnvelope.Data!.Items);
+        }
+        else if (!policiesEnvelope.IsSuccess)
+        {
+            State.SetListError(DescribeFailure(policiesEnvelope));
+        }
+        else
+        {
+            State.SetListError(DescribeFailure(proceduresEnvelope));
+        }
+    }
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

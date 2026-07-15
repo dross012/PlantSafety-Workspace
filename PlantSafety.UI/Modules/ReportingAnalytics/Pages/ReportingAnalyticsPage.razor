@@ -1,0 +1,197 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Reporting Analytics dashboard page (Volume A1 §"Exportable
+     Reports" — PDF/CSV for compliance/leadership). Wires the single
+     PlantSafety.Api.Analytics.Reporting read-model endpoint via
+     ReportingAnalyticsApiClient, populates ReportingAnalyticsState, and
+     renders a KPI CardComponent summary, full report DataGridComponent, and
+     a client-computed By Category breakdown across three tabs — built
+     entirely from the canonical Shared component library, following the
+     Modules/Alerts and Modules/Admin exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/reporting-analytics"
+
+@inject ReportingAnalyticsState State
+@inject ReportingAnalyticsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.ReportingAnalytics.ApiClients
+@using PlantSafety.UI.Modules.ReportingAnalytics.Models
+@using PlantSafety.UI.Modules.ReportingAnalytics.State
+
+<PageTitle>Reporting Analytics — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Reporting Analytics page could not be displayed." OnRetry="LoadAsync">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Reporting Analytics sections" />
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading reporting analytics…" />
+        }
+        else
+        {
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @* ── Overview ─────────────────────────────────────────────────── *@
+                @if (State.ActiveTab == ReportingAnalyticsTab.Overview)
+                {
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+                        <CardComponent Title="Total Reports">
+                            <div class="ps-field-row"><span class="ps-field-value">@State.Reports.Count</span></div>
+                        </CardComponent>
+                        <CardComponent Title="Generated">
+                            <div class="ps-field-row"><span class="ps-field-value">@State.Reports.Count(r => r.Status.Equals("Generated", StringComparison.OrdinalIgnoreCase))</span></div>
+                        </CardComponent>
+                        <CardComponent Title="Failed">
+                            <div class="ps-field-row"><span class="ps-field-value">@State.Reports.Count(r => r.Status.Equals("Failed", StringComparison.OrdinalIgnoreCase))</span></div>
+                        </CardComponent>
+                        <CardComponent Title="Queued">
+                            <div class="ps-field-row"><span class="ps-field-value">@State.Reports.Count(r => r.Status.Equals("Queued", StringComparison.OrdinalIgnoreCase))</span></div>
+                        </CardComponent>
+                    </div>
+                }
+
+                @* ── Reports ──────────────────────────────────────────────────── *@
+                @if (State.ActiveTab == ReportingAnalyticsTab.Reports)
+                {
+                    <CardComponent Title="Generated Reports">
+                        <DataGridComponent TItem="ReportEntryDto"
+                                            Items="State.Reports"
+                                            Headers="_reportHeaders"
+                                            KeySelector="r => r.ReportItemId"
+                                            EmptyMessage="No reports found for the selected range."
+                                            AriaLabel="Generated reports">
+                            <RowTemplate Context="report">
+                                <td>@report.ReportName</td>
+                                <td>@report.ReportCategory</td>
+                                <td><StatusIndicatorComponent Status="@MapReportStatus(report.Status)" Label="@report.Status" /></td>
+                                <td>@report.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+                @* ── By Category ──────────────────────────────────────────────── *@
+                @if (State.ActiveTab == ReportingAnalyticsTab.ByCategory)
+                {
+                    <CardComponent Title="Reports by Category">
+                        <DataGridComponent TItem="ReportCategoryBreakdown"
+                                            Items="BuildCategoryBreakdown()"
+                                            Headers="_categoryHeaders"
+                                            KeySelector="c => c.Category"
+                                            EmptyMessage="No reports found for the selected range."
+                                            AriaLabel="Reports by category">
+                            <RowTemplate Context="row">
+                                <td>@row.Category</td>
+                                <td>@row.Count</td>
+                                <td>@row.FailedCount</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Overview", "Reports", "By Category"];
+    private static readonly string[] _reportHeaders = ["Name", "Category", "Status", "Generated"];
+    private static readonly string[] _categoryHeaders = ["Category", "Count", "Failed"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Reporting Analytics",
+            activeModuleCode: "reporting-analytics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "Reporting Analytics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private Task OnTabIndexChangedAsync(int index)
+    {
+        State.SetActiveTab((ReportingAnalyticsTab)index);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetReportsAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetReports(envelope.Data!.Items);
+        else
+            State.SetError(DescribeFailure(envelope));
+    }
+
+    private List<ReportCategoryBreakdown> BuildCategoryBreakdown() =>
+        State.Reports
+            .GroupBy(r => r.ReportCategory)
+            .Select(g => new ReportCategoryBreakdown(
+                g.Key,
+                g.Count(),
+                g.Count(r => r.Status.Equals("Failed", StringComparison.OrdinalIgnoreCase))))
+            .OrderByDescending(b => b.Count)
+            .ToList();
+
+    private static string MapReportStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "generated" => "Healthy",
+        "queued" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

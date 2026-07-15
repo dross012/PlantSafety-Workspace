@@ -1,0 +1,143 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Enterprise Fabric node detail page — the natural
+     single-entity drilldown for this module. No by-id endpoint exists yet, so
+     this page ensures the parent registry is loaded (via
+     EnterpriseFabricState) and looks the node up client-side by NodeId,
+     degrading gracefully when the backend is unavailable.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/enterprise-fabric/{NodeId:guid}"
+
+@inject EnterpriseFabricState State
+@inject EnterpriseFabricApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.EnterpriseFabric.ApiClients
+
+<PageTitle>Fabric Node Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The fabric node detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading fabric node…" />
+        }
+        else if (_loadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_loadError</div>
+            <p class="ps-needs-backend">
+                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                Enterprise Fabric needs backend wiring — no PlantSafety.Api read-model endpoint exists yet.
+            </p>
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">Node @NodeId was not found for this tenant.</div>
+        }
+        else if (State.Selected is { } node)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@node.NodeName</h2>
+                    <span class="ps-chip">@node.NodeType</span>
+                    <StatusIndicatorComponent Status="@MapStatus(node.Status)" Label="@node.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Node ID</dt>         <dd class="ps-mono">@node.NodeId</dd>
+                    <dt>Node Name</dt>       <dd>@node.NodeName</dd>
+                    <dt>Node Type</dt>       <dd>@node.NodeType</dd>
+                    <dt>Region</dt>          <dd>@node.Region</dd>
+                    <dt>Status</dt>          <dd>@node.Status</dd>
+                    <dt>Last Heartbeat</dt>  <dd>@node.LastHeartbeatAtUtc.ToString("u") UTC</dd>
+                    @if (node.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@node.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.EnterpriseFabricDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Enterprise Fabric
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid NodeId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+    private string? _loadError;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Fabric Node Detail",
+            activeModuleCode: "enterprise-fabric",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Enterprise Fabric", Href = RouteDefinitions.EnterpriseFabricDashboard },
+                new BreadcrumbItem { Label = "Node Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(NodeId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetFabricNodesAsync(tenantId, siteId: null);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetNodes(envelope.Data!.Items);
+            _notFound = !State.SelectById(NodeId);
+        }
+        else if (envelope.IsProblem)
+        {
+            _loadError = envelope.Problem!.Detail;
+        }
+        else
+        {
+            _loadError = $"Enterprise Fabric service is not yet available: {envelope.FaultType}";
+        }
+
+        _isLoading = false;
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "connected" => "Healthy",
+        "degraded" => "Warning",
+        "offline" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

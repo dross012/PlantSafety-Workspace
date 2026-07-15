@@ -1,0 +1,57 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Wraps a CardComponent to render a dependency-free
+     Allocated-vs-Spend bar comparison per budget category (pure CSS bars —
+     no JS charting library dependency, consistent with the platform's
+     MAUI/Blazor Hybrid constraint of avoiding heavyweight JS interop for
+     simple visualizations). Rebuilt from the previously orphaned stub at
+     Components/Financials/ForecastChart.razor and relocated under
+     Modules/Financials/Components; wired into FinancialsDashboardPage.
+     Pure/stateless/parameter-driven per UI001-UI005 — no injected services.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@using PlantSafety.UI.Modules.Financials.Models
+
+<CardComponent Title="Allocated vs. Spend by Category">
+    @if (Budgets.Count == 0)
+    {
+        <p class="ps-text-muted">No budget data available to chart.</p>
+    }
+    else
+    {
+        <div role="img" aria-label="Bar chart comparing allocated amount to actual spend per budget category">
+            @foreach (var b in Budgets)
+            {
+                <div class="ps-field-row">
+                    <span class="ps-field-label">@b.Category</span>
+                    <span style="flex:1; display:flex; flex-direction:column; gap:2px;">
+                        <span style="display:flex; align-items:center; gap:6px;">
+                            <span style="height:8px; border-radius:4px; background:var(--ps-color-brand-secondary); width:@(BarWidthPercent(b.AllocatedAmount))%; min-width:2px;"></span>
+                            <span class="ps-text-sm ps-text-muted">Allocated @b.AllocatedAmount.ToString("N0")</span>
+                        </span>
+                        <span style="display:flex; align-items:center; gap:6px;">
+                            <span style="height:8px; border-radius:4px; background:@(b.ActualSpend > b.AllocatedAmount ? "var(--ps-color-brand-danger)" : "var(--ps-color-brand-primary)"); width:@(BarWidthPercent(b.ActualSpend))%; min-width:2px;"></span>
+                            <span class="ps-text-sm ps-text-muted">Spend @b.ActualSpend.ToString("N0")</span>
+                        </span>
+                    </span>
+                </div>
+            }
+        </div>
+    }
+</CardComponent>
+
+@code {
+    /// <summary>The Safety Budget line items to chart.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<BudgetViewModel> Budgets { get; set; } = [];
+
+    private decimal MaxAmount => Budgets.Count == 0
+        ? 1m
+        : Math.Max(1m, Budgets.Max(b => Math.Max(b.AllocatedAmount, b.ActualSpend)));
+
+    private int BarWidthPercent(decimal amount) =>
+        (int)Math.Clamp(amount / MaxAmount * 100m, 0m, 100m);
+}

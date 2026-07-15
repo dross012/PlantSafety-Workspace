@@ -1,0 +1,136 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Machine detail page. The Machines read-model has no
+     per-id endpoint, so this page first looks for the record already loaded
+     into MachineManagementState by the list page; on a deep link (list not
+     yet loaded) it falls back to a widened date-range query and locates the
+     record client-side. Built from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent, StatusIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/machine-management/{MachineId:guid}"
+
+@inject MachineManagementState State
+@inject MachineManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.MachineManagement.ApiClients
+@using PlantSafety.UI.Modules.MachineManagement.State
+
+<PageTitle>Machine Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The machine detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading machine…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } machine)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@machine.MachineName</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(machine.Status)" Label="@machine.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Type</dt>              <dd>@machine.MachineType</dd>
+                    <dt>Serial Number</dt>     <dd>@machine.SerialNumber</dd>
+                    <dt>Last Serviced</dt>     <dd>@machine.LastServicedAtUtc.ToString("u") UTC</dd>
+                    <dt>Last Serviced By</dt>  <dd class="ps-mono">@machine.LastServicedBy</dd>
+                    <dt>Site</dt>              <dd class="ps-mono">@(machine.SiteId?.ToString() ?? "All sites")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.MachineManagementList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Machine Management
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid MachineId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Machine Detail",
+            activeModuleCode: "machine-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Machine Management", Href = RouteDefinitions.MachineManagementList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var existing = State.Items.FirstOrDefault(m => m.MachineId == MachineId);
+        if (existing is not null)
+        {
+            State.SetSelectedItem(existing);
+            return;
+        }
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetMachinesAsync(
+            ResolveTenantId(),
+            siteId: null,
+            from: DateTime.UtcNow.AddYears(-10),
+            to: DateTime.UtcNow);
+
+        if (envelope.IsSuccess && envelope.Data is { Success: true, Data: not null })
+        {
+            var match = envelope.Data.Data.Items.FirstOrDefault(m => m.MachineId == MachineId);
+            if (match is not null)
+                State.SetSelectedItem(match);
+            else
+                State.SetDetailError("Machine not found.");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetDetailError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetDetailError($"Failed to load machine: {envelope.FaultType}");
+        }
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    /// <summary>Maps a machine operational status to the closest StatusIndicatorComponent state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "operational" => "Healthy",
+        "maintenance" => "Warning",
+        "outofservice" or "out of service" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,198 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Hazard Assessment detail page. The read-model API exposes
+     only a list endpoint (GET api/v1/operational/hazard-assessments, no
+     GetById) — the record is resolved from the already-loaded
+     HazardAssessmentState.AllItems when navigated to from the list, or by
+     re-querying a wide date window when deep-linked directly. Tabbed
+     checklist-style workspace built entirely from the canonical Shared
+     component library: ErrorBoundaryComponent, LoadingIndicatorComponent,
+     TabControlComponent, CardComponent, SeverityBadgeComponent,
+     StatusIndicatorComponent.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/hazard-assessment/{HazardAssessmentId:guid}"
+
+@inject HazardAssessmentState State
+@inject HazardAssessmentApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.HazardAssessment.ApiClients
+@using PlantSafety.UI.Modules.HazardAssessment.Models
+@using PlantSafety.UI.Modules.HazardAssessment.Services
+@using PlantSafety.UI.Modules.HazardAssessment.State
+
+<PageTitle>Hazard Assessment Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The hazard assessment detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading hazard assessment record…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } record)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@record.HazardDescription</h2>
+                <SeverityBadgeComponent Severity="@HazardAssessmentUiService.NormalizeSeverity(record.RiskLevel)" />
+                <StatusIndicatorComponent Status="@HazardAssessmentUiService.MapStatusToOperationalState(record.Status)" Label="@record.Status" />
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChanged" AriaLabel="Hazard Assessment record sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (_activeTab == 0)
+                {
+                    <CardComponent Title="Overview">
+                        <div class="ps-field-row"><span class="ps-field-label">Hazard</span><span class="ps-field-value">@record.HazardDescription</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Risk Level</span><span><SeverityBadgeComponent Severity="@HazardAssessmentUiService.NormalizeSeverity(record.RiskLevel)" /></span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Status</span><span><StatusIndicatorComponent Status="@HazardAssessmentUiService.MapStatusToOperationalState(record.Status)" Label="@record.Status" /></span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Assessed</span><span class="ps-field-value">@record.AssessedAtUtc.ToString("u") UTC</span></div>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 1)
+                {
+                    <CardComponent Title="Record Detail">
+                        <div class="ps-field-row"><span class="ps-field-label">Record ID</span><span class="ps-field-value ps-mono">@record.HazardAssessmentId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Tenant ID</span><span class="ps-field-value ps-mono">@record.TenantId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Site ID</span><span class="ps-field-value ps-mono">@(record.SiteId?.ToString() ?? "All sites")</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Assessed By</span><span class="ps-field-value ps-mono">@record.AssessedBy</span></div>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 2)
+                {
+                    <CardComponent Title="Hazards &amp; Control Measures">
+                        <p class="ps-field-value">A full hazard breakdown (contributing factors, exposure pathways) and
+                            control-measure checklist (engineering/administrative/PPE controls with sign-off per
+                            control) will render here per module.</p>
+                        <p class="ps-needs-backend">
+                            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                            The hazard/control-measure checklist needs backend wiring — the Hazard Assessment
+                            read-model endpoint returns only the summary risk level and description shown in
+                            Overview today.
+                        </p>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 3)
+                {
+                    <CardComponent Title="Sign-off &amp; Approval">
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => Nav.NavigateTo(RouteDefinitions.HazardAssessmentList)">
+                            <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Hazard Assessment
+                        </button>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Approve assessment">
+                            <span class="bi bi-check2-circle" aria-hidden="true"></span> Approve
+                        </button>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Escalate assessment">
+                            <span class="bi bi-arrow-up-circle" aria-hidden="true"></span> Escalate
+                        </button>
+                        <p class="ps-needs-backend">
+                            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                            Approval/escalation sign-off needs backend wiring — no command endpoint exists yet
+                            for the Hazard Assessment module (read-only today).
+                        </p>
+                    </CardComponent>
+                }
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Overview", "Record Detail", "Hazards & Controls", "Sign-off & Approval"];
+    private int _activeTab;
+
+    [Parameter] public Guid HazardAssessmentId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Hazard Assessment Detail",
+            activeModuleCode: "hazard-assessment",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Hazard Assessment", Href = RouteDefinitions.HazardAssessmentList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await ResolveRecordAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State.SelectedItem is { } current && current.HazardAssessmentId == HazardAssessmentId)
+            return;
+
+        await ResolveRecordAsync();
+    }
+
+    private async Task ResolveRecordAsync()
+    {
+        State.BeginDetailLoad();
+
+        var existing = State.AllItems.FirstOrDefault(i => i.HazardAssessmentId == HazardAssessmentId);
+        if (existing is not null)
+        {
+            State.SetSelectedItem(existing);
+            return;
+        }
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow;
+
+        var envelope = await ApiClient.GetHazardAssessmentsAsync(tenantId, siteId: null, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+        {
+            var found = envelope.Data!.Items.FirstOrDefault(i => i.HazardAssessmentId == HazardAssessmentId);
+            if (found is not null)
+                State.SetSelectedItem(found);
+            else
+                State.SetDetailError("This hazard assessment record could not be found.");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetDetailError(string.IsNullOrWhiteSpace(envelope.Problem!.Detail) ? "The request failed." : envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetDetailError($"Failed to load hazard assessment record: {envelope.FaultType}");
+        }
+    }
+
+    private Task OnTabChanged(int index)
+    {
+        _activeTab = index;
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

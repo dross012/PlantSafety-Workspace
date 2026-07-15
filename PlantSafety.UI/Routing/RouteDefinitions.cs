@@ -28,6 +28,38 @@ public static class RouteDefinitions
     /// <summary>Post-sign-out landing page.</summary>
     public const string SignedOut = "/signed-out";
 
+    /// <summary>Administrative Setup page.</summary>
+    public const string AdminSetup = "/admin/setup";
+
+    // ── Sub Menu (Section landing pages) ─────────────────────────────────────
+
+    /// <summary>Core Operational sub menu.</summary>
+    public const string MenuCoreOperational = "/menu/core-operational";
+
+    /// <summary>Safety Event sub menu.</summary>
+    public const string MenuSafetyEvent = "/menu/safety-event";
+
+    /// <summary>Human Factors sub menu.</summary>
+    public const string MenuHumanFactors = "/menu/human-factors";
+
+    /// <summary>Operational Safety sub menu.</summary>
+    public const string MenuOperationalSafety = "/menu/operational-safety";
+
+    /// <summary>Analytics sub menu.</summary>
+    public const string MenuAnalytics = "/menu/analytics";
+
+    /// <summary>Compliance sub menu.</summary>
+    public const string MenuCompliance = "/menu/compliance";
+
+    /// <summary>Financial sub menu.</summary>
+    public const string MenuFinancial = "/menu/financial";
+
+    /// <summary>Intelligence sub menu.</summary>
+    public const string MenuIntelligence = "/menu/intelligence";
+
+    /// <summary>Planning Projects sub menu.</summary>
+    public const string MenuPlanningProjects = "/menu/planning-projects";
+
     // ── Section 1 — Core Operational ─────────────────────────────────────────
 
     /// <summary>Alerts list page.</summary>

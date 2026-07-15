@@ -60,7 +60,7 @@ public sealed class ApiResponseEnvelope<T>
 
     /// <summary>Creates a problem envelope from an RFC 7807 ProblemDetails response.</summary>
     /// <param name="problem">The parsed problem details.</param>
-    public static ApiResponseEnvelope<T> Problem(ProblemDetailsDto problem) => new()
+    public static ApiResponseEnvelope<T> FromProblem(ProblemDetailsDto problem) => new()
     {
         IsSuccess = false,
         Problem = problem

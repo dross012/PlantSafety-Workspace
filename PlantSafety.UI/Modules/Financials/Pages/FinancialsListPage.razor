@@ -1,0 +1,137 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Financials Budgets list page. True server-side paginated
+     DataGridComponent listing (the Features/Financials/Budgets endpoint
+     supports real PageNumber/PageSize/TotalPages, unlike the sibling
+     scaffold-backed modules), a SearchBoxComponent-driven category filter,
+     and StatusIndicatorComponent per row. Built entirely from the canonical
+     Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/financials/budgets"
+
+@inject FinancialsState State
+@inject FinancialsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Financials.ApiClients
+@using PlantSafety.UI.Modules.Financials.Mappings
+@using PlantSafety.UI.Modules.Financials.Models
+@using PlantSafety.UI.Modules.Financials.State
+
+<PageTitle>Budgets — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Budgets list could not be displayed." OnRetry="LoadFirstPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadFirstPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <SearchBoxComponent Value="_categoryFilter" Placeholder="Filter by category" ValueChanged="OnCategoryFilterChangedAsync" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading budgets…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="BudgetViewModel"
+                                Items="State.Budgets"
+                                Headers="_headers"
+                                KeySelector="b => b.BudgetId"
+                                EmptyMessage="No budgets found."
+                                AriaLabel="Safety Budgets">
+                <RowTemplate Context="b">
+                    <td>@b.FiscalYear</td>
+                    <td>@b.Category</td>
+                    <td>@b.AllocatedAmount.ToString("N0") @b.CurrencyCode</td>
+                    <td>@b.ActualSpend.ToString("N0") @b.CurrencyCode</td>
+                    <td><StatusIndicatorComponent Status="@b.StatusIndicatorState" Label="@b.Status" /></td>
+                    <td><a href="@RouteDefinitions.FinancialsDashboard/budgets/@b.BudgetId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages"
+                                      TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Fiscal Year", "Category", "Allocated", "Spend", "Status", "Actions"];
+    private string _categoryFilter = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Budgets",
+            activeModuleCode: "financials",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Financials", Href = RouteDefinitions.FinancialsDashboard },
+                new BreadcrumbItem { Label = "Budgets" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadFirstPageAsync();
+    }
+
+    private Task LoadFirstPageAsync() => GoToPageAsync(1);
+
+    private Task OnCategoryFilterChangedAsync(string text)
+    {
+        _categoryFilter = text;
+        return LoadFirstPageAsync();
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+
+        var envelope = await ApiClient.ListBudgetsAsync(
+            pageNumber: page,
+            pageSize: 25,
+            category: string.IsNullOrWhiteSpace(_categoryFilter) ? null : _categoryFilter);
+
+        if (envelope.IsSuccess)
+        {
+            var data = envelope.Data!;
+            State.SetBudgets(data.Items.ToViewModels(), data.PageNumber, data.TotalCount, data.TotalPages);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetListError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetListError($"Failed to load budgets: {envelope.FaultType}");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

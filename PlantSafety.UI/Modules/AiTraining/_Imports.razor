@@ -1,0 +1,14 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Module-scoped Razor imports for AiTraining. Razor's
+     _Imports.razor cascades to files in the same directory and its
+     subdirectories only, so this file brings the module's State namespace
+     into scope for every page under Modules/AiTraining/** without editing
+     the shared project-root _Imports.razor (kept local to avoid cross-agent
+     edit conflicts on a file shared by all 8 parallel UI Agent batches).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@using PlantSafety.UI.Modules.AiTraining.State

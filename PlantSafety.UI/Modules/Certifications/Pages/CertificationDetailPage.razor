@@ -1,0 +1,148 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Certification detail page, keyed by category + id. None
+     of the 7 certification read-models expose a per-id endpoint, so this
+     page first looks for the record already loaded into CertificationsState
+     by the list page; on a deep link (category tab not yet loaded) it falls
+     back to a widened date-range query against that category's endpoint and
+     locates the record client-side. Built from the canonical Shared
+     component library (ErrorBoundaryComponent, LoadingIndicatorComponent,
+     StatusIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/certifications/{CategoryKey}/{CertificationId:guid}"
+
+@inject CertificationsState State
+@inject CertificationsApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Certifications.ApiClients
+@using PlantSafety.UI.Modules.Certifications.Mappings
+@using PlantSafety.UI.Modules.Certifications.State
+
+<PageTitle>Certification Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The certification detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading certification…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } cert)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@cert.HolderLabel</h2>
+                    <span class="ps-chip">@cert.CategoryLabel</span>
+                    <StatusIndicatorComponent Status="@MapStatus(cert.Status)" Label="@cert.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Sub-Type / Standard</dt> <dd>@cert.SubTypeLabel</dd>
+                    <dt>Issued</dt>              <dd>@cert.IssuedAtUtc.ToString("u") UTC</dd>
+                    <dt>Expires</dt>             <dd>@cert.ExpiresAtUtc.ToString("u") UTC</dd>
+                    <dt>Verified By</dt>         <dd class="ps-mono">@cert.VerifiedBy</dd>
+                    <dt>Site</dt>                <dd class="ps-mono">@(cert.SiteId?.ToString() ?? "All sites")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.CertificationsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Certifications
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public string CategoryKey { get; set; } = string.Empty;
+    [Parameter] public Guid CertificationId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Certification Detail",
+            activeModuleCode: "certifications",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Certifications", Href = RouteDefinitions.CertificationsList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var key = CategoryKey.ToLowerInvariant();
+        var existing = State.RowsFor(key).FirstOrDefault(c => c.CertificationId == CertificationId);
+        if (existing is not null)
+        {
+            State.SetSelectedItem(existing);
+            return;
+        }
+
+        State.BeginDetailLoad();
+        var tenantId = ResolveTenantId();
+        var from = DateTime.UtcNow.AddYears(-10);
+        var to = DateTime.UtcNow;
+
+        try
+        {
+            var rows = key switch
+            {
+                "osha" => CertificationsMapper.ToRows((await ApiClient.GetOshaCertsAsync(tenantId, null, from, to)).RequireData().Items),
+                "contractor" => CertificationsMapper.ToRows((await ApiClient.GetContractorCertsAsync(tenantId, null, from, to)).RequireData().Items),
+                "dot" => CertificationsMapper.ToRows((await ApiClient.GetDotCertsAsync(tenantId, null, from, to)).RequireData().Items),
+                "epa" => CertificationsMapper.ToRows((await ApiClient.GetEpaCertsAsync(tenantId, null, from, to)).RequireData().Items),
+                "industryspecific" => CertificationsMapper.ToRows((await ApiClient.GetIndustrySpecificCertsAsync(tenantId, null, from, to)).RequireData().Items),
+                "iso14001" => CertificationsMapper.ToRows((await ApiClient.GetIso14001CertsAsync(tenantId, null, from, to)).RequireData().Items),
+                "iso45001" => CertificationsMapper.ToRows((await ApiClient.GetIso45001CertsAsync(tenantId, null, from, to)).RequireData().Items),
+                _ => Array.Empty<PlantSafety.UI.Modules.Certifications.Models.CertificationRowViewModel>(),
+            };
+
+            var match = rows.FirstOrDefault(c => c.CertificationId == CertificationId);
+            if (match is not null)
+                State.SetSelectedItem(match);
+            else
+                State.SetDetailError("Certification not found.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            State.SetDetailError(ex.Message);
+        }
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    /// <summary>Maps a certification status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "expiringsoon" or "expiring soon" or "pendingrenewal" => "Warning",
+        "expired" or "revoked" or "suspended" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

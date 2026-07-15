@@ -61,4 +61,7 @@ public sealed class AlertDto
 
     /// <summary>Gets the correlation identifier for lineage display in the detail view.</summary>
     public Guid CorrelationId { get; init; }
+
+    /// <summary>Gets a value indicating whether this alert has been acknowledged.</summary>
+    public bool IsAcknowledged => AcknowledgedAtUtc.HasValue;
 }

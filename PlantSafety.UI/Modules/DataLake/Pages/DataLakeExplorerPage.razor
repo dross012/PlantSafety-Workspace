@@ -1,0 +1,153 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Data Lake zone explorer page. Loads ingestion/curation
+     activity records via DataLakeApiClient for a selectable date window, shows
+     per-zone record-count KPI cards (Raw/Cleansed/Curated/ML/Sandbox per the
+     DataLake Design & Rules Manuals), a zone-filter tab strip, and a sortable
+     activity grid. Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/data-lake"
+
+@inject DataLakeState State
+@inject DataLakeApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DataLake.ApiClients
+@using PlantSafety.UI.Modules.DataLake.Models
+
+<PageTitle>Data Lake — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Data Lake explorer could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading data lake activity…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--ps-space-4);">
+                @foreach (var zone in _zones)
+                {
+                    <CardComponent Title="@zone"><span class="ps-field-value">@CountByZone(zone)</span></CardComponent>
+                }
+            </div>
+
+            <TabControlComponent Tabs="_zoneTabs" ActiveIndex="ActiveZoneTabIndex" ActiveIndexChanged="OnZoneTabChanged" AriaLabel="Data Lake zone filter" />
+
+            <DataGridComponent TItem="DataLakeItemDto"
+                                Items="State.FilteredRecords"
+                                Headers="_headers"
+                                KeySelector="r => r.DataLakeRecordId"
+                                EmptyMessage="No data lake activity found for the selected window/zone."
+                                AriaLabel="Data Lake Activity">
+                <RowTemplate Context="record">
+                    <td><StatusIndicatorComponent Status="@MapStatus(record.Status)" Label="@record.Status" /></td>
+                    <td><span class="ps-chip">@record.Zone</span></td>
+                    <td>@record.DatasetName</td>
+                    <td>@(record.RecordCount?.ToString("N0") ?? "—")</td>
+                    <td>@record.ProcessedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="/modules/data-lake/@record.DataLakeRecordId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Status", "Zone", "Dataset", "Record Count", "Processed", "Actions"];
+    private static readonly string[] _zones = ["Raw", "Cleansed", "Curated", "ML", "Sandbox"];
+    private static readonly string[] _zoneTabs = ["All", "Raw", "Cleansed", "Curated", "ML", "Sandbox"];
+
+    private int ActiveZoneTabIndex => Array.IndexOf(_zoneTabs, State.ZoneFilter) is var idx && idx >= 0 ? idx : 0;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Data Lake",
+            activeModuleCode: "data-lake",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Data Lake" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private Task OnZoneTabChanged(int index)
+    {
+        State.SetZoneFilter(_zoneTabs[index]);
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetDataLakeRecordsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetRecords(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"Failed to load data lake activity: {envelope.FaultType}");
+    }
+
+    private int CountByZone(string zone) =>
+        State.Records.Count(r => string.Equals(r.Zone, zone, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Maps a data lake activity status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "curated" or "ingested" => "Healthy",
+        "processing" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

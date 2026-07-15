@@ -1,0 +1,209 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Culture dashboard page. Loads composite culture index
+     snapshots, behavior observations, engagement scores, and trend model
+     outputs for a date range via CultureApiClient (Analytics Culture
+     read-models), populates CultureState, and renders a KPI-card summary
+     (Platform UI Architecture Master Specification §3.3 Dashboard→Detail
+     template — Culture is dashboard-only, no natural single-entity detail
+     concept) plus a per-dimension breakdown grid. Built entirely from the
+     canonical Shared component library (ErrorBoundaryComponent,
+     LoadingIndicatorComponent, DateRangePickerComponent, CardComponent,
+     SeverityBadgeComponent, DataGridComponent), following the
+     Modules/Alerts exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/culture"
+
+@inject CultureState State
+@inject CultureApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Culture.ApiClients
+@using PlantSafety.UI.Modules.Culture.Models
+@using PlantSafety.UI.Modules.Culture.State
+
+<PageTitle>Culture — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Culture dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading safety culture data…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--ps-space-5);margin-bottom:var(--ps-space-5);">
+                <CardComponent Title="Overall Culture Index">
+                    <div class="ps-field-value" style="font-size:var(--ps-font-size-2xl);font-weight:700;">@OverallIndexScore.ToString("0.0")</div>
+                    <SeverityBadgeComponent Severity="@MapTrendSeverity(DominantTrendDirection)" Text="@DominantTrendDirection" />
+                </CardComponent>
+
+                <CardComponent Title="Safe Observation Rate">
+                    <div class="ps-field-value" style="font-size:var(--ps-font-size-2xl);font-weight:700;">@SafeObservationRate.ToString("0.0")%</div>
+                    <span class="ps-field-value">@State.BehaviorItems.Count observations recorded</span>
+                </CardComponent>
+
+                <CardComponent Title="Average Engagement Score">
+                    <div class="ps-field-value" style="font-size:var(--ps-font-size-2xl);font-weight:700;">@AverageEngagementScore.ToString("0.0")</div>
+                    <span class="ps-field-value">@State.EngagementItems.Count scores recorded</span>
+                </CardComponent>
+
+                <CardComponent Title="Latest Trend Prediction">
+                    @if (LatestTrend is { } trend)
+                    {
+                        <div class="ps-field-value" style="font-weight:700;">@trend.MetricName</div>
+                        <span class="ps-field-value">Predicted @trend.PredictedValue.ToString("0.0") (@((trend.ModelConfidence * 100).ToString("0")) % confidence)</span>
+                    }
+                    else
+                    {
+                        <span class="ps-field-value">No trend predictions for the selected range.</span>
+                    }
+                </CardComponent>
+            </div>
+
+            <CardComponent Title="Culture Index by Dimension">
+                <DataGridComponent TItem="CultureIndexItemDto"
+                                    Items="State.IndexItems"
+                                    Headers="_headers"
+                                    KeySelector="c => c.IndexSnapshotId"
+                                    EmptyMessage="No culture index snapshots found for the selected range."
+                                    AriaLabel="Culture index by dimension">
+                    <RowTemplate Context="snapshot">
+                        <td>@snapshot.CultureDimension</td>
+                        <td>@snapshot.IndexScore.ToString("0.0")</td>
+                        <td><SeverityBadgeComponent Severity="@MapTrendSeverity(snapshot.TrendDirection)" Text="@snapshot.TrendDirection" /></td>
+                        <td>@snapshot.Status</td>
+                        <td>@snapshot.CalculatedAtUtc.ToString("yyyy-MM-dd")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Dimension", "Score", "Trend", "Status", "Calculated"];
+
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    private decimal OverallIndexScore => State.IndexItems.Count == 0 ? 0m : State.IndexItems.Average(i => i.IndexScore);
+
+    private string DominantTrendDirection => State.IndexItems.Count == 0
+        ? "Stable"
+        : State.IndexItems.GroupBy(i => i.TrendDirection).OrderByDescending(g => g.Count()).First().Key;
+
+    private decimal SafeObservationRate => State.BehaviorItems.Count == 0
+        ? 0m
+        : 100m * State.BehaviorItems.Count(b => b.ObservationType.Equals("Safe", StringComparison.OrdinalIgnoreCase)) / State.BehaviorItems.Count;
+
+    private decimal AverageEngagementScore => State.EngagementItems.Count == 0 ? 0m : State.EngagementItems.Average(e => e.EngagementScore);
+
+    private TrendModelingItemDto? LatestTrend => State.TrendItems.OrderByDescending(t => t.ModelConfidence).FirstOrDefault();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Culture",
+            activeModuleCode: "culture",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Culture" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var tenantId = ResolveTenantId();
+        var from = _startDate.ToDateTime(TimeOnly.MinValue);
+        var to = _endDate.ToDateTime(TimeOnly.MaxValue);
+
+        var indexEnvelope = await ApiClient.GetCultureIndexAsync(tenantId, null, from, to);
+        var behaviorEnvelope = await ApiClient.GetBehaviorAsync(tenantId, null, from, to);
+        var engagementEnvelope = await ApiClient.GetEngagementScoringAsync(tenantId, null, from, to);
+        var trendEnvelope = await ApiClient.GetTrendModelingAsync(tenantId, null, from, to);
+
+        if (IsOk(indexEnvelope) && IsOk(behaviorEnvelope) && IsOk(engagementEnvelope) && IsOk(trendEnvelope))
+        {
+            State.SetData(
+                indexEnvelope.Data!.Data!.Items,
+                behaviorEnvelope.Data!.Data!.Items,
+                engagementEnvelope.Data!.Data!.Items,
+                trendEnvelope.Data!.Data!.Items);
+        }
+        else
+        {
+            State.SetError(
+                DescribeFailure(indexEnvelope) ??
+                DescribeFailure(behaviorEnvelope) ??
+                DescribeFailure(engagementEnvelope) ??
+                DescribeFailure(trendEnvelope) ??
+                "The Culture dashboard read-models returned no data.");
+        }
+    }
+
+    private static bool IsOk<TItem>(ApiResponseEnvelope<ReadModelEnvelopeDto<TItem>> envelope) =>
+        envelope.IsSuccess && envelope.Data is { Success: true, Data: not null };
+
+    private static string? DescribeFailure<TItem>(ApiResponseEnvelope<ReadModelEnvelopeDto<TItem>> envelope)
+    {
+        if (IsOk(envelope)) return null;
+        if (envelope.IsSuccess) return envelope.Data?.Errors is { Count: > 0 } errs ? string.Join("; ", errs) : "A Culture read-model returned no data.";
+        if (envelope.IsProblem) return envelope.Problem!.Detail;
+        return $"Failed to load Culture data: {envelope.FaultType}";
+    }
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        _startDate = range.Start;
+        _endDate = range.End;
+        return LoadAsync();
+    }
+
+    /// <summary>Maps a trend direction to the closest SeverityBadgeComponent severity.</summary>
+    private static string MapTrendSeverity(string trend) => trend.ToLowerInvariant() switch
+    {
+        "improving" => "Low",
+        "stable" => "Info",
+        "declining" => "High",
+        _ => "Medium",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

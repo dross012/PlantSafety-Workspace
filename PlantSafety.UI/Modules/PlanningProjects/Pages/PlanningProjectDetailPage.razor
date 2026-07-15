@@ -1,0 +1,113 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Planning Project detail page. Loads the full
+     SafetyProjectDto by route parameter via PlanningProjectsState.LoadDetailAsync,
+     and renders identity fields, a single-project ProjectTimeline bar, a
+     BudgetSummary card, and a MilestoneList card — built entirely from the
+     canonical Shared component library (ErrorBoundaryComponent,
+     LoadingIndicatorComponent, SeverityBadgeComponent, StatusIndicatorComponent)
+     plus the module's own ProjectTimeline / BudgetSummary / MilestoneList components.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/planning-projects/{ProjectId:guid}"
+
+@inject PlanningProjectsState State
+@inject PlanningProjectsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PlanningProjects.ApiClients
+@using PlantSafety.UI.Modules.PlanningProjects.Components
+@using PlantSafety.UI.Modules.PlanningProjects.State
+
+<PageTitle>Project Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The project detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading project…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+            <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PlanningProjectsList)">
+                <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Planning Projects
+            </button>
+        }
+        else if (State.SelectedProject is { } project)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@project.Name</h2>
+                    <SeverityBadgeComponent Severity="@project.Priority" />
+                    <StatusIndicatorComponent Status="@project.StatusIndicatorState" Label="@project.Status" />
+                    @if (project.IsOverdue)
+                    {
+                        <SeverityBadgeComponent Severity="High" Text="Overdue" />
+                    }
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Description</dt>       <dd>@project.Description</dd>
+                    <dt>Owner</dt>             <dd class="ps-mono">@project.ProjectOwnerId</dd>
+                    <dt>Project Manager</dt>   <dd class="ps-mono">@(project.ProjectManagerId?.ToString() ?? "Unassigned")</dd>
+                    <dt>Planned Start</dt>     <dd>@project.PlannedStartUtc.ToString("u") UTC</dd>
+                    <dt>Planned End</dt>       <dd>@project.PlannedEndUtc.ToString("u") UTC</dd>
+                    <dt>Actual Start</dt>      <dd>@(project.ActualStartUtc?.ToString("u") is { } s ? $"{s} UTC" : "Not started")</dd>
+                    <dt>Actual End</dt>        <dd>@(project.ActualEndUtc?.ToString("u") is { } e ? $"{e} UTC" : "Not completed")</dd>
+                    <dt>Last Modified</dt>     <dd>@project.LastModifiedAtUtc.ToString("u") UTC</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PlanningProjectsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Planning Projects
+                    </button>
+                </div>
+            </div>
+
+            <ProjectTimeline Items="State.DetailTimelineItems" Title="Project Schedule" EmptyMessage="No schedule data available." />
+
+            <div class="ps-detail-panels" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--ps-space-4);">
+                <BudgetSummary PlannedBudget="project.PlannedBudget" />
+                <MilestoneList OpenMilestoneCount="project.OpenMilestoneCount" />
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Project Detail",
+            activeModuleCode: "planning-projects",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Planning Projects", Href = RouteDefinitions.PlanningProjectsList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnParametersSetAsync() => await State.LoadDetailAsync(ApiClient, ProjectId);
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        State.ClearSelection();
+    }
+}

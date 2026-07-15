@@ -1,0 +1,186 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Governance & Access Control dashboard page. Reuses the
+     existing AdminApiClient (GET v1/cross-domain/{users,roles,permissions})
+     rather than duplicating a parallel client (per explicit UI Agent
+     instructions). Presents an access-review-queue framing over the same
+     read-model: KPI summary cards, tabbed Users/Roles/Permissions grids, and
+     a role drilldown link into GovernanceRoleDetailPage. Built entirely from
+     the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/governance"
+
+@inject GovernanceState State
+@inject AdminApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+
+<PageTitle>Governance &amp; Access Control — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Governance & Access Control dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading governance data…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Users"><span class="ps-field-value">@State.Users.Count</span></CardComponent>
+                <CardComponent Title="Roles"><span class="ps-field-value">@State.Roles.Count</span></CardComponent>
+                <CardComponent Title="Permission Grants"><span class="ps-field-value">@State.Permissions.Count</span></CardComponent>
+                <CardComponent Title="Pending Review"><span class="ps-field-value">@State.Permissions.Count(p => string.Equals(p.Status, "PendingApproval", StringComparison.OrdinalIgnoreCase))</span></CardComponent>
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChanged" AriaLabel="Governance sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+                @if (_activeTab == 0)
+                {
+                    <CardComponent Title="Roles &amp; Access">
+                        <DataGridComponent TItem="AdminRoleDto"
+                                            Items="State.Roles"
+                                            Headers="_roleHeaders"
+                                            KeySelector="r => r.RoleId"
+                                            EmptyMessage="No roles found for this tenant."
+                                            AriaLabel="Roles">
+                            <RowTemplate Context="role">
+                                <td>@role.RoleName</td>
+                                <td>@role.Description</td>
+                                <td>@role.PermissionCount</td>
+                                <td><span class="ps-chip">@role.Status</span></td>
+                                <td><a href="/modules/governance/roles/@role.RoleId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+                else if (_activeTab == 1)
+                {
+                    <CardComponent Title="Users">
+                        <DataGridComponent TItem="AdminUserDto"
+                                            Items="State.Users"
+                                            Headers="_userHeaders"
+                                            KeySelector="u => u.UserId"
+                                            EmptyMessage="No users found for this tenant."
+                                            AriaLabel="Users">
+                            <RowTemplate Context="user">
+                                <td>@user.DisplayName</td>
+                                <td>@user.Email</td>
+                                <td><span class="ps-chip">@user.Status</span></td>
+                                <td>@user.LastLoginAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+                else
+                {
+                    <CardComponent Title="Permission Grants">
+                        <DataGridComponent TItem="AdminPermissionDto"
+                                            Items="State.Permissions"
+                                            Headers="_permissionHeaders"
+                                            KeySelector="p => p.PermissionId"
+                                            EmptyMessage="No permission grants found for this tenant."
+                                            AriaLabel="Permission Grants">
+                            <RowTemplate Context="permission">
+                                <td>@permission.PermissionName</td>
+                                <td>@permission.Scope</td>
+                                <td><span class="ps-chip">@permission.Status</span></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Roles & Access", "Users", "Permissions"];
+    private static readonly string[] _roleHeaders = ["Role", "Description", "Permissions", "Status", "Actions"];
+    private static readonly string[] _userHeaders = ["Name", "Email", "Status", "Last Login"];
+    private static readonly string[] _permissionHeaders = ["Permission", "Scope", "Status"];
+
+    private int _activeTab;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Governance & Access Control",
+            activeModuleCode: "governance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Governance & Access Control" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Task OnTabChanged(int index) { _activeTab = index; return Task.CompletedTask; }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+        var usersEnvelope = await ApiClient.GetUsersAsync(tenantId);
+        var rolesEnvelope = await ApiClient.GetRolesAsync(tenantId);
+        var permissionsEnvelope = await ApiClient.GetPermissionsAsync(tenantId);
+
+        if (usersEnvelope.IsSuccess && rolesEnvelope.IsSuccess && permissionsEnvelope.IsSuccess)
+        {
+            State.SetGovernanceData(usersEnvelope.Data!.Items, rolesEnvelope.Data!.Items, permissionsEnvelope.Data!.Items);
+        }
+        else if (!usersEnvelope.IsSuccess)
+        {
+            State.SetLoadError(DescribeFailure(usersEnvelope));
+        }
+        else if (!rolesEnvelope.IsSuccess)
+        {
+            State.SetLoadError(DescribeFailure(rolesEnvelope));
+        }
+        else
+        {
+            State.SetLoadError(DescribeFailure(permissionsEnvelope));
+        }
+    }
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem
+            ? envelope.Problem!.Detail
+            : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

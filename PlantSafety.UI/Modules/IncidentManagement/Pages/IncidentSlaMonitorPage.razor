@@ -1,0 +1,228 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   UPDATED: 2026-07-15 — wired to the shared SignalR real-time hub
+     (IRealtimeConnectionService). Volume ISM1 explicitly bans SLA/forecast/
+     risk client polling in favor of SignalR hub subscriptions; the SLA
+     Countdown Grid / Risk Panel / Trend summary now re-fetch on
+     IncidentSlaChanged broadcasts. The former unconditional 15s timer is
+     retained only as a degraded fallback (fires solely while the hub
+     connection is not Connected), so the monitor never silently goes stale
+     if the hub is unreachable.
+   FILE DESCRIPTION: Incident SLA Monitor page (Volume ISM1). 3-tier layout:
+     sticky filter bar + two-column (SLA Countdown Grid left / SLA Risk
+     Panel right) + full-width SLA Trend summary. Built from the canonical
+     Shared component library (DataGridComponent, CardComponent,
+     SeverityBadgeComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/incident-management/sla-monitor"
+
+@inject SlaMonitorState State
+@inject IncidentManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject PlantSafety.UI.Infrastructure.Realtime.IRealtimeConnectionService Realtime
+
+@implements IAsyncDisposable
+
+@using PlantSafety.UI.Modules.IncidentManagement.ApiClients
+@using PlantSafety.UI.Modules.IncidentManagement.Models
+@using PlantSafety.UI.Modules.IncidentManagement.State
+
+<PageTitle>Incident SLA Monitor — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The SLA monitor could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/incident-management" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Incidents</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+            <span class="ps-text-sm ps-text-muted">Last refreshed: @State.LastRefreshUtc.ToString("HH:mm:ss") UTC — @RealtimeStatusLabel()</span>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading && State.Incidents.Count == 0)
+        {
+            <LoadingIndicatorComponent Message="Loading SLA monitor…" />
+        }
+        else
+        {
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                <div style="flex:2; min-width:400px;">
+                    <CardComponent Title="SLA Countdown Grid">
+                        <DataGridComponent TItem="SlaIncidentDto" Items="State.Incidents" Headers="_gridHeaders" KeySelector="i => i.IncidentId"
+                                            EmptyMessage="No active incidents." AriaLabel="SLA countdown grid">
+                            <RowTemplate Context="incident">
+                                <td><a href="/modules/incident-management/@incident.IncidentId">@incident.Title</a></td>
+                                <td aria-label="@SlaAriaLabel(incident.SlaRemaining)">@FormatSla(incident.SlaRemaining)</td>
+                                <td><SeverityBadgeComponent Severity="@incident.Severity" /></td>
+                                <td>@(incident.TechnicianName ?? "Unassigned")</td>
+                                <td><StatusIndicatorComponent Status="@MapStatus(incident.Status)" Label="@incident.Status" /></td>
+                                <td>@incident.EscalationState</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                </div>
+
+                <div style="flex:1; min-width:300px;">
+                    <CardComponent Title="SLA Risk Panel">
+                        <DataGridComponent TItem="SlaRiskDto" Items="State.Risk" Headers="_riskHeaders" KeySelector="r => r.IncidentId"
+                                            EmptyMessage="No incidents at risk." AriaLabel="SLA risk panel">
+                            <RowTemplate Context="risk">
+                                <td><a href="/modules/incident-management/@risk.IncidentId">@risk.Title</a></td>
+                                <td><SeverityBadgeComponent Severity="@risk.Severity" /></td>
+                                <td aria-label="@SlaAriaLabel(risk.SlaRemaining)">@FormatSla(risk.SlaRemaining)</td>
+                                <td>@risk.RecommendedAction</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                </div>
+            </div>
+
+            <CardComponent Title="SLA Trend">
+                @if (State.Trend is { } trend)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Compliance</span><span class="ps-field-value">@trend.CompliancePercentage.ToString("F0")%</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Breaches</span><span class="ps-field-value">@trend.BreachCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Severity Distribution</span>
+                        <span class="ps-field-value">
+                            @foreach (var kv in trend.SeverityDistribution)
+                            {
+                                <span class="ps-chip" style="margin-right:4px;">@kv.Key: @kv.Value</span>
+                            }
+                        </span>
+                    </div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No trend data available.</span>
+                }
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _gridHeaders = ["Incident", "SLA Remaining", "Severity", "Technician", "Status", "Escalation"];
+    private static readonly string[] _riskHeaders = ["Incident", "Severity", "SLA Remaining", "Recommended Action"];
+
+    private IDisposable? _realtimeSubscription;
+    private System.Threading.Timer? _fallbackTimer;
+    private System.Threading.Timer? _debounceTimer;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Incident SLA Monitor",
+            activeModuleCode: "incident-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Incident Management", Href = RouteDefinitions.IncidentManagementList },
+                new BreadcrumbItem { Label = "SLA Monitor" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+        Realtime.StatusChanged += OnRealtimeStatusChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await LoadAsync();
+
+        // Real-time push (Volume ISM1 — "SLA/forecast/risk polling is explicitly banned in
+        // favor of SignalR hub subscriptions"): join the tenant-scoped Incident SLA group
+        // and re-fetch on every IncidentSlaChanged broadcast (created/updated/escalated/
+        // assigned/resolved) instead of polling.
+        _realtimeSubscription = Realtime.OnIncidentSlaChanged(OnIncidentSlaChangedBroadcast);
+        await Realtime.EnsureConnectedAsync();
+        await Realtime.JoinIncidentSlaGroupAsync();
+
+        // Fallback: only polls while the hub connection is not Connected (offline/degraded),
+        // so the SLA monitor never silently goes stale if the hub is unreachable. The SLA
+        // countdown cells themselves render client-side ticking (TimeSpan math against the
+        // last-loaded snapshot); this timer governs when the snapshot itself is refreshed.
+        _fallbackTimer = new System.Threading.Timer(async _ =>
+        {
+            if (Realtime.Status != PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus.Connected)
+            {
+                await InvokeAsync(LoadAsync);
+            }
+        }, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
+    }
+
+    private void OnIncidentSlaChangedBroadcast()
+    {
+        // Debounce bursts of broadcasts (e.g. several incidents escalating at once) into a
+        // single re-fetch.
+        _debounceTimer?.Dispose();
+        _debounceTimer = new System.Threading.Timer(async _ => await InvokeAsync(LoadAsync), null, TimeSpan.FromMilliseconds(300), Timeout.InfiniteTimeSpan);
+    }
+
+    private void OnRealtimeStatusChanged(PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus status)
+        => InvokeAsync(StateHasChanged);
+
+    private string RealtimeStatusLabel() => Realtime.Status switch
+    {
+        PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus.Connected => "live updates: connected",
+        PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus.Connecting => "live updates: connecting…",
+        PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus.Reconnecting => "live updates: reconnecting…",
+        _ => "live updates unavailable — refreshing every 15s",
+    };
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var incidentsEnvelope = await ApiClient.GetSlaIncidentsAsync();
+        var riskEnvelope = await ApiClient.GetSlaRiskAsync();
+        var trendEnvelope = await ApiClient.GetSlaTrendAsync();
+
+        if (incidentsEnvelope.IsSuccess && riskEnvelope.IsSuccess && trendEnvelope.IsSuccess)
+        {
+            State.SetSnapshot(incidentsEnvelope.Data!.Items, riskEnvelope.Data!.Items, trendEnvelope.Data!);
+        }
+        else if (incidentsEnvelope.IsProblem)
+            State.SetError(incidentsEnvelope.Problem!.Detail);
+        else if (!incidentsEnvelope.IsSuccess)
+            State.SetError($"Failed to load SLA monitor: {incidentsEnvelope.FaultType}");
+    }
+
+    private static string FormatSla(TimeSpan remaining) =>
+        remaining.TotalSeconds >= 0 ? remaining.ToString(@"hh\:mm\:ss") : $"BREACHED {remaining.Duration():hh\\:mm\\:ss} ago";
+
+    private static string SlaAriaLabel(TimeSpan remaining) =>
+        remaining.TotalSeconds >= 0 ? $"SLA remaining: {FormatSla(remaining)}" : $"SLA breached {FormatSla(remaining)}";
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "closed" or "resolved" => "Healthy",
+        "underinvestigation" or "under investigation" or "inprogress" => "Warning",
+        "escalated" => "Critical",
+        "reported" or "open" => "Offline",
+        _ => "Offline",
+    };
+
+    public ValueTask DisposeAsync()
+    {
+        State.OnChange -= StateHasChanged;
+        Realtime.StatusChanged -= OnRealtimeStatusChanged;
+        _realtimeSubscription?.Dispose();
+        _fallbackTimer?.Dispose();
+        _debounceTimer?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

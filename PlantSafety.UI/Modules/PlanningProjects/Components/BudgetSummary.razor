@@ -1,0 +1,36 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Project budget summary. Adapted from the original
+      orphaned Components/ProjectPlanning/BudgetSummary.razor stub (distinct
+      from the unrelated Components/Financials/BudgetSummary.razor owned by
+      a different UI batch) and moved into Modules/PlanningProjects/Components
+      (shared by the Planning Projects detail page and the Project Budgeting
+      module). Built from the canonical Shared component library
+      (CardComponent).
+      GRACEFUL DEGRADATION: SafetyProjectDto only exposes a single
+      PlannedBudget figure — there is no actual/committed spend or variance
+      data available from the PlanningProjects backend (cost-actuals live in
+      the separate Financials module, out of scope here). This component
+      therefore renders Planned Budget only, plus a "needs backend wiring"
+      note for the actual/variance figures, per the Blazor UI
+      graceful-degradation rule.
+      Pure/stateless/parameter-driven — no injected services.
+    ============================================================ *@
+<CardComponent Title="Budget Summary">
+    <div class="ps-field-row">
+        <span class="ps-field-label">Planned Budget</span>
+        <span class="ps-field-value">@(PlannedBudget.HasValue ? PlannedBudget.Value.ToString("C", System.Globalization.CultureInfo.InvariantCulture) : "Not set")</span>
+    </div>
+    <p class="ps-needs-backend">
+        <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+        Actual spend, committed spend, and variance need backend wiring — the PlanningProjects
+        API currently exposes only the planned budget figure shown above.
+    </p>
+</CardComponent>
+
+@code {
+    /// <summary>The project's planned budget, or null when not set.</summary>
+    [Parameter]
+    public decimal? PlannedBudget { get; set; }
+}

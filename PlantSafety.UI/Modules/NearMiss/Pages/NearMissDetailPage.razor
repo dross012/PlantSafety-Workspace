@@ -1,0 +1,106 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Near Miss detail page. Loads the full NearMissDto by route
+     parameter and displays all fields, following the Incident Detail wireframe
+     shape (event header, summary fields) adapted for the Near Miss aggregate.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/near-miss/{NearMissId:guid}"
+
+@inject NearMissState State
+@inject NearMissApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.NearMiss.State
+@using PlantSafety.UI.Modules.NearMiss.ApiClients
+@using PlantSafety.UI.Modules.NearMiss.Mappings
+
+<PageTitle>Near Miss Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The near miss detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading near miss…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.Selected is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@item.Title</h2>
+                    <SeverityBadgeComponent Severity="@item.PotentialSeverity" Text="@($"Potential: {item.PotentialSeverity}")" />
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <CardComponent Title="Summary">
+                    <dl class="ps-detail-fields">
+                        <dt>Description</dt>       <dd>@item.Description</dd>
+                        <dt>Hazard Category</dt>   <dd>@item.HazardCategory</dd>
+                        <dt>Site</dt>              <dd class="ps-mono">@item.SiteId</dd>
+                        <dt>Reported By</dt>       <dd class="ps-mono">@item.ReportedByWorkerId</dd>
+                        <dt>Occurred</dt>          <dd>@item.OccurredAtUtc.ToString("u") UTC (@vm.DaysSinceOccurred day(s) ago)</dd>
+                        <dt>Last Updated</dt>      <dd>@item.LastModifiedAtUtc.ToString("u") UTC</dd>
+                        <dt>Record ID</dt>         <dd class="ps-mono">@item.NearMissId</dd>
+                    </dl>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.NearMissList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Near Miss
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid NearMissId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Near Miss Detail",
+            activeModuleCode: "near-miss",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Near Miss", Href = RouteDefinitions.NearMissList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetNearMissAsync(NearMissId);
+
+        if (envelope.IsSuccess)
+            State.SetSelected(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load near miss: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,124 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Project Budgeting dashboard. Loads the tenant's planning
+     project list enriched with per-project planned-budget figures via
+     ProjectBudgetingState.LoadAsync (ProjectBudgetingUiService), and renders
+     a total-budget summary stat plus a sortable budget grid — built entirely
+     from the canonical Shared component library (ErrorBoundaryComponent,
+     LoadingIndicatorComponent, CardComponent, DataGridComponent,
+     StatusIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/project-budgeting"
+
+@inject ProjectBudgetingState State
+@inject ProjectBudgetingUiService UiService
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PlanningProjects.Components
+@using PlantSafety.UI.Modules.ProjectBudgeting.Models
+@using PlantSafety.UI.Modules.ProjectBudgeting.Services
+@using PlantSafety.UI.Modules.ProjectBudgeting.State
+
+<PageTitle>Project Budgeting — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Project Budgeting dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading project budgets…" />
+        }
+        else if (State.Rows.Count == 0)
+        {
+            <CardComponent Title="No Projects Found">
+                <p class="ps-field-value">No planning projects were found for the current tenant and date range.</p>
+            </CardComponent>
+        }
+        else
+        {
+            <div class="ps-summary-row" style="display:flex;gap:var(--ps-space-4);flex-wrap:wrap;">
+                <CardComponent Title="Total Planned Budget" CssClass="ps-stat-card">
+                    <span class="ps-field-value" style="font-size:var(--ps-font-size-2xl);">@State.TotalPlannedBudget.ToString("C", System.Globalization.CultureInfo.InvariantCulture)</span>
+                </CardComponent>
+                <CardComponent Title="Projects Tracked" CssClass="ps-stat-card">
+                    <span class="ps-field-value" style="font-size:var(--ps-font-size-2xl);">@State.Rows.Count</span>
+                </CardComponent>
+                <CardComponent Title="Budget Not Set" CssClass="ps-stat-card">
+                    <span class="ps-field-value" style="font-size:var(--ps-font-size-2xl);">@State.Rows.Count(r => r.IsBudgetKnown && r.PlannedBudget is null)</span>
+                </CardComponent>
+            </div>
+
+            <DataGridComponent TItem="ProjectBudgetViewModel"
+                                Items="State.Rows"
+                                Headers="_headers"
+                                KeySelector="r => r.ProjectId"
+                                EmptyMessage="No project budgets found."
+                                AriaLabel="Project budgets">
+                <RowTemplate Context="row">
+                    <td>@row.Name</td>
+                    <td><StatusIndicatorComponent Status="@row.StatusIndicatorState" Label="@row.Status" /></td>
+                    <td>@(row.IsBudgetKnown ? (row.PlannedBudget?.ToString("C", System.Globalization.CultureInfo.InvariantCulture) ?? "Not set") : "Unavailable")</td>
+                    <td>@row.TargetCompletionUtc.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        <a href="@RouteDefinitions.ProjectBudgetingDashboard/@row.ProjectId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Project", "Status", "Planned Budget", "Target Completion", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Project Budgeting",
+            activeModuleCode: "project-budgeting",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Project Budgeting" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Task LoadAsync()
+    {
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var nowUtc = DateTime.UtcNow;
+        return State.LoadAsync(UiService, tenantId, nowUtc.AddDays(-365), nowUtc.AddDays(365));
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

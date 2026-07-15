@@ -1,0 +1,73 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Sub Menu page — lists the modules belonging to one of the
+     9 v5.0 sections as cards (icon + short description), linking to each
+     module's page. One instance of this component serves all 9 sections via
+     the {SectionCode} route parameter (each section is still a distinct,
+     deterministic URL — e.g. /menu/core-operational, /menu/safety-event —
+     reached only from the Main Menu tiles); module/section data comes
+     exclusively from ModuleRouteRegistry so this page can never drift out of
+     sync with NavMenu or the Main Menu tiles.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/menu/{SectionCode}"
+
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+<PageTitle>@(Section?.Title ?? "Section") — PlantSafety</PageTitle>
+
+@if (Section is null)
+{
+    <div class="ps-page-container">
+        <div class="ps-placeholder-panel">
+            <span class="bi bi-question-circle ps-placeholder-icon" aria-hidden="true"></span>
+            <h2>Section not found</h2>
+            <a href="@RouteDefinitions.Home" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Main Menu
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="ps-page-container">
+        <p class="ps-field-value">@Section.Description</p>
+
+        <div class="ps-submenu-list" role="list" aria-label="@($"{Section.Title} modules")">
+            @foreach (var module in Section.Modules)
+            {
+                <a href="@module.Href" class="ps-submenu-item" role="listitem">
+                    <span class="bi @module.IconClass ps-submenu-icon" aria-hidden="true"></span>
+                    <span>
+                        <span class="ps-submenu-item-title">@module.Label</span>
+                        <span class="ps-submenu-item-desc">Open @module.Label</span>
+                    </span>
+                </a>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string SectionCode { get; set; } = string.Empty;
+
+    private ModuleSection? Section { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        Section = ModuleRouteRegistry.GetSection(SectionCode);
+
+        NavState.SetContext(
+            pageTitle: Section?.Title ?? "Section",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = Section?.Title ?? "Section" }
+            ]);
+    }
+}

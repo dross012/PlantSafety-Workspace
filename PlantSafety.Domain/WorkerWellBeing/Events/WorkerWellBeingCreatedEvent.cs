@@ -1,9 +1,11 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         WorkerWellBeing
 //  Layer:          Domain
 //  File:           WorkerWellBeingCreatedEvent.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-15 — added TenantId/WorkerId/WellBeingRiskLevel payload fields
+//                  (additive) to match the extended WorkerWellBeing aggregate shape.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
 //  Description:    Domain event raised when a WorkerWellBeing aggregate is created.
@@ -15,6 +17,9 @@ namespace PlantSafety.Domain.WorkerWellBeing.Events;
 public sealed record WorkerWellBeingCreatedEvent(
     Guid          EventId,
     Guid          WorkerWellBeingId,
+    Guid          TenantId,
+    Guid          WorkerId,
+    string        WellBeingRiskLevel,
     UtcTimestamp  CreatedAtUtc,
     PerformedByActor Actor,
     CorrelationId CorrelationId,

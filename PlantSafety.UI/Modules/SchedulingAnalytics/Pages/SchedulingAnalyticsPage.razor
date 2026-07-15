@@ -1,0 +1,199 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Scheduling Analytics dashboard page. Wires the single
+     PlantSafety.Api.Analytics.Schedules read-model endpoint via
+     SchedulingAnalyticsApiClient, populates SchedulingAnalyticsState, and
+     renders a KPI CardComponent summary, full schedules DataGridComponent,
+     and an Upcoming Runs view (sorted by next-run time) across three tabs —
+     built entirely from the canonical Shared component library, following
+     the Modules/Alerts and Modules/Admin exemplar pattern. Falls back to
+     ux_architecture_manual.md general dashboard conventions where no exact
+     Scheduling Analytics wireframe exists.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/scheduling-analytics"
+
+@inject SchedulingAnalyticsState State
+@inject SchedulingAnalyticsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.SchedulingAnalytics.ApiClients
+@using PlantSafety.UI.Modules.SchedulingAnalytics.Models
+@using PlantSafety.UI.Modules.SchedulingAnalytics.State
+
+<PageTitle>Scheduling Analytics — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Scheduling Analytics page could not be displayed." OnRetry="LoadAsync">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Scheduling Analytics sections" />
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading scheduling analytics…" />
+        }
+        else
+        {
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @* ── Overview ─────────────────────────────────────────────────── *@
+                @if (State.ActiveTab == SchedulingAnalyticsTab.Overview)
+                {
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+                        <CardComponent Title="Total Schedules">
+                            <div class="ps-field-row"><span class="ps-field-value">@State.Schedules.Count</span></div>
+                        </CardComponent>
+                        <CardComponent Title="Active">
+                            <div class="ps-field-row"><span class="ps-field-value">@State.Schedules.Count(s => s.Status.Equals("Active", StringComparison.OrdinalIgnoreCase))</span></div>
+                        </CardComponent>
+                        <CardComponent Title="Paused">
+                            <div class="ps-field-row"><span class="ps-field-value">@State.Schedules.Count(s => s.Status.Equals("Paused", StringComparison.OrdinalIgnoreCase))</span></div>
+                        </CardComponent>
+                        <CardComponent Title="Disabled">
+                            <div class="ps-field-row"><span class="ps-field-value">@State.Schedules.Count(s => s.Status.Equals("Disabled", StringComparison.OrdinalIgnoreCase))</span></div>
+                        </CardComponent>
+                    </div>
+                }
+
+                @* ── Schedules ────────────────────────────────────────────────── *@
+                @if (State.ActiveTab == SchedulingAnalyticsTab.Schedules)
+                {
+                    <CardComponent Title="Schedules">
+                        <DataGridComponent TItem="ScheduleEntryDto"
+                                            Items="State.Schedules"
+                                            Headers="_scheduleHeaders"
+                                            KeySelector="s => s.ScheduleItemId"
+                                            EmptyMessage="No schedules found for the selected range."
+                                            AriaLabel="Schedules">
+                            <RowTemplate Context="schedule">
+                                <td>@schedule.ScheduleName</td>
+                                <td>@schedule.Frequency</td>
+                                <td><StatusIndicatorComponent Status="@MapScheduleStatus(schedule.Status)" Label="@schedule.Status" /></td>
+                                <td>@schedule.NextRunAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@schedule.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+                @* ── Upcoming ─────────────────────────────────────────────────── *@
+                @if (State.ActiveTab == SchedulingAnalyticsTab.Upcoming)
+                {
+                    <CardComponent Title="Upcoming Runs (next 7 days)">
+                        <DataGridComponent TItem="ScheduleEntryDto"
+                                            Items="BuildUpcomingSchedules()"
+                                            Headers="_upcomingHeaders"
+                                            KeySelector="s => s.ScheduleItemId"
+                                            EmptyMessage="No schedules due to run in the next 7 days."
+                                            AriaLabel="Upcoming scheduled runs">
+                            <RowTemplate Context="schedule">
+                                <td>@schedule.ScheduleName</td>
+                                <td>@schedule.Frequency</td>
+                                <td>@schedule.NextRunAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td><StatusIndicatorComponent Status="@MapScheduleStatus(schedule.Status)" Label="@schedule.Status" /></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Overview", "Schedules", "Upcoming"];
+    private static readonly string[] _scheduleHeaders = ["Name", "Frequency", "Status", "Next Run", "Created"];
+    private static readonly string[] _upcomingHeaders = ["Name", "Frequency", "Next Run", "Status"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Scheduling Analytics",
+            activeModuleCode: "scheduling-analytics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "Scheduling Analytics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private Task OnTabIndexChangedAsync(int index)
+    {
+        State.SetActiveTab((SchedulingAnalyticsTab)index);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetSchedulesAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetSchedules(envelope.Data!.Items);
+        else
+            State.SetError(DescribeFailure(envelope));
+    }
+
+    private List<ScheduleEntryDto> BuildUpcomingSchedules()
+    {
+        var horizon = DateTime.UtcNow.AddDays(7);
+        return State.Schedules
+            .Where(s => s.NextRunAtUtc <= horizon)
+            .OrderBy(s => s.NextRunAtUtc)
+            .ToList();
+    }
+
+    private static string MapScheduleStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "paused" => "Warning",
+        "disabled" => "Offline",
+        _ => "Offline",
+    };
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

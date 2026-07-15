@@ -1,0 +1,152 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: AI Investigation review-queue list page. Loads AI-assisted
+     safety investigation records via AiInvestigationApiClient for a selectable
+     date window, shows KPI summary cards (Open/InProgress/Closed/Avg
+     Confidence — per Intelligence Governance Manual reviewer-queue framing),
+     and a sortable investigation grid. Built entirely from the canonical
+     Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ai-investigation"
+
+@inject AiInvestigationState State
+@inject AiInvestigationApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.AiInvestigation.ApiClients
+@using PlantSafety.UI.Modules.AiInvestigation.Models
+
+<PageTitle>AI Investigation — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The AI Investigation queue could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading investigations…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Total"><span class="ps-field-value">@State.Investigations.Count</span></CardComponent>
+                <CardComponent Title="Open"><span class="ps-field-value">@CountByStatus("open")</span></CardComponent>
+                <CardComponent Title="In Progress"><span class="ps-field-value">@CountByStatus("inprogress")</span></CardComponent>
+                <CardComponent Title="Closed"><span class="ps-field-value">@CountByStatus("closed")</span></CardComponent>
+                <CardComponent Title="Avg. AI Confidence"><span class="ps-field-value">@AverageConfidenceLabel</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="AiInvestigationItemDto"
+                                Items="State.Investigations"
+                                Headers="_headers"
+                                KeySelector="i => i.InvestigationId"
+                                EmptyMessage="No AI-assisted investigations found for the selected window."
+                                AriaLabel="AI Investigations">
+                <RowTemplate Context="investigation">
+                    <td><StatusIndicatorComponent Status="@MapStatus(investigation.Status)" Label="@investigation.Status" /></td>
+                    <td>@investigation.IncidentReference</td>
+                    <td><SeverityBadgeComponent Severity="@ConfidenceSeverity(investigation.AiConfidenceScore)" Text="@($"{investigation.AiConfidenceScore:P0}")" /></td>
+                    <td>@investigation.OpenedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="/modules/ai-investigation/@investigation.InvestigationId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Status", "Incident", "AI Confidence", "Opened", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "AI Investigation",
+            activeModuleCode: "ai-investigation",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "AI Investigation" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetInvestigationsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetInvestigations(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"Failed to load investigations: {envelope.FaultType}");
+    }
+
+    private int CountByStatus(string status) =>
+        State.Investigations.Count(i => string.Equals(i.Status, status, StringComparison.OrdinalIgnoreCase));
+
+    private string AverageConfidenceLabel =>
+        State.Investigations.Count == 0 ? "—" : $"{State.Investigations.Average(i => i.AiConfidenceScore):P0}";
+
+    private static string ConfidenceSeverity(double score) => score switch
+    {
+        >= 0.85 => "Low",
+        >= 0.6 => "Medium",
+        _ => "High",
+    };
+
+    /// <summary>Maps an investigation lifecycle status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "closed" => "Healthy",
+        "inprogress" or "in progress" => "Warning",
+        "open" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

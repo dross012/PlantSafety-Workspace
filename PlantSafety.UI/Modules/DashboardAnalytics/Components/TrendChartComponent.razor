@@ -1,0 +1,122 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Lightweight multi-purpose trend/line chart used across
+      every Analytics module dashboard (Volume A1 §Page 1/2 TrendOverviewChart/
+      TrendChartComponent). Renders a pure inline SVG polyline sized by a
+      deterministic min/max scale — no external JS charting library / JS
+      interop dependency, keeping the component pure/stateless/parameter-driven
+      per UI001-UI005. Colors use the enterprise CSS custom property token
+      (--ps-color-brand-primary) rather than hardcoded hex per UI011. Declared
+      once in Modules/DashboardAnalytics/Components (this batch's primary
+      landing module) and reused via @@using across all 8 Analytics modules
+      owned by this batch to avoid 8x duplication of identical chart markup.
+    Inputs: Title (required), Points (required), ValueSuffix (optional, e.g. "%")
+    Outputs: none (presentational only)
+    Accessibility: SVG carries role="img" + an <title> element with a full
+      textual trend summary (direction/first/last values) per WCAG 1.1.1/1.3.3
+      (Volume A1 "Accessibility" — trend charts must have textual summaries).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+@using System.Globalization
+@using PlantSafety.UI.Modules.DashboardAnalytics.Models
+
+<div class="ps-card" aria-label="@($"{Title} trend chart")">
+    <h4 class="ps-card-title">@Title</h4>
+
+    @if (Points is { Count: > 0 })
+    {
+        <svg viewBox="0 0 400 140" preserveAspectRatio="none" role="img" aria-labelledby="@_titleId"
+             style="width:100%;height:140px;">
+            <title id="@_titleId">@AccessibleSummary</title>
+            <polyline points="@PolylinePoints" fill="none" stroke="var(--ps-color-brand-primary, #005FB8)" stroke-width="2" />
+            @for (var i = 0; i < _coords.Count; i++)
+            {
+                var index = i;
+                <circle cx="@_coords[index].X.ToString(CultureInfo.InvariantCulture)"
+                        cy="@_coords[index].Y.ToString(CultureInfo.InvariantCulture)"
+                        r="3" fill="var(--ps-color-brand-primary, #005FB8)">
+                    <title>@Points[index].Label: @Points[index].Value.ToString("N1", CultureInfo.InvariantCulture)@ValueSuffix</title>
+                </circle>
+            }
+        </svg>
+        <p class="ps-chart-summary">@AccessibleSummary</p>
+    }
+    else
+    {
+        <p class="ps-chart-empty">No trend data available for the selected range.</p>
+    }
+</div>
+
+@code {
+    private readonly string _titleId = $"trend-{Guid.NewGuid():N}";
+    private List<(double X, double Y)> _coords = [];
+
+    /// <summary>Chart heading, also announced as part of the SVG's accessible name.</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "Trend";
+
+    /// <summary>Ordered series of (Label, Value) points to plot left-to-right.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TrendChartPoint> Points { get; set; } = [];
+
+    /// <summary>Optional unit suffix appended to values in tooltips/summary (e.g., "%", " incidents").</summary>
+    [Parameter]
+    public string ValueSuffix { get; set; } = string.Empty;
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() => _coords = ComputeCoords();
+
+    private string PolylinePoints =>
+        string.Join(" ", _coords.Select(c =>
+            $"{c.X.ToString(CultureInfo.InvariantCulture)},{c.Y.ToString(CultureInfo.InvariantCulture)}"));
+
+    private List<(double X, double Y)> ComputeCoords()
+    {
+        var list = new List<(double X, double Y)>();
+        if (Points.Count == 0)
+        {
+            return list;
+        }
+
+        var min = (double)Points.Min(p => p.Value);
+        var max = (double)Points.Max(p => p.Value);
+        var range = max - min;
+        if (range == 0)
+        {
+            range = 1;
+        }
+
+        var stepX = Points.Count > 1 ? 400.0 / (Points.Count - 1) : 0;
+
+        for (var i = 0; i < Points.Count; i++)
+        {
+            var x = Points.Count > 1 ? i * stepX : 200;
+            var y = 130 - (((double)Points[i].Value - min) / range * 110);
+            list.Add((x, y));
+        }
+
+        return list;
+    }
+
+    private string AccessibleSummary
+    {
+        get
+        {
+            if (Points.Count == 0)
+            {
+                return "No data.";
+            }
+
+            var first = Points[0].Value;
+            var last = Points[^1].Value;
+            var direction = last > first ? "increasing" : last < first ? "decreasing" : "stable";
+
+            return $"Trend chart showing {Title} across {Points.Count} periods. " +
+                   $"Overall trend {direction}, from {first.ToString("N1", CultureInfo.InvariantCulture)}{ValueSuffix} " +
+                   $"to {last.ToString("N1", CultureInfo.InvariantCulture)}{ValueSuffix}.";
+        }
+    }
+}

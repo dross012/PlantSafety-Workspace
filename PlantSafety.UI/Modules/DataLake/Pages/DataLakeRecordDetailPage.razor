@@ -1,0 +1,130 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Data Lake record detail page. The read-model endpoint has
+     no by-id GET, so the detail view ensures the parent activity window is
+     loaded (via DataLakeState) and looks the record up client-side by
+     DataLakeRecordId — the natural single-entity drilldown for this module.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/data-lake/{DataLakeRecordId:guid}"
+
+@inject DataLakeState State
+@inject DataLakeApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DataLake.ApiClients
+
+<PageTitle>Data Lake Record Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The data lake record detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading record…" />
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                Data lake record @DataLakeRecordId was not found in the current 90-day window.
+                Try widening the date range on the Data Lake explorer.
+            </div>
+        }
+        else if (State.Selected is { } record)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@record.DatasetName</h2>
+                    <span class="ps-chip">@record.Zone</span>
+                    <StatusIndicatorComponent Status="@MapStatus(record.Status)" Label="@record.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Record ID</dt>       <dd class="ps-mono">@record.DataLakeRecordId</dd>
+                    <dt>Dataset</dt>         <dd>@record.DatasetName</dd>
+                    <dt>Zone</dt>            <dd>@record.Zone</dd>
+                    <dt>Record Count</dt>    <dd>@(record.RecordCount?.ToString("N0") ?? "—")</dd>
+                    <dt>Status</dt>          <dd>@record.Status</dd>
+                    <dt>Processed</dt>       <dd>@record.ProcessedAtUtc.ToString("u") UTC</dd>
+                    <dt>Processed By</dt>    <dd class="ps-mono">@record.ProcessedBy</dd>
+                    @if (record.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@record.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.DataLakeExplorer)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Data Lake
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid DataLakeRecordId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Data Lake Record Detail",
+            activeModuleCode: "data-lake",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Data Lake", Href = RouteDefinitions.DataLakeExplorer },
+                new BreadcrumbItem { Label = "Record Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(DataLakeRecordId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetDataLakeRecordsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetRecords(envelope.Data!.Items);
+
+        _notFound = !State.SelectById(DataLakeRecordId);
+        _isLoading = false;
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "curated" or "ingested" => "Healthy",
+        "processing" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

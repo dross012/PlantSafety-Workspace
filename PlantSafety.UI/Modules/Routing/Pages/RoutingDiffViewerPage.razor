@@ -1,0 +1,139 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Routing Diff Viewer page (Volume R1 §5). Two-column
+     structural/semantic diff between two versions. Diff computation is
+     server-side only — this page renders the pre-aligned rows returned by
+     RoutingApiClient.GetDiffAsync. Built from the canonical Shared
+     component library (DataGridComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/routing/{RoutingId:guid}/diff"
+
+@inject RoutingDetailState State
+@inject RoutingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Routing.ApiClients
+@using PlantSafety.UI.Modules.Routing.Models
+@using PlantSafety.UI.Modules.Routing.State
+
+<PageTitle>Routing Diff Viewer — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The routing diff could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/routing/@RoutingId" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Routing Detail</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (_previousVersionId is null || _currentVersionId is null)
+        {
+            <div class="ps-alert" role="status">No comparable versions were specified. Open this page from the Version History tab.</div>
+        }
+        else if (State.IsLoadingTab)
+        {
+            <LoadingIndicatorComponent Message="Loading diff…" />
+        }
+        else if (State.Diff.Count == 0)
+        {
+            <div class="ps-alert" role="status">No changes detected between the selected versions.</div>
+        }
+        else
+        {
+            <DataGridComponent TItem="RoutingDiffRowDto"
+                                Items="State.Diff"
+                                Headers="_headers"
+                                KeySelector="d => (d.DiffGroup, d.FieldName)"
+                                EmptyMessage="No changes detected."
+                                AriaLabel="Routing diff">
+                <RowTemplate Context="row">
+                    <td>@row.DiffGroup</td>
+                    <td>@row.FieldName</td>
+                    <td><span class="ps-badge @ChangeTypeCss(row.ChangeType)" role="status" aria-label="@($"Change type: {row.ChangeType}")">@row.ChangeType</span></td>
+                    <td>@(row.PreviousValue ?? "—")</td>
+                    <td>@(row.CurrentValue ?? "—")</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RoutingId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "previous")]
+    public Guid? PreviousVersionQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "current")]
+    public Guid? CurrentVersionQuery { get; set; }
+
+    private static readonly string[] _headers = ["Group", "Field", "Change", "Previous", "Current"];
+    private Guid? _previousVersionId;
+    private Guid? _currentVersionId;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Routing Diff Viewer",
+            activeModuleCode: "routing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Routing", Href = RouteDefinitions.RoutingList },
+                new BreadcrumbItem { Label = "Diff" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _previousVersionId = PreviousVersionQuery;
+        _currentVersionId = CurrentVersionQuery;
+
+        if (_previousVersionId is not null && _currentVersionId is not null)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_previousVersionId is null || _currentVersionId is null) return;
+
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetDiffAsync(RoutingId, _previousVersionId.Value, _currentVersionId.Value);
+
+        if (envelope.IsSuccess)
+            State.SetDiff(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load diff: {envelope.FaultType}");
+    }
+
+    private static string ChangeTypeCss(string changeType) => changeType.ToLowerInvariant() switch
+    {
+        "addition" => "ps-badge--low",
+        "deletion" => "ps-badge--critical",
+        "modification" => "ps-badge--medium",
+        _ => "ps-badge--neutral",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

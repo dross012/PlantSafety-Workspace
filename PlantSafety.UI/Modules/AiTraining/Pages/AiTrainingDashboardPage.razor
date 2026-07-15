@@ -1,0 +1,142 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: AI Training dashboard/list page. Loads AI/ML model training
+     job runs via AiTrainingApiClient for a selectable date window, shows KPI
+     summary cards (Total/Running/Completed/Failed), and a sortable job grid.
+     Built entirely from the canonical Shared component library (ErrorBoundary,
+     LoadingIndicator, DateRangePicker, CardComponent, DataGrid, SeverityBadge,
+     StatusIndicator) per the Alerts exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ai-training"
+
+@inject AiTrainingState State
+@inject AiTrainingApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.AiTraining.ApiClients
+@using PlantSafety.UI.Modules.AiTraining.Models
+
+<PageTitle>AI Training — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The AI Training dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading training jobs…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Total Jobs"><span class="ps-field-value">@State.Jobs.Count</span></CardComponent>
+                <CardComponent Title="Running"><span class="ps-field-value">@CountByStatus("running")</span></CardComponent>
+                <CardComponent Title="Completed"><span class="ps-field-value">@CountByStatus("completed")</span></CardComponent>
+                <CardComponent Title="Failed"><span class="ps-field-value">@CountByStatus("failed")</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="AiTrainingItemDto"
+                                Items="State.Jobs"
+                                Headers="_headers"
+                                KeySelector="j => j.TrainingJobId"
+                                EmptyMessage="No training job runs found for the selected window."
+                                AriaLabel="AI Training Jobs">
+                <RowTemplate Context="job">
+                    <td><StatusIndicatorComponent Status="@MapStatus(job.Status)" Label="@job.Status" /></td>
+                    <td>@job.ModelName</td>
+                    <td>@job.ModelVersion</td>
+                    <td>@(job.DatasetReference ?? "—")</td>
+                    <td>@job.StartedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="/modules/ai-training/@job.TrainingJobId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Status", "Model", "Version", "Dataset", "Started", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "AI Training",
+            activeModuleCode: "ai-training",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "AI Training" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetTrainingJobsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetJobs(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"Failed to load training jobs: {envelope.FaultType}");
+    }
+
+    private int CountByStatus(string status) =>
+        State.Jobs.Count(j => string.Equals(j.Status, status, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Maps a training job lifecycle status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "running" or "queued" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

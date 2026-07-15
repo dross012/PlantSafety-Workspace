@@ -1,0 +1,332 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Culture Analytics dashboard page (Volume A1 §"Culture &
+     Engagement Analytics" — sentiment/participation/behavioral metrics).
+     Wires the four PlantSafety.Api.Analytics.Culture.* read-model sections
+     (Behavior, Culture Index, Engagement Scoring, Trend Modeling) via
+     CultureAnalyticsApiClient, populates CultureAnalyticsState, and renders
+     KPI CardComponent grids, TrendChartComponent, and DataGridComponent
+     breakdown tables — built entirely from the canonical Shared component
+     library, following the Modules/Alerts and Modules/Admin exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/culture-analytics"
+
+@inject CultureAnalyticsState State
+@inject CultureAnalyticsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.CultureAnalytics.ApiClients
+@using PlantSafety.UI.Modules.CultureAnalytics.Models
+@using PlantSafety.UI.Modules.CultureAnalytics.State
+@using PlantSafety.UI.Modules.DashboardAnalytics.Components
+@using PlantSafety.UI.Modules.DashboardAnalytics.Models
+
+<PageTitle>Culture Analytics — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Culture Analytics page could not be displayed." OnRetry="() => LoadActiveTabAsync()">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Culture Analytics sections" />
+
+        <div class="ps-tab-panel" role="tabpanel">
+
+            @* ── Culture Index ────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == CultureAnalyticsTab.CultureIndex)
+            {
+                @if (State.CultureIndexError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.CultureIndexError</div>
+                }
+
+                @if (State.IsLoadingCultureIndex)
+                {
+                    <LoadingIndicatorComponent Message="Loading culture index…" />
+                }
+                else if (State.CultureIndex.Count == 0)
+                {
+                    <CardComponent Title="Culture Index"><p class="ps-chart-empty">No culture index snapshots found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+                        @foreach (var dim in State.CultureIndex)
+                        {
+                            <CardComponent Title="@dim.CultureDimension">
+                                <div class="ps-field-row">
+                                    <span class="ps-field-label">Index Score</span>
+                                    <span class="ps-field-value">@dim.IndexScore.ToString("N1")</span>
+                                </div>
+                                <SeverityBadgeComponent Severity="@MapTrendSeverity(dim.TrendDirection)" Text="@dim.TrendDirection" />
+                            </CardComponent>
+                        }
+                    </div>
+
+                    <TrendChartComponent Title="Culture Index Trend" Points="BuildCultureIndexPoints()" />
+
+                    <CardComponent Title="Culture Index — Detail">
+                        <DataGridComponent TItem="CultureIndexSnapshotDto"
+                                            Items="State.CultureIndex"
+                                            Headers="_cultureIndexHeaders"
+                                            KeySelector="c => c.IndexSnapshotId"
+                                            EmptyMessage="No culture index snapshots found."
+                                            AriaLabel="Culture index snapshots">
+                            <RowTemplate Context="dim">
+                                <td>@dim.CultureDimension</td>
+                                <td>@dim.IndexScore.ToString("N1")</td>
+                                <td><SeverityBadgeComponent Severity="@MapTrendSeverity(dim.TrendDirection)" Text="@dim.TrendDirection" /></td>
+                                <td><span class="ps-chip">@dim.Status</span></td>
+                                <td>@dim.CalculatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Behavior ─────────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == CultureAnalyticsTab.Behavior)
+            {
+                @if (State.BehaviorError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.BehaviorError</div>
+                }
+
+                @if (State.IsLoadingBehavior)
+                {
+                    <LoadingIndicatorComponent Message="Loading behavior observations…" />
+                }
+                else
+                {
+                    <CardComponent Title="Behavior Observations">
+                        <DataGridComponent TItem="BehaviorObservationDto"
+                                            Items="State.Behavior"
+                                            Headers="_behaviorHeaders"
+                                            KeySelector="b => b.ObservationId"
+                                            EmptyMessage="No behavior observations found for the selected range."
+                                            AriaLabel="Behavior observations">
+                            <RowTemplate Context="obs">
+                                <td>@obs.BehaviorCategory</td>
+                                <td><SeverityBadgeComponent Severity="@MapObservationSeverity(obs.ObservationType)" Text="@obs.ObservationType" /></td>
+                                <td><span class="ps-chip">@obs.Status</span></td>
+                                <td>@obs.ObservedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Engagement Scoring ───────────────────────────────────────────── *@
+            @if (State.ActiveTab == CultureAnalyticsTab.EngagementScoring)
+            {
+                @if (State.EngagementScoringError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.EngagementScoringError</div>
+                }
+
+                @if (State.IsLoadingEngagementScoring)
+                {
+                    <LoadingIndicatorComponent Message="Loading engagement scores…" />
+                }
+                else
+                {
+                    <CardComponent Title="Engagement Scoring">
+                        <DataGridComponent TItem="EngagementScoreDto"
+                                            Items="State.EngagementScoring"
+                                            Headers="_engagementHeaders"
+                                            KeySelector="e => e.ScoreId"
+                                            EmptyMessage="No engagement scores found for the selected range."
+                                            AriaLabel="Engagement scores">
+                            <RowTemplate Context="score">
+                                <td>@score.ScoreCategory</td>
+                                <td>@score.EngagementScore.ToString("N1")</td>
+                                <td><span class="ps-chip">@score.Status</span></td>
+                                <td>@score.ScoredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Trend Modeling ───────────────────────────────────────────────── *@
+            @if (State.ActiveTab == CultureAnalyticsTab.TrendModeling)
+            {
+                @if (State.TrendModelingError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.TrendModelingError</div>
+                }
+
+                @if (State.IsLoadingTrendModeling)
+                {
+                    <LoadingIndicatorComponent Message="Loading culture trend model output…" />
+                }
+                else
+                {
+                    <TrendChartComponent Title="Predicted Culture Trend" Points="BuildTrendModelingPoints()" />
+
+                    <CardComponent Title="Trend Modeling — Detail">
+                        <DataGridComponent TItem="CultureTrendModelDto"
+                                            Items="State.TrendModeling"
+                                            Headers="_trendModelingHeaders"
+                                            KeySelector="t => t.TrendModelId"
+                                            EmptyMessage="No trend model output found for the selected range."
+                                            AriaLabel="Culture trend model output">
+                            <RowTemplate Context="model">
+                                <td>@model.MetricName</td>
+                                <td>@model.PredictedValue.ToString("N1")</td>
+                                <td>@((model.ModelConfidence * 100).ToString("N0"))%</td>
+                                <td><span class="ps-chip">@model.Status</span></td>
+                                <td>@model.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Culture Index", "Behavior", "Engagement Scoring", "Trend Modeling"];
+    private static readonly string[] _cultureIndexHeaders = ["Dimension", "Index Score", "Trend", "Status", "Calculated"];
+    private static readonly string[] _behaviorHeaders = ["Category", "Type", "Status", "Observed"];
+    private static readonly string[] _engagementHeaders = ["Category", "Score", "Status", "Scored"];
+    private static readonly string[] _trendModelingHeaders = ["Metric", "Predicted Value", "Confidence", "Status", "Generated"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Culture Analytics",
+            activeModuleCode: "culture-analytics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "Culture Analytics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadActiveTabAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private Task OnTabIndexChangedAsync(int index) => SelectTabAsync((CultureAnalyticsTab)index);
+
+    private async Task SelectTabAsync(CultureAnalyticsTab tab)
+    {
+        State.SetActiveTab(tab);
+        await LoadActiveTabAsync();
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadActiveTabAsync();
+    }
+
+    private Task LoadActiveTabAsync() => State.ActiveTab switch
+    {
+        CultureAnalyticsTab.CultureIndex when State.CultureIndex.Count == 0 && !State.IsLoadingCultureIndex => LoadCultureIndexAsync(),
+        CultureAnalyticsTab.Behavior when State.Behavior.Count == 0 && !State.IsLoadingBehavior => LoadBehaviorAsync(),
+        CultureAnalyticsTab.EngagementScoring when State.EngagementScoring.Count == 0 && !State.IsLoadingEngagementScoring => LoadEngagementScoringAsync(),
+        CultureAnalyticsTab.TrendModeling when State.TrendModeling.Count == 0 && !State.IsLoadingTrendModeling => LoadTrendModelingAsync(),
+        _ => Task.CompletedTask,
+    };
+
+    private async Task LoadCultureIndexAsync()
+    {
+        State.BeginCultureIndexLoad();
+        var envelope = await ApiClient.GetCultureIndexAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetCultureIndex(envelope.Data!.Items);
+        else
+            State.SetCultureIndexError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadBehaviorAsync()
+    {
+        State.BeginBehaviorLoad();
+        var envelope = await ApiClient.GetBehaviorAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetBehavior(envelope.Data!.Items);
+        else
+            State.SetBehaviorError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadEngagementScoringAsync()
+    {
+        State.BeginEngagementScoringLoad();
+        var envelope = await ApiClient.GetEngagementScoringAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetEngagementScoring(envelope.Data!.Items);
+        else
+            State.SetEngagementScoringError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadTrendModelingAsync()
+    {
+        State.BeginTrendModelingLoad();
+        var envelope = await ApiClient.GetTrendModelingAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetTrendModeling(envelope.Data!.Items);
+        else
+            State.SetTrendModelingError(DescribeFailure(envelope));
+    }
+
+    private List<TrendChartPoint> BuildCultureIndexPoints() =>
+        State.CultureIndex
+            .OrderBy(c => c.CalculatedAtUtc)
+            .Select(c => new TrendChartPoint(c.CalculatedAtUtc.ToString("MM/dd"), c.IndexScore))
+            .ToList();
+
+    private List<TrendChartPoint> BuildTrendModelingPoints() =>
+        State.TrendModeling
+            .OrderBy(t => t.GeneratedAtUtc)
+            .Select(t => new TrendChartPoint(t.GeneratedAtUtc.ToString("MM/dd"), t.PredictedValue))
+            .ToList();
+
+    private static string MapTrendSeverity(string trendDirection) => trendDirection.ToLowerInvariant() switch
+    {
+        "improving" => "Low",
+        "stable" => "Info",
+        "declining" => "High",
+        _ => "Medium",
+    };
+
+    private static string MapObservationSeverity(string observationType) => observationType.ToLowerInvariant() switch
+    {
+        "safe" => "Low",
+        "atrisk" => "High",
+        _ => "Medium",
+    };
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

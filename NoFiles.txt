@@ -1,0 +1,925 @@
+﻿
+PlantSafety
+├── .claude
+├── bin
+│   └── Debug
+│       └── net8.0
+├── build
+├── docs
+├── Intelligence.Domain
+│   ├── AIInvestigations
+│   │   ├── Aggregates
+│   │   ├── Entities
+│   │   ├── Events
+│   │   ├── Interfaces
+│   │   ├── Services
+│   │   ├── Specifications
+│   │   └── ValueObjects
+│   ├── AITraining
+│   │   ├── Aggregates
+│   │   ├── Entities
+│   │   ├── Events
+│   │   ├── Interfaces
+│   │   ├── Services
+│   │   ├── Specifications
+│   │   └── ValueObjects
+│   ├── DataLake
+│   │   ├── Entities
+│   │   ├── Events
+│   │   ├── Interfaces
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── FeatureEngineering
+│   │   ├── Entities
+│   │   ├── Events
+│   │   ├── Interfaces
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── ModelRegistry
+│   │   ├── Entities
+│   │   ├── Events
+│   │   ├── Interfaces
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── PredictiveSafety
+│   │   ├── Aggregates
+│   │   ├── Entities
+│   │   ├── Events
+│   │   ├── Interfaces
+│   │   ├── Services
+│   │   ├── Specifications
+│   │   └── ValueObjects
+│   └── Shared
+│       ├── Abstractions
+│       ├── Constants
+│       ├── Exceptions
+│       └── Interfaces
+├── obj
+│   └── Debug
+│       └── net8.0
+├── PlantSafety.Api
+│   ├── Analytics
+│   │   ├── Culture
+│   │   ├── Dashboard
+│   │   ├── Engagement
+│   │   ├── Exports
+│   │   ├── Predictive
+│   │   ├── PredictiveAnalytics
+│   │   ├── Reporting
+│   │   ├── Schedules
+│   │   ├── ScoreCards
+│   │   └── TrendAnalysis
+│   ├── Attributes
+│   ├── bin
+│   │   ├── Debug
+│   │   └── Release
+│   ├── Compliance
+│   │   ├── Auditing
+│   │   ├── Bulk
+│   │   ├── Certification
+│   │   ├── Compliance
+│   │   ├── Exports
+│   │   ├── ManagementOfChange
+│   │   ├── Permits
+│   │   ├── Policy
+│   │   ├── Procedures
+│   │   └── RegulatoryCalendar
+│   ├── Configuration
+│   ├── Constants
+│   ├── ContinuousImprovement
+│   │   ├── CAPA
+│   │   ├── Exports
+│   │   └── RCA
+│   ├── Controllers
+│   │   ├── V1
+│   │   └── V2
+│   ├── Conventions
+│   ├── CrossDomain
+│   │   ├── Administration
+│   │   ├── Backup
+│   │   ├── Cleanup
+│   │   ├── Employees
+│   │   ├── Machines
+│   │   ├── Operators
+│   │   ├── Permissions
+│   │   ├── Restore
+│   │   ├── Roles
+│   │   ├── Updates
+│   │   ├── Users
+│   │   └── WorkCenters
+│   ├── Endpoints
+│   │   ├── V1
+│   │   └── V2
+│   ├── Extensions
+│   ├── Filters
+│   ├── Financials
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   ├── Requests
+│   │   └── Telemetry
+│   ├── HealthChecks
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Middleware
+│   ├── Models
+│   │   ├── Bulk
+│   │   └── Exports
+│   ├── obj
+│   │   ├── Debug
+│   │   └── Release
+│   ├── OpenApi
+│   ├── Operational
+│   │   ├── Alerts
+│   │   ├── Bulk
+│   │   ├── Checklists
+│   │   ├── CompetencyManagement
+│   │   ├── Contractor
+│   │   ├── EquipmentSafety
+│   │   ├── Ergonomics
+│   │   ├── Exports
+│   │   ├── FatigueManagement
+│   │   ├── HazardAssessments
+│   │   ├── HazardousMaterials
+│   │   ├── IndustrialHygiene
+│   │   ├── Inspections
+│   │   ├── JobSafetyAnalysis
+│   │   ├── LockoutTagout
+│   │   ├── PermitsToWork
+│   │   ├── PPEManagement
+│   │   ├── PredictiveMaintenance
+│   │   ├── PreventiveMaintenance
+│   │   ├── RiskManagement
+│   │   ├── Schedules
+│   │   └── Training
+│   ├── OutputCache
+│   ├── PlanningProjects
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   ├── Requests
+│   │   └── Telemetry
+│   ├── SafetyEvents
+│   │   ├── Bulk
+│   │   ├── CrisisManagement
+│   │   ├── DrillsAndExercises
+│   │   ├── EmergencyManagement
+│   │   ├── Exports
+│   │   ├── IncidentManagement
+│   │   ├── NearMisses
+│   │   ├── Observation
+│   │   └── RootCauseAnalysis
+│   └── Webhooks
+│       ├── Authorization
+│       ├── Models
+│       └── Verification
+├── PlantSafety.Application
+│   ├── Abstractions
+│   │   ├── Caching
+│   │   ├── Clock
+│   │   ├── Context
+│   │   ├── CurrentUser
+│   │   ├── Events
+│   │   ├── Localization
+│   │   ├── Logging
+│   │   ├── Messaging
+│   │   ├── Security
+│   │   └── Validation
+│   ├── Analytics
+│   │   ├── Abstractions
+│   │   ├── Constants
+│   │   ├── DependencyInjection
+│   │   ├── Permissions
+│   │   ├── Policies
+│   │   └── Validation
+│   ├── Behaviors
+│   │   ├── Caching
+│   │   ├── Concurrency
+│   │   ├── Logging
+│   │   ├── Metrics
+│   │   ├── Performance
+│   │   ├── Security
+│   │   ├── Transactions
+│   │   └── Validation
+│   ├── bin
+│   │   ├── Debug
+│   │   └── Release
+│   ├── Common
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Errors
+│   │   ├── Extensions
+│   │   ├── Guards
+│   │   ├── Mapping
+│   │   ├── Results
+│   │   ├── Types
+│   │   └── Utilities
+│   ├── Compliance
+│   │   ├── Abstractions
+│   │   ├── Constants
+│   │   ├── DependencyInjection
+│   │   ├── Permissions
+│   │   ├── Policies
+│   │   └── Validation
+│   ├── ContinuousImprovement
+│   │   ├── Abstractions
+│   │   ├── Constants
+│   │   ├── DependencyInjection
+│   │   ├── Permissions
+│   │   ├── Policies
+│   │   └── Validation
+│   ├── Contracts
+│   │   ├── Dtos
+│   │   ├── Events
+│   │   ├── Messages
+│   │   ├── Requests
+│   │   └── Responses
+│   ├── DependencyInjection
+│   │   ├── Modules
+│   │   ├── Services
+│   │   └── Validation
+│   ├── EnterpriseFabric
+│   │   ├── Abstractions
+│   │   ├── Constants
+│   │   ├── DependencyInjection
+│   │   ├── Permissions
+│   │   ├── Policies
+│   │   └── Validation
+│   ├── Features
+│   │   ├── Analytics
+│   │   ├── Compliance
+│   │   ├── ContinuousImprovement
+│   │   ├── EnterpriseFabric
+│   │   ├── Financials
+│   │   ├── Operational
+│   │   ├── PlanningProjects
+│   │   └── SafetyEvents
+│   ├── Financials
+│   │   ├── Abstractions
+│   │   ├── Constants
+│   │   ├── DependencyInjection
+│   │   ├── Permissions
+│   │   ├── Policies
+│   │   └── Validation
+│   ├── obj
+│   │   ├── Debug
+│   │   └── Release
+│   ├── Operational
+│   │   ├── Abstractions
+│   │   ├── Constants
+│   │   ├── DependencyInjection
+│   │   ├── Permissions
+│   │   ├── Policies
+│   │   └── Validation
+│   ├── PlanningProjects
+│   │   ├── Abstractions
+│   │   ├── Constants
+│   │   ├── DependencyInjection
+│   │   ├── Permissions
+│   │   ├── Policies
+│   │   └── Validation
+│   ├── SafetyEvents
+│   │   ├── Abstractions
+│   │   ├── Constants
+│   │   ├── DependencyInjection
+│   │   ├── Permissions
+│   │   ├── Policies
+│   │   └── Validation
+│   └── Validation
+│       ├── Attributes
+│       ├── Behaviors
+│       ├── Extensions
+│       ├── Fluent
+│       └── Rules
+├── PlantSafety.Domain
+│   ├── AiGovernance
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── AiSafetyIntelligence
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── Analytics
+│   │   ├── Aggregates
+│   │   ├── Culture
+│   │   ├── Dashboard
+│   │   ├── Engagement
+│   │   ├── Events
+│   │   ├── PredictiveAnalytics
+│   │   ├── Repositories
+│   │   ├── ScoreCards
+│   │   └── ValueObjects
+│   ├── bin
+│   │   └── Debug
+│   ├── Common
+│   │   ├── Abstractions
+│   │   ├── Base
+│   │   ├── Errors
+│   │   ├── Exceptions
+│   │   ├── Rules
+│   │   ├── Services
+│   │   └── Types
+│   ├── Compliance
+│   │   ├── Aggregates
+│   │   ├── Auditing
+│   │   ├── Certification
+│   │   ├── Compliance
+│   │   ├── Events
+│   │   ├── ManagementOfChange
+│   │   ├── Permits
+│   │   ├── Policy
+│   │   ├── Procedures
+│   │   ├── RegulatoryCalendar
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── ContinuousImprovement
+│   │   ├── CAPA
+│   │   └── RCA
+│   ├── ContractorVisitor
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── CrossDomain
+│   │   ├── Employees
+│   │   ├── Machines
+│   │   ├── Operators
+│   │   └── WorkCenters
+│   ├── DigitalTwin
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── EnterpriseFabric
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── EnvironmentalHealth
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── Financials
+│   │   ├── Entities
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Services
+│   │   ├── Specifications
+│   │   └── ValueObjects
+│   ├── Governance
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── HumanFactors
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── Intelligence
+│   │   ├── AIInvestigations
+│   │   ├── AITraining
+│   │   ├── DataLake
+│   │   └── PredictiveSafety
+│   ├── obj
+│   │   └── Debug
+│   ├── Operational
+│   │   ├── Alerts
+│   │   ├── Checklists
+│   │   ├── CompetencyManagement
+│   │   ├── Contractor
+│   │   ├── EnvironmentalMonitoring
+│   │   ├── EquipmentSafety
+│   │   ├── Ergonomics
+│   │   ├── FatigueManagement
+│   │   ├── HazardousMaterials
+│   │   ├── IndustrialHygiene
+│   │   ├── Inspections
+│   │   ├── JobSafetyAnalysis
+│   │   ├── PPEManagement
+│   │   ├── PredictiveMaintenance
+│   │   ├── PreventiveMaintenance
+│   │   ├── RiskManagement
+│   │   ├── Schedules
+│   │   ├── Training
+│   │   ├── Wellness
+│   │   └── WorkforceSafety
+│   ├── OperationalSafety
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── PlanningProjects
+│   │   ├── Entities
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Services
+│   │   ├── Specifications
+│   │   └── ValueObjects
+│   ├── SafetyEvents
+│   │   ├── Aggregates
+│   │   ├── CrisisManagement
+│   │   ├── DrillsAndExercises
+│   │   ├── EmergencyManagement
+│   │   ├── Events
+│   │   ├── IncidentManagement
+│   │   ├── NearMisses
+│   │   ├── Observation
+│   │   ├── Repositories
+│   │   ├── RootCauseAnalysis
+│   │   └── ValueObjects
+│   ├── Sustainability
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── Training
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   └── WorkerWellBeing
+│       ├── Aggregates
+│       ├── Events
+│       ├── Repositories
+│       └── ValueObjects
+├── PlantSafety.Infrastructure
+│   ├── AiGovernance
+│   ├── AiSafetyIntelligence
+│   │   ├── AiInvestigations
+│   │   ├── AiTraining
+│   │   ├── DataLake
+│   │   └── PredictiveSafety
+│   ├── Analytics
+│   │   ├── Culture
+│   │   ├── Dashboard
+│   │   ├── Engagement
+│   │   ├── PredictiveAnalytics
+│   │   └── ScoreCards
+│   ├── BackgroundJobs
+│   ├── bin
+│   │   └── Debug
+│   ├── Caching
+│   ├── Common
+│   │   ├── Configuration
+│   │   ├── Constants
+│   │   ├── Exceptions
+│   │   ├── Extensions
+│   │   ├── Logging
+│   │   ├── Mapping
+│   │   ├── Middleware
+│   │   ├── Pipelines
+│   │   ├── Serialization
+│   │   └── Utilities
+│   ├── Compliance
+│   │   ├── Auditing
+│   │   ├── Certification
+│   │   ├── Compliance
+│   │   ├── ManagementOfChange
+│   │   ├── Permits
+│   │   ├── Policies
+│   │   ├── Procedures
+│   │   └── RegulatoryCalendar
+│   ├── ContinuousImprovement
+│   │   ├── CAPA
+│   │   └── RCA
+│   ├── ContractorVisitor
+│   ├── CrossDomain
+│   │   ├── Employees
+│   │   ├── Machines
+│   │   ├── Operators
+│   │   └── WorkCenters
+│   ├── DependencyInjection
+│   ├── DigitalTwin
+│   ├── EnterpriseFabric
+│   ├── EnvironmentalHealth
+│   │   └── EnvironmentalMonitoring
+│   ├── ExternalServices
+│   ├── FileStorage
+│   ├── Financials
+│   │   ├── Persistence
+│   │   ├── Services
+│   │   └── Sql
+│   ├── Governance
+│   ├── HumanFactors
+│   │   ├── Ergonomics
+│   │   └── FatigueManagement
+│   ├── Identity
+│   ├── Messaging
+│   │   ├── Consumers
+│   │   ├── Publishers
+│   │   └── Sagas
+│   ├── obj
+│   │   └── Debug
+│   ├── OperationalSafety
+│   │   ├── Alerts
+│   │   ├── Checklists
+│   │   ├── EquipmentSafety
+│   │   ├── HazardousMaterials
+│   │   ├── Inspections
+│   │   ├── JobSafetyAnalysis
+│   │   ├── PPEManagement
+│   │   ├── PredictiveMaintenance
+│   │   ├── RiskManagement
+│   │   ├── Schedules
+│   │   └── WorkforceSafety
+│   ├── Persistence
+│   │   ├── Configurations
+│   │   ├── ConnectionFactory
+│   │   ├── Dapper
+│   │   ├── Repositories
+│   │   ├── Scripts
+│   │   └── UnitOfWork
+│   ├── PlanningProjects
+│   │   ├── Persistence
+│   │   ├── Services
+│   │   └── Sql
+│   ├── SafetyEvents
+│   │   ├── CrisisManagement
+│   │   ├── DrillsAndExercises
+│   │   ├── EmergencyManagement
+│   │   ├── IncidentManagement
+│   │   ├── NearMisses
+│   │   ├── Observation
+│   │   └── RootCauseAnalysis
+│   ├── Search
+│   │   └── IndexDefinitions
+│   ├── Sustainability
+│   ├── Training
+│   │   └── CompetencyManagement
+│   └── WorkerWellBeing
+│       └── Wellness
+├── PlantSafety.IntegrationTests
+│   ├── Analytics
+│   │   ├── Culture
+│   │   ├── Dashboard
+│   │   ├── Engagement
+│   │   ├── PredictiveAnalytics
+│   │   └── ScoreCards
+│   ├── Api
+│   ├── bin
+│   │   └── Debug
+│   ├── Commands
+│   ├── Common
+│   │   ├── Assertions
+│   │   ├── TestConstants
+│   │   ├── TestData
+│   │   ├── TestExtensions
+│   │   └── TestFixtures
+│   ├── Compliance
+│   │   ├── Auditing
+│   │   ├── Certification
+│   │   ├── Compliance
+│   │   ├── ManagementOfChange
+│   │   ├── Permits
+│   │   ├── Policy
+│   │   ├── Procedures
+│   │   └── RegulatoryCalendar
+│   ├── ContinuousImprovement
+│   │   ├── CAPA
+│   │   └── RCA
+│   ├── Events
+│   ├── Financials
+│   │   ├── Api
+│   │   ├── EndToEnd
+│   │   └── Sql
+│   ├── Fixtures
+│   ├── Helpers
+│   ├── Infrastructure
+│   │   ├── Messaging
+│   │   └── Persistence
+│   ├── Integrations
+│   │   ├── BackgroundServices
+│   │   ├── Documents
+│   │   ├── Email
+│   │   ├── Export
+│   │   ├── Import
+│   │   ├── IntegrationHub
+│   │   ├── IoT
+│   │   ├── Notifications
+│   │   ├── Reporting
+│   │   └── Texting
+│   ├── Intelligence
+│   │   ├── AIInvestigations
+│   │   ├── AITraining
+│   │   ├── DataLake
+│   │   └── PredictiveSafety
+│   ├── obj
+│   │   └── Debug
+│   ├── Operational
+│   │   ├── Alerts
+│   │   ├── Checklists
+│   │   ├── CompetencyManagement
+│   │   ├── Contractor
+│   │   ├── EnvironmentalMonitoring
+│   │   ├── EquipmentSafety
+│   │   ├── Ergonomics
+│   │   ├── FatigueManagement
+│   │   ├── HazardousMaterials
+│   │   ├── IndustrialHygiene
+│   │   ├── Inspections
+│   │   ├── JobSafetyAnalysis
+│   │   ├── PPEManagement
+│   │   ├── PredictiveMaintenance
+│   │   ├── PreventiveMaintenance
+│   │   ├── RiskManagement
+│   │   ├── Schedules
+│   │   ├── Training
+│   │   ├── Wellness
+│   │   └── WorkforceSafety
+│   ├── PlanningProjects
+│   │   ├── Api
+│   │   ├── EndToEnd
+│   │   └── Sql
+│   ├── Queries
+│   ├── Repositories
+│   ├── SafetyEvents
+│   │   ├── CrisisManagement
+│   │   ├── DrillsAndExercises
+│   │   ├── EmergencyManagement
+│   │   ├── IncidentManagement
+│   │   ├── NearMisses
+│   │   ├── Observation
+│   │   └── RootCauseAnalysis
+│   └── Setup
+│       ├── Snapshot
+│       └── Utilities
+├── PlantSafety.Intelligence
+│   ├── AIInvestigations
+│   ├── AITraining
+│   ├── bin
+│   │   └── Debug
+│   ├── DataLake
+│   ├── FeatureEngineering
+│   ├── ModelRegistry
+│   ├── obj
+│   │   └── Debug
+│   ├── Pipelines
+│   └── PredictiveSafety
+├── PlantSafety.SharedKernel
+│   ├── Abstractions
+│   │   ├── Logging
+│   │   ├── Messaging
+│   │   ├── Security
+│   │   └── Storage
+│   ├── Audit
+│   ├── Base
+│   ├── bin
+│   │   └── Debug
+│   ├── CodeGeneration
+│   │   ├── Attributes
+│   │   └── Markers
+│   ├── Constants
+│   ├── Contracts
+│   │   ├── Filtering
+│   │   ├── Pagination
+│   │   └── Sorting
+│   ├── DependencyInjection
+│   ├── Domain
+│   ├── Events
+│   │   ├── Base
+│   │   ├── Metadata
+│   │   └── Routing
+│   ├── Exceptions
+│   ├── Extensions
+│   ├── Financials
+│   │   ├── Abstractions
+│   │   └── Events
+│   ├── Guards
+│   ├── Identifiers
+│   ├── Models
+│   ├── MultiTenancy
+│   ├── obj
+│   │   └── Debug
+│   ├── Outbox
+│   ├── PlanningProjects
+│   │   ├── Abstractions
+│   │   └── Events
+│   ├── Primitives
+│   │   ├── Errors
+│   │   ├── Exceptions
+│   │   ├── Guards
+│   │   ├── Results
+│   │   ├── Rules
+│   │   ├── Specifications
+│   │   ├── StrongIds
+│   │   └── ValueTypes
+│   ├── Serialization
+│   │   ├── Abstractions
+│   │   ├── Binary
+│   │   ├── Bson
+│   │   ├── Converters
+│   │   ├── Json
+│   │   ├── MessagePack
+│   │   ├── Pipeline
+│   │   ├── Protobuf
+│   │   ├── Registry
+│   │   ├── Xml
+│   │   └── Yaml
+│   ├── Time
+│   └── Validation
+├── PlantSafety.Tests
+│   ├── Analytics
+│   │   ├── Culture
+│   │   ├── Dashboard
+│   │   ├── Engagement
+│   │   ├── PredictiveAnalytics
+│   │   └── ScoreCards
+│   ├── Application
+│   │   ├── AiGovernance
+│   │   ├── AiSafetyIntelligence
+│   │   ├── Analytics
+│   │   ├── Compliance
+│   │   ├── ContractorVisitor
+│   │   ├── DigitalTwin
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── Governance
+│   │   ├── HumanFactors
+│   │   ├── Integrations
+│   │   ├── OperationalSafety
+│   │   ├── Pipeline
+│   │   ├── SafetyEvents
+│   │   ├── Sustainability
+│   │   ├── Training
+│   │   └── WorkerWellBeing
+│   ├── bin
+│   │   └── Debug
+│   ├── Common
+│   │   ├── Builders
+│   │   ├── Extensions
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Mocks
+│   │   ├── Stubs
+│   │   ├── TestBase
+│   │   └── ValueObjects
+│   ├── Compliance
+│   │   ├── Auditing
+│   │   ├── Certification
+│   │   ├── Compliance
+│   │   ├── ManagementOfChange
+│   │   ├── Permits
+│   │   ├── Policy
+│   │   ├── Procedures
+│   │   └── RegulatoryCalendar
+│   ├── ContinuousImprovement
+│   │   ├── CAPA
+│   │   └── RCA
+│   ├── Domain
+│   │   ├── AiGovernance
+│   │   ├── AiSafetyIntelligence
+│   │   ├── Analytics
+│   │   ├── Common
+│   │   ├── Compliance
+│   │   ├── ContractorVisitor
+│   │   ├── DigitalTwin
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── Governance
+│   │   ├── HumanFactors
+│   │   ├── Integrations
+│   │   ├── OperationalSafety
+│   │   ├── SafetyEvents
+│   │   ├── Sustainability
+│   │   ├── Training
+│   │   └── WorkerWellBeing
+│   ├── Financials
+│   │   ├── Commands
+│   │   ├── Domain
+│   │   ├── Mappings
+│   │   └── Queries
+│   ├── Integrations
+│   │   ├── BackgroundServices
+│   │   ├── Documents
+│   │   ├── Email
+│   │   ├── Export
+│   │   ├── Import
+│   │   ├── IntegrationHub
+│   │   ├── Notifications
+│   │   ├── Reporting
+│   │   └── Texting
+│   ├── Intelligence
+│   │   ├── AIInvestigations
+│   │   ├── AITraining
+│   │   ├── DataLake
+│   │   └── PredictiveSafety
+│   ├── obj
+│   │   └── Debug
+│   ├── Operational
+│   │   ├── Alerts
+│   │   ├── Checklists
+│   │   ├── CompetencyManagement
+│   │   ├── Contractor
+│   │   ├── EnvironmentalMonitoring
+│   │   ├── EquipmentSafety
+│   │   ├── Ergonomics
+│   │   ├── FatigueManagement
+│   │   ├── HazardousMaterials
+│   │   ├── IndustrialHygiene
+│   │   ├── Inspections
+│   │   ├── JobSafetyAnalysis
+│   │   ├── PPEManagement
+│   │   ├── PredictiveMaintenance
+│   │   ├── PreventiveMaintenance
+│   │   ├── RiskManagement
+│   │   ├── Schedules
+│   │   ├── Training
+│   │   ├── Wellness
+│   │   └── WorkforceSafety
+│   ├── PlanningProjects
+│   │   ├── Commands
+│   │   ├── Domain
+│   │   ├── Mappings
+│   │   └── Queries
+│   └── SafetyEvents
+│       ├── CrisisManagement
+│       ├── DrillsAndExercises
+│       ├── EmergencyManagement
+│       ├── IncidentManagement
+│       ├── NearMisses
+│       ├── Observation
+│       └── RootCauseAnalysis
+├── PlantSafety.UI
+│   ├── .safety
+│   ├── bin
+│   │   └── Debug
+│   ├── Components
+│   │   ├── Financials
+│   │   ├── Layout
+│   │   ├── Pages
+│   │   └── ProjectPlanning
+│   ├── Infrastructure
+│   │   ├── ApiClients
+│   │   ├── Auth
+│   │   └── Correlation
+│   ├── Models
+│   │   ├── Auth
+│   │   └── Common
+│   ├── Modules
+│   │   ├── Alerts
+│   │   └── DiagnosticsViewer
+│   ├── obj
+│   │   └── Debug
+│   ├── Platforms
+│   │   ├── Android
+│   │   ├── iOS
+│   │   ├── MacCatalyst
+│   │   ├── Tizen
+│   │   └── Windows
+│   ├── Properties
+│   ├── Resources
+│   │   ├── AppIcon
+│   │   ├── Fonts
+│   │   ├── Images
+│   │   ├── Raw
+│   │   └── Splash
+│   ├── Routing
+│   ├── State
+│   └── wwwroot
+│       └── css
+├── src
+├── tests
+├── tools
+├── unpacked_crossdomain
+│   ├── docProps
+│   ├── word
+│   │   ├── theme
+│   │   └── _rels
+│   └── _rels
+├── unpacked_intelligence
+│   ├── docProps
+│   ├── word
+│   │   ├── theme
+│   │   └── _rels
+│   └── _rels
+└── verify_extract
+    ├── docProps
+    ├── word
+    │   ├── theme
+    │   └── _rels
+    └── _rels

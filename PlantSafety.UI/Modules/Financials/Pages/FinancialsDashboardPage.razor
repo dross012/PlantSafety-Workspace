@@ -1,0 +1,115 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Financials dashboard page (primary /modules/financials
+     route). KPI CardComponent grid via the wired BudgetSummary component,
+     the wired ForecastChart (Allocated vs. Spend by category), and the
+     wired CostTable listing the current budget page. Links out to the full
+     paginated Budgets list and to each budget's detail page. Built entirely
+     from the canonical Shared component library plus the module's own
+     wired BudgetSummary/CostTable/ForecastChart components.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/financials"
+
+@inject FinancialsState State
+@inject FinancialsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Financials.ApiClients
+@using PlantSafety.UI.Modules.Financials.Components
+@using PlantSafety.UI.Modules.Financials.Mappings
+@using PlantSafety.UI.Modules.Financials.State
+
+<PageTitle>Financials — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Financials dashboard could not be displayed." OnRetry="LoadDashboardAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDashboardAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+            <a href="@RouteDefinitions.FinancialsDashboard/budgets" class="ps-btn ps-btn-ghost ps-btn-sm">View All Budgets</a>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading financials…" />
+        }
+        else
+        {
+            <BudgetSummary
+                TotalAllocated="State.TotalAllocated"
+                TotalSpend="State.TotalSpend"
+                TotalRemaining="State.TotalRemaining"
+                OverBudgetCount="State.OverBudgetCount"
+                CurrencyCode="@(State.Budgets.FirstOrDefault()?.CurrencyCode ?? "USD")" />
+
+            <ForecastChart Budgets="State.Budgets" />
+
+            <CardComponent Title="Recent Budget Line Items">
+                <CostTable Budgets="State.Budgets" />
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Financials",
+            activeModuleCode: "financials",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Financials" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        State.BeginListLoad();
+
+        var envelope = await ApiClient.ListBudgetsAsync(pageNumber: 1, pageSize: 25);
+
+        if (envelope.IsSuccess)
+        {
+            var data = envelope.Data!;
+            State.SetBudgets(data.Items.ToViewModels(), data.PageNumber, data.TotalCount, data.TotalPages);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetListError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetListError($"Failed to load financials: {envelope.FaultType}");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

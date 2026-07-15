@@ -1,0 +1,110 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: KPI Dashboard page (Volume T1 §5). Throughput, cycle
+     time, OEE, scrap rate, and shift performance tiles. Built from the
+     canonical Shared component library (CardComponent,
+     StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/production-tracking/kpis"
+
+@inject KpiDashboardState State
+@inject ProductionTrackingApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.ProductionTracking.ApiClients
+@using PlantSafety.UI.Modules.ProductionTracking.State
+
+<PageTitle>KPI Dashboard — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The KPI dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/production-tracking" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading plant KPIs…" />
+        }
+        else if (State.Kpis.Count == 0)
+        {
+            <div class="ps-alert" role="status">No KPIs available.</div>
+        }
+        else
+        {
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                @foreach (var kpi in State.Kpis)
+                {
+                    <CardComponent Title="@kpi.MetricName">
+                        <div class="ps-field-row"><span class="ps-field-label">Value</span><span class="ps-field-value">@kpi.Value.ToString("F1") @kpi.Unit</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Target</span><span class="ps-field-value">@kpi.Target.ToString("F1") @kpi.Unit</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Status</span><StatusIndicatorComponent Status="@MapKpiStatus(kpi.Status)" Label="@kpi.Status" /></div>
+                    </CardComponent>
+                }
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "KPI Dashboard",
+            activeModuleCode: "production-tracking",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Production Tracking", Href = RouteDefinitions.ProductionTrackingDashboard },
+                new BreadcrumbItem { Label = "KPI Dashboard" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetKpisAsync();
+
+        if (envelope.IsSuccess)
+            State.SetKpis(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load plant KPIs: {envelope.FaultType}");
+    }
+
+    private static string MapKpiStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "met" => "Healthy",
+        "warning" => "Warning",
+        "missed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

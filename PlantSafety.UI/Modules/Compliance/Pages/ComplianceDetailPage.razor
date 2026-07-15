@@ -1,0 +1,139 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Compliance detail page. Serves the single-entity detail
+     view for whichever of the three Compliance dashboard tabs the record
+     belongs to (Requirement/Obligation/Tracking) — the {Category} route
+     segment selects the source. Resolves from the ComplianceState in-memory
+     cache populated by the dashboard's last load; falls back to a full
+     dashboard reload when navigated to directly (e.g. deep link/refresh).
+     Built from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/compliance/{Category}/{ItemId:guid}"
+
+@inject ComplianceState State
+@inject ComplianceApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Compliance.ApiClients
+@using PlantSafety.UI.Modules.Compliance.Models
+@using PlantSafety.UI.Modules.Compliance.State
+
+<PageTitle>Compliance Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The compliance record could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading compliance record…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } item)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@item.Title</h2>
+                    <StatusIndicatorComponent Status="@item.StatusIndicatorState" Label="@item.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Category</dt>          <dd>@item.Category</dd>
+                    <dt>@item.ClassifierLabel</dt> <dd>@item.Classifier</dd>
+                    <dt>@item.RelevantDateLabel</dt> <dd>@item.RelevantDateUtc.ToString("yyyy-MM-dd")</dd>
+                    <dt>Owner</dt>              <dd class="ps-mono">@item.OwnerId</dd>
+                    <dt>Site</dt>               <dd>@(item.SiteId?.ToString() ?? "Tenant-wide")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ComplianceDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Compliance
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public string Category { get; set; } = string.Empty;
+    [Parameter] public Guid ItemId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Compliance Detail",
+            activeModuleCode: "compliance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Compliance", Href = RouteDefinitions.ComplianceDashboard },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (!Enum.TryParse<ComplianceCategory>(Category, ignoreCase: true, out var category))
+        {
+            State.SetDetailError($"Unknown compliance category '{Category}'.");
+            return;
+        }
+
+        State.BeginDetailLoad();
+
+        if (State.TryGetCachedDetail(category, ItemId, out var cached) && cached is not null)
+        {
+            State.SetSelectedItem(cached);
+            return;
+        }
+
+        // Deep-link/refresh path: the dashboard cache is empty, so reload the full
+        // dashboard data set and re-attempt cache resolution.
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow.AddYears(2);
+
+        var requirementsEnvelope = await ApiClient.GetRequirementsAsync(tenantId, null, fromUtc, toUtc);
+        var obligationsEnvelope = await ApiClient.GetObligationsAsync(tenantId, null, fromUtc, toUtc);
+        var trackingEnvelope = await ApiClient.GetTrackingAsync(tenantId, null, fromUtc, toUtc);
+
+        if (requirementsEnvelope.IsSuccess && obligationsEnvelope.IsSuccess && trackingEnvelope.IsSuccess)
+        {
+            State.SetDashboardData(requirementsEnvelope.Data!.Items, obligationsEnvelope.Data!.Items, trackingEnvelope.Data!.Items);
+
+            if (State.TryGetCachedDetail(category, ItemId, out var reloaded) && reloaded is not null)
+            {
+                State.SetSelectedItem(reloaded);
+            }
+            else
+            {
+                State.SetDetailError("Compliance record not found.");
+            }
+        }
+        else
+        {
+            State.SetDetailError("Unable to load compliance data at this time.");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

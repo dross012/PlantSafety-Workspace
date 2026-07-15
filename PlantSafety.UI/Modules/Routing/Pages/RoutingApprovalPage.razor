@@ -1,0 +1,131 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Routing Approval Workflow page (Volume R1 §7).
+     Standalone deep-linkable multi-stage governance view + audit trail.
+     Server-side authorization required for every action per Volume R1
+     Security Requirements — this page is read-only (no client-side stage
+     transitions; approve/reject commands need backend wiring). Built from
+     the canonical Shared component library (CardComponent, DataGridComponent,
+     StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/routing/{RoutingId:guid}/approval"
+
+@inject RoutingDetailState State
+@inject RoutingApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Routing.ApiClients
+@using PlantSafety.UI.Modules.Routing.Models
+@using PlantSafety.UI.Modules.Routing.State
+
+<PageTitle>Routing Approval Workflow — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The routing approval workflow could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/routing/@RoutingId" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Routing Detail</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoadingTab)
+        {
+            <LoadingIndicatorComponent Message="Loading approval workflow…" />
+        }
+        else if (State.Approval is { } approval)
+        {
+            <CardComponent Title="@($"Current Stage: {approval.CurrentStage}")">
+                <DataGridComponent TItem="RoutingApproverDto" Items="approval.Approvers" Headers="_headers" KeySelector="a => a.ApproverName"
+                                    EmptyMessage="No approvers assigned." AriaLabel="Approvers">
+                    <RowTemplate Context="approver">
+                        <td>@approver.ApproverName</td>
+                        <td>@approver.Role</td>
+                        <td><StatusIndicatorComponent Status="@MapStatus(approver.Status)" Label="@approver.Status" /></td>
+                        <td>@(approver.DecidedAtUtc?.ToString("u") ?? "—")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+
+            <CardComponent Title="Action Panel">
+                <textarea class="ps-btn ps-btn-ghost ps-btn-sm" style="width:100%; text-align:left;" rows="3" placeholder="Comment" disabled aria-label="Approval comment"></textarea>
+                <div style="margin-top:8px;">
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" disabled="@(!approval.CanCurrentUserAct)">Approve</button>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" disabled="@(!approval.CanCurrentUserAct)">Reject</button>
+                </div>
+                @if (!approval.CanCurrentUserAct)
+                {
+                    <p class="ps-needs-backend">
+                        <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                        Approve/Reject needs backend wiring — server-side authorization determined you cannot act on this stage, or no approval command endpoint exists yet.
+                    </p>
+                }
+            </CardComponent>
+        }
+        else
+        {
+            <div class="ps-alert" role="status">No approval workflow found for this routing.</div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RoutingId { get; set; }
+
+    private static readonly string[] _headers = ["Approver", "Role", "Status", "Decided"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Routing Approval Workflow",
+            activeModuleCode: "routing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Routing", Href = RouteDefinitions.RoutingList },
+                new BreadcrumbItem { Label = "Approval" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetApprovalWorkflowAsync(RoutingId);
+
+        if (envelope.IsSuccess)
+            State.SetApproval(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load approval workflow: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "approved" => "Healthy",
+        "pending" => "Warning",
+        "rejected" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

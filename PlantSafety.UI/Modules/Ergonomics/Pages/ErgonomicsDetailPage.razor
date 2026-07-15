@@ -1,0 +1,133 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Ergonomics assessment detail page. The backend has no
+     single-record GetById endpoint — this page reloads the last 90 days of
+     records and looks up the requested record client-side.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ergonomics/{ErgonomicsAssessmentId:guid}"
+
+@inject ErgonomicsState State
+@inject ErgonomicsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Ergonomics.State
+@using PlantSafety.UI.Modules.Ergonomics.ApiClients
+@using PlantSafety.UI.Modules.Ergonomics.Mappings
+@using PlantSafety.UI.Modules.Ergonomics.Models
+
+<PageTitle>Ergonomics Assessment Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The ergonomics assessment could not be displayed.">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading ergonomics assessment…" />
+        }
+        else if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+        else if (_record is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">Ergonomics Assessment</h2>
+                    <SeverityBadgeComponent Severity="@vm.SeverityForBadge" Text="@item.RiskLevel" />
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <CardComponent Title="Summary">
+                    <dl class="ps-detail-fields">
+                        <dt>Workstation</dt> <dd class="ps-mono">@item.WorkstationId</dd>
+                        <dt>Site</dt>        <dd class="ps-mono">@(item.SiteId?.ToString() ?? "Tenant-wide")</dd>
+                        <dt>Assessed</dt>    <dd>@item.AssessedAtUtc.ToString("u") UTC</dd>
+                        <dt>Assessed By</dt> <dd class="ps-mono">@item.AssessedBy</dd>
+                        <dt>Record ID</dt>   <dd class="ps-mono">@item.ErgonomicsAssessmentId</dd>
+                    </dl>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ErgonomicsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Ergonomics
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">
+                No ergonomics assessment with this identifier was found in the most recent 90-day window.
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    Ergonomics has no single-record GetById endpoint yet — detail lookup is performed
+                    client-side against the date-range read-model.
+                </p>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ErgonomicsAssessmentId { get; set; }
+
+    private ErgonomicsItemDto? _record;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Ergonomics Assessment Detail",
+            activeModuleCode: "ergonomics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Ergonomics", Href = RouteDefinitions.ErgonomicsList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetErgonomicsAssessmentsAsync(
+            tenantId,
+            siteId: null,
+            fromUtc: DateTime.UtcNow.AddDays(-90),
+            toUtc: DateTime.UtcNow);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetItems(envelope.Data!);
+            _record = State.Find(ErgonomicsAssessmentId);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetError($"Failed to load ergonomics assessments: {envelope.FaultType}");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

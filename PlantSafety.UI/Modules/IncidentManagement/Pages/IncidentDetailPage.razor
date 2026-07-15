@@ -1,0 +1,199 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Incident Detail page (Volume ID1). 3-tier layout: sticky
+     header (severity/status/SLA/actions) + two-column body (Incident
+     Summary/Workflow/Root Cause/Resolution left, Timeline/Notes right).
+     Built entirely from the canonical Shared component library
+     (CardComponent, SeverityBadgeComponent, StatusIndicatorComponent,
+     DataGridComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/incident-management/{IncidentId:guid}"
+
+@inject IncidentDetailState State
+@inject IncidentManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.IncidentManagement.ApiClients
+@using PlantSafety.UI.Modules.IncidentManagement.Models
+@using PlantSafety.UI.Modules.IncidentManagement.State
+
+<PageTitle>Incident Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The incident detail could not be displayed.">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading incident…" />
+        }
+        else if (State.ErrorMessage is not null && State.Incident is null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+            <a href="/modules/incident-management" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Return to Incidents</a>
+        }
+        else if (State.Incident is { } incident)
+        {
+            @* Tier 1 — Incident Header Bar *@
+            <div class="ps-detail-header">
+                <span class="ps-mono">@IncidentId</span>
+                <SeverityBadgeComponent Severity="@incident.Severity" />
+                <StatusIndicatorComponent Status="@MapStatus(incident.Status)" Label="@incident.Status" />
+                <span class="ps-field-value" role="status" aria-live="polite">
+                    SLA: @(incident.SlaRemaining.TotalSeconds >= 0 ? incident.SlaRemaining.ToString(@"hh\:mm\:ss") + " remaining" : "BREACHED " + incident.SlaRemaining.Duration().ToString(@"hh\:mm\:ss") + " ago")
+                </span>
+            </div>
+
+            <div class="ps-page-actions">
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" disabled>Reassign</button>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" disabled>Escalate</button>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" disabled>Add Note</button>
+                <button class="ps-btn ps-btn-primary ps-btn-sm" disabled>Resolve Incident</button>
+                <a href="/modules/incident-management/@IncidentId/timeline" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-clock-history" aria-hidden="true"></span> Full Timeline</a>
+            </div>
+            <p class="ps-needs-backend">
+                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                Reassign/Escalate/Add Note/Resolve need backend wiring — no incident lifecycle command endpoint exists yet.
+            </p>
+
+            @* Tier 2 — Two-Column Primary Content *@
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:320px;">
+                    <CardComponent Title="Incident Summary">
+                        <div class="ps-field-row"><span class="ps-field-label">Description</span><span class="ps-field-value">@incident.Description</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Category</span><span class="ps-field-value">@incident.Category @(incident.Subcategory is not null ? $"/ {incident.Subcategory}" : "")</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Location</span><span class="ps-field-value">@incident.Location</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Detection Source</span><span class="ps-field-value">@incident.DetectionSource</span></div>
+                    </CardComponent>
+
+                    <CardComponent Title="Workflow">
+                        <div class="ps-field-row"><span class="ps-field-label">Current Status</span><StatusIndicatorComponent Status="@MapStatus(incident.Status)" Label="@incident.Status" /></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Assigned Technician</span><span class="ps-field-value">@(incident.AssignedTechnicianName ?? "Unassigned") @(incident.AssignedTechnicianRole is not null ? $"({incident.AssignedTechnicianRole})" : "")</span></div>
+                    </CardComponent>
+
+                    <CardComponent Title="Root Cause">
+                        <span class="ps-field-value">@(incident.RootCause ?? "Not yet determined.")</span>
+                    </CardComponent>
+
+                    <CardComponent Title="Resolution">
+                        @if (incident.ClosedAtUtc is { } closed)
+                        {
+                            <div class="ps-field-row"><span class="ps-field-label">Resolution Notes</span><span class="ps-field-value">@incident.ResolutionNotes</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Closed</span><span class="ps-field-value">@closed.ToString("u") UTC</span></div>
+                        }
+                        else
+                        {
+                            <span class="ps-text-muted">Not yet resolved.</span>
+                        }
+                    </CardComponent>
+                </div>
+
+                <div style="flex:1; min-width:320px;">
+                    <CardComponent Title="Incident Timeline">
+                        @if (State.IsLoadingTimeline)
+                        {
+                            <LoadingIndicatorComponent Message="Loading timeline…" Inline="true" />
+                        }
+                        else
+                        {
+                            <DataGridComponent TItem="IncidentTimelineEntryDto" Items="State.Timeline" Headers="_timelineHeaders" KeySelector="e => e.EntryId"
+                                                EmptyMessage="No timeline events recorded." AriaLabel="Incident timeline">
+                                <RowTemplate Context="entry">
+                                    <td>@entry.TimestampUtc.ToString("HH:mm:ss") UTC</td>
+                                    <td>@entry.Actor</td>
+                                    <td>@entry.EventType</td>
+                                    <td>@entry.Description</td>
+                                </RowTemplate>
+                            </DataGridComponent>
+                        }
+                    </CardComponent>
+
+                    <CardComponent Title="Cross-Module Drilldowns">
+                        @if (incident.EquipmentId is { } equipmentId)
+                        {
+                            <a href="/modules/predictive-maintenance/equipment/@equipmentId" class="ps-btn ps-btn-ghost ps-btn-sm">Equipment Predictive View</a>
+                        }
+                        <a href="/modules/maintenance" class="ps-btn ps-btn-ghost ps-btn-sm">Maintenance</a>
+                        <a href="/modules/routing" class="ps-btn ps-btn-ghost ps-btn-sm">Routing</a>
+                        <a href="/modules/scheduling" class="ps-btn ps-btn-ghost ps-btn-sm">Scheduling</a>
+                    </CardComponent>
+                </div>
+            </div>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.IncidentManagementList)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Incidents
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid IncidentId { get; set; }
+
+    private static readonly string[] _timelineHeaders = ["Time", "Actor", "Type", "Description"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Incident Detail",
+            activeModuleCode: "incident-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Incident Management", Href = RouteDefinitions.IncidentManagementList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginLoad();
+        var envelope = await ApiClient.GetIncidentAsync(IncidentId);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetIncident(envelope.Data!);
+            await LoadTimelineAsync();
+        }
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Incident not found: {envelope.FaultType}");
+    }
+
+    private async Task LoadTimelineAsync()
+    {
+        State.BeginTimelineLoad();
+        var envelope = await ApiClient.GetTimelineAsync(IncidentId);
+        if (envelope.IsSuccess)
+            State.SetTimeline(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Timeline load failed: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "closed" or "resolved" => "Healthy",
+        "underinvestigation" or "under investigation" or "inprogress" => "Warning",
+        "escalated" => "Critical",
+        "reported" or "open" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

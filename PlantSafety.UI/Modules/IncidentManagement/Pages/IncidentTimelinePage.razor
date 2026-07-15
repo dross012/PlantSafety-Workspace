@@ -1,0 +1,129 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Incident Timeline page (Volume IT1). Dedicated full-page
+     chronological event viewer for one incident (header bar + filter bar +
+     full-width timeline). Built from the canonical Shared component library
+     (DataGridComponent, SeverityBadgeComponent, StatusIndicatorComponent,
+     SearchBoxComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/incident-management/{IncidentId:guid}/timeline"
+
+@inject IncidentTimelinePageState State
+@inject IncidentManagementApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.IncidentManagement.ApiClients
+@using PlantSafety.UI.Modules.IncidentManagement.Models
+@using PlantSafety.UI.Modules.IncidentManagement.State
+
+<PageTitle>Incident Timeline — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The incident timeline could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/incident-management/@IncidentId" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Incident Detail</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <SearchBoxComponent Value="State.Search" Placeholder="Search event descriptions" ValueChanged="OnSearchChangedAsync" />
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading timeline…" />
+        }
+        else if (_filteredEvents.Count == 0)
+        {
+            <div class="ps-alert" role="status">No timeline events match the current filter.</div>
+        }
+        else
+        {
+            <div role="status" aria-live="polite" class="ps-text-sm ps-text-muted">
+                Timeline showing @_filteredEvents.Count events from @_filteredEvents.Min(e => e.TimestampUtc).ToString("HH:mm") to @_filteredEvents.Max(e => e.TimestampUtc).ToString("HH:mm") UTC.
+            </div>
+            <DataGridComponent TItem="IncidentTimelineEntryDto"
+                                Items="_filteredEvents"
+                                Headers="_headers"
+                                KeySelector="e => e.EntryId"
+                                EmptyMessage="No timeline events found."
+                                AriaLabel="Incident timeline"
+                                EnableVirtualization="true">
+                <RowTemplate Context="entry">
+                    <td>@entry.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                    <td>@entry.Actor</td>
+                    <td>@entry.EventType</td>
+                    <td><SeverityBadgeComponent Severity="@entry.Severity" /></td>
+                    <td>@entry.Description</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid IncidentId { get; set; }
+
+    private static readonly string[] _headers = ["Time", "Actor", "Type", "Severity", "Description"];
+
+    private IReadOnlyList<IncidentTimelineEntryDto> _filteredEvents =>
+        string.IsNullOrWhiteSpace(State.Search)
+            ? State.Events
+            : [.. State.Events.Where(e => e.Description.Contains(State.Search, StringComparison.OrdinalIgnoreCase))];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Incident Timeline",
+            activeModuleCode: "incident-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Incident Management", Href = RouteDefinitions.IncidentManagementList },
+                new BreadcrumbItem { Label = "Timeline" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetTimelineAsync(IncidentId);
+
+        if (envelope.IsSuccess)
+            State.SetEvents(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load timeline: {envelope.FaultType}");
+    }
+
+    private Task OnSearchChangedAsync(string value)
+    {
+        State.SetSearch(value);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

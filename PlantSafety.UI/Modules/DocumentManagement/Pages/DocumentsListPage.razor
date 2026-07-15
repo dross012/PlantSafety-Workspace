@@ -1,0 +1,146 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Documents list page. Generic list/filter template built
+     from the canonical Shared component library (SearchBoxComponent,
+     DataGridComponent, StatusIndicatorComponent, PaginationComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent), following the
+     Alerts exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/document-management"
+
+@inject DocumentManagementState State
+@inject DocumentManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DocumentManagement.ApiClients
+@using PlantSafety.UI.Modules.DocumentManagement.Models
+@using PlantSafety.UI.Modules.DocumentManagement.State
+
+<PageTitle>Document Management — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The documents list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <label class="ps-field-label" for="doc-category-filter">Category</label>
+            <select id="doc-category-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnCategoryChangedAsync">
+                <option value="">All</option>
+                <option value="Policy">Policy</option>
+                <option value="Procedure">Procedure</option>
+                <option value="Training">Training</option>
+                <option value="Compliance">Compliance</option>
+            </select>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <SearchBoxComponent Value="State.SearchText" Placeholder="Search documents" ValueChanged="OnSearchChangedAsync" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading documents…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="DocumentListItemDto"
+                                Items="State.Documents"
+                                Headers="_headers"
+                                KeySelector="d => d.DocumentId"
+                                EmptyMessage="No documents found."
+                                AriaLabel="Documents">
+                <RowTemplate Context="doc">
+                    <td>@doc.Title</td>
+                    <td>@doc.Category</td>
+                    <td>@doc.Version</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(doc.Status)" Label="@doc.Status" /></td>
+                    <td>@doc.LastUpdatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@doc.OwnerName</td>
+                    <td><a href="/modules/document-management/@doc.DocumentId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Title", "Category", "Version", "Status", "Last Updated", "Owner", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Document Management",
+            activeModuleCode: "document-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Document Management" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private Task LoadPageAsync() => GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.GetDocumentsAsync(pageNumber: page, pageSize: 25, categoryFilter: State.CategoryFilter, search: State.SearchText);
+
+        if (envelope.IsSuccess)
+            State.SetDocuments(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load documents: {envelope.FaultType}");
+    }
+
+    private async Task OnCategoryChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetCategoryFilter(string.IsNullOrWhiteSpace(value) ? null : value);
+        await GoToPageAsync(1);
+    }
+
+    private async Task OnSearchChangedAsync(string value)
+    {
+        State.SetSearchText(value);
+        await GoToPageAsync(1);
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "published" => "Healthy",
+        "underreview" or "under review" or "draft" => "Warning",
+        "expired" => "Critical",
+        "archived" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

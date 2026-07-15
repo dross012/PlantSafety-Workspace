@@ -1,0 +1,56 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical pagination control — one of the 11 non-forkable
+      shared components mandated by the Platform UI Architecture Master
+      Specification (Volume 0) §4. Backed by the existing .ps-pagination /
+      .ps-pagination-info utility classes and Prev/Next .ps-btn markup pattern
+      already used in Modules/Alerts/Pages/AlertsListPage.razor — this
+      component is a drop-in replacement for that inline markup.
+      Pure/stateless/parameter-driven per UI001-UI005.
+    Inputs: CurrentPage, TotalPages (required), TotalCount (optional)
+    Outputs: PageChanged (fired with the newly requested 1-based page number)
+    Accessibility: nav landmark, aria-label per button, live region announces
+      the current page per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+<nav class="ps-pagination" aria-label="Pagination">
+    <button type="button" class="ps-btn ps-btn-ghost ps-btn-sm" disabled="@(CurrentPage <= 1)"
+            aria-label="Previous page" @onclick="() => ChangePage(CurrentPage - 1)">
+        <span class="bi bi-chevron-left" aria-hidden="true"></span> Prev
+    </button>
+    <span class="ps-pagination-info" aria-live="polite">
+        Page @CurrentPage of @(Math.Max(TotalPages, 1))@(TotalCount is { } count ? $" ({count} total)" : "")
+    </span>
+    <button type="button" class="ps-btn ps-btn-ghost ps-btn-sm" disabled="@(CurrentPage >= TotalPages)"
+            aria-label="Next page" @onclick="() => ChangePage(CurrentPage + 1)">
+        Next <span class="bi bi-chevron-right" aria-hidden="true"></span>
+    </button>
+</nav>
+
+@code {
+    /// <summary>1-based current page number.</summary>
+    [Parameter, EditorRequired]
+    public int CurrentPage { get; set; } = 1;
+
+    /// <summary>Total number of pages available.</summary>
+    [Parameter, EditorRequired]
+    public int TotalPages { get; set; } = 1;
+
+    /// <summary>Optional total matching record count, appended to the page indicator text.</summary>
+    [Parameter]
+    public int? TotalCount { get; set; }
+
+    /// <summary>Fired with the newly requested 1-based page number.</summary>
+    [Parameter]
+    public EventCallback<int> PageChanged { get; set; }
+
+    private Task ChangePage(int page)
+    {
+        if (page < 1 || page > TotalPages || page == CurrentPage)
+            return Task.CompletedTask;
+
+        return PageChanged.InvokeAsync(page);
+    }
+}

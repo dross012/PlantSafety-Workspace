@@ -1,0 +1,19 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Minimal, security-focused layout for authentication pages
+     (Login, and any future MFA / password-reset pages). Deliberately simpler
+     than MainLayout — no sidebar, no top bar, no breadcrumbs, no platform
+     navigation exposed — per Volume AUTH1 §Layout Structure. Pages opt into
+     this layout via the @layout directive instead of the router's default.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@inherits LayoutComponentBase
+
+<div class="ps-auth-shell" role="main">
+    <div class="ps-auth-card">
+        @Body
+    </div>
+</div>

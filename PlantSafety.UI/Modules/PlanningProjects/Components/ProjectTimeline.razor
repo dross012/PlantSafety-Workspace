@@ -1,0 +1,146 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Gantt-style project timeline. Renders one horizontal
+      bar per item, scaled proportionally between the earliest start and
+      latest end across all items, with a "today" marker. Adapted from the
+      original orphaned Components/ProjectPlanning/ProjectTimeline.razor
+      stub and moved into Modules/PlanningProjects/Components (shared by
+      the Planning Projects overview and the Project Scheduling module).
+      Loosely borrows the Gantt/timeline concept from the Scheduling UI
+      Architecture reference (bars positioned by date range, overdue items
+      color-flagged) but is implemented entirely from the canonical Shared
+      component library (CardComponent wraps the chart; SeverityBadgeComponent
+      flags overdue bars) rather than a bespoke calendar-grid widget.
+      Pure/stateless/parameter-driven — no injected services.
+    Accessibility: each bar exposes a full text-equivalent aria-label (name,
+      start, end, status) per WCAG 2.2 AA; a visually-hidden data table
+      mirrors the chart for screen-reader users.
+    ============================================================ *@
+@using PlantSafety.UI.Modules.PlanningProjects.Models
+
+<CardComponent Title="@Title" CssClass="ps-project-timeline">
+    @if (Items.Count == 0)
+    {
+        <p class="ps-field-value">@EmptyMessage</p>
+    }
+    else
+    {
+        <div class="ps-timeline-chart" role="img" aria-label="@($"Gantt chart of {Items.Count} project(s) from {_rangeStart:yyyy-MM-dd} to {_rangeEnd:yyyy-MM-dd}")">
+            @foreach (var item in Items)
+            {
+                var (offsetPct, widthPct) = ComputeBar(item);
+                <div class="ps-timeline-row" title="@BuildTooltip(item)">
+                    <span class="ps-timeline-label">@item.Label</span>
+                    <div class="ps-timeline-track" style="position:relative;height:20px;background:var(--ps-color-surface-sunken);border-radius:var(--ps-radius-sm);flex:1;">
+                        <div style="position:absolute;left:@(offsetPct)%;width:@(widthPct)%;min-width:2px;top:2px;bottom:2px;border-radius:var(--ps-radius-sm);background:@BarColor(item);"
+                             aria-hidden="true"></div>
+                    </div>
+                    @if (item.IsOverdue)
+                    {
+                        <SeverityBadgeComponent Severity="High" Text="Overdue" />
+                    }
+                </div>
+            }
+            <div class="ps-timeline-row" aria-hidden="true">
+                <span class="ps-timeline-label ps-field-label">Today</span>
+                <div class="ps-timeline-track" style="position:relative;height:4px;flex:1;">
+                    <div style="position:absolute;left:@(TodayOffsetPct())%;width:2px;top:-8px;bottom:-8px;background:var(--ps-color-brand-secondary);"></div>
+                </div>
+            </div>
+        </div>
+
+        <table class="ps-sr-only-table" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">
+            <caption>Project timeline data table (screen-reader equivalent of the chart above)</caption>
+            <thead><tr><th>Project</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
+            <tbody>
+                @foreach (var item in Items)
+                {
+                    <tr>
+                        <td>@item.Label</td>
+                        <td>@item.StartUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@item.EndUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@item.Status@(item.IsOverdue ? " (overdue)" : string.Empty)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</CardComponent>
+
+@code {
+    private DateTimeOffset _rangeStart;
+    private DateTimeOffset _rangeEnd;
+
+    /// <summary>The timeline bars to render.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ProjectTimelineItemViewModel> Items { get; set; } = [];
+
+    /// <summary>Card title.</summary>
+    [Parameter]
+    public string Title { get; set; } = "Project Timeline";
+
+    /// <summary>Message shown when <see cref="Items"/> is empty.</summary>
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No project schedule data available.";
+
+    protected override void OnParametersSet()
+    {
+        if (Items.Count == 0)
+        {
+            _rangeStart = DateTimeOffset.UtcNow;
+            _rangeEnd = DateTimeOffset.UtcNow.AddDays(1);
+            return;
+        }
+
+        _rangeStart = Items.Min(i => i.StartUtc);
+        _rangeEnd = Items.Max(i => i.ActualEndUtc ?? i.EndUtc);
+
+        if (_rangeEnd <= _rangeStart)
+        {
+            _rangeEnd = _rangeStart.AddDays(1);
+        }
+    }
+
+    private (double OffsetPct, double WidthPct) ComputeBar(ProjectTimelineItemViewModel item)
+    {
+        var totalTicks = (_rangeEnd - _rangeStart).Ticks;
+        if (totalTicks <= 0)
+        {
+            return (0, 100);
+        }
+
+        var offsetTicks = Math.Max(0, (item.StartUtc - _rangeStart).Ticks);
+        var endUtc = item.ActualEndUtc ?? item.EndUtc;
+        var widthTicks = Math.Max(0, (endUtc - item.StartUtc).Ticks);
+
+        var offsetPct = Math.Clamp(offsetTicks / (double)totalTicks * 100.0, 0, 100);
+        var widthPct = Math.Clamp(widthTicks / (double)totalTicks * 100.0, 0, 100 - offsetPct);
+
+        return (offsetPct, widthPct);
+    }
+
+    private double TodayOffsetPct()
+    {
+        var totalTicks = (_rangeEnd - _rangeStart).Ticks;
+        if (totalTicks <= 0)
+        {
+            return 0;
+        }
+
+        var offsetTicks = (DateTimeOffset.UtcNow - _rangeStart).Ticks;
+        return Math.Clamp(offsetTicks / (double)totalTicks * 100.0, 0, 100);
+    }
+
+    private static string BarColor(ProjectTimelineItemViewModel item) => item.IsOverdue
+        ? "var(--ps-color-severity-high)"
+        : item.Status.Trim().ToLowerInvariant() switch
+        {
+            "completed" => "var(--ps-color-severity-low)",
+            "cancelled" or "archived" => "var(--ps-color-text-muted)",
+            _ => "var(--ps-color-brand-secondary)",
+        };
+
+    private static string BuildTooltip(ProjectTimelineItemViewModel item) =>
+        $"{item.Label}: {item.StartUtc:yyyy-MM-dd} → {item.EndUtc:yyyy-MM-dd} ({item.Status})";
+}

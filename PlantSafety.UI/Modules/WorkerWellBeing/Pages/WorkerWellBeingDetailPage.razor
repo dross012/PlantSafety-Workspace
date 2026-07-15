@@ -1,0 +1,105 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   UPDATED: 2026-07-15 — consumes the real GetById endpoint
+     (GET v1/human-factors/worker-wellbeing/{id}). ErrorBoundaryComponent
+     still degrades gracefully on transient failures.
+   FILE DESCRIPTION: Worker WellBeing record detail/drilldown page.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/worker-wellbeing/{WorkerWellBeingId:guid}"
+
+@inject WorkerWellBeingState State
+@inject WorkerWellBeingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.WorkerWellBeing.State
+@using PlantSafety.UI.Modules.WorkerWellBeing.ApiClients
+@using PlantSafety.UI.Modules.WorkerWellBeing.Mappings
+
+<PageTitle>Worker WellBeing Record Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Worker WellBeing record could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading Worker WellBeing record…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                @State.DetailError
+            </div>
+        }
+        else if (State.Selected is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">Worker WellBeing Record</h2>
+                    <SeverityBadgeComponent Severity="@vm.SeverityForBadge" Text="@item.WellBeingRiskLevel" />
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <CardComponent Title="Summary">
+                    <dl class="ps-detail-fields">
+                        <dt>Worker</dt>    <dd class="ps-mono">@item.WorkerId</dd>
+                        <dt>Recorded</dt>  <dd>@item.RecordedAtUtc.ToString("u") UTC</dd>
+                        <dt>Record ID</dt> <dd class="ps-mono">@item.WorkerWellBeingId</dd>
+                    </dl>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.WorkerWellBeingDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Worker WellBeing
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid WorkerWellBeingId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Worker WellBeing Record Detail",
+            activeModuleCode: "worker-wellbeing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Worker WellBeing", Href = RouteDefinitions.WorkerWellBeingDashboard },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetWorkerWellBeingRecordAsync(WorkerWellBeingId);
+
+        if (envelope.IsSuccess)
+            State.SetSelected(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load Worker WellBeing record: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

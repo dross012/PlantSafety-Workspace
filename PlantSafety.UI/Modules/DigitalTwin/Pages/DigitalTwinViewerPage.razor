@@ -1,0 +1,135 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Digital Twin viewer/list page. No PlantSafety.Api
+     read-model endpoint exists yet for this module (PlantSafety.Domain
+     /DigitalTwin is a thin scaffold aggregate) — this page is built against
+     the best-inferable DTO shape (DigitalTwinModels.cs) and degrades
+     gracefully to a "needs backend wiring" Error/Empty state rather than
+     blocking. Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/digital-twin"
+
+@inject DigitalTwinState State
+@inject DigitalTwinApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DigitalTwin.ApiClients
+@using PlantSafety.UI.Modules.DigitalTwin.Models
+
+<PageTitle>Digital Twin — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Digital Twin viewer could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+            <p class="ps-needs-backend">
+                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                Digital Twin needs backend wiring — no PlantSafety.Api read-model endpoint exists yet
+                for GET v1/digital-twin/twins.
+            </p>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading digital twin registry…" />
+        }
+        else if (State.LoadError is null)
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Total Twins"><span class="ps-field-value">@State.Twins.Count</span></CardComponent>
+                <CardComponent Title="Synced"><span class="ps-field-value">@CountByStatus("synced")</span></CardComponent>
+                <CardComponent Title="Degraded"><span class="ps-field-value">@CountByStatus("degraded")</span></CardComponent>
+                <CardComponent Title="Offline"><span class="ps-field-value">@CountByStatus("offline")</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="DigitalTwinAssetDto"
+                                Items="State.Twins"
+                                Headers="_headers"
+                                KeySelector="t => t.TwinId"
+                                EmptyMessage="No digital twin assets registered for this tenant."
+                                AriaLabel="Digital Twin Assets">
+                <RowTemplate Context="twin">
+                    <td><StatusIndicatorComponent Status="@MapStatus(twin.Status)" Label="@twin.Status" /></td>
+                    <td>@twin.AssetName</td>
+                    <td>@twin.AssetType</td>
+                    <td>@twin.TelemetryHealthScore.ToString("P0")</td>
+                    <td>@twin.LastSyncAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="/modules/digital-twin/@twin.TwinId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Status", "Asset", "Type", "Telemetry Health", "Last Sync", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Digital Twin",
+            activeModuleCode: "digital-twin",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Digital Twin" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetTwinsAsync(tenantId, siteId: null);
+
+        if (envelope.IsSuccess)
+            State.SetTwins(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"Digital Twin service is not yet available: {envelope.FaultType}");
+    }
+
+    private int CountByStatus(string status) =>
+        State.Twins.Count(t => string.Equals(t.Status, status, StringComparison.OrdinalIgnoreCase));
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "synced" => "Healthy",
+        "degraded" => "Warning",
+        "offline" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

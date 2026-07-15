@@ -156,11 +156,14 @@ public abstract class SafetyApiClientBase
     {
         if (response.IsSuccessStatusCode)
         {
-            var data = await response.Content
-                .ReadFromJsonAsync<T>(SerializerOptions, cancellationToken)
+            // PlantSafety.Api wraps every 2xx payload in the canonical ApiResponse<T> envelope
+            // ({ success, data, errors, metadata } on the wire). Unwrap "data" here so downstream
+            // state containers and components work with the plain payload type T.
+            var wire = await response.Content
+                .ReadFromJsonAsync<ApiEnvelopeWireDto<T>>(SerializerOptions, cancellationToken)
                 .ConfigureAwait(false);
 
-            return ApiResponseEnvelope<T>.Success(data!);
+            return ApiResponseEnvelope<T>.Success(wire!.Data!);
         }
 
         ProblemDetailsDto? problem = null;
@@ -180,6 +183,20 @@ public abstract class SafetyApiClientBase
             (int)response.StatusCode,
             problem?.Title ?? "Unknown");
 
-        return ApiResponseEnvelope<T>.Problem(problem ?? ProblemDetailsDto.Unknown((int)response.StatusCode));
+        return ApiResponseEnvelope<T>.FromProblem(problem ?? ProblemDetailsDto.Unknown((int)response.StatusCode));
+    }
+
+    /// <summary>
+    /// Wire shape of PlantSafety.Api's canonical <c>ApiResponse&lt;T&gt;</c> envelope
+    /// (PlantSafety.Api.Models.ApiResponse&lt;T&gt;), used only to deserialize the "data"
+    /// property on 2xx responses. Never exposed outside this base class.
+    /// </summary>
+    private sealed class ApiEnvelopeWireDto<T>
+    {
+        /// <summary>Gets a value indicating whether the operation succeeded.</summary>
+        public bool Success { get; init; }
+
+        /// <summary>Gets the strongly-typed data payload.</summary>
+        public T? Data { get; init; }
     }
 }

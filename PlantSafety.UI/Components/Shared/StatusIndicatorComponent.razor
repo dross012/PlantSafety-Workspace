@@ -1,0 +1,40 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical operational status indicator — one of the 11
+      non-forkable shared components mandated by the Platform UI Architecture
+      Master Specification (Volume 0) §4. Renders a status dot + always-visible
+      text label for Healthy/Warning/Critical/Offline operational states.
+      Pure/stateless/parameter-driven per UI001-UI005.
+    Inputs: Status (required), Label (optional override)
+    Outputs: none
+    Accessibility: status text always visible (never color-only); role="status"
+      with a descriptive aria-label per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+<span class="ps-status-indicator" role="status" aria-label="@AriaLabel">
+    <span class="ps-status-dot @DotCssClass" aria-hidden="true"></span>@DisplayLabel
+</span>
+
+@code {
+    /// <summary>Operational status: Healthy, Warning, Critical, or Offline.</summary>
+    [Parameter, EditorRequired]
+    public string Status { get; set; } = "Healthy";
+
+    /// <summary>Optional display label override; defaults to <see cref="Status"/>.</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    private string DisplayLabel => Label ?? Status;
+
+    private string AriaLabel => $"Status: {DisplayLabel}";
+
+    private string DotCssClass => Status.Trim().ToLowerInvariant() switch
+    {
+        "healthy" or "ok" or "good" or "active" => "ps-status-dot--healthy",
+        "warning" or "fair" or "degraded" => "ps-status-dot--warning",
+        "critical" or "poor" or "error" or "down" => "ps-status-dot--critical",
+        _ => "ps-status-dot--offline",
+    };
+}

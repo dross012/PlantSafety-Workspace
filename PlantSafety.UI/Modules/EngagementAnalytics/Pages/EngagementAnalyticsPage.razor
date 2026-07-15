@@ -1,0 +1,202 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Engagement Analytics dashboard page (Volume A1 §"Culture
+     & Engagement Analytics" — sentiment/participation/behavioral metrics).
+     Wires the single PlantSafety.Api.Analytics.Engagement read-model
+     endpoint via EngagementAnalyticsApiClient, populates
+     EngagementAnalyticsState, and renders a KPI CardComponent summary,
+     TrendChartComponent, and a DataGridComponent breakdown table across two
+     tabs (Overview/Breakdown) — built entirely from the canonical Shared
+     component library, following the Modules/Alerts and Modules/Admin
+     exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/engagement-analytics"
+
+@inject EngagementAnalyticsState State
+@inject EngagementAnalyticsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.EngagementAnalytics.ApiClients
+@using PlantSafety.UI.Modules.EngagementAnalytics.Models
+@using PlantSafety.UI.Modules.EngagementAnalytics.State
+@using PlantSafety.UI.Modules.DashboardAnalytics.Components
+@using PlantSafety.UI.Modules.DashboardAnalytics.Models
+
+<PageTitle>Engagement Analytics — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Engagement Analytics page could not be displayed." OnRetry="LoadAsync">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Engagement Analytics sections" />
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading engagement analytics…" />
+        }
+        else
+        {
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @* ── Overview ─────────────────────────────────────────────────── *@
+                @if (State.ActiveTab == EngagementAnalyticsTab.Overview)
+                {
+                    @if (State.Data.Count == 0)
+                    {
+                        <CardComponent Title="Engagement Overview"><p class="ps-chart-empty">No engagement data found for the selected range.</p></CardComponent>
+                    }
+                    else
+                    {
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+                            <CardComponent Title="Average Engagement">
+                                <div class="ps-field-row">
+                                    <span class="ps-field-label">Score</span>
+                                    <span class="ps-field-value">@AverageValue.ToString("N1")</span>
+                                </div>
+                            </CardComponent>
+                            <CardComponent Title="Highest">
+                                <div class="ps-field-row">
+                                    <span class="ps-field-label">@HighestPoint?.Label</span>
+                                    <span class="ps-field-value">@HighestPoint?.Value.ToString("N1")</span>
+                                </div>
+                            </CardComponent>
+                            <CardComponent Title="Lowest">
+                                <div class="ps-field-row">
+                                    <span class="ps-field-label">@LowestPoint?.Label</span>
+                                    <span class="ps-field-value">@LowestPoint?.Value.ToString("N1")</span>
+                                </div>
+                            </CardComponent>
+                        </div>
+
+                        <TrendChartComponent Title="Engagement Trend" Points="BuildTrendPoints()" />
+                    }
+                }
+
+                @* ── Breakdown ────────────────────────────────────────────────── *@
+                @if (State.ActiveTab == EngagementAnalyticsTab.Breakdown)
+                {
+                    <CardComponent Title="Engagement — Breakdown">
+                        <DataGridComponent TItem="EngagementDataPointDto"
+                                            Items="State.Data"
+                                            Headers="_headers"
+                                            KeySelector="d => d.Label"
+                                            EmptyMessage="No engagement data found for the selected range."
+                                            AriaLabel="Engagement breakdown">
+                            <RowTemplate Context="point">
+                                <td>@point.Label</td>
+                                <td>@point.Value.ToString("N1")</td>
+                                <td>
+                                    @if (point.Trend is not null)
+                                    {
+                                        <SeverityBadgeComponent Severity="@MapTrendSeverity(point.Trend)" Text="@point.Trend" />
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Overview", "Breakdown"];
+    private static readonly string[] _headers = ["Label", "Value", "Trend"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Engagement Analytics",
+            activeModuleCode: "engagement-analytics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "Engagement Analytics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private Task OnTabIndexChangedAsync(int index)
+    {
+        State.SetActiveTab((EngagementAnalyticsTab)index);
+        return Task.CompletedTask;
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetEngagementAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetData(envelope.Data!.Data);
+        else
+            State.SetError(DescribeFailure(envelope));
+    }
+
+    private decimal AverageValue => State.Data.Count > 0 ? State.Data.Average(d => d.Value) : 0m;
+
+    private EngagementDataPointDto? HighestPoint => State.Data.Count > 0 ? State.Data.MaxBy(d => d.Value) : null;
+
+    private EngagementDataPointDto? LowestPoint => State.Data.Count > 0 ? State.Data.MinBy(d => d.Value) : null;
+
+    private List<TrendChartPoint> BuildTrendPoints() =>
+        State.Data.Select(d => new TrendChartPoint(d.Label, d.Value)).ToList();
+
+    private static string MapTrendSeverity(string trend) => trend.ToLowerInvariant() switch
+    {
+        "improving" => "Low",
+        "stable" => "Info",
+        "declining" => "High",
+        _ => "Medium",
+    };
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

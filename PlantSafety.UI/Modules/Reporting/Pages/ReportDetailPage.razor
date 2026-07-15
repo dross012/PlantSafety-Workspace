@@ -1,0 +1,131 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Report detail page for PlantSafety's general-purpose
+     Reporting module. Generic detail template built from the canonical
+     Shared component library (CardComponent, StatusIndicatorComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/reporting/{ReportId:guid}"
+
+@inject ReportingState State
+@inject ReportingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Reporting.ApiClients
+@using PlantSafety.UI.Modules.Reporting.State
+
+<PageTitle>Report Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The report detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading report…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedReport is { } report)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@report.Title</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(report.Status)" Label="@report.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Description</dt>     <dd>@report.Description</dd>
+                    <dt>Type</dt>            <dd>@report.ReportType</dd>
+                    <dt>Source Module</dt>   <dd>@report.SourceModule</dd>
+                    <dt>Period</dt>          <dd>@report.PeriodStart.ToString("yyyy-MM-dd") – @report.PeriodEnd.ToString("yyyy-MM-dd")</dd>
+                    <dt>Generated</dt>       <dd>@report.GeneratedAtUtc.ToString("u") UTC</dd>
+                    <dt>Owner</dt>           <dd>@report.OwnerName</dd>
+                    <dt>Available Formats</dt>
+                    <dd>
+                        @if (report.AvailableFormats.Count == 0)
+                        {
+                            <span class="ps-text-muted">None</span>
+                        }
+                        else
+                        {
+                            @foreach (var format in report.AvailableFormats)
+                            {
+                                <span class="ps-chip" style="margin-right:4px;">@format</span>
+                            }
+                        }
+                    </dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ReportingList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Reports
+                    </button>
+                    <button class="ps-btn ps-btn-primary" disabled aria-label="Export report">
+                        <span class="bi bi-download" aria-hidden="true"></span> Export
+                    </button>
+                </div>
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    Export needs backend wiring — no export/download command endpoint exists yet for this module.
+                </p>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ReportId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Report Detail",
+            activeModuleCode: "reporting",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Reporting", Href = RouteDefinitions.ReportingList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetReportAsync(ReportId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedReport(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load report: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "published" => "Healthy",
+        "generated" => "Warning",
+        "draft" => "Offline",
+        "archived" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,124 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Drills & Exercises list page. Calls the real paginated
+     List endpoint at /v1/features/safety-events/drills.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/drills"
+
+@inject DrillsState State
+@inject DrillsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Drills.State
+@using PlantSafety.UI.Modules.Drills.ApiClients
+@using PlantSafety.UI.Modules.Drills.Mappings
+@using PlantSafety.UI.Modules.Drills.Models
+
+<PageTitle>Drills &amp; Exercises — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Drills list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">
+                @State.ListError
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    The Drills list needs backend wiring — only the "schedule drill" command endpoint
+                    exists today (no list/get-by-id read endpoints yet).
+                </p>
+            </div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading drills…" />
+        }
+        else if (State.ListError is null)
+        {
+            <DataGridComponent TItem="DrillDto"
+                                Items="State.Items"
+                                Headers="_headers"
+                                KeySelector="d => d.DrillId"
+                                EmptyMessage="No drills scheduled."
+                                AriaLabel="Drills and exercises">
+                <RowTemplate Context="item">
+                    @{ var vm = item.ToViewModel(); }
+                    <td>@item.DrillType</td>
+                    <td>@item.Title</td>
+                    <td><StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" /></td>
+                    <td>@item.ScheduledAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@(item.OutcomeScore?.ToString() ?? "—")</td>
+                    <td>
+                        <a href="@RouteDefinitions.DrillsList/@item.DrillId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage"
+                                      TotalPages="State.TotalPages"
+                                      TotalCount="State.TotalCount"
+                                      PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Type", "Title", "Status", "Scheduled", "Outcome", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Drills & Exercises",
+            activeModuleCode: "drills",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Drills & Exercises" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync() => await GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.ListDrillsAsync(pageNumber: page, pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load drills: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,63 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical debounced search input — one of the 11
+      non-forkable shared components mandated by the Platform UI Architecture
+      Master Specification (Volume 0) §4. Backed by the .ps-form-field
+      utility classes (wwwroot/css/plantsafety.css).
+      Pure/stateless/parameter-driven per UI001-UI005.
+    Inputs: Value, Placeholder (optional)
+    Outputs: ValueChanged (debounced 300ms after the user stops typing)
+    Accessibility: visible label text via Placeholder; accessible label
+      wired via a real &lt;label for&gt; per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+<div class="ps-form-field ps-search-box">
+    <label for="@_inputId">@Placeholder</label>
+    <input id="@_inputId"
+           type="search"
+           value="@Value"
+           placeholder="@Placeholder"
+           aria-label="@Placeholder"
+           @oninput="OnInput" />
+</div>
+
+@code {
+    private readonly string _inputId = $"search-{Guid.NewGuid():N}";
+    private CancellationTokenSource? _debounce;
+
+    /// <summary>Current search text.</summary>
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>Placeholder / accessible label text.</summary>
+    [Parameter]
+    public string Placeholder { get; set; } = "Search";
+
+    /// <summary>Debounce delay in milliseconds before <see cref="ValueChanged"/> fires.</summary>
+    [Parameter]
+    public int DebounceMilliseconds { get; set; } = 300;
+
+    /// <summary>Fired after the user stops typing for <see cref="DebounceMilliseconds"/>.</summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    private async Task OnInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? string.Empty;
+        _debounce?.Cancel();
+        _debounce = new CancellationTokenSource();
+        var token = _debounce.Token;
+
+        try
+        {
+            await Task.Delay(DebounceMilliseconds, token);
+            await ValueChanged.InvokeAsync(text);
+        }
+        catch (TaskCanceledException)
+        {
+            // superseded by a newer keystroke — expected, not an error.
+        }
+    }
+}

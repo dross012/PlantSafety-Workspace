@@ -1,0 +1,135 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Training record detail page. The Training read-model has
+     no per-id endpoint, so this page first looks for the record already
+     loaded into TrainingState by the list page; on a deep link (list not yet
+     loaded) it falls back to a widened date-range query and locates the
+     record client-side. Built from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent, StatusIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/training/{TrainingRecordId:guid}"
+
+@inject TrainingState State
+@inject TrainingApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Training.ApiClients
+@using PlantSafety.UI.Modules.Training.State
+
+<PageTitle>Training Record Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The training record detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading training record…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } record)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@record.CourseName</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(record.Status)" Label="@record.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Employee</dt>      <dd class="ps-mono">@record.EmployeeId</dd>
+                    <dt>Completed</dt>     <dd>@record.CompletedAtUtc.ToString("u") UTC</dd>
+                    <dt>Certified By</dt>  <dd class="ps-mono">@record.CertifiedBy</dd>
+                    <dt>Site</dt>          <dd class="ps-mono">@(record.SiteId?.ToString() ?? "All sites")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.TrainingList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Training
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid TrainingRecordId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Training Record Detail",
+            activeModuleCode: "training",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Training", Href = RouteDefinitions.TrainingList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var existing = State.Items.FirstOrDefault(t => t.TrainingRecordId == TrainingRecordId);
+        if (existing is not null)
+        {
+            State.SetSelectedItem(existing);
+            return;
+        }
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetTrainingRecordsAsync(
+            ResolveTenantId(),
+            siteId: null,
+            from: DateTime.UtcNow.AddYears(-10),
+            to: DateTime.UtcNow);
+
+        if (envelope.IsSuccess && envelope.Data is { Success: true, Data: not null })
+        {
+            var match = envelope.Data.Data.Items.FirstOrDefault(t => t.TrainingRecordId == TrainingRecordId);
+            if (match is not null)
+                State.SetSelectedItem(match);
+            else
+                State.SetDetailError("Training record not found.");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetDetailError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetDetailError($"Failed to load training record: {envelope.FaultType}");
+        }
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    /// <summary>Maps a training record status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" or "certified" => "Healthy",
+        "inprogress" or "in progress" or "scheduled" => "Warning",
+        "overdue" or "failed" or "expired" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

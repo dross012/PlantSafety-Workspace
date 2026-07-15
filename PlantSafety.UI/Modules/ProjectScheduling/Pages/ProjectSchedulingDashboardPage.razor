@@ -1,0 +1,118 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Project Scheduling dashboard. Loads the tenant's planning
+     project list via ProjectSchedulingState.LoadAsync (ProjectSchedulingUiService)
+     and renders a Gantt-style ProjectTimeline overview plus a chronological
+     ScheduleCalendar of target-completion dates — built entirely from the
+     canonical Shared component library (ErrorBoundaryComponent,
+     LoadingIndicatorComponent, CardComponent) plus the shared ProjectTimeline /
+     ScheduleCalendar components. Loosely mirrors the Scheduling Dashboard /
+     Calendar View split described in the Scheduling UI Architecture reference,
+     implemented with the platform's actual canonical component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/project-scheduling"
+
+@inject ProjectSchedulingState State
+@inject ProjectSchedulingUiService UiService
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PlanningProjects.Components
+@using PlantSafety.UI.Modules.ProjectScheduling.Services
+@using PlantSafety.UI.Modules.ProjectScheduling.State
+
+<PageTitle>Project Scheduling — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Project Scheduling dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading project schedules…" />
+        }
+        else if (State.TimelineItems.Count == 0)
+        {
+            <CardComponent Title="No Scheduled Projects Found">
+                <p class="ps-field-value">No planning projects were found for the current tenant and date range.</p>
+            </CardComponent>
+        }
+        else
+        {
+            <ProjectTimeline Items="State.TimelineItems" Title="Project Schedule Overview" EmptyMessage="No project schedule data available." />
+
+            <ScheduleCalendar Events="State.Events" />
+
+            <CardComponent Title="Projects">
+                <DataGridComponent TItem="PlantSafety.UI.Modules.PlanningProjects.Models.ProjectTimelineItemViewModel"
+                                    Items="State.TimelineItems"
+                                    Headers="_projectHeaders"
+                                    KeySelector="i => i.ProjectId"
+                                    EmptyMessage="No projects found."
+                                    AriaLabel="Scheduled projects">
+                    <RowTemplate Context="item">
+                        <td>@item.Label</td>
+                        <td>@item.Status</td>
+                        <td>@item.EndUtc.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            <a href="@RouteDefinitions.ProjectSchedulingDashboard/@item.ProjectId" class="ps-btn ps-btn-ghost ps-btn-sm">View Schedule</a>
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _projectHeaders = ["Project", "Status", "Target Completion", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Project Scheduling",
+            activeModuleCode: "project-scheduling",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Project Scheduling" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Task LoadAsync()
+    {
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var nowUtc = DateTime.UtcNow;
+        return State.LoadAsync(UiService, tenantId, nowUtc.AddDays(-365), nowUtc.AddDays(365));
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

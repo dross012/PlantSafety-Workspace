@@ -1,0 +1,130 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Near Miss list page. Loads a paginated, filterable list
+     of near miss records via NearMissApiClient, populates NearMissState, and
+     renders the grid with severity badges, status indicators, search, and
+     pagination — built from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/near-miss"
+
+@inject NearMissState State
+@inject NearMissApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.NearMiss.State
+@using PlantSafety.UI.Modules.NearMiss.ApiClients
+@using PlantSafety.UI.Modules.NearMiss.Mappings
+@using PlantSafety.UI.Modules.NearMiss.Models
+
+<PageTitle>Near Miss — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Near Miss list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <SearchBoxComponent Value="_searchText" Placeholder="Search title or description" ValueChanged="OnSearchChangedAsync" />
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading near miss records…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="NearMissDto"
+                                Items="FilteredItems"
+                                Headers="_headers"
+                                KeySelector="n => n.NearMissId"
+                                EmptyMessage="No near miss records found."
+                                AriaLabel="Near miss records">
+                <RowTemplate Context="item">
+                    @{ var vm = item.ToViewModel(); }
+                    <td><SeverityBadgeComponent Severity="@item.PotentialSeverity" /></td>
+                    <td>@item.Title</td>
+                    <td>@item.HazardCategory</td>
+                    <td><StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" /></td>
+                    <td>@item.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="@RouteDefinitions.NearMissList/@item.NearMissId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage"
+                                      TotalPages="State.TotalPages"
+                                      TotalCount="State.TotalCount"
+                                      PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Potential Severity", "Title", "Hazard Category", "Status", "Occurred", "Actions"];
+    private string _searchText = string.Empty;
+
+    private IReadOnlyList<NearMissDto> FilteredItems =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? State.Items
+            : State.Items.Where(n =>
+                n.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                n.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Near Miss",
+            activeModuleCode: "near-miss",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Near Miss" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private Task OnSearchChangedAsync(string text) { _searchText = text; StateHasChanged(); return Task.CompletedTask; }
+
+    private async Task LoadPageAsync() => await GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.ListNearMissesAsync(pageNumber: page, pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load near miss records: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,136 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Worker detail page. The Employees read-model has no
+     per-id endpoint, so this page first looks for the record already loaded
+     into WorkerManagementState by the list page; on a deep link (list not
+     yet loaded) it falls back to a widened date-range query and locates the
+     record client-side. Built from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent, StatusIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/worker-management/{EmployeeId:guid}"
+
+@inject WorkerManagementState State
+@inject WorkerManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.WorkerManagement.ApiClients
+@using PlantSafety.UI.Modules.WorkerManagement.State
+
+<PageTitle>Worker Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The worker detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading worker…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } worker)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@worker.FullName</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(worker.Status)" Label="@worker.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Badge Number</dt> <dd>@worker.EmployeeNumber</dd>
+                    <dt>Department</dt>   <dd>@worker.Department</dd>
+                    <dt>Hire Date</dt>    <dd>@worker.HireDateUtc.ToString("yyyy-MM-dd")</dd>
+                    <dt>Manager ID</dt>   <dd class="ps-mono">@worker.ManagerId</dd>
+                    <dt>Site</dt>         <dd class="ps-mono">@(worker.SiteId?.ToString() ?? "All sites")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.WorkerManagementList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Worker Management
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid EmployeeId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Worker Detail",
+            activeModuleCode: "worker-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Worker Management", Href = RouteDefinitions.WorkerManagementList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var existing = State.Items.FirstOrDefault(w => w.EmployeeId == EmployeeId);
+        if (existing is not null)
+        {
+            State.SetSelectedItem(existing);
+            return;
+        }
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetEmployeesAsync(
+            ResolveTenantId(),
+            siteId: null,
+            from: DateTime.UtcNow.AddYears(-10),
+            to: DateTime.UtcNow);
+
+        if (envelope.IsSuccess && envelope.Data is { Success: true, Data: not null })
+        {
+            var match = envelope.Data.Data.Items.FirstOrDefault(w => w.EmployeeId == EmployeeId);
+            if (match is not null)
+                State.SetSelectedItem(match);
+            else
+                State.SetDetailError("Worker not found.");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetDetailError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetDetailError($"Failed to load worker: {envelope.FaultType}");
+        }
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    /// <summary>Maps an employment status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "onleave" or "on leave" => "Warning",
+        "terminated" or "suspended" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

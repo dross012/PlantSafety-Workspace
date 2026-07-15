@@ -1,0 +1,64 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical card container — one of the 11 non-forkable
+      shared components mandated by the Platform UI Architecture Master
+      Specification (Volume 0) §4. Used for dashboard summaries, list
+      groupings, and drilldown entry points across every module. Backed by
+      the existing .ps-card / .ps-card-title utility classes (already used
+      throughout Modules/Admin and Modules/Alerts) so it is a drop-in
+      replacement for hand-rolled &lt;div class="ps-card"&gt; markup.
+      Pure/stateless/parameter-driven per UI001-UI005 — no injected
+      services, no direct navigation (activation is surfaced via OnClick
+      for the caller's own NavigationManager-based handler).
+    Inputs: Title (optional), Subtitle (optional), ChildContent (required)
+    Outputs: OnClick (optional; fired when the card itself is activated)
+    Accessibility: activatable cards expose role="button"/tabindex/keyboard
+      (Enter/Space) per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+<div class="ps-card @(IsInteractive ? "ps-card--interactive" : "") @CssClass"
+     role="@(IsInteractive ? "button" : null)"
+     tabindex="@(IsInteractive ? "0" : null)"
+     @onclick="HandleActivate"
+     @onkeydown="HandleKeyDown">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <h3 class="ps-card-title">@Title</h3>
+    }
+    @if (!string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <div class="ps-card-subtitle">@Subtitle</div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Card header text.</summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>Optional secondary header text.</summary>
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    /// <summary>Card body content (optional — a card may be Title/Subtitle-only, e.g. a stat tile).</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Fired when the card is activated via click, Enter, or Space (omit to render a static card).</summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    /// <summary>Additional CSS class(es) to append.</summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    private bool IsInteractive => OnClick.HasDelegate;
+
+    private Task HandleActivate() => IsInteractive ? OnClick.InvokeAsync() : Task.CompletedTask;
+
+    private Task HandleKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+        => IsInteractive && (e.Key == "Enter" || e.Key == " ") ? OnClick.InvokeAsync() : Task.CompletedTask;
+}

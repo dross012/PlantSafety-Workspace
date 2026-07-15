@@ -1,0 +1,133 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Emergency Management dashboard. Event-response command
+     center loosely modeled on the Operator Escalation Center wireframe
+     (KPI summary + response-queue grid). Calls the real paginated List
+     endpoint at /v1/features/safety-events/emergency-responses.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/emergency-management"
+
+@inject EmergencyManagementState State
+@inject EmergencyManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.EmergencyManagement.State
+@using PlantSafety.UI.Modules.EmergencyManagement.ApiClients
+@using PlantSafety.UI.Modules.EmergencyManagement.Mappings
+@using PlantSafety.UI.Modules.EmergencyManagement.Models
+
+<PageTitle>Emergency Management — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Emergency Management dashboard could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <div class="ps-kpi-row">
+            <CardComponent Title="Active Responses" Subtitle="@State.ActiveCount.ToString()" />
+            <CardComponent Title="Stand-Down" Subtitle="@State.StandDownCount.ToString()" />
+            <CardComponent Title="Completed" Subtitle="@State.CompletedCount.ToString()" />
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">
+                @State.ListError
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    The Emergency Management response queue needs backend wiring — only the
+                    "activate response" command endpoint exists today (no list/get-by-id read endpoints yet).
+                </p>
+            </div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading emergency responses…" />
+        }
+        else if (State.ListError is null)
+        {
+            <CardComponent Title="Emergency Response Queue">
+                <DataGridComponent TItem="EmergencyResponseDto"
+                                    Items="State.Items"
+                                    Headers="_headers"
+                                    KeySelector="e => e.EmergencyResponseId"
+                                    EmptyMessage="No emergency responses activated."
+                                    AriaLabel="Emergency responses">
+                    <RowTemplate Context="item">
+                        @{ var vm = item.ToViewModel(); }
+                        <td><SeverityBadgeComponent Severity="@vm.SeverityForBadge" /></td>
+                        <td>@item.ResponsePlanName</td>
+                        <td><StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" /></td>
+                        <td>@item.ActivatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>
+                            <a href="@RouteDefinitions.EmergencyManagementDashboard/@item.EmergencyResponseId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+
+                @if (State.TotalPages > 1)
+                {
+                    <PaginationComponent CurrentPage="State.CurrentPage"
+                                          TotalPages="State.TotalPages"
+                                          TotalCount="State.TotalCount"
+                                          PageChanged="GoToPageAsync" />
+                }
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Severity", "Response Plan", "Status", "Activated", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Emergency Management",
+            activeModuleCode: "emergency-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Emergency Management" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync() => await GoToPageAsync(1);
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.ListEmergencyResponsesAsync(pageNumber: page, pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load emergency responses: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

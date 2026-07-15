@@ -1,0 +1,196 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Inspection detail page. The read-model API exposes only
+     a list endpoint (GET api/v1/operational/inspections, no GetById) — the
+     record is resolved from the already-loaded InspectionsState.AllItems
+     when navigated to from the list, or by re-querying a wide date window
+     when deep-linked directly. Tabbed checklist-style workspace built
+     entirely from the canonical Shared component library:
+     ErrorBoundaryComponent, LoadingIndicatorComponent, TabControlComponent,
+     CardComponent, StatusIndicatorComponent.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/inspections/{InspectionId:guid}"
+
+@inject InspectionsState State
+@inject InspectionsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Inspections.ApiClients
+@using PlantSafety.UI.Modules.Inspections.Models
+@using PlantSafety.UI.Modules.Inspections.Services
+@using PlantSafety.UI.Modules.Inspections.State
+
+<PageTitle>Inspection Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The inspection detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading inspection record…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } record)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@record.InspectionType</h2>
+                <StatusIndicatorComponent Status="@InspectionsUiService.MapOutcomeToOperationalState(record.Outcome)" Label="@record.Outcome" />
+                <StatusIndicatorComponent Status="@InspectionsUiService.MapStatusToOperationalState(record.Status)" Label="@record.Status" />
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChanged" AriaLabel="Inspection record sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (_activeTab == 0)
+                {
+                    <CardComponent Title="Overview">
+                        <div class="ps-field-row"><span class="ps-field-label">Inspection Type</span><span class="ps-field-value">@record.InspectionType</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Outcome</span><span><StatusIndicatorComponent Status="@InspectionsUiService.MapOutcomeToOperationalState(record.Outcome)" Label="@record.Outcome" /></span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Status</span><span><StatusIndicatorComponent Status="@InspectionsUiService.MapStatusToOperationalState(record.Status)" Label="@record.Status" /></span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Inspected</span><span class="ps-field-value">@record.InspectedAtUtc.ToString("u") UTC</span></div>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 1)
+                {
+                    <CardComponent Title="Record Detail">
+                        <div class="ps-field-row"><span class="ps-field-label">Record ID</span><span class="ps-field-value ps-mono">@record.InspectionId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Tenant ID</span><span class="ps-field-value ps-mono">@record.TenantId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Site ID</span><span class="ps-field-value ps-mono">@(record.SiteId?.ToString() ?? "All sites")</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Inspected By</span><span class="ps-field-value ps-mono">@record.InspectedBy</span></div>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 2)
+                {
+                    <CardComponent Title="Checklist &amp; Findings">
+                        <p class="ps-field-value">A full item-by-item inspection checklist (pass/fail per line item,
+                            photo evidence, deficiency notes) will render here per module.</p>
+                        <p class="ps-needs-backend">
+                            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                            The detailed checklist and findings need backend wiring — the Inspections
+                            read-model endpoint returns only the summary outcome and status shown in
+                            Overview today.
+                        </p>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 3)
+                {
+                    <CardComponent Title="Sign-off &amp; Approval">
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => Nav.NavigateTo(RouteDefinitions.InspectionsList)">
+                            <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Inspections
+                        </button>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Sign off inspection">
+                            <span class="bi bi-pen" aria-hidden="true"></span> Sign Off
+                        </button>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Schedule reinspection">
+                            <span class="bi bi-calendar-plus" aria-hidden="true"></span> Schedule Reinspection
+                        </button>
+                        <p class="ps-needs-backend">
+                            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                            Sign-off and reinspection scheduling need backend wiring — no command endpoint
+                            exists yet for the Inspections module (read-only today).
+                        </p>
+                    </CardComponent>
+                }
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Overview", "Record Detail", "Checklist & Findings", "Sign-off & Approval"];
+    private int _activeTab;
+
+    [Parameter] public Guid InspectionId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Inspection Detail",
+            activeModuleCode: "inspections",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Inspections", Href = RouteDefinitions.InspectionsList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await ResolveRecordAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State.SelectedItem is { } current && current.InspectionId == InspectionId)
+            return;
+
+        await ResolveRecordAsync();
+    }
+
+    private async Task ResolveRecordAsync()
+    {
+        State.BeginDetailLoad();
+
+        var existing = State.AllItems.FirstOrDefault(i => i.InspectionId == InspectionId);
+        if (existing is not null)
+        {
+            State.SetSelectedItem(existing);
+            return;
+        }
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow;
+
+        var envelope = await ApiClient.GetInspectionsAsync(tenantId, siteId: null, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+        {
+            var found = envelope.Data!.Items.FirstOrDefault(i => i.InspectionId == InspectionId);
+            if (found is not null)
+                State.SetSelectedItem(found);
+            else
+                State.SetDetailError("This inspection record could not be found.");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetDetailError(string.IsNullOrWhiteSpace(envelope.Problem!.Detail) ? "The request failed." : envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetDetailError($"Failed to load inspection record: {envelope.FaultType}");
+        }
+    }
+
+    private Task OnTabChanged(int index)
+    {
+        _activeTab = index;
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

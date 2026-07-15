@@ -1,0 +1,131 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   UPDATED: 2026-07-15 — repointed at the new dedicated Environmental Health
+     GetById endpoint (GET v1/features/environmental-health/readings/{id}).
+     Falls back to a client-side lookup against the currently loaded window
+     (via EnvironmentalHealthState) first, then calls GetById directly when
+     the reading isn't already in memory (e.g., deep link).
+   FILE DESCRIPTION: Environmental Health reading detail page.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/environmental-health/{EnvironmentalHealthId:guid}"
+
+@inject EnvironmentalHealthState State
+@inject EnvironmentalHealthApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.EnvironmentalHealth.ApiClients
+
+<PageTitle>Environmental Policy Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The environmental policy detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading policy…" />
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">
+                Reading @EnvironmentalHealthId was not found.
+            </div>
+        }
+        else if (State.Selected is { } reading)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@reading.MetricType</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(reading.Status)" Label="@reading.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Reading ID</dt>   <dd class="ps-mono">@reading.EnvironmentalHealthId</dd>
+                    <dt>Metric Type</dt>  <dd>@reading.MetricType</dd>
+                    <dt>Measurement</dt>  <dd>@reading.MeasurementValue.ToString("0.##") @reading.Unit</dd>
+                    <dt>Threshold</dt>    <dd>@reading.Threshold.ToString("0.##") @reading.Unit</dd>
+                    <dt>Status</dt>       <dd>@reading.Status</dd>
+                    <dt>Recorded</dt>     <dd>@reading.RecordedAtUtc.ToString("u") UTC</dd>
+                    @if (reading.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@reading.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.EnvironmentalHealthDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Environmental Health
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid EnvironmentalHealthId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Environmental Policy Detail",
+            activeModuleCode: "environmental-health",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Environmental Health", Href = RouteDefinitions.EnvironmentalHealthDashboard },
+                new BreadcrumbItem { Label = "Policy Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(EnvironmentalHealthId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var envelope = await ApiClient.GetReadingByIdAsync(EnvironmentalHealthId);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetSelected(envelope.Data!);
+            _notFound = false;
+        }
+        else
+        {
+            _notFound = true;
+        }
+
+        _isLoading = false;
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "normal" => "Healthy",
+        "warning" => "Warning",
+        "critical" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

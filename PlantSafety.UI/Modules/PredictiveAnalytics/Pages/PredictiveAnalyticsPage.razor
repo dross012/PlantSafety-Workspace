@@ -1,0 +1,375 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Predictive Analytics dashboard page (Volume A1 §Page 4 —
+     Predictive Insights: risk scoring, anomaly detection, forecast models;
+     see also ui_forecast_overview_wireframe / ui_predictive_risk_dashboard_
+     wireframe). Wires the five PlantSafety.Api.Analytics.PredictiveAnalytics
+     / Predictive.* read-model sections (Model Output, Compliance Failure,
+     Fatigue Risk, Incident Prediction, Risk Forecasting) via
+     PredictiveAnalyticsApiClient, populates PredictiveAnalyticsState, and
+     renders KPI CardComponent grids, TrendChartComponent forecast curves,
+     and DataGridComponent breakdown tables — built entirely from the
+     canonical Shared component library. All risk scoring is server-computed;
+     this page performs no predictive scoring client-side (UI001).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-analytics"
+
+@inject PredictiveAnalyticsState State
+@inject PredictiveAnalyticsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveAnalytics.ApiClients
+@using PlantSafety.UI.Modules.PredictiveAnalytics.Models
+@using PlantSafety.UI.Modules.PredictiveAnalytics.State
+@using PlantSafety.UI.Modules.DashboardAnalytics.Components
+@using PlantSafety.UI.Modules.DashboardAnalytics.Models
+
+<PageTitle>Predictive Analytics — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Predictive Analytics page could not be displayed." OnRetry="() => LoadActiveTabAsync()">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Predictive Analytics sections" />
+
+        <div class="ps-tab-panel" role="tabpanel">
+
+            @* ── Model Output ─────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == PredictiveAnalyticsTab.ModelOutput)
+            {
+                @if (State.ModelOutputError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ModelOutputError</div>
+                }
+
+                @if (State.IsLoadingModelOutput)
+                {
+                    <LoadingIndicatorComponent Message="Loading predictive model output…" />
+                }
+                else if (State.ModelOutput.Count == 0)
+                {
+                    <CardComponent Title="Predictive Model Output"><p class="ps-chart-empty">No predictive model output found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+                        @foreach (var model in State.ModelOutput)
+                        {
+                            <CardComponent Title="@model.ModelName">
+                                <div class="ps-field-row">
+                                    <span class="ps-field-label">Risk score @((model.Score * 100).ToString("N0"))</span>
+                                </div>
+                                <p class="ps-chart-summary">Risk score @((model.Score * 100).ToString("N0")): @MapScoreLabel(model.Score).</p>
+                                <SeverityBadgeComponent Severity="@MapScoreSeverity(model.Score)" Text="@MapScoreLabel(model.Score)" />
+                            </CardComponent>
+                        }
+                    </div>
+
+                    <CardComponent Title="Model Output — Detail">
+                        <DataGridComponent TItem="PredictiveModelOutputDto"
+                                            Items="State.ModelOutput"
+                                            Headers="_modelOutputHeaders"
+                                            KeySelector="m => m.PredictionId"
+                                            EmptyMessage="No predictive model output found."
+                                            AriaLabel="Predictive model output">
+                            <RowTemplate Context="model">
+                                <td>@model.ModelName</td>
+                                <td>@((model.Score * 100).ToString("N0"))%</td>
+                                <td><span class="ps-chip">@model.Status</span></td>
+                                <td>@model.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Compliance Failure ──────────────────────────────────────────── *@
+            @if (State.ActiveTab == PredictiveAnalyticsTab.ComplianceFailure)
+            {
+                @if (State.ComplianceFailureError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ComplianceFailureError</div>
+                }
+
+                @if (State.IsLoadingComplianceFailure)
+                {
+                    <LoadingIndicatorComponent Message="Loading compliance failure predictions…" />
+                }
+                else
+                {
+                    <CardComponent Title="Compliance Failure Risk">
+                        <DataGridComponent TItem="ComplianceFailureRiskDto"
+                                            Items="State.ComplianceFailure"
+                                            Headers="_complianceFailureHeaders"
+                                            KeySelector="c => c.PredictionId"
+                                            EmptyMessage="No compliance failure predictions found for the selected range."
+                                            AriaLabel="Compliance failure predictions">
+                            <RowTemplate Context="risk">
+                                <td>@risk.ComplianceArea</td>
+                                <td>@((risk.FailureProbability * 100).ToString("N0"))%</td>
+                                <td><SeverityBadgeComponent Severity="@risk.RiskLevel" /></td>
+                                <td><span class="ps-chip">@risk.Status</span></td>
+                                <td>@risk.PredictedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Fatigue Risk ─────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == PredictiveAnalyticsTab.FatigueRisk)
+            {
+                @if (State.FatigueRiskError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.FatigueRiskError</div>
+                }
+
+                @if (State.IsLoadingFatigueRisk)
+                {
+                    <LoadingIndicatorComponent Message="Loading fatigue risk assessments…" />
+                }
+                else
+                {
+                    <CardComponent Title="Fatigue Risk Modeling">
+                        <DataGridComponent TItem="FatigueRiskAssessmentDto"
+                                            Items="State.FatigueRisk"
+                                            Headers="_fatigueRiskHeaders"
+                                            KeySelector="f => f.RiskAssessmentId"
+                                            EmptyMessage="No fatigue risk assessments found for the selected range."
+                                            AriaLabel="Fatigue risk assessments">
+                            <RowTemplate Context="risk">
+                                <td>@risk.FatigueRiskScore.ToString("N1")</td>
+                                <td><SeverityBadgeComponent Severity="@risk.RiskLevel" /></td>
+                                <td><span class="ps-chip">@risk.Status</span></td>
+                                <td>@risk.AssessedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Incident Prediction ──────────────────────────────────────────── *@
+            @if (State.ActiveTab == PredictiveAnalyticsTab.IncidentPrediction)
+            {
+                @if (State.IncidentPredictionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.IncidentPredictionError</div>
+                }
+
+                @if (State.IsLoadingIncidentPrediction)
+                {
+                    <LoadingIndicatorComponent Message="Loading incident predictions…" />
+                }
+                else
+                {
+                    <CardComponent Title="Incident Prediction">
+                        <DataGridComponent TItem="IncidentPredictionDto"
+                                            Items="State.IncidentPrediction"
+                                            Headers="_incidentPredictionHeaders"
+                                            KeySelector="i => i.PredictionId"
+                                            EmptyMessage="No incident predictions found for the selected range."
+                                            AriaLabel="Incident predictions">
+                            <RowTemplate Context="pred">
+                                <td>@pred.IncidentCategory</td>
+                                <td>@((pred.PredictedProbability * 100).ToString("N0"))%</td>
+                                <td><SeverityBadgeComponent Severity="@pred.RiskLevel" /></td>
+                                <td><span class="ps-chip">@pred.Status</span></td>
+                                <td>@pred.PredictedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Risk Forecasting ─────────────────────────────────────────────── *@
+            @if (State.ActiveTab == PredictiveAnalyticsTab.RiskForecasting)
+            {
+                @if (State.RiskForecastingError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.RiskForecastingError</div>
+                }
+
+                @if (State.IsLoadingRiskForecasting)
+                {
+                    <LoadingIndicatorComponent Message="Loading risk forecasts…" />
+                }
+                else
+                {
+                    <TrendChartComponent Title="Risk Forecast" Points="BuildForecastPoints()" />
+
+                    <CardComponent Title="Risk Forecasting — Detail">
+                        <DataGridComponent TItem="RiskForecastPointDto"
+                                            Items="State.RiskForecasting"
+                                            Headers="_riskForecastingHeaders"
+                                            KeySelector="r => r.ForecastId"
+                                            EmptyMessage="No risk forecasts found for the selected range."
+                                            AriaLabel="Risk forecasts">
+                            <RowTemplate Context="forecast">
+                                <td>@forecast.RiskCategory</td>
+                                <td>@forecast.ForecastValue.ToString("N1")</td>
+                                <td>@forecast.ForecastHorizonDays days</td>
+                                <td><span class="ps-chip">@forecast.Status</span></td>
+                                <td>@forecast.ForecastedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels =
+        ["Model Output", "Compliance Failure", "Fatigue Risk", "Incident Prediction", "Risk Forecasting"];
+
+    private static readonly string[] _modelOutputHeaders = ["Model", "Score", "Status", "Generated"];
+    private static readonly string[] _complianceFailureHeaders = ["Area", "Probability", "Risk", "Status", "Predicted"];
+    private static readonly string[] _fatigueRiskHeaders = ["Score", "Risk", "Status", "Assessed"];
+    private static readonly string[] _incidentPredictionHeaders = ["Category", "Probability", "Risk", "Status", "Predicted"];
+    private static readonly string[] _riskForecastingHeaders = ["Category", "Forecast Value", "Horizon", "Status", "Forecasted"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Predictive Analytics",
+            activeModuleCode: "predictive-analytics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "Predictive Analytics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadActiveTabAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private Task OnTabIndexChangedAsync(int index) => SelectTabAsync((PredictiveAnalyticsTab)index);
+
+    private async Task SelectTabAsync(PredictiveAnalyticsTab tab)
+    {
+        State.SetActiveTab(tab);
+        await LoadActiveTabAsync();
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadActiveTabAsync();
+    }
+
+    private Task LoadActiveTabAsync() => State.ActiveTab switch
+    {
+        PredictiveAnalyticsTab.ModelOutput when State.ModelOutput.Count == 0 && !State.IsLoadingModelOutput => LoadModelOutputAsync(),
+        PredictiveAnalyticsTab.ComplianceFailure when State.ComplianceFailure.Count == 0 && !State.IsLoadingComplianceFailure => LoadComplianceFailureAsync(),
+        PredictiveAnalyticsTab.FatigueRisk when State.FatigueRisk.Count == 0 && !State.IsLoadingFatigueRisk => LoadFatigueRiskAsync(),
+        PredictiveAnalyticsTab.IncidentPrediction when State.IncidentPrediction.Count == 0 && !State.IsLoadingIncidentPrediction => LoadIncidentPredictionAsync(),
+        PredictiveAnalyticsTab.RiskForecasting when State.RiskForecasting.Count == 0 && !State.IsLoadingRiskForecasting => LoadRiskForecastingAsync(),
+        _ => Task.CompletedTask,
+    };
+
+    private async Task LoadModelOutputAsync()
+    {
+        State.BeginModelOutputLoad();
+        var envelope = await ApiClient.GetModelOutputAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetModelOutput(envelope.Data!.Items);
+        else
+            State.SetModelOutputError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadComplianceFailureAsync()
+    {
+        State.BeginComplianceFailureLoad();
+        var envelope = await ApiClient.GetComplianceFailureAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetComplianceFailure(envelope.Data!.Items);
+        else
+            State.SetComplianceFailureError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadFatigueRiskAsync()
+    {
+        State.BeginFatigueRiskLoad();
+        var envelope = await ApiClient.GetFatigueRiskModelingAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetFatigueRisk(envelope.Data!.Items);
+        else
+            State.SetFatigueRiskError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadIncidentPredictionAsync()
+    {
+        State.BeginIncidentPredictionLoad();
+        var envelope = await ApiClient.GetIncidentPredictionAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetIncidentPrediction(envelope.Data!.Items);
+        else
+            State.SetIncidentPredictionError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadRiskForecastingAsync()
+    {
+        State.BeginRiskForecastingLoad();
+        var envelope = await ApiClient.GetRiskForecastingAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetRiskForecasting(envelope.Data!.Items);
+        else
+            State.SetRiskForecastingError(DescribeFailure(envelope));
+    }
+
+    private List<TrendChartPoint> BuildForecastPoints() =>
+        State.RiskForecasting
+            .OrderBy(f => f.ForecastHorizonDays)
+            .Select(f => new TrendChartPoint($"{f.ForecastHorizonDays}d", f.ForecastValue))
+            .ToList();
+
+    private static string MapScoreLabel(decimal score) => score switch
+    {
+        >= 0.75m => "High risk",
+        >= 0.5m => "Medium risk",
+        >= 0.25m => "Low risk",
+        _ => "Minimal risk",
+    };
+
+    private static string MapScoreSeverity(decimal score) => score switch
+    {
+        >= 0.75m => "Critical",
+        >= 0.5m => "High",
+        >= 0.25m => "Medium",
+        _ => "Low",
+    };
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

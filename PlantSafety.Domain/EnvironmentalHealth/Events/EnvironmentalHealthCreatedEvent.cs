@@ -1,12 +1,14 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         EnvironmentalHealth
 //  Layer:          Domain
 //  File:           EnvironmentalHealthCreatedEvent.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-15 — added TenantId/MetricType/MeasurementValue/Status payload
+//                  fields (additive) to match the extended EnvironmentalHealth aggregate shape.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    Domain event raised when a EnvironmentalHealth aggregate is created.
+//  Description:    Domain event raised when an EnvironmentalHealth aggregate is created.
 //                  Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.EnvironmentalHealth.Events;
@@ -15,6 +17,10 @@ namespace PlantSafety.Domain.EnvironmentalHealth.Events;
 public sealed record EnvironmentalHealthCreatedEvent(
     Guid          EventId,
     Guid          EnvironmentalHealthId,
+    Guid          TenantId,
+    string        MetricType,
+    decimal       MeasurementValue,
+    string        Status,
     UtcTimestamp  CreatedAtUtc,
     PerformedByActor Actor,
     CorrelationId CorrelationId,

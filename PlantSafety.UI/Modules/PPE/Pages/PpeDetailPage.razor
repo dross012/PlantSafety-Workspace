@@ -1,0 +1,135 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: PPE record detail page. The PPEManagement read-model has
+     no per-id endpoint, so this page first looks for the record already
+     loaded into PpeState by the list page; on a deep link (list not yet
+     loaded) it falls back to a widened date-range query and locates the
+     record client-side. Built from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent, StatusIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ppe/{PpeRecordId:guid}"
+
+@inject PpeState State
+@inject PpeApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PPE.ApiClients
+@using PlantSafety.UI.Modules.PPE.State
+
+<PageTitle>PPE Record Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The PPE record detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading PPE record…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } ppe)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@ppe.PPEType</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(ppe.Status)" Label="@ppe.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Employee</dt>   <dd class="ps-mono">@ppe.EmployeeId</dd>
+                    <dt>Issued</dt>     <dd>@ppe.IssuedAtUtc.ToString("u") UTC</dd>
+                    <dt>Issued By</dt>  <dd class="ps-mono">@ppe.IssuedBy</dd>
+                    <dt>Site</dt>       <dd class="ps-mono">@(ppe.SiteId?.ToString() ?? "All sites")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PpeList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to PPE
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid PpeRecordId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "PPE Record Detail",
+            activeModuleCode: "ppe",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "PPE", Href = RouteDefinitions.PpeList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var existing = State.Items.FirstOrDefault(p => p.PPERecordId == PpeRecordId);
+        if (existing is not null)
+        {
+            State.SetSelectedItem(existing);
+            return;
+        }
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetPpeRecordsAsync(
+            ResolveTenantId(),
+            siteId: null,
+            from: DateTime.UtcNow.AddYears(-10),
+            to: DateTime.UtcNow);
+
+        if (envelope.IsSuccess && envelope.Data is { Success: true, Data: not null })
+        {
+            var match = envelope.Data.Data.Items.FirstOrDefault(p => p.PPERecordId == PpeRecordId);
+            if (match is not null)
+                State.SetSelectedItem(match);
+            else
+                State.SetDetailError("PPE record not found.");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetDetailError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetDetailError($"Failed to load PPE record: {envelope.FaultType}");
+        }
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    /// <summary>Maps a PPE record status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "issued" or "active" or "compliant" => "Healthy",
+        "duereview" or "due review" or "expiringsoon" => "Warning",
+        "expired" or "noncompliant" or "recalled" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

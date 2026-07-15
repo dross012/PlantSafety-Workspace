@@ -1,0 +1,149 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: ROI dashboard page (primary /modules/roi route). A
+     fiscal-year selector drives a per-year Safety ROI calculation rendered
+     via the wired ROICard component. No PlantSafety.Api controller
+     currently exists for the ROI calculation (see remarks on SafetyRoiDto/
+     RoiState) — this page degrades gracefully to a "needs backend wiring"
+     notice (matching the established AdminSetupPage pattern) rather than a
+     hard error or a blocked render, per the UI Agent's degrade-gracefully
+     mandate. Built entirely from the canonical Shared component library
+     plus the module's own wired ROICard component.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/roi"
+
+@inject RoiState State
+@inject FinancialsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Financials.ApiClients
+@using PlantSafety.UI.Modules.ROI.Components
+@using PlantSafety.UI.Modules.ROI.Mappings
+@using PlantSafety.UI.Modules.ROI.State
+
+<PageTitle>ROI — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The ROI dashboard could not be displayed." OnRetry="LoadRoiAsync">
+
+        <div class="ps-page-actions">
+            <label class="ps-field-label" for="roi-fiscal-year">Fiscal Year</label>
+            <select id="roi-fiscal-year" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnFiscalYearChangedAsync" aria-label="Select fiscal year">
+                @foreach (var year in _fiscalYearOptions)
+                {
+                    <option value="@year" selected="@(year == State.SelectedFiscalYear)">@year</option>
+                }
+            </select>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadRoiAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Calculating Safety ROI…" />
+        }
+        else if (State.BackendUnavailable)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">
+                Safety ROI calculation is not yet available for this tenant.
+                <p class="ps-needs-backend">
+                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                    The ROI dashboard needs backend wiring — PlantSafety.Api does not yet expose an HTTP endpoint for
+                    <code>IFinancialReportingService.ComputeRoiAsync</code>. Once
+                    <code>v1/features/financials/roi</code> is wired, this dashboard will render live data automatically.
+                </p>
+            </div>
+        }
+        else if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+        else if (State.Roi is { } roi)
+        {
+            <ROICard Roi="roi" />
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly int[] _fiscalYearOptions =
+    [
+        DateTime.UtcNow.Year - 2,
+        DateTime.UtcNow.Year - 1,
+        DateTime.UtcNow.Year,
+        DateTime.UtcNow.Year + 1,
+    ];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "ROI",
+            activeModuleCode: "roi",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "ROI" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadRoiAsync();
+    }
+
+    private Task OnFiscalYearChangedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var year))
+        {
+            State.SetSelectedFiscalYear(year);
+            return LoadRoiAsync();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadRoiAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetRoiAsync(tenantId, null, State.SelectedFiscalYear);
+
+        if (envelope.IsSuccess && envelope.Data is not null && envelope.Data.RoiCalculationId != Guid.Empty)
+        {
+            State.SetRoi(envelope.Data.ToViewModel());
+        }
+        else if (envelope.IsProblem && envelope.Problem!.Status == 404)
+        {
+            State.SetBackendUnavailable();
+        }
+        else if (envelope.IsFault)
+        {
+            State.SetBackendUnavailable();
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetBackendUnavailable();
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

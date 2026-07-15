@@ -1,0 +1,100 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Routing Simulation Workspace page (Volume R1 §6).
+     Standalone deep-linkable simulation run + output summary. All
+     computation is server-side (RoutingApiClient.RunSimulationAsync) — no
+     critical-path/bottleneck logic in this page. Built from the canonical
+     Shared component library (CardComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/routing/{RoutingId:guid}/simulation"
+
+@inject RoutingDetailState State
+@inject RoutingApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Routing.ApiClients
+@using PlantSafety.UI.Modules.Routing.State
+
+<PageTitle>Routing Simulation — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The routing simulation could not be displayed." OnRetry="RunAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/routing/@RoutingId" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Routing Detail</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="RunAsync" disabled="@State.IsLoadingTab">
+                <span class="bi bi-play-fill" aria-hidden="true"></span> Run Simulation
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoadingTab)
+        {
+            <LoadingIndicatorComponent Message="Running simulation…" />
+        }
+        else if (State.Simulation is { } sim)
+        {
+            <CardComponent Title="Simulation Output Summary">
+                <div class="ps-field-row"><span class="ps-field-label">Total Duration</span><span class="ps-field-value">@sim.TotalDurationMinutes min</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Critical Path</span><span class="ps-field-value">@string.Join(" → ", sim.CriticalPath)</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Resource Conflicts</span><span class="ps-field-value">@sim.ResourceConflictCount</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Material Shortages</span><span class="ps-field-value">@sim.MaterialShortageCount</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Bottleneck Steps</span>
+                    <span class="ps-field-value" aria-label="@($"Bottleneck detected at steps {string.Join(", ", sim.BottleneckSteps)}")">@string.Join(", ", sim.BottleneckSteps)</span>
+                </div>
+            </CardComponent>
+        }
+        else
+        {
+            <div class="ps-alert" role="status">No simulation has been run yet for this routing.</div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RoutingId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Routing Simulation",
+            activeModuleCode: "routing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Routing", Href = RouteDefinitions.RoutingList },
+                new BreadcrumbItem { Label = "Simulation" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task RunAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.RunSimulationAsync(RoutingId);
+
+        if (envelope.IsSuccess)
+            State.SetSimulation(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Simulation failed: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

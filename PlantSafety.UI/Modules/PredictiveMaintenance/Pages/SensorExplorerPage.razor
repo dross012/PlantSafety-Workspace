@@ -1,0 +1,124 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Sensor Data Explorer page (Volume P1 §5). Multi-channel
+     time-series table with anomaly overlays. Built from the canonical
+     Shared component library (DataGridComponent, SearchBoxComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent). No sensor-processing
+     logic in UI — anomalies are server-computed.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/sensors"
+
+@inject SensorExplorerState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.Models
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Sensor Data Explorer — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The sensor data explorer could not be displayed." OnRetry="() => LoadAsync(_channelFilter)">
+
+        <div class="ps-page-actions">
+            <a href="/modules/predictive-maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+        </div>
+
+        <SearchBoxComponent Value="_channelFilter" Placeholder="Filter by channel name" ValueChanged="OnChannelFilterChangedAsync" />
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading sensor data…" />
+        }
+        else
+        {
+            <CardComponent Title="Detected Anomalies">
+                <DataGridComponent TItem="SensorAnomalyDto" Items="State.Anomalies" Headers="_anomalyHeaders" KeySelector="a => (a.ChannelName, a.TimestampUtc)"
+                                    EmptyMessage="No anomalies detected." AriaLabel="Detected anomalies">
+                    <RowTemplate Context="anomaly">
+                        <td>@anomaly.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                        <td>@anomaly.ChannelName</td>
+                        <td><SeverityBadgeComponent Severity="@anomaly.Severity" /></td>
+                        <td>@anomaly.Value.ToString("F2")</td>
+                        <td>@anomaly.Explanation</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+
+            <CardComponent Title="Sensor Channels">
+                <DataGridComponent TItem="SensorDataPointDto" Items="State.SensorData" Headers="_sensorHeaders" KeySelector="s => (s.ChannelName, s.TimestampUtc)"
+                                    EmptyMessage="No sensor data available." AriaLabel="Sensor data" EnableVirtualization="true">
+                    <RowTemplate Context="s">
+                        <td>@s.ChannelName</td>
+                        <td>@s.TimestampUtc.ToString("HH:mm:ss") UTC</td>
+                        <td>@s.Value.ToString("F2") @s.Unit</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _anomalyHeaders = ["Time", "Channel", "Severity", "Value", "Explanation"];
+    private static readonly string[] _sensorHeaders = ["Channel", "Time", "Value"];
+    private string _channelFilter = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Sensor Data Explorer",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Sensors" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync(null);
+    }
+
+    private async Task LoadAsync(string? channel)
+    {
+        State.BeginLoad();
+
+        var dataEnvelope = await ApiClient.GetSensorDataAsync(channel: channel);
+        var anomalyEnvelope = await ApiClient.GetSensorAnomaliesAsync();
+
+        if (dataEnvelope.IsSuccess)
+            State.SetData(dataEnvelope.Data!.Items, anomalyEnvelope.IsSuccess ? anomalyEnvelope.Data!.Items : []);
+        else if (dataEnvelope.IsProblem)
+            State.SetError(dataEnvelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load sensor data: {dataEnvelope.FaultType}");
+    }
+
+    private Task OnChannelFilterChangedAsync(string value)
+    {
+        _channelFilter = value;
+        return LoadAsync(string.IsNullOrWhiteSpace(value) ? null : value);
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,167 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Management of Change detail page. Approval-workflow-style
+     detail view: StatusIndicatorComponent for the workflow's CurrentStage/
+     Status, plus a TabControlComponent switching between the correlated
+     Approvals and Risk Assessments records for the same change request.
+     Built from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/moc/{WorkflowId:guid}"
+
+@inject MocState State
+@inject MocApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.MOC.ApiClients
+@using PlantSafety.UI.Modules.MOC.Models
+@using PlantSafety.UI.Modules.MOC.State
+
+<PageTitle>MOC Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The MOC workflow could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading MOC workflow…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedWorkflow is { } workflow)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@workflow.ChangeTitle</h2>
+                    <StatusIndicatorComponent Status="@workflow.StatusIndicatorState" Label="@workflow.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Current Stage</dt> <dd>@workflow.CurrentStage</dd>
+                    <dt>Initiated</dt>     <dd>@workflow.InitiatedAtUtc.ToString("yyyy-MM-dd")</dd>
+                    <dt>Initiated By</dt>  <dd class="ps-mono">@workflow.InitiatedBy</dd>
+                    <dt>Site</dt>          <dd>@(workflow.SiteId?.ToString() ?? "Tenant-wide")</dd>
+                </dl>
+
+                <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="i => _activeTab = i" AriaLabel="MOC workflow sections" />
+
+                <div class="ps-tab-panel" role="tabpanel">
+                    @if (_activeTab == 0)
+                    {
+                        <DataGridComponent TItem="MocApprovalRowViewModel"
+                                            Items="workflow.Approvals"
+                                            Headers="_approvalHeaders"
+                                            KeySelector="a => a.ApprovalId"
+                                            EmptyMessage="No approval decisions recorded for this change request."
+                                            AriaLabel="Approvals">
+                            <RowTemplate Context="a">
+                                <td>@a.ApproverName</td>
+                                <td><StatusIndicatorComponent Status="@a.StatusIndicatorState" Label="@a.Status" /></td>
+                                <td>@a.DecidedAtUtc.ToString("yyyy-MM-dd")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="MocRiskAssessmentRowViewModel"
+                                            Items="workflow.RiskAssessments"
+                                            Headers="_riskHeaders"
+                                            KeySelector="r => r.RiskAssessmentId"
+                                            EmptyMessage="No risk assessments recorded for this change request."
+                                            AriaLabel="Risk Assessments">
+                            <RowTemplate Context="r">
+                                <td><SeverityBadgeComponent Severity="@r.RiskLevel" /></td>
+                                <td><StatusIndicatorComponent Status="@r.StatusIndicatorState" Label="@r.Status" /></td>
+                                <td>@r.AssessedAtUtc.ToString("yyyy-MM-dd")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                </div>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.MocList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to MOC
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid WorkflowId { get; set; }
+
+    private static readonly string[] _tabLabels = ["Approvals", "Risk Assessments"];
+    private static readonly string[] _approvalHeaders = ["Approver", "Status", "Decided"];
+    private static readonly string[] _riskHeaders = ["Risk Level", "Status", "Assessed"];
+    private int _activeTab;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "MOC Detail",
+            activeModuleCode: "moc",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "MOC", Href = RouteDefinitions.MocList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+
+        if (State.TryGetCachedDetail(WorkflowId, out var cached) && cached is not null)
+        {
+            State.SetSelectedWorkflow(cached);
+            return;
+        }
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow.AddYears(2);
+
+        var workflowsEnvelope = await ApiClient.GetWorkflowsAsync(tenantId, null, fromUtc, toUtc);
+        var approvalsEnvelope = await ApiClient.GetApprovalsAsync(tenantId, null, fromUtc, toUtc);
+        var riskEnvelope = await ApiClient.GetRiskAssessmentsAsync(tenantId, null, fromUtc, toUtc);
+
+        if (workflowsEnvelope.IsSuccess && approvalsEnvelope.IsSuccess && riskEnvelope.IsSuccess)
+        {
+            State.SetListData(workflowsEnvelope.Data!.Items, approvalsEnvelope.Data!.Items, riskEnvelope.Data!.Items);
+
+            if (State.TryGetCachedDetail(WorkflowId, out var reloaded) && reloaded is not null)
+            {
+                State.SetSelectedWorkflow(reloaded);
+            }
+            else
+            {
+                State.SetDetailError("MOC workflow not found.");
+            }
+        }
+        else
+        {
+            State.SetDetailError("Unable to load MOC data at this time.");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

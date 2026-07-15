@@ -1,0 +1,110 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Machine Maintenance History page (Volume M1 §3).
+     Chronological Maintenance Events table for one machine. Built from the
+     canonical Shared component library (DataGridComponent, PaginationComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/maintenance/machines/{MachineId:guid}/history"
+
+@inject MachineHistoryState State
+@inject MaintenanceApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Maintenance.ApiClients
+@using PlantSafety.UI.Modules.Maintenance.Models
+@using PlantSafety.UI.Modules.Maintenance.State
+
+<PageTitle>Machine Maintenance History — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The machine maintenance history could not be displayed." OnRetry="() => LoadAsync(1)">
+
+        <div class="ps-page-actions">
+            <a href="/modules/maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading maintenance events…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="MaintenanceEventDto"
+                                Items="State.Events"
+                                Headers="_headers"
+                                KeySelector="e => e.EventId"
+                                EmptyMessage="No maintenance events found for this machine."
+                                AriaLabel="Maintenance events">
+                <RowTemplate Context="ev">
+                    <td>@ev.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@ev.WorkOrderCode</td>
+                    <td>@ev.TechnicianName</td>
+                    <td>@ev.Summary</td>
+                    <td><a href="/modules/maintenance/work-orders/@ev.WorkOrderId" class="ps-btn ps-btn-ghost ps-btn-sm">View Details</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="LoadAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid MachineId { get; set; }
+
+    private static readonly string[] _headers = ["Date", "Work Order", "Technician", "Summary", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Machine Maintenance History",
+            activeModuleCode: "maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Maintenance", Href = RouteDefinitions.MaintenanceList },
+                new BreadcrumbItem { Label = "Machine History" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync(1);
+    }
+
+    private async Task LoadAsync(int page)
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetMachineHistoryAsync(MachineId, pageNumber: page);
+
+        if (envelope.IsSuccess)
+            State.SetEvents(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load machine history: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

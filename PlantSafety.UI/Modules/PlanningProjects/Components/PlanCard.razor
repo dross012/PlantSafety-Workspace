@@ -1,0 +1,50 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Project summary card used by the Planning Projects,
+      Project Budgeting, and Project Scheduling dashboard pages. Adapted
+      from the original orphaned Components/ProjectPlanning/PlanCard.razor
+      stub and moved into Modules/PlanningProjects/Components (shared by
+      all three sibling modules) per the canonical Modules/&lt;Name&gt;
+      layout. Built entirely from the canonical Shared component library
+      (CardComponent, StatusIndicatorComponent, SeverityBadgeComponent) —
+      no hand-rolled markup.
+      Pure/stateless/parameter-driven — no injected services, no direct
+      navigation (activation surfaced via OnSelect for the caller's own
+      NavigationManager-based handler).
+    ============================================================ *@
+@using PlantSafety.UI.Modules.PlanningProjects.Models
+
+<CardComponent Title="@Project.Name" OnClick="HandleSelect" CssClass="ps-plan-card">
+    <div class="ps-field-row">
+        <StatusIndicatorComponent Status="@Project.StatusIndicatorState" Label="@Project.Status" />
+        @if (Project.IsOverdue)
+        {
+            <SeverityBadgeComponent Severity="High" Text="Overdue" />
+        }
+    </div>
+    <div class="ps-field-row">
+        <span class="ps-field-label">Target Completion</span>
+        <span class="ps-field-value">@Project.TargetCompletionUtc.ToString("yyyy-MM-dd")</span>
+    </div>
+    <div class="ps-field-row">
+        <span class="ps-field-label">Days Remaining</span>
+        <span class="ps-field-value">@(Project.IsOverdue ? $"{Math.Abs(Project.DaysRemaining)} days overdue" : $"{Project.DaysRemaining} days")</span>
+    </div>
+    <div class="ps-field-row">
+        <span class="ps-field-label">Owner</span>
+        <span class="ps-field-value ps-mono">@Project.OwnerId</span>
+    </div>
+</CardComponent>
+
+@code {
+    /// <summary>The project card view model to render.</summary>
+    [Parameter, EditorRequired]
+    public required ProjectCardViewModel Project { get; set; }
+
+    /// <summary>Fired with <see cref="ProjectCardViewModel.ProjectId"/> when the card is activated.</summary>
+    [Parameter]
+    public EventCallback<Guid> OnSelect { get; set; }
+
+    private Task HandleSelect() => OnSelect.HasDelegate ? OnSelect.InvokeAsync(Project.ProjectId) : Task.CompletedTask;
+}

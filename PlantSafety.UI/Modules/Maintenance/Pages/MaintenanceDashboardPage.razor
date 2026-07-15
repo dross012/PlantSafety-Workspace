@@ -1,0 +1,183 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Maintenance Dashboard page (Volume M1). Work Order
+     Summary / Machine Status Summary / Filters cards + Active Work Orders
+     table with priority chips. Built from the canonical Shared component
+     library (CardComponent, DataGridComponent, SeverityBadgeComponent,
+     StatusIndicatorComponent, PaginationComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/maintenance"
+
+@inject MaintenanceDashboardState State
+@inject MaintenanceApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Maintenance.ApiClients
+@using PlantSafety.UI.Modules.Maintenance.Models
+@using PlantSafety.UI.Modules.Maintenance.State
+
+<PageTitle>Maintenance — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Maintenance dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/maintenance/calendar" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-calendar3" aria-hidden="true"></span> Calendar</a>
+            <a href="/modules/maintenance/preventive" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-clipboard-check" aria-hidden="true"></span> Preventive Schedule</a>
+            <a href="/modules/maintenance/technicians/workload" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-people" aria-hidden="true"></span> Technician Workload</a>
+            <a href="/modules/maintenance/parts" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-box-seam" aria-hidden="true"></span> Parts Inventory</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+            <CardComponent Title="Work Order Summary">
+                @if (State.WorkOrderSummary is { } wo)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Open</span><span class="ps-field-value">@wo.OpenCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">In Progress</span><span class="ps-field-value">@wo.InProgressCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Completed</span><span class="ps-field-value">@wo.CompletedCount</span></div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No data</span>
+                }
+            </CardComponent>
+
+            <CardComponent Title="Machine Status Summary">
+                @if (State.MachineStatusSummary is { } ms)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Healthy</span><span class="ps-field-value">@ms.HealthyCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Degraded</span><span class="ps-field-value">@ms.DegradedCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Offline</span><span class="ps-field-value">@ms.OfflineCount</span></div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No data</span>
+                }
+            </CardComponent>
+
+            <CardComponent Title="Filters">
+                <div class="ps-field-row">
+                    <label class="ps-field-label" for="wo-status-filter">Status</label>
+                    <select id="wo-status-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnFilterChangedAsync">
+                        <option value="">All</option>
+                        <option value="Open">Open</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+            </CardComponent>
+        </div>
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading active work orders…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="WorkOrderRowDto"
+                                Items="State.ActiveWorkOrders"
+                                Headers="_headers"
+                                KeySelector="w => w.WorkOrderId"
+                                EmptyMessage="No active work orders found."
+                                AriaLabel="Active work orders">
+                <RowTemplate Context="wo">
+                    <td>@wo.WorkOrderCode</td>
+                    <td>@wo.MachineCode</td>
+                    <td>@wo.TechnicianName</td>
+                    <td><SeverityBadgeComponent Severity="@wo.Priority" /></td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(wo.Status)" Label="@wo.Status" /></td>
+                    <td><a href="/modules/maintenance/work-orders/@wo.WorkOrderId" class="ps-btn ps-btn-ghost ps-btn-sm">View Details</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Work Order", "Machine", "Technician", "Priority", "Status", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Maintenance",
+            activeModuleCode: "maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Maintenance" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var woSummary = await ApiClient.GetWorkOrderSummaryAsync();
+        var machineSummary = await ApiClient.GetMachineStatusSummaryAsync();
+
+        if (woSummary.IsSuccess && machineSummary.IsSuccess)
+            State.SetSummaries(woSummary.Data!, machineSummary.Data!);
+
+        await GoToPageAsync(1);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        var envelope = await ApiClient.GetActiveWorkOrdersAsync(pageNumber: page, pageSize: 25, statusFilter: State.StatusFilter, technicianFilter: State.TechnicianFilter);
+
+        if (envelope.IsSuccess)
+            State.SetActiveWorkOrders(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load active work orders: {envelope.FaultType}");
+    }
+
+    private async Task OnFilterChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetFilters(string.IsNullOrWhiteSpace(value) ? null : value, State.TechnicianFilter);
+        await GoToPageAsync(1);
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "inprogress" or "in progress" => "Warning",
+        "open" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

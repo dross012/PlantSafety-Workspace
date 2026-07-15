@@ -1,0 +1,142 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical data grid — one of the 11 non-forkable shared
+      components mandated by the Platform UI Architecture Master Specification
+      (Volume 0) §4. Standardized sortable table with an optional row
+      virtualization mode for large sets. Filtering/pagination are composed
+      externally via SearchBoxComponent/DateRangePickerComponent/
+      PaginationComponent + the page's own state container — the grid itself
+      stays pure/presentational per UI001-UI005. Backed by the existing
+      .ps-table utility classes already used across Modules/Admin and
+      Modules/Alerts pages — this component is a drop-in replacement for
+      hand-rolled &lt;table class="ps-table"&gt; markup.
+    Inputs: Items, Headers, RowTemplate (required); EnableVirtualization
+      (optional, for large in-memory sets)
+    Outputs: OnSort (fired with the clicked header's 0-based index)
+    Accessibility: table semantics, sortable headers exposed as buttons with
+      aria-sort, keyboard-focusable rows per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+@typeparam TItem
+
+<table class="ps-table" aria-label="@AriaLabel">
+    <thead>
+        <tr>
+            @for (var i = 0; i < Headers.Count; i++)
+            {
+                var index = i;
+                var isSorted = SortedColumnIndex == index;
+                <th scope="col" aria-sort="@(isSorted ? (SortDescending ? "descending" : "ascending") : "none")">
+                    @if (OnSort.HasDelegate)
+                    {
+                        <button type="button" class="ps-th-sort-btn" @onclick="() => OnSort.InvokeAsync(index)">
+                            @Headers[index] @(isSorted ? (SortDescending ? "▼" : "▲") : "")
+                        </button>
+                    }
+                    else
+                    {
+                        @Headers[index]
+                    }
+                </th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @if (Items.Count == 0)
+        {
+            <tr><td colspan="@Headers.Count" class="ps-table-empty">@EmptyMessage</td></tr>
+        }
+        else if (EnableVirtualization)
+        {
+            <Virtualize TItem="TItem" ItemsProvider="LoadVirtualizedItemsAsync" Context="item" ItemSize="@RowHeightPx">
+                <tr @key="KeySelector is null ? item : KeySelector(item)" tabindex="0">
+                    @RowTemplate!(item)
+                </tr>
+            </Virtualize>
+        }
+        else
+        {
+            @foreach (var item in Items)
+            {
+                <tr @key="KeySelector is null ? item : KeySelector(item)" tabindex="0">
+                    @RowTemplate!(item)
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+    /// <summary>Rows to render.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TItem> Items { get; set; } = Array.Empty<TItem>();
+
+    /// <summary>Column header labels, left-to-right.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Headers { get; set; } = Array.Empty<string>();
+
+    /// <summary>Renders the <c>&lt;td&gt;</c> cells for a single row.</summary>
+    [Parameter, EditorRequired]
+    public RenderFragment<TItem>? RowTemplate { get; set; }
+
+    /// <summary>Optional stable key selector used for <c>@@key</c> row-identity correctness.</summary>
+    [Parameter]
+    public Func<TItem, object>? KeySelector { get; set; }
+
+    /// <summary>Fired with the clicked column's 0-based index; omit to render non-sortable headers.</summary>
+    [Parameter]
+    public EventCallback<int> OnSort { get; set; }
+
+    /// <summary>0-based index of the currently sorted column, or -1 for none.</summary>
+    [Parameter]
+    public int SortedColumnIndex { get; set; } = -1;
+
+    /// <summary>Whether the current sort is descending.</summary>
+    [Parameter]
+    public bool SortDescending { get; set; }
+
+    /// <summary>Message shown when <see cref="Items"/> is empty.</summary>
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No records found.";
+
+    /// <summary>Accessible table label.</summary>
+    [Parameter]
+    public string AriaLabel { get; set; } = "Data table";
+
+    /// <summary>
+    /// When true, rows are rendered through <c>&lt;Virtualize&gt;</c> instead of a plain
+    /// <c>@@foreach</c>, so only the visible window of a large in-memory <see cref="Items"/>
+    /// set is materialized into the DOM. Leave false for small/paginated sets.
+    /// </summary>
+    [Parameter]
+    public bool EnableVirtualization { get; set; }
+
+    /// <summary>Estimated row height in pixels, used by <c>&lt;Virtualize&gt;</c> to size the scroll viewport.</summary>
+    [Parameter]
+    public float RowHeightPx { get; set; } = 48f;
+
+    /// <summary>
+    /// Serves windowed slices of the fully in-memory <see cref="Items"/> list to
+    /// <c>&lt;Virtualize&gt;</c>. <see cref="Items"/> is typically <see cref="IReadOnlyList{TItem}"/>
+    /// (e.g. arrays/lists), which does not satisfy <c>Virtualize</c>'s <c>ICollection&lt;TItem&gt;</c>
+    /// constraint on its <c>Items</c> parameter — an <c>ItemsProvider</c> sidesteps that entirely.
+    /// </summary>
+    private ValueTask<Microsoft.AspNetCore.Components.Web.Virtualization.ItemsProviderResult<TItem>> LoadVirtualizedItemsAsync(
+        Microsoft.AspNetCore.Components.Web.Virtualization.ItemsProviderRequest request)
+    {
+        var totalCount = Items.Count;
+        var startIndex = Math.Min(request.StartIndex, totalCount);
+        var count = Math.Max(0, Math.Min(request.Count, totalCount - startIndex));
+
+        var slice = new TItem[count];
+        for (var i = 0; i < count; i++)
+        {
+            slice[i] = Items[startIndex + i];
+        }
+
+        return ValueTask.FromResult(
+            new Microsoft.AspNetCore.Components.Web.Virtualization.ItemsProviderResult<TItem>(slice, totalCount));
+    }
+}

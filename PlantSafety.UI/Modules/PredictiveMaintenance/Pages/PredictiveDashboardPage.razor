@@ -1,0 +1,156 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Predictive Dashboard page (Volume P1 §1). Risk Summary /
+     Equipment Health / Filters cards + Active Predictions table. Built from
+     the canonical Shared component library (CardComponent, DataGridComponent,
+     SeverityBadgeComponent, PaginationComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent). No model/risk-scoring logic in UI — all
+     values are server-computed.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance"
+
+@inject PredictiveDashboardState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.Models
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Predictive Maintenance — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Predictive Maintenance dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/predictive-maintenance/predictions" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-list-ul" aria-hidden="true"></span> All Predictions</a>
+            <a href="/modules/predictive-maintenance/sensors" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-graph-up" aria-hidden="true"></span> Sensor Explorer</a>
+            <a href="/modules/predictive-maintenance/reports" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-file-earmark-bar-graph" aria-hidden="true"></span> Reports</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+            <CardComponent Title="Risk Summary">
+                @if (State.RiskSummary is { } risk)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">High</span><span class="ps-field-value">@risk.HighRiskCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Medium</span><span class="ps-field-value">@risk.MediumRiskCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Low</span><span class="ps-field-value">@risk.LowRiskCount</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Trend</span><span class="ps-field-value">@risk.TrendDirection</span></div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No data</span>
+                }
+            </CardComponent>
+
+            <CardComponent Title="Equipment Health">
+                @if (State.EquipmentHealth is { } health)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Healthy</span><span class="ps-field-value">@health.HealthyPercent.ToString("F0")%</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Warning</span><span class="ps-field-value">@health.WarningPercent.ToString("F0")%</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Critical</span><span class="ps-field-value">@health.CriticalPercent.ToString("F0")%</span></div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No data</span>
+                }
+            </CardComponent>
+        </div>
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading active predictions…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="PredictionRowDto"
+                                Items="State.ActivePredictions"
+                                Headers="_headers"
+                                KeySelector="p => p.PredictionId"
+                                EmptyMessage="No active predictions found."
+                                AriaLabel="Active predictions">
+                <RowTemplate Context="prediction">
+                    <td>@prediction.PredictionCode</td>
+                    <td>@prediction.EquipmentCode</td>
+                    <td><SeverityBadgeComponent Severity="@prediction.RiskLevel" /></td>
+                    <td>@prediction.ConfidencePercent.ToString("F0")%</td>
+                    <td>@prediction.UpdatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><a href="/modules/predictive-maintenance/predictions/@prediction.PredictionId" class="ps-btn ps-btn-ghost ps-btn-sm">View Details</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Prediction", "Equipment", "Risk", "Confidence", "Updated", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Predictive Maintenance",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var riskEnvelope = await ApiClient.GetRiskSummaryAsync();
+        var healthEnvelope = await ApiClient.GetEquipmentHealthAsync();
+
+        if (riskEnvelope.IsSuccess && healthEnvelope.IsSuccess)
+            State.SetSummaries(riskEnvelope.Data!, healthEnvelope.Data!);
+
+        await GoToPageAsync(1);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        var envelope = await ApiClient.GetActivePredictionsAsync(pageNumber: page, pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetActivePredictions(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load active predictions: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

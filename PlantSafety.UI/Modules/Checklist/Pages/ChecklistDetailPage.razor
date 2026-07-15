@@ -1,0 +1,123 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Checklist detail page. Resolves from the ChecklistState
+     in-memory cache populated by the list page's last load; falls back to a
+     full reload when navigated to directly (e.g. deep link/refresh).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/checklists/{ChecklistId:guid}"
+
+@inject ChecklistState State
+@inject ChecklistApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Checklist.ApiClients
+@using PlantSafety.UI.Modules.Checklist.Mappings
+@using PlantSafety.UI.Modules.Checklist.State
+
+<PageTitle>Checklist Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The checklist could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading checklist…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedChecklist is { } checklist)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@checklist.Name</h2>
+                    <StatusIndicatorComponent Status="@checklist.StatusIndicatorState" Label="@checklist.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Category</dt>       <dd>@checklist.Category</dd>
+                    <dt>Last Actioned</dt>  <dd>@checklist.CompletedAtUtc.ToString("yyyy-MM-dd")</dd>
+                    <dt>Actioned By</dt>    <dd class="ps-mono">@checklist.CompletedBy</dd>
+                    <dt>Site</dt>           <dd>@(checklist.SiteId?.ToString() ?? "Tenant-wide")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ChecklistList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Checklists
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ChecklistId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Checklist Detail",
+            activeModuleCode: "checklists",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Checklist", Href = RouteDefinitions.ChecklistList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+
+        if (State.TryGetCachedChecklist(ChecklistId, out var cached) && cached is not null)
+        {
+            State.SetSelectedChecklist(cached);
+            return;
+        }
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow.AddYears(2);
+
+        var envelope = await ApiClient.GetChecklistsAsync(tenantId, null, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetChecklists(envelope.Data!.Items.ToViewModels());
+
+            if (State.TryGetCachedChecklist(ChecklistId, out var reloaded) && reloaded is not null)
+            {
+                State.SetSelectedChecklist(reloaded);
+            }
+            else
+            {
+                State.SetDetailError("Checklist not found.");
+            }
+        }
+        else
+        {
+            State.SetDetailError("Unable to load checklist data at this time.");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,120 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Maintenance Calendar page (Volume MC1). Lists scheduled
+     work orders, predictive maintenance tasks, and equipment downtime
+     windows for a date range, with conflict indicators. Built from the
+     canonical Shared component library (DataGridComponent,
+     SeverityBadgeComponent, StatusIndicatorComponent, DateRangePickerComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/maintenance/calendar"
+
+@inject MaintenanceCalendarState State
+@inject MaintenanceApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Maintenance.ApiClients
+@using PlantSafety.UI.Modules.Maintenance.Models
+@using PlantSafety.UI.Modules.Maintenance.State
+
+<PageTitle>Maintenance Calendar — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The maintenance calendar could not be displayed." OnRetry="() => LoadAsync(State.RangeStart, State.RangeEnd)">
+
+        <div class="ps-page-actions">
+            <a href="/modules/maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading maintenance calendar…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="MaintenanceCalendarEventDto"
+                                Items="State.Events"
+                                Headers="_headers"
+                                KeySelector="e => e.EventId"
+                                EmptyMessage="No maintenance events scheduled in this range."
+                                AriaLabel="Maintenance calendar events">
+                <RowTemplate Context="ev">
+                    <td>@ev.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@ev.EndUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@ev.EquipmentName</td>
+                    <td>@(ev.WorkOrderCode ?? "—")</td>
+                    <td>@(ev.TechnicianName ?? "Unassigned")</td>
+                    <td>@ev.EventType</td>
+                    <td><SeverityBadgeComponent Severity="@ev.Priority" /></td>
+                    <td><StatusIndicatorComponent Status="@(ev.HasConflict ? "Critical" : MapStatus(ev.Status))" Label="@(ev.HasConflict ? "Conflict" : ev.Status)" /></td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Start", "End", "Equipment", "Work Order", "Technician", "Type", "Priority", "Status"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Maintenance Calendar",
+            activeModuleCode: "maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Maintenance", Href = RouteDefinitions.MaintenanceList },
+                new BreadcrumbItem { Label = "Calendar" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync(State.RangeStart, State.RangeEnd);
+    }
+
+    private async Task LoadAsync(DateOnly start, DateOnly end)
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetCalendarEventsAsync(start, end);
+
+        if (envelope.IsSuccess)
+            State.SetEvents(start, end, envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load maintenance calendar: {envelope.FaultType}");
+    }
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range) => LoadAsync(range.Start, range.End);
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "inprogress" or "in progress" => "Warning",
+        "planned" => "Offline",
+        "cancelled" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,265 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Job Detail page (Volume S1 §2). Two-column header
+     (Job Summary / Metadata) + 5-tab strip (Timeline/Resources/Constraints/
+     Predictive/Metadata), each tab lazy-loaded on first activation. Built
+     from the canonical Shared component library (CardComponent,
+     TabControlComponent, DataGridComponent, SeverityBadgeComponent,
+     StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/scheduling/{JobId:guid}"
+
+@inject JobDetailState State
+@inject SchedulingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Scheduling.ApiClients
+@using PlantSafety.UI.Modules.Scheduling.Models
+@using PlantSafety.UI.Modules.Scheduling.State
+
+<PageTitle>Job Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The job detail could not be displayed.">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading job…" />
+        }
+        else if (State.ErrorMessage is not null && State.Job is null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+            <a href="/modules/scheduling" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-arrow-left" aria-hidden="true"></span> Return to Dashboard
+            </a>
+        }
+        else if (State.Job is { } job)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@job.JobCode</h2>
+                <StatusIndicatorComponent Status="@MapJobStatus(job.Status)" Label="@job.Status" />
+            </div>
+
+            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+                <CardComponent Title="Job Summary">
+                    <div class="ps-field-row"><span class="ps-field-label">Job ID</span><span class="ps-field-value">@job.JobCode</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Resource</span><span class="ps-field-value">@job.ResourceName</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Duration</span><span class="ps-field-value">@job.DurationMinutes min</span></div>
+                </CardComponent>
+                <CardComponent Title="Metadata">
+                    <div class="ps-field-row"><span class="ps-field-label">Created</span><span class="ps-field-value">@job.CreatedAtUtc.ToString("u") UTC</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Updated</span><span class="ps-field-value">@job.UpdatedAtUtc.ToString("u") UTC</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Operator</span><span class="ps-field-value">@job.OperatorName</span></div>
+                </CardComponent>
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="(int)State.ActiveTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Job detail sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (State.ActiveTab == JobDetailTab.Timeline)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading timeline…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="TimelineStepDto"
+                                            Items="State.Timeline"
+                                            Headers="_timelineHeaders"
+                                            KeySelector="s => s.StepNumber"
+                                            EmptyMessage="No timeline steps."
+                                            AriaLabel="Job timeline">
+                            <RowTemplate Context="step">
+                                <td>@step.StepNumber</td>
+                                <td>@step.Description</td>
+                                <td>@step.StartUtc.ToString("HH:mm") UTC</td>
+                                <td>@step.EndUtc.ToString("HH:mm") UTC</td>
+                                <td><StatusIndicatorComponent Status="@MapJobStatus(step.Status)" Label="@step.Status" /></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == JobDetailTab.Resources)
+                {
+                    <CardComponent Title="Resource Allocation">
+                        <div class="ps-field-row"><span class="ps-field-label">Assigned Resource</span><span class="ps-field-value">@job.ResourceName</span></div>
+                    </CardComponent>
+                }
+                else if (State.ActiveTab == JobDetailTab.Constraints)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading constraints…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="ConstraintDto"
+                                            Items="State.Constraints"
+                                            Headers="_constraintHeaders"
+                                            KeySelector="c => c.ConstraintType"
+                                            EmptyMessage="No constraints evaluated."
+                                            AriaLabel="Scheduling constraints">
+                            <RowTemplate Context="c">
+                                <td>@c.ConstraintType</td>
+                                <td>@c.Description</td>
+                                <td><StatusIndicatorComponent Status="@(c.IsSatisfied ? "Healthy" : "Critical")" Label="@(c.IsSatisfied ? "Satisfied" : "Violated")" /></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == JobDetailTab.Predictive)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Evaluating predictive model…" Inline="true" />
+                    }
+                    else if (State.Predictive is { } predictive)
+                    {
+                        <CardComponent Title="Predictive Insights">
+                            <div class="ps-field-row"><span class="ps-field-label">Risk Score</span><span class="ps-field-value">@predictive.RiskScore.ToString("P0")</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Recommended Start</span><span class="ps-field-value">@predictive.RecommendedStartUtc.ToString("u") UTC</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Recommended End</span><span class="ps-field-value">@predictive.RecommendedEndUtc.ToString("u") UTC</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Model Version</span><span class="ps-field-value ps-mono">@predictive.ModelVersion</span></div>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadPredictiveAsync">
+                                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Retry Evaluation
+                            </button>
+                        </CardComponent>
+                    }
+                    else
+                    {
+                        <div class="ps-alert ps-alert--danger" role="alert">No predictive insights available.</div>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadPredictiveAsync">Retry Evaluation</button>
+                    }
+                }
+                else if (State.ActiveTab == JobDetailTab.Metadata)
+                {
+                    <CardComponent Title="Job Metadata">
+                        <div class="ps-field-row"><span class="ps-field-label">Created</span><span class="ps-field-value">@job.CreatedAtUtc.ToString("u") UTC</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Updated</span><span class="ps-field-value">@job.UpdatedAtUtc.ToString("u") UTC</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Job ID</span><span class="ps-field-value ps-mono">@job.JobId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Resource ID</span><span class="ps-field-value ps-mono">@job.ResourceId</span></div>
+                    </CardComponent>
+                }
+
+            </div>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.SchedulingList)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid JobId { get; set; }
+
+    private static readonly string[] _tabLabels = ["Timeline", "Resources", "Constraints", "Predictive", "Metadata"];
+    private static readonly string[] _timelineHeaders = ["Step", "Description", "Start", "End", "Status"];
+    private static readonly string[] _constraintHeaders = ["Type", "Description", "Status"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Job Detail",
+            activeModuleCode: "scheduling",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Scheduling", Href = RouteDefinitions.SchedulingList },
+                new BreadcrumbItem { Label = "Job Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginLoad();
+        var envelope = await ApiClient.GetJobDetailAsync(JobId);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetJob(envelope.Data!);
+            await LoadTimelineAsync();
+        }
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Job not found: {envelope.FaultType}");
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        var tab = (JobDetailTab)index;
+        State.SetActiveTab(tab);
+
+        switch (tab)
+        {
+            case JobDetailTab.Timeline when State.Timeline.Count == 0:
+                await LoadTimelineAsync();
+                break;
+            case JobDetailTab.Constraints when State.Constraints.Count == 0:
+                await LoadConstraintsAsync();
+                break;
+            case JobDetailTab.Predictive when State.Predictive is null:
+                await LoadPredictiveAsync();
+                break;
+        }
+    }
+
+    private async Task LoadTimelineAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetTimelineAsync(JobId);
+        if (envelope.IsSuccess)
+            State.SetTimeline(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Timeline load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadConstraintsAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetConstraintsAsync(JobId);
+        if (envelope.IsSuccess)
+            State.SetConstraints(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Constraint load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadPredictiveAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetPredictiveInsightsAsync(JobId);
+        if (envelope.IsSuccess)
+            State.SetPredictive(envelope.Data!);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Predictive engine failure: {envelope.FaultType}");
+    }
+
+    private static string MapJobStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "inprogress" or "in progress" => "Warning",
+        "pending" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

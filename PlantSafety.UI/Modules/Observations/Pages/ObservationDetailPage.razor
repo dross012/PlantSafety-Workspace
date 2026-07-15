@@ -1,0 +1,104 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Observation detail page. Loads the full ObservationDto by
+     route parameter via the working GetById endpoint and displays all fields.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/observations/{ObservationId:guid}"
+
+@inject ObservationState State
+@inject ObservationApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Observations.State
+@using PlantSafety.UI.Modules.Observations.ApiClients
+@using PlantSafety.UI.Modules.Observations.Mappings
+
+<PageTitle>Observation Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The observation detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading observation…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.Selected is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@item.Title</h2>
+                    <SeverityBadgeComponent Severity="@vm.SeverityForBadge" Text="@item.ObservationType" />
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <CardComponent Title="Summary">
+                    <dl class="ps-detail-fields">
+                        <dt>Description</dt>   <dd>@item.Description</dd>
+                        <dt>Site</dt>          <dd class="ps-mono">@item.SiteId</dd>
+                        <dt>Observed By</dt>   <dd class="ps-mono">@item.ObservedByWorkerId</dd>
+                        <dt>Observed</dt>      <dd>@item.ObservedAtUtc.ToString("u") UTC</dd>
+                        <dt>Last Updated</dt>  <dd>@item.LastModifiedAtUtc.ToString("u") UTC</dd>
+                        <dt>Record ID</dt>     <dd class="ps-mono">@item.ObservationId</dd>
+                    </dl>
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ObservationList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Observations
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ObservationId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Observation Detail",
+            activeModuleCode: "observations",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Observations", Href = RouteDefinitions.ObservationList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetObservationAsync(ObservationId);
+
+        if (envelope.IsSuccess)
+            State.SetSelected(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load observation: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

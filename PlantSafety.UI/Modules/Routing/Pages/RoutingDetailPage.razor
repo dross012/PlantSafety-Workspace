@@ -1,0 +1,286 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Routing Detail page (Volume R1 §2). Metadata panel +
+     5-tab strip (Steps/Versions/Diff/Simulation/Approval), lazy-loaded.
+     Built from the canonical Shared component library (CardComponent,
+     TabControlComponent, DataGridComponent, StatusIndicatorComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/routing/{RoutingId:guid}"
+
+@inject RoutingDetailState State
+@inject RoutingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Routing.ApiClients
+@using PlantSafety.UI.Modules.Routing.Models
+@using PlantSafety.UI.Modules.Routing.State
+
+<PageTitle>Routing Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The routing detail could not be displayed.">
+
+        @if (State.IsLoadingRouting)
+        {
+            <LoadingIndicatorComponent Message="Loading routing…" />
+        }
+        else if (State.ErrorMessage is not null && State.Routing is null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+            <a href="/modules/routing" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Return to Dashboard</a>
+        }
+        else if (State.Routing is { } routing)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@routing.Name</h2>
+                <StatusIndicatorComponent Status="@MapStatus(routing.Status)" Label="@routing.Status" />
+            </div>
+
+            <CardComponent Title="Routing Metadata">
+                <div class="ps-field-row"><span class="ps-field-label">Plant</span><span class="ps-field-value">@routing.Plant</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Version</span><span class="ps-field-value">@routing.Version</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Effective From</span><span class="ps-field-value">@routing.EffectiveFromUtc.ToString("u") UTC</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Effective To</span><span class="ps-field-value">@(routing.EffectiveToUtc?.ToString("u") ?? "Open-ended") @(routing.EffectiveToUtc is not null ? "UTC" : "")</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Owner</span><span class="ps-field-value">@routing.Owner</span></div>
+                <div class="ps-field-row"><span class="ps-field-label">Last Audited</span><span class="ps-field-value">@routing.LastAuditedUtc.ToString("u") UTC</span></div>
+            </CardComponent>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="(int)State.ActiveTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Routing detail sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (State.ActiveTab == RoutingDetailTab.Steps)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading steps…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="RoutingStepDto" Items="State.Steps" Headers="_stepHeaders" KeySelector="s => s.StepNumber"
+                                            EmptyMessage="No steps defined." AriaLabel="Routing steps">
+                            <RowTemplate Context="step">
+                                <td>@step.StepNumber</td>
+                                <td>@step.Name</td>
+                                <td><StatusIndicatorComponent Status="@MapStepStatus(step.Status)" Label="@step.Status" /></td>
+                                <td>@string.Join(", ", step.Resources)</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == RoutingDetailTab.Versions)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading version history…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="RoutingVersionDto" Items="State.Versions" Headers="_versionHeaders" KeySelector="v => v.VersionId"
+                                            EmptyMessage="No version history available." AriaLabel="Version history">
+                            <RowTemplate Context="version">
+                                <td>@version.VersionLabel</td>
+                                <td>@version.EffectiveDateUtc.ToString("yyyy-MM-dd") UTC</td>
+                                <td><StatusIndicatorComponent Status="@MapStatus(version.Status)" Label="@version.Status" /></td>
+                                <td><a href="/modules/routing/@RoutingId/diff?previous=@version.VersionId&current=@routing.VersionId" class="ps-btn ps-btn-ghost ps-btn-sm">View Diff</a></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == RoutingDetailTab.Diff)
+                {
+                    <div class="ps-alert" role="status">Select a version from the Versions tab to view its diff against the current version.</div>
+                    <a href="/modules/routing/@RoutingId/versions" class="ps-btn ps-btn-ghost ps-btn-sm">Go to Versions</a>
+                }
+                else if (State.ActiveTab == RoutingDetailTab.Simulation)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Running simulation…" Inline="true" />
+                    }
+                    else if (State.Simulation is { } sim)
+                    {
+                        <CardComponent Title="Simulation Output Summary">
+                            <div class="ps-field-row"><span class="ps-field-label">Total Duration</span><span class="ps-field-value">@sim.TotalDurationMinutes min</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Critical Path</span><span class="ps-field-value">@string.Join(" → ", sim.CriticalPath)</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Resource Conflicts</span><span class="ps-field-value">@sim.ResourceConflictCount</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Material Shortages</span><span class="ps-field-value">@sim.MaterialShortageCount</span></div>
+                            <div class="ps-field-row"><span class="ps-field-label">Bottleneck Steps</span><span class="ps-field-value">@string.Join(", ", sim.BottleneckSteps)</span></div>
+                        </CardComponent>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadSimulationAsync">Run Again</button>
+                    }
+                    else
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadSimulationAsync">Run Simulation</button>
+                    }
+                }
+                else if (State.ActiveTab == RoutingDetailTab.Approval)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading approval workflow…" Inline="true" />
+                    }
+                    else if (State.Approval is { } approval)
+                    {
+                        <CardComponent Title="@($"Approval Workflow — {approval.CurrentStage}")">
+                            <DataGridComponent TItem="RoutingApproverDto" Items="approval.Approvers" Headers="_approverHeaders" KeySelector="a => a.ApproverName"
+                                                EmptyMessage="No approvers assigned." AriaLabel="Approvers">
+                                <RowTemplate Context="approver">
+                                    <td>@approver.ApproverName</td>
+                                    <td>@approver.Role</td>
+                                    <td><StatusIndicatorComponent Status="@MapStatus(approver.Status)" Label="@approver.Status" /></td>
+                                    <td>@(approver.DecidedAtUtc?.ToString("u") ?? "—")</td>
+                                </RowTemplate>
+                            </DataGridComponent>
+                            @if (!approval.CanCurrentUserAct)
+                            {
+                                <p class="ps-needs-backend"><span class="bi bi-exclamation-circle" aria-hidden="true"></span> You do not have permission to act on this approval stage.</p>
+                            }
+                        </CardComponent>
+                    }
+                    else
+                    {
+                        <div class="ps-alert" role="status">No approval workflow found for this routing.</div>
+                    }
+                }
+
+            </div>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.RoutingList)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RoutingId { get; set; }
+
+    private static readonly string[] _tabLabels = ["Steps", "Versions", "Diff", "Simulation", "Approval"];
+    private static readonly string[] _stepHeaders = ["Step", "Name", "Status", "Resources"];
+    private static readonly string[] _versionHeaders = ["Version", "Effective Date", "Status", "Actions"];
+    private static readonly string[] _approverHeaders = ["Approver", "Role", "Status", "Decided"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Routing Detail",
+            activeModuleCode: "routing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Routing", Href = RouteDefinitions.RoutingList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginLoad();
+        var envelope = await ApiClient.GetRoutingDetailAsync(RoutingId);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetRouting(envelope.Data!);
+            await LoadStepsAsync();
+        }
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Routing not found: {envelope.FaultType}");
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        var tab = (RoutingDetailTab)index;
+        State.SetActiveTab(tab);
+
+        switch (tab)
+        {
+            case RoutingDetailTab.Steps when State.Steps.Count == 0:
+                await LoadStepsAsync();
+                break;
+            case RoutingDetailTab.Versions when State.Versions.Count == 0:
+                await LoadVersionsAsync();
+                break;
+            case RoutingDetailTab.Approval when State.Approval is null:
+                await LoadApprovalAsync();
+                break;
+        }
+    }
+
+    private async Task LoadStepsAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetStepsAsync(RoutingId);
+        if (envelope.IsSuccess)
+            State.SetSteps(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Steps load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadVersionsAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetVersionHistoryAsync(RoutingId);
+        if (envelope.IsSuccess)
+            State.SetVersions(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Version history load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadSimulationAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.RunSimulationAsync(RoutingId);
+        if (envelope.IsSuccess)
+            State.SetSimulation(envelope.Data!);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Simulation failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadApprovalAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetApprovalWorkflowAsync(RoutingId);
+        if (envelope.IsSuccess)
+            State.SetApproval(envelope.Data!);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Approval workflow load failed: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "approved" => "Healthy",
+        "submitted" or "review" or "draft" or "pending" => "Warning",
+        "rejected" => "Critical",
+        _ => "Offline",
+    };
+
+    private static string MapStepStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "valid" => "Healthy",
+        "warning" => "Warning",
+        "blocked" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

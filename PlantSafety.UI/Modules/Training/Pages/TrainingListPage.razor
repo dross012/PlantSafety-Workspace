@@ -1,0 +1,175 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Training list page. Loads training completion/assignment
+     records for a date range via TrainingApiClient (Operational Training
+     read-model), populates TrainingState, and renders the training grid with
+     status indicators, search, date-range filtering, and client-side
+     pagination (the source read-model is not server-paginated), built
+     entirely from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent,
+     DateRangePickerComponent, SearchBoxComponent, DataGridComponent,
+     StatusIndicatorComponent, PaginationComponent), following the
+     Modules/Alerts exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/training"
+
+@inject TrainingState State
+@inject TrainingApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Training.ApiClients
+@using PlantSafety.UI.Modules.Training.Models
+@using PlantSafety.UI.Modules.Training.State
+
+<PageTitle>Training — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Training list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
+        <SearchBoxComponent Value="_searchText" Placeholder="Search by course name or status" ValueChanged="OnSearchChangedAsync" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading training records…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="TrainingRecordItemDto"
+                                Items="PagedItems"
+                                Headers="_headers"
+                                KeySelector="t => t.TrainingRecordId"
+                                EmptyMessage="No training records found for the selected range/search."
+                                AriaLabel="Training records">
+                <RowTemplate Context="record">
+                    <td>@record.CourseName</td>
+                    <td class="ps-mono">@record.EmployeeId</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(record.Status)" Label="@record.Status" /></td>
+                    <td>@record.CompletedAtUtc.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        <a href="@RouteDefinitions.TrainingList/@record.TrainingRecordId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <PaginationComponent CurrentPage="_currentPage" TotalPages="TotalPages" TotalCount="FilteredItems.Count" PageChanged="OnPageChangedAsync" />
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Course", "Employee", "Status", "Completed", "Actions"];
+    private const int PageSize = 25;
+
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+    private string _searchText = string.Empty;
+    private int _currentPage = 1;
+
+    private IReadOnlyList<TrainingRecordItemDto> FilteredItems =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? State.Items
+            : State.Items.Where(t =>
+                    t.CourseName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    t.Status.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredItems.Count / (double)PageSize));
+
+    private IReadOnlyList<TrainingRecordItemDto> PagedItems =>
+        FilteredItems.Skip((_currentPage - 1) * PageSize).Take(PageSize).ToList();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Training",
+            activeModuleCode: "training",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Training" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task LoadAsync()
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.GetTrainingRecordsAsync(
+            ResolveTenantId(),
+            siteId: null,
+            from: _startDate.ToDateTime(TimeOnly.MinValue),
+            to: _endDate.ToDateTime(TimeOnly.MaxValue));
+
+        if (envelope.IsSuccess && envelope.Data is { Success: true, Data: not null })
+            State.SetItems(envelope.Data.Data.Items);
+        else if (envelope.IsSuccess)
+            State.SetListError(envelope.Data?.Errors is { Count: > 0 } errs ? string.Join("; ", errs) : "The Training read-model returned no data.");
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load training records: {envelope.FaultType}");
+    }
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        _startDate = range.Start;
+        _endDate = range.End;
+        _currentPage = 1;
+        return LoadAsync();
+    }
+
+    private Task OnSearchChangedAsync(string text)
+    {
+        _searchText = text;
+        _currentPage = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPageChangedAsync(int page)
+    {
+        _currentPage = page;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Maps a training record status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" or "certified" => "Healthy",
+        "inprogress" or "in progress" or "scheduled" => "Warning",
+        "overdue" or "failed" or "expired" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

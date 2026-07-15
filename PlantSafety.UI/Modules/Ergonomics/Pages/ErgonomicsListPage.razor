@@ -1,0 +1,145 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Ergonomics list page. KPI risk-level summary +
+     date-range-filterable, client-paginated grid, backed by the real
+     GET /v1/operational/ergonomics read-model endpoint.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ergonomics"
+
+@inject ErgonomicsState State
+@inject ErgonomicsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Ergonomics.State
+@using PlantSafety.UI.Modules.Ergonomics.ApiClients
+@using PlantSafety.UI.Modules.Ergonomics.Mappings
+@using PlantSafety.UI.Modules.Ergonomics.Models
+
+<PageTitle>Ergonomics — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Ergonomics list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <div class="ps-kpi-row">
+            <CardComponent Title="High Risk" Subtitle="@State.HighRiskCount.ToString()" />
+            <CardComponent Title="Medium Risk" Subtitle="@State.MediumRiskCount.ToString()" />
+            <CardComponent Title="Low Risk" Subtitle="@State.LowRiskCount.ToString()" />
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading ergonomics assessments…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="ErgonomicsItemDto"
+                                Items="PagedItems"
+                                Headers="_headers"
+                                KeySelector="e => e.ErgonomicsAssessmentId"
+                                EmptyMessage="No ergonomics assessments found for the selected date range."
+                                AriaLabel="Ergonomics assessments">
+                <RowTemplate Context="item">
+                    @{ var vm = item.ToViewModel(); }
+                    <td><SeverityBadgeComponent Severity="@vm.SeverityForBadge" Text="@item.RiskLevel" /></td>
+                    <td class="ps-mono">@item.WorkstationId</td>
+                    <td><StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" /></td>
+                    <td>@item.AssessedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="@RouteDefinitions.ErgonomicsList/@item.ErgonomicsAssessmentId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="_currentPage" TotalPages="TotalPages" TotalCount="State.Items.Count" PageChanged="p => _currentPage = p" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Risk Level", "Workstation", "Status", "Assessed", "Actions"];
+    private const int PageSize = 25;
+
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-30));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+    private int _currentPage = 1;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(State.Items.Count / (double)PageSize));
+
+    private IReadOnlyList<ErgonomicsItemDto> PagedItems =>
+        State.Items.Skip((_currentPage - 1) * PageSize).Take(PageSize).ToList();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Ergonomics",
+            activeModuleCode: "ergonomics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Ergonomics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        _startDate = range.Start;
+        _endDate = range.End;
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _currentPage = 1;
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetErgonomicsAssessmentsAsync(
+            tenantId,
+            siteId: null,
+            fromUtc: _startDate.ToDateTime(TimeOnly.MinValue),
+            toUtc: _endDate.ToDateTime(TimeOnly.MaxValue));
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load ergonomics assessments: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

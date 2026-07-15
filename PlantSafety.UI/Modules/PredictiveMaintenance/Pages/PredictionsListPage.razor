@@ -1,0 +1,110 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Predictions List page (Volume P1 §3). Active/historical/
+     superseded predictions. Built from the canonical Shared component
+     library (DataGridComponent, SeverityBadgeComponent, PaginationComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/predictions"
+
+@inject PredictionsListState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.Models
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Predictions — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The predictions list could not be displayed." OnRetry="() => GoToPageAsync(1)">
+
+        <div class="ps-page-actions">
+            <a href="/modules/predictive-maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading predictions…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="PredictionRowDto"
+                                Items="State.Predictions"
+                                Headers="_headers"
+                                KeySelector="p => p.PredictionId"
+                                EmptyMessage="No predictions found."
+                                AriaLabel="Predictions"
+                                EnableVirtualization="true">
+                <RowTemplate Context="prediction">
+                    <td>@prediction.PredictionCode</td>
+                    <td>@prediction.EquipmentCode</td>
+                    <td><SeverityBadgeComponent Severity="@prediction.RiskLevel" /></td>
+                    <td>@prediction.ConfidencePercent.ToString("F0")%</td>
+                    <td>@(prediction.IsActive ? "Active" : "Historical")</td>
+                    <td>@prediction.UpdatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><a href="/modules/predictive-maintenance/predictions/@prediction.PredictionId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages" TotalCount="State.TotalCount" PageChanged="GoToPageAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Prediction", "Equipment", "Risk", "Confidence", "Status", "Updated", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Predictions",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Predictions" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await GoToPageAsync(1);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetPredictionsAsync(pageNumber: page, pageSize: 50);
+
+        if (envelope.IsSuccess)
+            State.SetPredictions(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load predictions: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

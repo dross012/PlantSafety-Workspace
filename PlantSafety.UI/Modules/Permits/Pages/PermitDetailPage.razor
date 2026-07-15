@@ -1,0 +1,198 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Permit detail page. The read-model API exposes only a
+     list endpoint (GET api/v1/operational/permits-to-work, no GetById) —
+     the record is resolved from the already-loaded PermitsState.AllItems
+     when navigated to from the list, or by re-querying a wide date window
+     when deep-linked directly. Tabbed step-by-step workspace (hazard/
+     precaution checklist, approvals, closeout, per compliance/
+     checklist-heavy module guidance) built entirely from the canonical
+     Shared component library: ErrorBoundaryComponent,
+     LoadingIndicatorComponent, TabControlComponent, CardComponent,
+     StatusIndicatorComponent.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/permits/{PermitId:guid}"
+
+@inject PermitsState State
+@inject PermitsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Permits.ApiClients
+@using PlantSafety.UI.Modules.Permits.Models
+@using PlantSafety.UI.Modules.Permits.Services
+@using PlantSafety.UI.Modules.Permits.State
+
+<PageTitle>Permit Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The permit detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading permit record…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedItem is { } record)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@record.PermitType</h2>
+                <StatusIndicatorComponent Status="@PermitsUiService.MapStatusToOperationalState(record.Status)" Label="@record.Status" />
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChanged" AriaLabel="Permit record sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (_activeTab == 0)
+                {
+                    <CardComponent Title="Overview">
+                        <div class="ps-field-row"><span class="ps-field-label">Permit Type</span><span><span class="ps-chip">@record.PermitType</span></span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Work Description</span><span class="ps-field-value">@record.WorkDescription</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Status</span><span><StatusIndicatorComponent Status="@PermitsUiService.MapStatusToOperationalState(record.Status)" Label="@record.Status" /></span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Issued</span><span class="ps-field-value">@record.IssuedAtUtc.ToString("u") UTC</span></div>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 1)
+                {
+                    <CardComponent Title="Record Detail">
+                        <div class="ps-field-row"><span class="ps-field-label">Record ID</span><span class="ps-field-value ps-mono">@record.PermitId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Tenant ID</span><span class="ps-field-value ps-mono">@record.TenantId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Site ID</span><span class="ps-field-value ps-mono">@(record.SiteId?.ToString() ?? "All sites")</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Issued By</span><span class="ps-field-value ps-mono">@record.IssuedBy</span></div>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 2)
+                {
+                    <CardComponent Title="Hazards &amp; Precautions">
+                        <p class="ps-field-value">A precondition checklist (hazard identification, required PPE,
+                            atmospheric testing, isolation confirmation) specific to the permit type will render
+                            here per module.</p>
+                        <p class="ps-needs-backend">
+                            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                            The hazard/precaution checklist needs backend wiring — the Permits to Work
+                            read-model endpoint returns only the summary work description shown in Overview
+                            today.
+                        </p>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 3)
+                {
+                    <CardComponent Title="Approvals &amp; Closeout">
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => Nav.NavigateTo(RouteDefinitions.PermitsList)">
+                            <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Permits to Work
+                        </button>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Approve permit">
+                            <span class="bi bi-check2-circle" aria-hidden="true"></span> Approve
+                        </button>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Close out permit">
+                            <span class="bi bi-flag" aria-hidden="true"></span> Close Out
+                        </button>
+                        <p class="ps-needs-backend">
+                            <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                            Approval routing and permit closeout need backend wiring — no command endpoint
+                            exists yet for the Permits to Work module (read-only today).
+                        </p>
+                    </CardComponent>
+                }
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Overview", "Record Detail", "Hazards & Precautions", "Approvals & Closeout"];
+    private int _activeTab;
+
+    [Parameter] public Guid PermitId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Permit Detail",
+            activeModuleCode: "permits",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Permits to Work", Href = RouteDefinitions.PermitsList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await ResolveRecordAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State.SelectedItem is { } current && current.PermitId == PermitId)
+            return;
+
+        await ResolveRecordAsync();
+    }
+
+    private async Task ResolveRecordAsync()
+    {
+        State.BeginDetailLoad();
+
+        var existing = State.AllItems.FirstOrDefault(i => i.PermitId == PermitId);
+        if (existing is not null)
+        {
+            State.SetSelectedItem(existing);
+            return;
+        }
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow;
+
+        var envelope = await ApiClient.GetPermitsToWorkAsync(tenantId, siteId: null, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+        {
+            var found = envelope.Data!.Items.FirstOrDefault(i => i.PermitId == PermitId);
+            if (found is not null)
+                State.SetSelectedItem(found);
+            else
+                State.SetDetailError("This permit record could not be found.");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetDetailError(string.IsNullOrWhiteSpace(envelope.Problem!.Detail) ? "The request failed." : envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetDetailError($"Failed to load permit record: {envelope.FaultType}");
+        }
+    }
+
+    private Task OnTabChanged(int index)
+    {
+        _activeTab = index;
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

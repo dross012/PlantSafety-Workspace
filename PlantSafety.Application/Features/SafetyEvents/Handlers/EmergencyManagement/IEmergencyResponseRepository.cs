@@ -23,6 +23,20 @@ public interface IEmergencyResponseRepository
 
     /// <summary>Returns the read model, or null if not found.</summary>
     Task<EmergencyResponseReadModel?> GetByIdAsync(Guid tenantId, Guid responseId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns a page of <see cref="EmergencyResponseReadModel"/> records matching the given filters.
+    /// The returned tuple contains the page items and the total count (for pagination metadata).
+    /// </summary>
+    Task<(IReadOnlyList<EmergencyResponseReadModel> Items, int TotalCount)> ListAsync(
+        Guid tenantId,
+        Guid? siteId,
+        string? status,
+        string orderBy,
+        string sortDirection,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>Infrastructure read model for EmergencyResponse stored-procedure result sets.</summary>
@@ -46,6 +60,8 @@ public sealed record EmergencyResponseReadModel
     public required DateTimeOffset? StandDownAtUtc { get; init; }
     /// <summary>Status.</summary>
     public required string Status { get; init; }
+    /// <summary>Response coordinator worker identifier.</summary>
+    public required Guid CoordinatorId { get; init; }
     /// <summary>Last modification timestamp.</summary>
     public required DateTimeOffset LastModifiedAtUtc { get; init; }
     /// <summary>Row version.</summary>

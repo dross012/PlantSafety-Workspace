@@ -1,0 +1,124 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Technician Workload View page (Volume M1 high-fidelity
+     notes). Workload cards with skill tags and assignment indicators. Built
+     from the canonical Shared component library (CardComponent,
+     StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/maintenance/technicians/workload"
+
+@inject TechnicianWorkloadState State
+@inject MaintenanceApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Maintenance.ApiClients
+@using PlantSafety.UI.Modules.Maintenance.State
+
+<PageTitle>Technician Workload — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The technician workload view could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading technician workload…" />
+        }
+        else if (State.Technicians.Count == 0)
+        {
+            <div class="ps-alert" role="status">No technicians found.</div>
+        }
+        else
+        {
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                @foreach (var tech in State.Technicians)
+                {
+                    <CardComponent Title="@tech.TechnicianName" Subtitle="@($"{tech.AssignedCount} assigned · {tech.WorkloadPercent}% capacity")">
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Availability</span>
+                            <StatusIndicatorComponent Status="@MapAvailability(tech.AvailabilityStatus)" Label="@tech.AvailabilityStatus" />
+                        </div>
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Skills</span>
+                            <span>
+                                @foreach (var skill in tech.SkillTags)
+                                {
+                                    <span class="ps-chip" style="margin-right:4px;">@skill</span>
+                                }
+                                @if (tech.SkillTags.Count == 0)
+                                {
+                                    <span class="ps-text-muted">None recorded</span>
+                                }
+                            </span>
+                        </div>
+                    </CardComponent>
+                }
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Technician Workload",
+            activeModuleCode: "maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Maintenance", Href = RouteDefinitions.MaintenanceList },
+                new BreadcrumbItem { Label = "Technician Workload" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetTechnicianWorkloadAsync();
+
+        if (envelope.IsSuccess)
+            State.SetTechnicians(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load technician workload: {envelope.FaultType}");
+    }
+
+    private static string MapAvailability(string status) => status.ToLowerInvariant() switch
+    {
+        "available" => "Healthy",
+        "busy" or "limited" => "Warning",
+        "unavailable" or "off" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,145 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Industrial Hygiene list page. KPI exposure-level summary
+     + date-range-filterable, client-paginated grid, backed by the real
+     GET /v1/operational/industrial-hygiene read-model endpoint.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/industrial-hygiene"
+
+@inject IndustrialHygieneState State
+@inject IndustrialHygieneApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.IndustrialHygiene.State
+@using PlantSafety.UI.Modules.IndustrialHygiene.ApiClients
+@using PlantSafety.UI.Modules.IndustrialHygiene.Mappings
+@using PlantSafety.UI.Modules.IndustrialHygiene.Models
+
+<PageTitle>Industrial Hygiene — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Industrial Hygiene list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <div class="ps-kpi-row">
+            <CardComponent Title="High Exposure" Subtitle="@State.HighExposureCount.ToString()" />
+            <CardComponent Title="Medium Exposure" Subtitle="@State.MediumExposureCount.ToString()" />
+            <CardComponent Title="Low Exposure" Subtitle="@State.LowExposureCount.ToString()" />
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading industrial hygiene samples…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="IndustrialHygieneItemDto"
+                                Items="PagedItems"
+                                Headers="_headers"
+                                KeySelector="s => s.IndustrialHygieneSampleId"
+                                EmptyMessage="No industrial hygiene samples found for the selected date range."
+                                AriaLabel="Industrial hygiene samples">
+                <RowTemplate Context="item">
+                    @{ var vm = item.ToViewModel(); }
+                    <td><SeverityBadgeComponent Severity="@vm.SeverityForBadge" Text="@item.ExposureLevel" /></td>
+                    <td>@item.SampleType</td>
+                    <td><StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" /></td>
+                    <td>@item.SampledAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="@RouteDefinitions.IndustrialHygieneList/@item.IndustrialHygieneSampleId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="_currentPage" TotalPages="TotalPages" TotalCount="State.Items.Count" PageChanged="p => _currentPage = p" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Exposure Level", "Sample Type", "Status", "Sampled", "Actions"];
+    private const int PageSize = 25;
+
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-30));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+    private int _currentPage = 1;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(State.Items.Count / (double)PageSize));
+
+    private IReadOnlyList<IndustrialHygieneItemDto> PagedItems =>
+        State.Items.Skip((_currentPage - 1) * PageSize).Take(PageSize).ToList();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Industrial Hygiene",
+            activeModuleCode: "industrial-hygiene",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Industrial Hygiene" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        _startDate = range.Start;
+        _endDate = range.End;
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _currentPage = 1;
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetIndustrialHygieneSamplesAsync(
+            tenantId,
+            siteId: null,
+            fromUtc: _startDate.ToDateTime(TimeOnly.MinValue),
+            toUtc: _endDate.ToDateTime(TimeOnly.MaxValue));
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load industrial hygiene samples: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,125 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Safety program detail page. Generic detail template
+     built from the canonical Shared component library (CardComponent,
+     StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/safety-programs/{ProgramId:guid}"
+
+@inject SafetyProgramsState State
+@inject SafetyProgramsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.SafetyPrograms.ApiClients
+@using PlantSafety.UI.Modules.SafetyPrograms.State
+
+<PageTitle>Safety Program Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The safety program detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading program…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedProgram is { } program)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@program.Name</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(program.Status)" Label="@program.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Description</dt>   <dd>@program.Description</dd>
+                    <dt>Category</dt>      <dd>@program.Category</dd>
+                    <dt>Start Date</dt>    <dd>@program.StartDate.ToString("yyyy-MM-dd")</dd>
+                    <dt>End Date</dt>      <dd>@(program.EndDate?.ToString("yyyy-MM-dd") ?? "Ongoing")</dd>
+                    <dt>Participation</dt> <dd>@program.ParticipationPercent.ToString("F0")% (@program.EnrolledCount enrolled)</dd>
+                    <dt>Owner</dt>         <dd>@program.OwnerName</dd>
+                    <dt>Goals</dt>
+                    <dd>
+                        @if (program.Goals.Count == 0)
+                        {
+                            <span class="ps-text-muted">None recorded</span>
+                        }
+                        else
+                        {
+                            <ul>
+                                @foreach (var goal in program.Goals)
+                                {
+                                    <li>@goal</li>
+                                }
+                            </ul>
+                        }
+                    </dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.SafetyProgramsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Safety Programs
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ProgramId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Safety Program Detail",
+            activeModuleCode: "safety-programs",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Safety Programs", Href = RouteDefinitions.SafetyProgramsList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetProgramAsync(ProgramId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedProgram(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load safety program: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "planned" => "Warning",
+        "onhold" or "on hold" => "Warning",
+        "completed" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

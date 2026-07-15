@@ -1,0 +1,693 @@
+﻿
+PlantSafety.Api
+├── Analytics
+│   ├── Culture
+│   │   ├── Behavior
+│   │   ├── CultureIndex
+│   │   ├── EngagementScoring
+│   │   └── TrendModeling
+│   ├── Dashboard
+│   │   ├── Executive
+│   │   ├── KPISnapshots
+│   │   ├── ReadModel
+│   │   └── TrendAnalysis
+│   ├── Engagement
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Exports
+│   ├── Predictive
+│   │   ├── ComplianceFailure
+│   │   ├── FatigueRiskModeling
+│   │   ├── IncidentPrediction
+│   │   └── RiskForecasting
+│   ├── PredictiveAnalytics
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Reporting
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Schedules
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── ScoreCards
+│   │   ├── Compliance
+│   │   ├── Department
+│   │   ├── Supervisor
+│   │   └── Training
+│   └── TrendAnalysis
+│       ├── Authorization
+│       ├── Contracts
+│       ├── Controllers
+│       ├── Diagnostics
+│       ├── Endpoints
+│       ├── Extensions
+│       ├── Filters
+│       ├── Mapping
+│       ├── Models
+│       └── Telemetry
+├── Attributes
+├── bin
+│   ├── Debug
+│   │   └── net8.0
+│   └── Release
+│       └── net8.0
+├── Compliance
+│   ├── Auditing
+│   │   ├── AuditFindings
+│   │   ├── CAPATriggers
+│   │   ├── ComplianceAudit
+│   │   └── InternalSafetyAudit
+│   ├── Bulk
+│   ├── Certification
+│   │   ├── Contractor
+│   │   ├── DOT
+│   │   ├── EPA
+│   │   ├── IndustrySpecific
+│   │   ├── ISO14001
+│   │   ├── ISO45001
+│   │   ├── OSHACertifications
+│   │   └── Training
+│   ├── Compliance
+│   │   ├── Obligations
+│   │   ├── RegulatoryRequirements
+│   │   └── Tracking
+│   ├── Exports
+│   ├── ManagementOfChange
+│   │   ├── Approvals
+│   │   ├── MOCWorkflows
+│   │   └── RiskAssessments
+│   ├── Permits
+│   │   ├── ChemicalHandling
+│   │   ├── ColdWork
+│   │   ├── ConfinedSpace
+│   │   ├── Electrical
+│   │   ├── Excavation
+│   │   ├── HotTap
+│   │   ├── HotWork
+│   │   ├── Lifting
+│   │   ├── LineBreak
+│   │   ├── LockoutTagout
+│   │   ├── PressureTesting
+│   │   ├── Radiography
+│   │   └── WorkatHeight
+│   ├── Policy
+│   │   ├── Approvals
+│   │   ├── ChemicalHandling
+│   │   ├── Contractor
+│   │   ├── Documents
+│   │   ├── Emergency
+│   │   ├── Environmental
+│   │   ├── Equipment
+│   │   ├── HR
+│   │   ├── PPE
+│   │   ├── Revisions
+│   │   └── SafetyPolicies
+│   ├── Procedures
+│   │   ├── EmergencyProcedure
+│   │   ├── HazMatProcedures
+│   │   ├── IncidentResponse
+│   │   ├── Inspection
+│   │   ├── LockoutTagoutProcedure
+│   │   ├── Maintenance
+│   │   ├── Safety
+│   │   ├── SOPs
+│   │   └── WorkInstructions
+│   └── RegulatoryCalendar
+│       ├── Deadlines
+│       ├── Inspections
+│       └── Renewals
+├── Configuration
+├── Constants
+├── ContinuousImprovement
+│   ├── CAPA
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Exports
+│   └── RCA
+│       ├── Authorization
+│       ├── Contracts
+│       ├── Controllers
+│       ├── Diagnostics
+│       ├── Endpoints
+│       ├── Extensions
+│       ├── Filters
+│       ├── Mapping
+│       ├── Models
+│       └── Telemetry
+├── Controllers
+│   ├── V1
+│   └── V2
+├── Conventions
+├── CrossDomain
+│   ├── Administration
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Backup
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Cleanup
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Employees
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Machines
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Operators
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Permissions
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Restore
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Roles
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Updates
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Users
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   └── WorkCenters
+│       ├── Authorization
+│       ├── Contracts
+│       ├── Controllers
+│       ├── Diagnostics
+│       ├── Endpoints
+│       ├── Extensions
+│       ├── Filters
+│       ├── Mapping
+│       ├── Models
+│       └── Telemetry
+├── Endpoints
+│   ├── V1
+│   └── V2
+├── Extensions
+├── Filters
+├── Financials
+│   ├── Authorization
+│   ├── Contracts
+│   │   ├── Requests
+│   │   └── Responses
+│   ├── Controllers
+│   │   ├── V1
+│   │   └── V2
+│   ├── Diagnostics
+│   ├── Endpoints
+│   ├── Extensions
+│   ├── Filters
+│   ├── Mapping
+│   ├── Models
+│   │   ├── Requests
+│   │   └── Responses
+│   ├── Requests
+│   └── Telemetry
+├── HealthChecks
+│   ├── Authorization
+│   ├── Contracts
+│   │   ├── Requests
+│   │   └── Responses
+│   ├── Controllers
+│   │   ├── V1
+│   │   └── V2
+│   ├── Diagnostics
+│   ├── Endpoints
+│   ├── Extensions
+│   ├── Filters
+│   ├── Mapping
+│   ├── Models
+│   │   ├── Requests
+│   │   └── Responses
+│   └── Telemetry
+├── Middleware
+├── Models
+│   ├── Bulk
+│   └── Exports
+├── obj
+│   ├── Debug
+│   │   └── net8.0
+│   └── Release
+│       └── net8.0
+├── OpenApi
+├── Operational
+│   ├── Alerts
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Bulk
+│   ├── Checklists
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── CompetencyManagement
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Contractor
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── EquipmentSafety
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Ergonomics
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Exports
+│   ├── FatigueManagement
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── HazardAssessments
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── HazardousMaterials
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── IndustrialHygiene
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Inspections
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── JobSafetyAnalysis
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── LockoutTagout
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── PermitsToWork
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── PPEManagement
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── PredictiveMaintenance
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── PreventiveMaintenance
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── RiskManagement
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Schedules
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   └── Training
+│       ├── Authorization
+│       ├── Classes
+│       ├── Contracts
+│       ├── Controllers
+│       ├── Courses
+│       ├── Diagnostics
+│       ├── Endpoints
+│       ├── Extensions
+│       ├── Filters
+│       ├── Mapping
+│       ├── Models
+│       ├── Seminars
+│       ├── Telemetry
+│       └── Webinars
+├── OutputCache
+├── PlanningProjects
+│   ├── Authorization
+│   ├── Contracts
+│   │   ├── Requests
+│   │   └── Responses
+│   ├── Controllers
+│   │   ├── V1
+│   │   └── V2
+│   ├── Diagnostics
+│   ├── Endpoints
+│   ├── Extensions
+│   ├── Filters
+│   ├── Mapping
+│   ├── Models
+│   │   ├── Requests
+│   │   └── Responses
+│   ├── Requests
+│   └── Telemetry
+├── SafetyEvents
+│   ├── Bulk
+│   ├── CrisisManagement
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── DrillsAndExercises
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── EmergencyManagement
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Exports
+│   ├── IncidentManagement
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── NearMisses
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   ├── Observation
+│   │   ├── Authorization
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Diagnostics
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mapping
+│   │   ├── Models
+│   │   └── Telemetry
+│   └── RootCauseAnalysis
+│       ├── Authorization
+│       ├── Contracts
+│       ├── Controllers
+│       ├── Diagnostics
+│       ├── Endpoints
+│       ├── Extensions
+│       ├── Filters
+│       ├── Mapping
+│       ├── Models
+│       └── Telemetry
+└── Webhooks
+    ├── Authorization
+    ├── Models
+    └── Verification

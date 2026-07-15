@@ -1,0 +1,237 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Certifications list page. Tabbed across the 7
+     PlantSafety.Api Compliance Certification categories (OSHA, Contractor,
+     DOT, EPA, Industry-Specific, ISO 14001, ISO 45001), each lazy-loaded on
+     first tab activation via CertificationsApiClient and mapped through
+     CertificationsMapper into the shared CertificationRowViewModel shape so
+     every category renders through one DataGridComponent column set. Built
+     entirely from the canonical Shared component library
+     (ErrorBoundaryComponent, TabControlComponent, LoadingIndicatorComponent,
+     DateRangePickerComponent, SearchBoxComponent, DataGridComponent,
+     StatusIndicatorComponent, PaginationComponent), following the
+     Modules/Admin/Pages/AdminSetupPage.razor tabbed-shell exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/certifications"
+
+@inject CertificationsState State
+@inject CertificationsApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Certifications.ApiClients
+@using PlantSafety.UI.Modules.Certifications.Mappings
+@using PlantSafety.UI.Modules.Certifications.Models
+@using PlantSafety.UI.Modules.Certifications.State
+
+<PageTitle>Certifications — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Certifications page could not be displayed.">
+
+        <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeIndex" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Certification categories" />
+
+        <div class="ps-tab-panel" role="tabpanel">
+
+            <div class="ps-page-actions">
+                <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="() => LoadActiveCategoryAsync(force: true)" disabled="@State.IsLoading(ActiveCategoryKey)">
+                    <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+                </button>
+            </div>
+
+            <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
+            <SearchBoxComponent Value="_searchText" Placeholder="Search by holder or sub-type" ValueChanged="OnSearchChangedAsync" />
+
+            @if (State.ErrorFor(ActiveCategoryKey) is { } error)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@error</div>
+            }
+
+            @if (State.IsLoading(ActiveCategoryKey))
+            {
+                <LoadingIndicatorComponent Message="@($"Loading {ActiveCategoryLabel} certifications…")" />
+            }
+            else
+            {
+                <DataGridComponent TItem="CertificationRowViewModel"
+                                    Items="PagedItems"
+                                    Headers="_headers"
+                                    KeySelector="c => c.CertificationId"
+                                    EmptyMessage="No certifications found for the selected range/search."
+                                    AriaLabel="@($"{ActiveCategoryLabel} certifications")">
+                    <RowTemplate Context="cert">
+                        <td>@cert.HolderLabel</td>
+                        <td>@cert.SubTypeLabel</td>
+                        <td><StatusIndicatorComponent Status="@MapStatus(cert.Status)" Label="@cert.Status" /></td>
+                        <td>@cert.IssuedAtUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@cert.ExpiresAtUtc.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            <a href="@RouteDefinitions.CertificationsList/@cert.CategoryKey/@cert.CertificationId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+
+                <PaginationComponent CurrentPage="_currentPage" TotalPages="TotalPages" TotalCount="FilteredItems.Count" PageChanged="OnPageChangedAsync" />
+            }
+
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Holder", "Sub-Type / Standard", "Status", "Issued", "Expires", "Actions"];
+    private static readonly string[] _tabLabels = CertificationsMapper.Categories.Select(c => c.Label).ToArray();
+    private const int PageSize = 25;
+
+    private int _activeIndex;
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+    private string _searchText = string.Empty;
+    private int _currentPage = 1;
+
+    private string ActiveCategoryKey => CertificationsMapper.Categories[_activeIndex].Key;
+    private string ActiveCategoryLabel => CertificationsMapper.Categories[_activeIndex].Label;
+
+    private IReadOnlyList<CertificationRowViewModel> FilteredItems
+    {
+        get
+        {
+            var rows = State.RowsFor(ActiveCategoryKey);
+            return string.IsNullOrWhiteSpace(_searchText)
+                ? rows
+                : rows.Where(c =>
+                        c.HolderLabel.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                        c.SubTypeLabel.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                        c.Status.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+        }
+    }
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredItems.Count / (double)PageSize));
+
+    private IReadOnlyList<CertificationRowViewModel> PagedItems =>
+        FilteredItems.Skip((_currentPage - 1) * PageSize).Take(PageSize).ToList();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Certifications",
+            activeModuleCode: "certifications",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Certifications" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadActiveCategoryAsync(force: false);
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _activeIndex = index;
+        _currentPage = 1;
+        _searchText = string.Empty;
+        await LoadActiveCategoryAsync(force: false);
+    }
+
+    private async Task LoadActiveCategoryAsync(bool force)
+    {
+        var key = ActiveCategoryKey;
+        if (!force && State.IsLoaded(key))
+            return;
+
+        State.BeginCategoryLoad(key);
+        var tenantId = ResolveTenantId();
+        var from = _startDate.ToDateTime(TimeOnly.MinValue);
+        var to = _endDate.ToDateTime(TimeOnly.MaxValue);
+
+        try
+        {
+            IReadOnlyList<CertificationRowViewModel> rows = key switch
+            {
+                "osha" => MapOrThrow(await ApiClient.GetOshaCertsAsync(tenantId, null, from, to), e => CertificationsMapper.ToRows(e.Items)),
+                "contractor" => MapOrThrow(await ApiClient.GetContractorCertsAsync(tenantId, null, from, to), e => CertificationsMapper.ToRows(e.Items)),
+                "dot" => MapOrThrow(await ApiClient.GetDotCertsAsync(tenantId, null, from, to), e => CertificationsMapper.ToRows(e.Items)),
+                "epa" => MapOrThrow(await ApiClient.GetEpaCertsAsync(tenantId, null, from, to), e => CertificationsMapper.ToRows(e.Items)),
+                "industryspecific" => MapOrThrow(await ApiClient.GetIndustrySpecificCertsAsync(tenantId, null, from, to), e => CertificationsMapper.ToRows(e.Items)),
+                "iso14001" => MapOrThrow(await ApiClient.GetIso14001CertsAsync(tenantId, null, from, to), e => CertificationsMapper.ToRows(e.Items)),
+                "iso45001" => MapOrThrow(await ApiClient.GetIso45001CertsAsync(tenantId, null, from, to), e => CertificationsMapper.ToRows(e.Items)),
+                _ => [],
+            };
+
+            State.SetCategoryRows(key, rows);
+        }
+        catch (CertificationLoadException ex)
+        {
+            State.SetCategoryError(key, ex.Message);
+        }
+    }
+
+    /// <summary>Unwraps a read-model envelope or throws a sanitized <see cref="CertificationLoadException"/>.</summary>
+    private static IReadOnlyList<CertificationRowViewModel> MapOrThrow<TItem>(
+        ApiResponseEnvelope<ReadModelEnvelopeDto<TItem>> envelope,
+        Func<ReadModelPayloadDto<TItem>, IReadOnlyList<CertificationRowViewModel>> map)
+    {
+        if (envelope.IsSuccess && envelope.Data is { Success: true, Data: not null })
+            return map(envelope.Data.Data);
+
+        if (envelope.IsSuccess)
+            throw new CertificationLoadException(envelope.Data?.Errors is { Count: > 0 } errs ? string.Join("; ", errs) : "The certification read-model returned no data.");
+
+        if (envelope.IsProblem)
+            throw new CertificationLoadException(envelope.Problem!.Detail);
+
+        throw new CertificationLoadException($"Failed to load certifications: {envelope.FaultType}");
+    }
+
+    private sealed class CertificationLoadException(string message) : Exception(message);
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        _startDate = range.Start;
+        _endDate = range.End;
+        _currentPage = 1;
+        return LoadActiveCategoryAsync(force: true);
+    }
+
+    private Task OnSearchChangedAsync(string text)
+    {
+        _searchText = text;
+        _currentPage = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPageChangedAsync(int page)
+    {
+        _currentPage = page;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Maps a certification status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "expiringsoon" or "expiring soon" or "pendingrenewal" => "Warning",
+        "expired" or "revoked" or "suspended" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

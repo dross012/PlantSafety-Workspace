@@ -1,0 +1,142 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Digital Twin asset detail page — the natural
+     single-entity drilldown for this module. No by-id endpoint exists yet, so
+     this page ensures the parent registry is loaded (via DigitalTwinState)
+     and looks the asset up client-side by TwinId, degrading gracefully when
+     the backend is unavailable.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/digital-twin/{TwinId:guid}"
+
+@inject DigitalTwinState State
+@inject DigitalTwinApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DigitalTwin.ApiClients
+
+<PageTitle>Digital Twin Asset Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The digital twin asset detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading twin asset…" />
+        }
+        else if (_loadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_loadError</div>
+            <p class="ps-needs-backend">
+                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                Digital Twin needs backend wiring — no PlantSafety.Api read-model endpoint exists yet.
+            </p>
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">Twin asset @TwinId was not found for this tenant.</div>
+        }
+        else if (State.Selected is { } twin)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@twin.AssetName</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(twin.Status)" Label="@twin.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Twin ID</dt>          <dd class="ps-mono">@twin.TwinId</dd>
+                    <dt>Asset Name</dt>       <dd>@twin.AssetName</dd>
+                    <dt>Asset Type</dt>       <dd>@twin.AssetType</dd>
+                    <dt>Status</dt>           <dd>@twin.Status</dd>
+                    <dt>Telemetry Health</dt> <dd>@twin.TelemetryHealthScore.ToString("P0")</dd>
+                    <dt>Last Sync</dt>        <dd>@twin.LastSyncAtUtc.ToString("u") UTC</dd>
+                    @if (twin.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@twin.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.DigitalTwinViewer)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Digital Twin
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid TwinId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+    private string? _loadError;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Digital Twin Asset Detail",
+            activeModuleCode: "digital-twin",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Digital Twin", Href = RouteDefinitions.DigitalTwinViewer },
+                new BreadcrumbItem { Label = "Asset Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(TwinId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetTwinsAsync(tenantId, siteId: null);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetTwins(envelope.Data!.Items);
+            _notFound = !State.SelectById(TwinId);
+        }
+        else if (envelope.IsProblem)
+        {
+            _loadError = envelope.Problem!.Detail;
+        }
+        else
+        {
+            _loadError = $"Digital Twin service is not yet available: {envelope.FaultType}";
+        }
+
+        _isLoading = false;
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "synced" => "Healthy",
+        "degraded" => "Warning",
+        "offline" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

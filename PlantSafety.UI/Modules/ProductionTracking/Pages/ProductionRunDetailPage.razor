@@ -1,0 +1,299 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Production Run Detail page (Volume T1 §2). Run Summary
+     panel + Metadata panel + 5-tab strip (Timeline/Batches/KPIs/Events/
+     Metadata), lazy-loaded. Built from the canonical Shared component
+     library (CardComponent, TabControlComponent, DataGridComponent,
+     StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/production-tracking/runs/{RunId:guid}"
+
+@inject ProductionRunDetailState State
+@inject ProductionTrackingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.ProductionTracking.ApiClients
+@using PlantSafety.UI.Modules.ProductionTracking.Models
+@using PlantSafety.UI.Modules.ProductionTracking.State
+
+<PageTitle>Production Run Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The production run detail could not be displayed.">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading run…" />
+        }
+        else if (State.ErrorMessage is not null && State.Summary is null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+            <a href="/modules/production-tracking" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Return to Dashboard</a>
+        }
+        else if (State.Summary is { } summary)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@summary.RunCode</h2>
+                <StatusIndicatorComponent Status="@MapStatus(summary.Status)" Label="@summary.Status" />
+            </div>
+
+            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+                <CardComponent Title="Run Summary">
+                    <div class="ps-field-row"><span class="ps-field-label">Status</span><span class="ps-field-value">@summary.Status</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Throughput</span><span class="ps-field-value">@summary.Throughput.ToString("F0")/hr (@summary.TrendDirection)</span></div>
+                </CardComponent>
+                @if (State.Metadata is { } meta)
+                {
+                    <CardComponent Title="Metadata">
+                        <div class="ps-field-row"><span class="ps-field-label">Line</span><span class="ps-field-value">@meta.Line</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Start Time</span><span class="ps-field-value">@meta.StartUtc.ToString("u") UTC</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Operator</span><span class="ps-field-value">@meta.Operator</span></div>
+                    </CardComponent>
+                }
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="(int)State.ActiveTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Production run sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (State.ActiveTab == ProductionRunDetailTab.Timeline)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading timeline…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="TimelineEventDto" Items="State.Timeline" Headers="_timelineHeaders" KeySelector="e => e.EventId"
+                                            EmptyMessage="No timeline events." AriaLabel="Run timeline">
+                            <RowTemplate Context="ev">
+                                <td>@ev.TimestampUtc.ToString("HH:mm:ss") UTC</td>
+                                <td>@ev.EventType</td>
+                                <td>@ev.Description</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == ProductionRunDetailTab.Batches)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading batches…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="BatchRowDto" Items="State.Batches" Headers="_batchHeaders" KeySelector="b => b.BatchId"
+                                            EmptyMessage="No batches recorded." AriaLabel="Run batches">
+                            <RowTemplate Context="batch">
+                                <td>@batch.BatchCode</td>
+                                <td>@batch.Line</td>
+                                <td><StatusIndicatorComponent Status="@MapBatchStatus(batch.Status)" Label="@batch.Status" /></td>
+                                <td>@batch.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == ProductionRunDetailTab.Kpis)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading KPIs…" Inline="true" />
+                    }
+                    else
+                    {
+                        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                            @foreach (var kpi in State.Kpis)
+                            {
+                                <CardComponent Title="@kpi.MetricName">
+                                    <div class="ps-field-row"><span class="ps-field-label">Value</span><span class="ps-field-value">@kpi.Value.ToString("F1") @kpi.Unit</span></div>
+                                    <div class="ps-field-row"><span class="ps-field-label">Target</span><span class="ps-field-value">@kpi.Target.ToString("F1") @kpi.Unit</span></div>
+                                    <div class="ps-field-row"><span class="ps-field-label">Status</span><StatusIndicatorComponent Status="@MapKpiStatus(kpi.Status)" Label="@kpi.Status" /></div>
+                                </CardComponent>
+                            }
+                            @if (State.Kpis.Count == 0)
+                            {
+                                <span class="ps-text-muted">No KPIs recorded for this run.</span>
+                            }
+                        </div>
+                    }
+                }
+                else if (State.ActiveTab == ProductionRunDetailTab.Events)
+                {
+                    @if (State.IsLoadingTab)
+                    {
+                        <LoadingIndicatorComponent Message="Loading events…" Inline="true" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="EventRowDto" Items="State.Events" Headers="_eventHeaders" KeySelector="e => e.EventId"
+                                            EmptyMessage="No events recorded." AriaLabel="Run events">
+                            <RowTemplate Context="ev">
+                                <td>@ev.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                                <td>@ev.EventType</td>
+                                <td>@ev.Description</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                }
+                else if (State.ActiveTab == ProductionRunDetailTab.Metadata)
+                {
+                    <CardComponent Title="Run Metadata">
+                        <div class="ps-field-row"><span class="ps-field-label">Run ID</span><span class="ps-field-value ps-mono">@summary.RunId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Line</span><span class="ps-field-value">@(State.Metadata?.Line ?? "—")</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Start</span><span class="ps-field-value">@(State.Metadata?.StartUtc.ToString("u") ?? "—") UTC</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Operator</span><span class="ps-field-value">@(State.Metadata?.Operator ?? "—")</span></div>
+                    </CardComponent>
+                }
+
+            </div>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ProductionTrackingDashboard)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RunId { get; set; }
+
+    private static readonly string[] _tabLabels = ["Timeline", "Batches", "KPIs", "Events", "Metadata"];
+    private static readonly string[] _timelineHeaders = ["Time", "Event", "Description"];
+    private static readonly string[] _batchHeaders = ["Batch", "Line", "Status", "Start"];
+    private static readonly string[] _eventHeaders = ["Time", "Type", "Description"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Production Run Detail",
+            activeModuleCode: "production-tracking",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Production Tracking", Href = RouteDefinitions.ProductionTrackingDashboard },
+                new BreadcrumbItem { Label = "Run Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginLoad();
+        var summaryEnvelope = await ApiClient.GetRunSummaryAsync(RunId);
+        var metadataEnvelope = await ApiClient.GetRunMetadataAsync(RunId);
+
+        if (summaryEnvelope.IsSuccess)
+        {
+            State.SetHeader(summaryEnvelope.Data!, metadataEnvelope.IsSuccess ? metadataEnvelope.Data! : new RunMetadataDto());
+            await LoadTimelineAsync();
+        }
+        else if (summaryEnvelope.IsProblem)
+            State.SetError(summaryEnvelope.Problem!.Detail);
+        else
+            State.SetError($"Run not found: {summaryEnvelope.FaultType}");
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        var tab = (ProductionRunDetailTab)index;
+        State.SetActiveTab(tab);
+
+        switch (tab)
+        {
+            case ProductionRunDetailTab.Timeline when State.Timeline.Count == 0:
+                await LoadTimelineAsync();
+                break;
+            case ProductionRunDetailTab.Batches when State.Batches.Count == 0:
+                await LoadBatchesAsync();
+                break;
+            case ProductionRunDetailTab.Kpis when State.Kpis.Count == 0:
+                await LoadKpisAsync();
+                break;
+            case ProductionRunDetailTab.Events when State.Events.Count == 0:
+                await LoadEventsAsync();
+                break;
+        }
+    }
+
+    private async Task LoadTimelineAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetRunTimelineAsync(RunId);
+        if (envelope.IsSuccess)
+            State.SetTimeline(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Timeline load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadBatchesAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetRunBatchesAsync(RunId);
+        if (envelope.IsSuccess)
+            State.SetBatches(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Batch load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadKpisAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetRunKpisAsync(RunId);
+        if (envelope.IsSuccess)
+            State.SetKpis(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"KPI load failed: {envelope.FaultType}");
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        State.BeginTabLoad();
+        var envelope = await ApiClient.GetRunEventsAsync(RunId);
+        if (envelope.IsSuccess)
+            State.SetEvents(envelope.Data!.Items);
+        else
+            State.SetError(envelope.IsProblem ? envelope.Problem!.Detail : $"Event load failed: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "running" => "Healthy",
+        "paused" or "pending" => "Warning",
+        "failed" => "Critical",
+        "completed" => "Offline",
+        _ => "Offline",
+    };
+
+    private static string MapBatchStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "active" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    private static string MapKpiStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "met" => "Healthy",
+        "warning" => "Warning",
+        "missed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

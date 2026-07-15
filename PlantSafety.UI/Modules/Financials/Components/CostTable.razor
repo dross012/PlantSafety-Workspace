@@ -1,0 +1,37 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Wraps the canonical DataGridComponent to render Safety
+     Budget line items (Category / Allocated / Spend / Remaining / Status).
+     Rebuilt from the previously orphaned stub at
+     Components/Financials/CostTable.razor and relocated under
+     Modules/Financials/Components; wired into FinancialsDashboardPage.
+     Pure/stateless/parameter-driven per UI001-UI005 — no injected services.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@using PlantSafety.UI.Modules.Financials.Models
+
+<DataGridComponent TItem="BudgetViewModel"
+                    Items="Budgets"
+                    Headers="_headers"
+                    KeySelector="b => b.BudgetId"
+                    EmptyMessage="No budget line items found."
+                    AriaLabel="Budget line items">
+    <RowTemplate Context="b">
+        <td>@b.Category</td>
+        <td>@b.AllocatedAmount.ToString("N0") @b.CurrencyCode</td>
+        <td>@b.ActualSpend.ToString("N0") @b.CurrencyCode</td>
+        <td>@b.RemainingBalance.ToString("N0") @b.CurrencyCode</td>
+        <td><StatusIndicatorComponent Status="@b.StatusIndicatorState" Label="@b.Status" /></td>
+    </RowTemplate>
+</DataGridComponent>
+
+@code {
+    /// <summary>The Safety Budget line items to display.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<BudgetViewModel> Budgets { get; set; } = [];
+
+    private static readonly string[] _headers = ["Category", "Allocated", "Spend", "Remaining", "Status"];
+}

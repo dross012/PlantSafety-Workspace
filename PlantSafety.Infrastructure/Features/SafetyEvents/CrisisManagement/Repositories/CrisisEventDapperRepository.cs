@@ -68,4 +68,45 @@ public sealed class CrisisEventDapperRepository(
         return await queryExecutor.QuerySingleOrDefaultAsync<CrisisEventReadModel>(
             "[SafetyEvents].[usp_CrisisEvent_GetById]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<(IReadOnlyList<CrisisEventReadModel> Items, int TotalCount)> ListAsync(
+        Guid tenantId,
+        Guid? siteId,
+        string? status,
+        string? crisisCategory,
+        string orderBy,
+        string sortDirection,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("List CrisisEvents for tenant {TenantId} page {PageNumber}", tenantId, pageNumber);
+
+        var listParameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddGuid("SiteId", siteId)
+            .AddString("Status", status, size: 64)
+            .AddString("CrisisCategory", crisisCategory, size: 64)
+            .AddString("OrderBy", orderBy, size: 64)
+            .AddString("SortDirection", sortDirection, size: 4)
+            .AddInt("PageNumber", pageNumber)
+            .AddInt("PageSize", pageSize)
+            .Build();
+
+        var items = await queryExecutor.QueryAsync<CrisisEventReadModel>(
+            "[SafetyEvents].[usp_CrisisEvent_List]", listParameters, cancellationToken);
+
+        var countParameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddGuid("SiteId", siteId)
+            .AddString("Status", status, size: 64)
+            .AddString("CrisisCategory", crisisCategory, size: 64)
+            .Build();
+
+        var totalCount = await queryExecutor.QuerySingleOrDefaultAsync<int?>(
+            "[SafetyEvents].[usp_CrisisEvent_Count]", countParameters, cancellationToken);
+
+        return (items, totalCount ?? 0);
+    }
 }

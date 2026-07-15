@@ -1,0 +1,95 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Project Budgeting detail page. Loads the full
+     SafetyProjectDto by route parameter via ProjectBudgetingState.LoadDetailAsync
+     and renders identity fields plus the shared BudgetSummary card — built
+     entirely from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent, SeverityBadgeComponent,
+     StatusIndicatorComponent) plus the shared BudgetSummary component.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/project-budgeting/{ProjectId:guid}"
+
+@inject ProjectBudgetingState State
+@inject ProjectBudgetingUiService UiService
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PlanningProjects.Components
+@using PlantSafety.UI.Modules.ProjectBudgeting.Services
+@using PlantSafety.UI.Modules.ProjectBudgeting.State
+
+<PageTitle>Project Budget Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The project budget detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading project budget…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+            <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ProjectBudgetingDashboard)">
+                <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Project Budgeting
+            </button>
+        }
+        else if (State.SelectedProject is { } project)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@project.Name</h2>
+                    <StatusIndicatorComponent Status="@project.StatusIndicatorState" Label="@project.Status" />
+                </div>
+                <dl class="ps-detail-fields">
+                    <dt>Planned Start</dt> <dd>@project.PlannedStartUtc.ToString("u") UTC</dd>
+                    <dt>Planned End</dt>   <dd>@project.PlannedEndUtc.ToString("u") UTC</dd>
+                    <dt>Owner</dt>         <dd class="ps-mono">@project.ProjectOwnerId</dd>
+                </dl>
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ProjectBudgetingDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Project Budgeting
+                    </button>
+                </div>
+            </div>
+
+            <BudgetSummary PlannedBudget="project.PlannedBudget" />
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Project Budget Detail",
+            activeModuleCode: "project-budgeting",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Project Budgeting", Href = RouteDefinitions.ProjectBudgetingDashboard },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnParametersSetAsync() => await State.LoadDetailAsync(UiService, ProjectId);
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        State.ClearSelection();
+    }
+}

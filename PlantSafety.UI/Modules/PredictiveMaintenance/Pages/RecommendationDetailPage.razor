@@ -1,0 +1,114 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Recommendation Detail page (Volume P1 §6). Step-by-step
+     corrective-action guidance. Built from the canonical Shared component
+     library (CardComponent, SeverityBadgeComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/recommendations/{RecommendationId:guid}"
+
+@inject RecommendationDetailState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Recommendation Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The recommendation detail could not be displayed." OnRetry="LoadAsync">
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading recommendation…" />
+        }
+        else if (State.ErrorMessage is not null && State.Recommendation is null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+            <a href="/modules/predictive-maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Return to Dashboard</a>
+        }
+        else if (State.Recommendation is { } rec)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@rec.Title</h2>
+                <SeverityBadgeComponent Severity="@rec.Priority" />
+            </div>
+
+            <CardComponent Title="Estimated Impact">
+                <div class="ps-field-row"><span class="ps-field-label">Estimated Risk Reduction</span><span class="ps-field-value">@rec.EstimatedRiskReduction.ToString("P0")</span></div>
+            </CardComponent>
+
+            <CardComponent Title="Corrective Action Steps">
+                @if (rec.Steps.Count == 0)
+                {
+                    <span class="ps-text-muted">No steps recorded.</span>
+                }
+                else
+                {
+                    <ol>
+                        @foreach (var step in rec.Steps)
+                        {
+                            <li class="ps-field-value">@step</li>
+                        }
+                    </ol>
+                }
+            </CardComponent>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PredictiveMaintenanceDashboard)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RecommendationId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Recommendation Detail",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Recommendation" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetRecommendationAsync(RecommendationId);
+
+        if (envelope.IsSuccess)
+            State.SetRecommendation(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Recommendation not found: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

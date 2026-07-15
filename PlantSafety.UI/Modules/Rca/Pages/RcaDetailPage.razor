@@ -1,0 +1,127 @@
+﻿@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: RCA detail page. Loads the full RootCauseAnalysisDto by
+     route parameter via the working GetById endpoint. Follows the Incident
+     Detail wireframe's findings/root-cause/corrective-actions shape via
+     TabControlComponent tabs (Overview, Root Cause, Corrective Actions).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/rca/{RcaId:guid}"
+
+@inject RcaState State
+@inject RcaApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Rca.State
+@using PlantSafety.UI.Modules.Rca.ApiClients
+@using PlantSafety.UI.Modules.Rca.Mappings
+
+<PageTitle>RCA Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The RCA detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading root cause analysis…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.Selected is { } item)
+        {
+            var vm = item.ToViewModel();
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">RCA — @item.LinkedEventType @item.LinkedEventId</h2>
+                    <StatusIndicatorComponent Status="@vm.OperationalStatus" Label="@item.Status" />
+                </div>
+
+                <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="i => _activeTab = i" AriaLabel="RCA sections" />
+
+                <div class="ps-tab-panel" role="tabpanel">
+                    @if (_activeTab == 0)
+                    {
+                        <CardComponent Title="Overview">
+                            <dl class="ps-detail-fields">
+                                <dt>Linked Event</dt>      <dd>@item.LinkedEventType — <span class="ps-mono">@item.LinkedEventId</span></dd>
+                                <dt>Methodology</dt>       <dd>@item.Methodology</dd>
+                                <dt>Lead Investigator</dt> <dd class="ps-mono">@item.LeadInvestigatorId</dd>
+                                <dt>Completed</dt>         <dd>@(item.CompletedAtUtc?.ToString("u") ?? "In progress") @(item.CompletedAtUtc is not null ? "UTC" : "")</dd>
+                                <dt>Last Updated</dt>      <dd>@item.LastModifiedAtUtc.ToString("u") UTC</dd>
+                                <dt>Record ID</dt>         <dd class="ps-mono">@item.RcaId</dd>
+                            </dl>
+                        </CardComponent>
+                    }
+                    else if (_activeTab == 1)
+                    {
+                        <CardComponent Title="Root Cause">
+                            <p class="ps-field-value">@item.RootCauses</p>
+                        </CardComponent>
+                    }
+                    else
+                    {
+                        <CardComponent Title="Corrective Actions">
+                            <p class="ps-field-value">@item.CorrectiveActions</p>
+                        </CardComponent>
+                    }
+                </div>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.RcaList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to RCA
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RcaId { get; set; }
+
+    private static readonly string[] _tabLabels = ["Overview", "Root Cause", "Corrective Actions"];
+    private int _activeTab;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "RCA Detail",
+            activeModuleCode: "rca",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "RCA", Href = RouteDefinitions.RcaList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetRcaAsync(RcaId);
+
+        if (envelope.IsSuccess)
+            State.SetSelected(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load RCA: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,145 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: AI Governance model detail page — the natural
+     single-entity drilldown for this module. No by-id endpoint exists yet, so
+     this page ensures the parent registry is loaded (via AiGovernanceState)
+     and looks the model up client-side by ModelId, degrading gracefully when
+     the backend is unavailable.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ai-governance/{ModelId:guid}"
+
+@inject AiGovernanceState State
+@inject AiGovernanceApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.AiGovernance.ApiClients
+
+<PageTitle>Governed Model Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The governed model detail could not be displayed.">
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading model…" />
+        }
+        else if (_loadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_loadError</div>
+            <p class="ps-needs-backend">
+                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
+                AI Governance needs backend wiring — no PlantSafety.Api read-model endpoint exists yet.
+            </p>
+        }
+        else if (_notFound)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">Model @ModelId was not found for this tenant.</div>
+        }
+        else if (State.Selected is { } model)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@model.ModelName @model.ModelVersion</h2>
+                    <SeverityBadgeComponent Severity="@model.RiskTier" />
+                    <StatusIndicatorComponent Status="@MapGovernanceStatus(model.GovernanceStatus)" Label="@model.GovernanceStatus" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Model ID</dt>          <dd class="ps-mono">@model.ModelId</dd>
+                    <dt>Model Name</dt>        <dd>@model.ModelName</dd>
+                    <dt>Model Version</dt>     <dd>@model.ModelVersion</dd>
+                    <dt>Governance Status</dt> <dd>@model.GovernanceStatus</dd>
+                    <dt>Risk Tier</dt>         <dd>@model.RiskTier</dd>
+                    <dt>Drift Status</dt>      <dd>@model.DriftStatus</dd>
+                    <dt>Last Reviewed</dt>     <dd>@model.LastReviewedAtUtc.ToString("u") UTC</dd>
+                    <dt>Reviewer</dt>          <dd>@(model.ReviewerName ?? "Unassigned")</dd>
+                    @if (model.SiteId.HasValue)
+                    {
+                        <dt>Site</dt><dd class="ps-mono">@model.SiteId</dd>
+                    }
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AiGovernanceDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to AI Governance
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ModelId { get; set; }
+
+    private bool _isLoading;
+    private bool _notFound;
+    private string? _loadError;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Governed Model Detail",
+            activeModuleCode: "ai-governance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "AI Governance", Href = RouteDefinitions.AiGovernanceDashboard },
+                new BreadcrumbItem { Label = "Model Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (State.SelectById(ModelId))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetGovernedModelsAsync(tenantId, siteId: null);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetModels(envelope.Data!.Items);
+            _notFound = !State.SelectById(ModelId);
+        }
+        else if (envelope.IsProblem)
+        {
+            _loadError = envelope.Problem!.Detail;
+        }
+        else
+        {
+            _loadError = $"AI Governance service is not yet available: {envelope.FaultType}";
+        }
+
+        _isLoading = false;
+    }
+
+    private static string MapGovernanceStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "approved" => "Healthy",
+        "pendingreview" or "pending review" => "Warning",
+        "rejected" or "deprecated" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,132 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Checklist list page. KPI CardComponent row (Completed/
+     Overdue), a SearchBoxComponent title filter, and a DataGridComponent
+     listing of checklist templates/instances with StatusIndicatorComponent
+     per row. Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/checklists"
+
+@inject ChecklistState State
+@inject ChecklistApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Checklist.ApiClients
+@using PlantSafety.UI.Modules.Checklist.Mappings
+@using PlantSafety.UI.Modules.Checklist.Models
+@using PlantSafety.UI.Modules.Checklist.State
+
+<PageTitle>Checklists — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Checklists list could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <div class="ps-kpi-row">
+            <CardComponent Title="Completed" Subtitle="@State.CompletedCount.ToString()" />
+            <CardComponent Title="Overdue / Failed" Subtitle="@State.OverdueCount.ToString()" />
+            <CardComponent Title="Total Checklists" Subtitle="@State.Checklists.Count.ToString()" />
+        </div>
+
+        <SearchBoxComponent Value="State.SearchText" Placeholder="Search by name" ValueChanged="text => State.SetSearchText(text)" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading checklists…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="ChecklistViewModel"
+                                Items="State.PageItems"
+                                Headers="_headers"
+                                KeySelector="c => c.ChecklistId"
+                                EmptyMessage="No checklists found."
+                                AriaLabel="Checklists">
+                <RowTemplate Context="c">
+                    <td>@c.Name</td>
+                    <td>@c.Category</td>
+                    <td><StatusIndicatorComponent Status="@c.StatusIndicatorState" Label="@c.Status" /></td>
+                    <td>@c.CompletedAtUtc.ToString("yyyy-MM-dd")</td>
+                    <td><a href="@RouteDefinitions.ChecklistList/@c.ChecklistId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages"
+                                      TotalCount="State.FilteredCount" PageChanged="p => State.GoToPage(p)" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Name", "Category", "Status", "Completed", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Checklists",
+            activeModuleCode: "checklists",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Checklist" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync()
+    {
+        State.BeginListLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow.AddYears(2);
+
+        var envelope = await ApiClient.GetChecklistsAsync(tenantId, null, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetChecklists(envelope.Data!.Items.ToViewModels());
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetListError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetListError($"Failed to load checklists: {envelope.FaultType}");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

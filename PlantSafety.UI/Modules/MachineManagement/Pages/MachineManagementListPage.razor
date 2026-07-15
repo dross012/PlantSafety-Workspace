@@ -1,0 +1,176 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Machine Management list page. Loads machine/equipment
+     records for a date range via MachineManagementApiClient (CrossDomain
+     Machines read-model), populates MachineManagementState, and renders the
+     machine grid with status indicators, search, date-range filtering, and
+     client-side pagination (the source read-model is not server-paginated),
+     built entirely from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent, DateRangePickerComponent,
+     SearchBoxComponent, DataGridComponent, StatusIndicatorComponent,
+     PaginationComponent), following the Modules/Alerts exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/machine-management"
+
+@inject MachineManagementState State
+@inject MachineManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.MachineManagement.ApiClients
+@using PlantSafety.UI.Modules.MachineManagement.Models
+@using PlantSafety.UI.Modules.MachineManagement.State
+
+<PageTitle>Machine Management — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Machine Management list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
+        <SearchBoxComponent Value="_searchText" Placeholder="Search by name, type, or serial number" ValueChanged="OnSearchChangedAsync" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading machines…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="MachineItemDto"
+                                Items="PagedItems"
+                                Headers="_headers"
+                                KeySelector="m => m.MachineId"
+                                EmptyMessage="No machines found for the selected range/search."
+                                AriaLabel="Machines">
+                <RowTemplate Context="machine">
+                    <td>@machine.MachineName</td>
+                    <td>@machine.MachineType</td>
+                    <td>@machine.SerialNumber</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(machine.Status)" Label="@machine.Status" /></td>
+                    <td>@machine.LastServicedAtUtc.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        <a href="@RouteDefinitions.MachineManagementList/@machine.MachineId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <PaginationComponent CurrentPage="_currentPage" TotalPages="TotalPages" TotalCount="FilteredItems.Count" PageChanged="OnPageChangedAsync" />
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Name", "Type", "Serial #", "Status", "Last Serviced", "Actions"];
+    private const int PageSize = 25;
+
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+    private string _searchText = string.Empty;
+    private int _currentPage = 1;
+
+    private IReadOnlyList<MachineItemDto> FilteredItems =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? State.Items
+            : State.Items.Where(m =>
+                    m.MachineName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    m.MachineType.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    m.SerialNumber.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredItems.Count / (double)PageSize));
+
+    private IReadOnlyList<MachineItemDto> PagedItems =>
+        FilteredItems.Skip((_currentPage - 1) * PageSize).Take(PageSize).ToList();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Machine Management",
+            activeModuleCode: "machine-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Machine Management" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task LoadAsync()
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.GetMachinesAsync(
+            ResolveTenantId(),
+            siteId: null,
+            from: _startDate.ToDateTime(TimeOnly.MinValue),
+            to: _endDate.ToDateTime(TimeOnly.MaxValue));
+
+        if (envelope.IsSuccess && envelope.Data is { Success: true, Data: not null })
+            State.SetItems(envelope.Data.Data.Items);
+        else if (envelope.IsSuccess)
+            State.SetListError(envelope.Data?.Errors is { Count: > 0 } errs ? string.Join("; ", errs) : "The Machine Management read-model returned no data.");
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load machines: {envelope.FaultType}");
+    }
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        _startDate = range.Start;
+        _endDate = range.End;
+        _currentPage = 1;
+        return LoadAsync();
+    }
+
+    private Task OnSearchChangedAsync(string text)
+    {
+        _searchText = text;
+        _currentPage = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPageChangedAsync(int page)
+    {
+        _currentPage = page;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Maps a machine operational status to the closest StatusIndicatorComponent state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "operational" => "Healthy",
+        "maintenance" => "Warning",
+        "outofservice" or "out of service" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

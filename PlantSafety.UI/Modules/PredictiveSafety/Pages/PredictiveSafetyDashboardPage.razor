@@ -1,0 +1,149 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Predictive Safety dashboard/list page. Loads model risk
+     predictions via PredictiveSafetyApiClient for a selectable date window,
+     shows KPI summary cards (Total/High Risk/Active Alerts), and a sortable
+     prediction grid with a risk-score severity badge. Built entirely from the
+     canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-safety"
+
+@inject PredictiveSafetyState State
+@inject PredictiveSafetyApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveSafety.ApiClients
+@using PlantSafety.UI.Modules.PredictiveSafety.Models
+
+<PageTitle>Predictive Safety — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Predictive Safety dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading predictions…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Total Predictions"><span class="ps-field-value">@State.Predictions.Count</span></CardComponent>
+                <CardComponent Title="High Risk (≥0.7)"><span class="ps-field-value">@State.Predictions.Count(p => p.PredictedRiskScore >= 0.7)</span></CardComponent>
+                <CardComponent Title="Active Alerts"><span class="ps-field-value">@CountByStatus("active")</span></CardComponent>
+                <CardComponent Title="Resolved"><span class="ps-field-value">@CountByStatus("resolved")</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="PredictiveSafetyItemDto"
+                                Items="State.Predictions"
+                                Headers="_headers"
+                                KeySelector="p => p.PredictionId"
+                                EmptyMessage="No predictive safety outputs found for the selected window."
+                                AriaLabel="Predictive Safety Outputs">
+                <RowTemplate Context="prediction">
+                    <td><SeverityBadgeComponent Severity="@RiskSeverity(prediction.PredictedRiskScore)" Text="@($"{prediction.PredictedRiskScore:P0}")" /></td>
+                    <td>@prediction.RiskCategory</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(prediction.Status)" Label="@prediction.Status" /></td>
+                    <td>@(prediction.ModelVersion ?? "—")</td>
+                    <td>@prediction.PredictedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="/modules/predictive-safety/@prediction.PredictionId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Risk", "Category", "Status", "Model Version", "Predicted", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Predictive Safety",
+            activeModuleCode: "predictive-safety",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Safety" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetPredictionsAsync(tenantId, siteId: null, from, to);
+
+        if (envelope.IsSuccess)
+            State.SetPredictions(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetLoadError(envelope.Problem!.Detail);
+        else
+            State.SetLoadError($"Failed to load predictions: {envelope.FaultType}");
+    }
+
+    private int CountByStatus(string status) =>
+        State.Predictions.Count(p => string.Equals(p.Status, status, StringComparison.OrdinalIgnoreCase));
+
+    private static string RiskSeverity(double score) => score switch
+    {
+        >= 0.85 => "Critical",
+        >= 0.7 => "High",
+        >= 0.4 => "Medium",
+        _ => "Low",
+    };
+
+    /// <summary>Maps a prediction alert status to the closest StatusIndicatorComponent operational state.</summary>
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "resolved" => "Healthy",
+        "acknowledged" => "Warning",
+        "active" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

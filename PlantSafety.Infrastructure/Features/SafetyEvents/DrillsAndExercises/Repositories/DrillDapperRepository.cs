@@ -66,4 +66,45 @@ public sealed class DrillDapperRepository(
         return await queryExecutor.QuerySingleOrDefaultAsync<DrillReadModel>(
             "[SafetyEvents].[usp_Drill_GetById]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<(IReadOnlyList<DrillReadModel> Items, int TotalCount)> ListAsync(
+        Guid tenantId,
+        Guid? siteId,
+        string? status,
+        string? drillType,
+        string orderBy,
+        string sortDirection,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("List Drills for tenant {TenantId} page {PageNumber}", tenantId, pageNumber);
+
+        var listParameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddGuid("SiteId", siteId)
+            .AddString("Status", status, size: 64)
+            .AddString("DrillType", drillType, size: 64)
+            .AddString("OrderBy", orderBy, size: 64)
+            .AddString("SortDirection", sortDirection, size: 4)
+            .AddInt("PageNumber", pageNumber)
+            .AddInt("PageSize", pageSize)
+            .Build();
+
+        var items = await queryExecutor.QueryAsync<DrillReadModel>(
+            "[SafetyEvents].[usp_Drill_List]", listParameters, cancellationToken);
+
+        var countParameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddGuid("SiteId", siteId)
+            .AddString("Status", status, size: 64)
+            .AddString("DrillType", drillType, size: 64)
+            .Build();
+
+        var totalCount = await queryExecutor.QuerySingleOrDefaultAsync<int?>(
+            "[SafetyEvents].[usp_Drill_Count]", countParameters, cancellationToken);
+
+        return (items, totalCount ?? 0);
+    }
 }

@@ -1,0 +1,73 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical tabbed navigation strip — one of the 11
+      non-forkable shared components mandated by the Platform UI Architecture
+      Master Specification (Volume 0) §4. Backed by the existing .ps-tabs /
+      .ps-tab / .ps-tab.active utility classes already used in
+      Modules/Admin/Pages/AdminSetupPage.razor — this component renders only
+      the tab strip (role="tablist"/"tab"); the consuming page still supplies
+      its own tab-panel container(s) (role="tabpanel"), matching that page's
+      existing pattern of separate panel divs per tab.
+      Pure/stateless/parameter-driven per UI001-UI005.
+    Inputs: Tabs (required, ordered labels), ActiveIndex (required)
+    Outputs: ActiveIndexChanged (fired with the newly activated tab's index)
+    Accessibility: role="tablist"/"tab", full arrow-key/Home/End keyboard
+      navigation, roving tabindex, aria-selected per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+<div class="ps-tabs" role="tablist" aria-label="@AriaLabel" @onkeydown="HandleKeyDown">
+    @for (var i = 0; i < Tabs.Count; i++)
+    {
+        var index = i;
+        <button type="button"
+                role="tab"
+                id="@($"{_groupId}-tab-{index}")"
+                class="ps-tab @(index == ActiveIndex ? "active" : "")"
+                aria-selected="@(index == ActiveIndex ? "true" : "false")"
+                tabindex="@(index == ActiveIndex ? "0" : "-1")"
+                @onclick="() => Activate(index)">
+            @Tabs[index]
+        </button>
+    }
+</div>
+
+@code {
+    private readonly string _groupId = $"tabs-{Guid.NewGuid():N}";
+
+    /// <summary>Ordered tab labels.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Tabs { get; set; } = Array.Empty<string>();
+
+    /// <summary>0-based index of the currently active tab.</summary>
+    [Parameter, EditorRequired]
+    public int ActiveIndex { get; set; }
+
+    /// <summary>Fired with the newly activated tab's 0-based index.</summary>
+    [Parameter]
+    public EventCallback<int> ActiveIndexChanged { get; set; }
+
+    /// <summary>Accessible label describing the purpose of this tab group.</summary>
+    [Parameter]
+    public string AriaLabel { get; set; } = "Section tabs";
+
+    private Task Activate(int index) => ActiveIndexChanged.InvokeAsync(index);
+
+    private Task HandleKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (Tabs.Count == 0)
+            return Task.CompletedTask;
+
+        var next = e.Key switch
+        {
+            "ArrowRight" => (ActiveIndex + 1) % Tabs.Count,
+            "ArrowLeft" => (ActiveIndex - 1 + Tabs.Count) % Tabs.Count,
+            "Home" => 0,
+            "End" => Tabs.Count - 1,
+            _ => (int?)null,
+        };
+
+        return next.HasValue ? Activate(next.Value) : Task.CompletedTask;
+    }
+}

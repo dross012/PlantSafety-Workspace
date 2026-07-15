@@ -1,0 +1,335 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Dashboard Analytics landing page (Volume A1 §Page 1 —
+     Analytics Dashboard: high-level KPIs + cross-module summaries). Wires
+     the four PlantSafety.Api.Analytics.Dashboard.* read-model sections
+     (Executive, KPI Snapshots, Trend, Read Model) via
+     DashboardAnalyticsApiClient, populates DashboardAnalyticsState, and
+     renders KPI CardComponent grids, TrendChartComponent, and
+     DataGridComponent breakdown tables — built entirely from the canonical
+     Shared component library (ErrorBoundaryComponent, LoadingIndicatorComponent,
+     TabControlComponent, CardComponent, DataGridComponent,
+     DateRangePickerComponent) plus the local TrendChartComponent, following
+     the Modules/Alerts and Modules/Admin exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/dashboard-analytics"
+
+@inject DashboardAnalyticsState State
+@inject DashboardAnalyticsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DashboardAnalytics.ApiClients
+@using PlantSafety.UI.Modules.DashboardAnalytics.Components
+@using PlantSafety.UI.Modules.DashboardAnalytics.Models
+@using PlantSafety.UI.Modules.DashboardAnalytics.State
+
+<PageTitle>Dashboard Analytics — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Dashboard Analytics page could not be displayed." OnRetry="() => LoadActiveTabAsync()">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="Dashboard Analytics sections" />
+
+        <div class="ps-tab-panel" role="tabpanel">
+
+            @* ── Executive Summary ───────────────────────────────────────────── *@
+            @if (State.ActiveTab == DashboardAnalyticsTab.Executive)
+            {
+                @if (State.ExecutiveError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ExecutiveError</div>
+                }
+
+                @if (State.IsLoadingExecutive)
+                {
+                    <LoadingIndicatorComponent Message="Loading executive summary…" />
+                }
+                else if (State.Executive.Count == 0)
+                {
+                    <CardComponent Title="Executive Summary"><p class="ps-chart-empty">No executive summary metrics found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+                        @foreach (var metric in State.Executive)
+                        {
+                            <CardComponent Title="@metric.MetricName">
+                                <div class="ps-field-row">
+                                    <span class="ps-field-label">Value</span>
+                                    <span class="ps-field-value">@metric.MetricValue.ToString("N1")</span>
+                                </div>
+                                @if (metric.TargetValue is { } target)
+                                {
+                                    <div class="ps-field-row">
+                                        <span class="ps-field-label">Target</span>
+                                        <span class="ps-field-value">@target.ToString("N1")</span>
+                                    </div>
+                                }
+                                <StatusIndicatorComponent Status="@MapExecutiveStatus(metric.Status)" Label="@metric.Status" />
+                            </CardComponent>
+                        }
+                    </div>
+
+                    <CardComponent Title="Executive Summary — Detail">
+                        <DataGridComponent TItem="ExecutiveMetricDto"
+                                            Items="State.Executive"
+                                            Headers="_executiveHeaders"
+                                            KeySelector="m => m.SummaryId"
+                                            EmptyMessage="No executive summary metrics found."
+                                            AriaLabel="Executive summary metrics">
+                            <RowTemplate Context="metric">
+                                <td>@metric.MetricName</td>
+                                <td>@metric.MetricValue.ToString("N1")</td>
+                                <td>@(metric.TargetValue?.ToString("N1") ?? "—")</td>
+                                <td><StatusIndicatorComponent Status="@MapExecutiveStatus(metric.Status)" Label="@metric.Status" /></td>
+                                <td>@metric.SnapshotAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── KPI Snapshots ────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == DashboardAnalyticsTab.KpiSnapshots)
+            {
+                @if (State.KpiSnapshotsError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.KpiSnapshotsError</div>
+                }
+
+                @if (State.IsLoadingKpiSnapshots)
+                {
+                    <LoadingIndicatorComponent Message="Loading KPI snapshots…" />
+                }
+                else
+                {
+                    <CardComponent Title="KPI Snapshots">
+                        <DataGridComponent TItem="KpiSnapshotDto"
+                                            Items="State.KpiSnapshots"
+                                            Headers="_kpiHeaders"
+                                            KeySelector="k => k.SnapshotId"
+                                            EmptyMessage="No KPI snapshots found for the selected range."
+                                            AriaLabel="KPI snapshots">
+                            <RowTemplate Context="kpi">
+                                <td>@kpi.KpiName</td>
+                                <td>@kpi.KpiValue.ToString("N2") @kpi.UnitOfMeasure</td>
+                                <td><span class="ps-chip">@kpi.Status</span></td>
+                                <td>@kpi.SnapshotAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Trend ────────────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == DashboardAnalyticsTab.Trend)
+            {
+                @if (State.TrendError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.TrendError</div>
+                }
+
+                @if (State.IsLoadingTrend)
+                {
+                    <LoadingIndicatorComponent Message="Loading trend analysis…" />
+                }
+                else
+                {
+                    <TrendChartComponent Title="Dashboard Trend" Points="BuildTrendPoints()" />
+
+                    <CardComponent Title="Trend — Breakdown">
+                        <DataGridComponent TItem="DashboardTrendPointDto"
+                                            Items="State.Trend"
+                                            Headers="_trendHeaders"
+                                            KeySelector="t => t.TrendPointId"
+                                            EmptyMessage="No trend data points found for the selected range."
+                                            AriaLabel="Dashboard trend breakdown">
+                            <RowTemplate Context="point">
+                                <td>@point.MetricName</td>
+                                <td>@point.MetricValue.ToString("N1")</td>
+                                <td><SeverityBadgeComponent Severity="@MapTrendSeverity(point.TrendDirection)" Text="@point.TrendDirection" /></td>
+                                <td><span class="ps-chip">@point.Status</span></td>
+                                <td>@point.CalculatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Read Model ───────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == DashboardAnalyticsTab.ReadModel)
+            {
+                @if (State.ReadModelError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ReadModelError</div>
+                }
+
+                @if (State.IsLoadingReadModel)
+                {
+                    <LoadingIndicatorComponent Message="Loading dashboard widgets…" />
+                }
+                else
+                {
+                    <CardComponent Title="Read Model — Widgets">
+                        <DataGridComponent TItem="DashboardWidgetRowDto"
+                                            Items="@(State.ReadModel.OrderBy(r => r.DisplayOrder).ToList())"
+                                            Headers="_readModelHeaders"
+                                            KeySelector="r => r.RowId"
+                                            EmptyMessage="No dashboard widgets found for the selected range."
+                                            AriaLabel="Dashboard read-model widgets">
+                            <RowTemplate Context="row">
+                                <td>@row.WidgetName</td>
+                                <td>@row.WidgetValue</td>
+                                <td>@row.DisplayOrder</td>
+                                <td><span class="ps-chip">@row.Status</span></td>
+                                <td>@row.RefreshedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Executive Summary", "KPI Snapshots", "Trend", "Read Model"];
+    private static readonly string[] _executiveHeaders = ["Metric", "Value", "Target", "Status", "Snapshot"];
+    private static readonly string[] _kpiHeaders = ["KPI", "Value", "Status", "Snapshot"];
+    private static readonly string[] _trendHeaders = ["Metric", "Value", "Trend", "Status", "Calculated"];
+    private static readonly string[] _readModelHeaders = ["Widget", "Value", "Order", "Status", "Refreshed"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Dashboard Analytics",
+            activeModuleCode: "dashboard-analytics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "Dashboard Analytics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadActiveTabAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private Task OnTabIndexChangedAsync(int index) => SelectTabAsync((DashboardAnalyticsTab)index);
+
+    private async Task SelectTabAsync(DashboardAnalyticsTab tab)
+    {
+        State.SetActiveTab(tab);
+        await LoadActiveTabAsync();
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadActiveTabAsync();
+    }
+
+    private Task LoadActiveTabAsync() => State.ActiveTab switch
+    {
+        DashboardAnalyticsTab.Executive when State.Executive.Count == 0 && !State.IsLoadingExecutive => LoadExecutiveAsync(),
+        DashboardAnalyticsTab.KpiSnapshots when State.KpiSnapshots.Count == 0 && !State.IsLoadingKpiSnapshots => LoadKpiSnapshotsAsync(),
+        DashboardAnalyticsTab.Trend when State.Trend.Count == 0 && !State.IsLoadingTrend => LoadTrendAsync(),
+        DashboardAnalyticsTab.ReadModel when State.ReadModel.Count == 0 && !State.IsLoadingReadModel => LoadReadModelAsync(),
+        _ => Task.CompletedTask,
+    };
+
+    private async Task LoadExecutiveAsync()
+    {
+        State.BeginExecutiveLoad();
+        var envelope = await ApiClient.GetExecutiveAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetExecutive(envelope.Data!.Items);
+        else
+            State.SetExecutiveError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadKpiSnapshotsAsync()
+    {
+        State.BeginKpiSnapshotsLoad();
+        var envelope = await ApiClient.GetKpiSnapshotsAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetKpiSnapshots(envelope.Data!.Items);
+        else
+            State.SetKpiSnapshotsError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadTrendAsync()
+    {
+        State.BeginTrendLoad();
+        var envelope = await ApiClient.GetTrendAnalysisAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetTrend(envelope.Data!.Items);
+        else
+            State.SetTrendError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadReadModelAsync()
+    {
+        State.BeginReadModelLoad();
+        var envelope = await ApiClient.GetReadModelAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetReadModel(envelope.Data!.Items);
+        else
+            State.SetReadModelError(DescribeFailure(envelope));
+    }
+
+    private List<TrendChartPoint> BuildTrendPoints() =>
+        State.Trend
+            .OrderBy(t => t.CalculatedAtUtc)
+            .Select(t => new TrendChartPoint(t.CalculatedAtUtc.ToString("MM/dd"), t.MetricValue))
+            .ToList();
+
+    private static string MapExecutiveStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "ontrack" or "met" => "Healthy",
+        "atrisk" or "warning" => "Warning",
+        "breached" or "missed" => "Critical",
+        _ => "Offline",
+    };
+
+    private static string MapTrendSeverity(string trendDirection) => trendDirection.ToLowerInvariant() switch
+    {
+        "improving" => "Low",
+        "stable" => "Info",
+        "declining" => "High",
+        _ => "Medium",
+    };
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

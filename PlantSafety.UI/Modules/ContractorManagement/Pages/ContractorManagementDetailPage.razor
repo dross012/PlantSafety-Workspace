@@ -1,0 +1,124 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Contractor detail page. Resolves from the
+     ContractorManagementState in-memory cache populated by the list page's
+     last load; falls back to a full reload when navigated to directly
+     (e.g. deep link/refresh).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/contractor-management/{ContractorRecordId:guid}"
+
+@inject ContractorManagementState State
+@inject ContractorManagementApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.ContractorManagement.ApiClients
+@using PlantSafety.UI.Modules.ContractorManagement.Mappings
+@using PlantSafety.UI.Modules.ContractorManagement.State
+
+<PageTitle>Contractor Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The contractor record could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading contractor…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedContractor is { } contractor)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@contractor.ContractorName</h2>
+                    <StatusIndicatorComponent Status="@contractor.StatusIndicatorState" Label="@contractor.Status" />
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Service Type</dt>  <dd>@contractor.ServiceType</dd>
+                    <dt>Onboarded</dt>     <dd>@contractor.OnboardedAtUtc.ToString("yyyy-MM-dd")</dd>
+                    <dt>Approved By</dt>   <dd class="ps-mono">@contractor.ApprovedBy</dd>
+                    <dt>Site</dt>          <dd>@(contractor.SiteId?.ToString() ?? "Tenant-wide")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ContractorManagementList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Contractor Management
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ContractorRecordId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Contractor Detail",
+            activeModuleCode: "contractor-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Contractor Management", Href = RouteDefinitions.ContractorManagementList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+
+        if (State.TryGetCachedContractor(ContractorRecordId, out var cached) && cached is not null)
+        {
+            State.SetSelectedContractor(cached);
+            return;
+        }
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = DateTime.UtcNow.AddYears(-2);
+        var toUtc = DateTime.UtcNow.AddYears(2);
+
+        var envelope = await ApiClient.GetContractorsAsync(tenantId, null, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetContractors(envelope.Data!.Items.ToViewModels());
+
+            if (State.TryGetCachedContractor(ContractorRecordId, out var reloaded) && reloaded is not null)
+            {
+                State.SetSelectedContractor(reloaded);
+            }
+            else
+            {
+                State.SetDetailError("Contractor record not found.");
+            }
+        }
+        else
+        {
+            State.SetDetailError("Unable to load contractor data at this time.");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

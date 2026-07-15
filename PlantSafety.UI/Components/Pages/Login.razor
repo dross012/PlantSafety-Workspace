@@ -1,0 +1,136 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Branded Login page (Volume AUTH1, adapted for PlantSafety's
+     Zero-Trust Azure AD / Entra ID authentication model — see
+     project_plantsafety_infrastructure_security.md). This is NOT a raw
+     username/password form: it presents a single "Sign in with Microsoft
+     Entra ID" action that delegates the entire credential exchange to MSAL
+     (IMsalTokenProvider), shows loading/error state via AuthState, and shows
+     the resolved tenant once known. Redirects to the Main Menu on success.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/login"
+@layout PlantSafety.UI.Components.Layout.AuthLayout
+
+@inject AuthState State
+@inject AppSessionState SessionState
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject IMsalTokenProvider TokenProvider
+@inject CorrelationContext Correlation
+@inject NavigationManager Nav
+@inject ILogger<Login> Logger
+
+@implements IDisposable
+
+@using PlantSafety.UI.Infrastructure.Auth
+@using PlantSafety.UI.Infrastructure.Correlation
+@using Microsoft.Extensions.Logging
+
+<PageTitle>Sign in — PlantSafety</PageTitle>
+
+<div class="ps-auth-brand">
+    <span class="bi bi-shield-check" style="font-size:2.5rem;color:var(--ps-color-brand-primary);" aria-hidden="true"></span>
+    <span class="ps-auth-brand-title">PlantSafety</span>
+    <span class="ps-auth-brand-subtitle">Industrial Safety Management Platform</span>
+</div>
+
+@if (State.ErrorMessage is not null)
+{
+    <div class="ps-auth-error" role="alert" aria-live="assertive">
+        <span class="bi bi-exclamation-triangle-fill" aria-hidden="true"></span>
+        <span>@State.ErrorMessage</span>
+    </div>
+}
+
+@if (State.IsAuthenticating)
+{
+    <div class="ps-auth-status" aria-live="polite" aria-busy="true">
+        <span class="ps-spinner" style="width:20px;height:20px;" aria-hidden="true"></span>
+        <span>Signing in…</span>
+    </div>
+}
+else
+{
+    <button type="button"
+            class="ps-btn ps-btn-primary ps-auth-signin-btn"
+            aria-label="Sign in with Microsoft Entra ID"
+            @onclick="SignInAsync">
+        <span class="bi bi-microsoft" aria-hidden="true"></span>
+        Sign in with Microsoft Entra ID
+    </button>
+}
+
+<p class="ps-auth-footer">
+    Zero-Trust authentication via Azure AD / Entra ID. Your credentials are
+    never entered into this application.
+</p>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+
+        // Already authenticated in this app session (e.g., returned to /login
+        // via back navigation after a successful sign-in) — go straight to the
+        // Main Menu instead of re-prompting.
+        if (UserSession.IsAuthenticated)
+        {
+            Nav.NavigateTo(RouteDefinitions.Home, replace: true);
+        }
+    }
+
+    private async Task SignInAsync()
+    {
+        State.BeginSignIn();
+        Logger.LogInformation("LoginAttempt initiated.");
+
+        try
+        {
+            var token = await TokenProvider.AcquireTokenAsync();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new InvalidOperationException("Empty token returned from MSAL.");
+            }
+
+            // In a full implementation, UserClaimsDto/TenantDto would be parsed from the
+            // ID token or fetched from /auth/me (tenant selection would be surfaced here
+            // if the resolved identity belongs to more than one tenant). Replace with
+            // actual claims parsing — tracked as a follow-up, consistent with the
+            // placeholder claims already used by AppShell's silent-session path.
+            var claims = new UserClaimsDto
+            {
+                UserId = Guid.NewGuid(),
+                TenantId = Guid.NewGuid(),
+                DisplayName = "Platform User",
+                TokenExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(1)
+            };
+
+            UserSession.SetUser(claims);
+            Correlation.BindIdentity(claims.TenantId, claims.UserId);
+            SessionState.MarkReady();
+
+            Logger.LogInformation(
+                "LoginSuccess. CorrelationId={CorrelationId} TenantId={TenantId}",
+                Correlation.CorrelationId,
+                claims.TenantId);
+
+            State.SignInSucceeded();
+            Nav.NavigateTo(RouteDefinitions.Home, replace: true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogWarning(
+                "LoginFailure. ExceptionType={ExceptionType}",
+                ex.GetType().Name);
+
+            State.SignInFailed("Sign-in failed. Please check your network connection and try again.");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

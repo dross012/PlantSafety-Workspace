@@ -1,0 +1,211 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   UPDATED: 2026-07-15 — wired to the shared SignalR real-time hub
+     (IRealtimeConnectionService) so the Active Production Runs table and
+     Throughput/Bottleneck cards update on push (ProductionRunChanged) rather
+     than a client-side timer, per Volume T1's 1-5s real-time refresh
+     requirement. A short periodic fallback timer only fires while the hub
+     connection is not Connected (offline/degraded), so the page never goes
+     silently stale if the hub is unreachable.
+   FILE DESCRIPTION: Production Dashboard page (Volume T1 §1). Throughput
+     Summary / Bottleneck Summary cards + Active Production Runs table.
+     Built from the canonical Shared component library (CardComponent,
+     DataGridComponent, StatusIndicatorComponent, ErrorBoundaryComponent,
+     LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/production-tracking"
+
+@inject ProductionDashboardState State
+@inject ProductionTrackingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject PlantSafety.UI.Infrastructure.Realtime.IRealtimeConnectionService Realtime
+
+@implements IAsyncDisposable
+
+@using PlantSafety.UI.Modules.ProductionTracking.ApiClients
+@using PlantSafety.UI.Modules.ProductionTracking.Models
+@using PlantSafety.UI.Modules.ProductionTracking.State
+
+<PageTitle>Production Tracking — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Production dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/production-tracking/batches" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-box-seam" aria-hidden="true"></span> Batch Tracking</a>
+            <a href="/modules/production-tracking/timeline" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-clock-history" aria-hidden="true"></span> Timeline</a>
+            <a href="/modules/production-tracking/kpis" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-speedometer2" aria-hidden="true"></span> KPI Dashboard</a>
+            <a href="/modules/production-tracking/events" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-journal-text" aria-hidden="true"></span> Event History</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+            <span class="ps-text-sm ps-text-muted">@RealtimeStatusLabel()</span>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+            <CardComponent Title="Throughput Summary">
+                @if (State.Throughput is { } t)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Current</span><span class="ps-field-value">@t.CurrentThroughput.ToString("F0")/hr</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Target</span><span class="ps-field-value">@t.TargetThroughput.ToString("F0")/hr</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Efficiency</span><span class="ps-field-value">@t.EfficiencyPercent.ToString("F0")%</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Trend</span><span class="ps-field-value">@t.TrendDirection</span></div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No data</span>
+                }
+            </CardComponent>
+
+            <CardComponent Title="Bottleneck Summary">
+                @if (State.Bottlenecks is { } b)
+                {
+                    <div class="ps-field-row"><span class="ps-field-label">Active Bottlenecks</span><span class="ps-field-value">@b.ActiveBottlenecks</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Severity</span><span class="ps-field-value"><SeverityBadgeComponent Severity="@b.Severity" /></span></div>
+                }
+                else
+                {
+                    <span class="ps-text-muted">No data</span>
+                }
+            </CardComponent>
+        </div>
+
+        @if (State.IsLoading && State.ActiveRuns.Count == 0)
+        {
+            <LoadingIndicatorComponent Message="Loading active production runs…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="ProductionRunRowDto"
+                                Items="State.ActiveRuns"
+                                Headers="_headers"
+                                KeySelector="r => r.RunId"
+                                EmptyMessage="No active production runs found."
+                                AriaLabel="Active production runs"
+                                EnableVirtualization="true">
+                <RowTemplate Context="run">
+                    <td>@run.RunCode</td>
+                    <td>@run.Line</td>
+                    <td>@run.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(run.Status)" Label="@run.Status" /></td>
+                    <td>@run.Throughput.ToString("F0")/hr</td>
+                    <td><a href="/modules/production-tracking/runs/@run.RunId" class="ps-btn ps-btn-ghost ps-btn-sm">Open</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Run", "Line", "Start", "Status", "Throughput", "Actions"];
+
+    private IDisposable? _realtimeSubscription;
+    private System.Threading.Timer? _fallbackTimer;
+    private System.Threading.Timer? _debounceTimer;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Production Tracking",
+            activeModuleCode: "production-tracking",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Production Tracking" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+        Realtime.StatusChanged += OnRealtimeStatusChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await LoadAsync();
+
+        // Real-time push (Volume T1): join the tenant-scoped Production Tracking group
+        // and re-fetch on every ProductionRunChanged broadcast instead of polling.
+        _realtimeSubscription = Realtime.OnProductionRunChanged(OnProductionRunChangedBroadcast);
+        await Realtime.EnsureConnectedAsync();
+        await Realtime.JoinProductionTrackingGroupAsync();
+
+        // Fallback: only polls while the hub connection is not Connected (offline/degraded),
+        // so the dashboard never silently goes stale if the hub is unreachable.
+        _fallbackTimer = new System.Threading.Timer(async _ =>
+        {
+            if (Realtime.Status != PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus.Connected)
+            {
+                await InvokeAsync(LoadAsync);
+            }
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private void OnProductionRunChangedBroadcast()
+    {
+        // Debounce bursts of broadcasts (e.g. several runs changing at once) into a single re-fetch.
+        _debounceTimer?.Dispose();
+        _debounceTimer = new System.Threading.Timer(async _ => await InvokeAsync(LoadAsync), null, TimeSpan.FromMilliseconds(300), Timeout.InfiniteTimeSpan);
+    }
+
+    private void OnRealtimeStatusChanged(PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus status)
+        => InvokeAsync(StateHasChanged);
+
+    private string RealtimeStatusLabel() => Realtime.Status switch
+    {
+        PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus.Connected => "Live updates: connected",
+        PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus.Connecting => "Live updates: connecting…",
+        PlantSafety.UI.Infrastructure.Realtime.RealtimeConnectionStatus.Reconnecting => "Live updates: reconnecting…",
+        _ => "Live updates unavailable — refreshing every 5s",
+    };
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var throughputEnvelope = await ApiClient.GetThroughputAsync();
+        var bottleneckEnvelope = await ApiClient.GetBottlenecksAsync();
+        var runsEnvelope = await ApiClient.GetActiveRunsAsync();
+
+        if (throughputEnvelope.IsSuccess && bottleneckEnvelope.IsSuccess && runsEnvelope.IsSuccess)
+        {
+            State.SetSnapshot(throughputEnvelope.Data!, bottleneckEnvelope.Data!, runsEnvelope.Data!.Items);
+        }
+        else if (runsEnvelope.IsProblem)
+            State.SetError(runsEnvelope.Problem!.Detail);
+        else if (!runsEnvelope.IsSuccess)
+            State.SetError($"Failed to load production dashboard: {runsEnvelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "running" => "Healthy",
+        "paused" or "pending" => "Warning",
+        "failed" => "Critical",
+        "completed" => "Offline",
+        _ => "Offline",
+    };
+
+    public ValueTask DisposeAsync()
+    {
+        State.OnChange -= StateHasChanged;
+        Realtime.StatusChanged -= OnRealtimeStatusChanged;
+        _realtimeSubscription?.Dispose();
+        _fallbackTimer?.Dispose();
+        _debounceTimer?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

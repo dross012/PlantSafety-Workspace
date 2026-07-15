@@ -1,0 +1,150 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: JSA (Job Safety Analysis) list page. Loads records from
+     the real GET api/v1/operational/job-safety-analysis read-model endpoint
+     for the active tenant/date-range, populates JsaState, and renders the
+     grid with risk-level severity badges, status indicators, search,
+     date-range filtering, and client-side pagination (the endpoint has no
+     server-side paging). Built entirely from the canonical Shared component
+     library, following the Modules/Alerts/Pages/AlertsListPage.razor
+     exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/jsa"
+
+@inject JsaState State
+@inject JsaApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Jsa.ApiClients
+@using PlantSafety.UI.Modules.Jsa.Models
+@using PlantSafety.UI.Modules.Jsa.Services
+@using PlantSafety.UI.Modules.Jsa.State
+
+<PageTitle>JSA — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The JSA list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <SearchBoxComponent Value="State.SearchText" Placeholder="Search task, risk, or status" ValueChanged="OnSearchChangedAsync" />
+            <DateRangePickerComponent StartDate="State.StartDate" EndDate="State.EndDate" RangeChanged="OnRangeChangedAsync" />
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading job safety analysis records…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="JsaDto"
+                                Items="State.PagedItems"
+                                Headers="_headers"
+                                KeySelector="i => i.JobSafetyAnalysisId"
+                                EmptyMessage="No JSA records found for the selected range."
+                                AriaLabel="JSA records">
+                <RowTemplate Context="item">
+                    <td><SeverityBadgeComponent Severity="@JsaUiService.NormalizeSeverity(item.RiskLevel)" /></td>
+                    <td>@item.TaskName</td>
+                    <td><StatusIndicatorComponent Status="@JsaUiService.MapStatusToOperationalState(item.Status)" Label="@item.Status" /></td>
+                    <td>@item.AnalyzedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        <a href="@RouteDefinitions.JsaList/@item.JobSafetyAnalysisId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage"
+                                      TotalPages="State.TotalPages"
+                                      TotalCount="State.TotalCount"
+                                      PageChanged="OnPageChangedAsync" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Risk", "Task", "Status", "Analyzed", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "JSA",
+            activeModuleCode: "jsa",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "JSA" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginListLoad();
+
+        var tenantId = ResolveTenantId();
+        var fromUtc = State.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var toUtc = State.EndDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetJobSafetyAnalysisAsync(tenantId, siteId: null, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetListError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetListError($"Failed to load JSA records: {envelope.FaultType}");
+    }
+
+    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task OnSearchChangedAsync(string text)
+    {
+        State.SetSearchText(text);
+        await Task.CompletedTask;
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetDateRange(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task OnPageChangedAsync(int page)
+    {
+        State.SetPage(page);
+        await Task.CompletedTask;
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

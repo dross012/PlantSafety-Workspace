@@ -1,0 +1,180 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Regulatory Calendar list page — a calendar-style
+     unified view merging all nine Deadlines/Inspections/Renewals source
+     endpoints into one date-sorted DataGridComponent. KPI CardComponent row
+     (Critical, Due This Week), DateRangePickerComponent driving the server
+     fetch window, SearchBoxComponent + group TabControlComponent for
+     client-side filtering, and PaginationComponent. Built entirely from the
+     canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/regulatory-calendar"
+
+@inject RegulatoryCalendarState State
+@inject RegulatoryCalendarApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using System.Linq
+@using PlantSafety.UI.Modules.RegulatoryCalendar.ApiClients
+@using PlantSafety.UI.Modules.RegulatoryCalendar.Mappings
+@using PlantSafety.UI.Modules.RegulatoryCalendar.Models
+@using PlantSafety.UI.Modules.RegulatoryCalendar.State
+
+<PageTitle>Regulatory Calendar — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Regulatory Calendar could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <div class="ps-kpi-row">
+            <CardComponent Title="Overdue / Expired" Subtitle="@State.CriticalCount.ToString()" />
+            <CardComponent Title="Due This Week" Subtitle="@State.DueThisWeekCount.ToString()" />
+            <CardComponent Title="Total Entries" Subtitle="@State.Entries.Count.ToString()" />
+        </div>
+
+        <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        <SearchBoxComponent Value="State.SearchText" Placeholder="Search by label" ValueChanged="text => State.SetSearchText(text)" />
+
+        <TabControlComponent Tabs="_groupLabels" ActiveIndex="_activeGroupIndex" ActiveIndexChanged="OnGroupTabChanged" AriaLabel="Calendar entry group" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading regulatory calendar…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="CalendarEntryViewModel"
+                                Items="State.PageItems"
+                                Headers="_headers"
+                                KeySelector="e => (e.Source, e.EntryId)"
+                                EmptyMessage="No regulatory calendar entries found for the selected range."
+                                AriaLabel="Regulatory Calendar entries">
+                <RowTemplate Context="e">
+                    <td>@e.Group</td>
+                    <td>@e.Label</td>
+                    <td><StatusIndicatorComponent Status="@e.StatusIndicatorState" Label="@e.Status" /></td>
+                    <td>@e.DateLabel: @e.DateUtc.ToString("yyyy-MM-dd")</td>
+                    <td><a href="@RouteDefinitions.RegulatoryCalendar/@e.Source/@e.EntryId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            @if (State.TotalPages > 1)
+            {
+                <PaginationComponent CurrentPage="State.CurrentPage" TotalPages="State.TotalPages"
+                                      TotalCount="State.FilteredCount" PageChanged="p => State.GoToPage(p)" />
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Group", "Label", "Status", "Date", "Actions"];
+    private static readonly string[] _groupLabels = ["All", "Deadlines", "Inspections", "Renewals"];
+    private int _activeGroupIndex;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Regulatory Calendar",
+            activeModuleCode: "regulatory-calendar",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Regulatory Calendar" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetDateRange(range.Start, range.End);
+        return LoadPageAsync();
+    }
+
+    private void OnGroupTabChanged(int index)
+    {
+        _activeGroupIndex = index;
+        State.SetGroupFilter(index switch
+        {
+            1 => CalendarEntryGroup.Deadline,
+            2 => CalendarEntryGroup.Inspection,
+            3 => CalendarEntryGroup.Renewal,
+            _ => null,
+        });
+    }
+
+    private async Task LoadPageAsync()
+    {
+        State.BeginListLoad();
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var fromUtc = State.RangeStart.ToDateTime(TimeOnly.MinValue);
+        var toUtc = State.RangeEnd.ToDateTime(TimeOnly.MaxValue);
+
+        var annualAudit = await ApiClient.GetAnnualAuditDeadlinesAsync(tenantId, null, fromUtc, toUtc);
+        var epa = await ApiClient.GetEpaDeadlinesAsync(tenantId, null, fromUtc, toUtc);
+        var dotInspections = await ApiClient.GetDotInspectionsAsync(tenantId, null, fromUtc, toUtc);
+        var environmentalSampling = await ApiClient.GetEnvironmentalSamplingInspectionsAsync(tenantId, null, fromUtc, toUtc);
+        var equipmentInspections = await ApiClient.GetEquipmentInspectionsAsync(tenantId, null, fromUtc, toUtc);
+        var oshaInspections = await ApiClient.GetOshaInspectionsAsync(tenantId, null, fromUtc, toUtc);
+        var dotRenewals = await ApiClient.GetDotRenewalsAsync(tenantId, null, fromUtc, toUtc);
+        var isoRenewals = await ApiClient.GetIsoRenewalsAsync(tenantId, null, fromUtc, toUtc);
+        var trainingRenewals = await ApiClient.GetTrainingRenewalsAsync(tenantId, null, fromUtc, toUtc);
+
+        var allSucceeded = annualAudit.IsSuccess && epa.IsSuccess && dotInspections.IsSuccess &&
+                            environmentalSampling.IsSuccess && equipmentInspections.IsSuccess &&
+                            oshaInspections.IsSuccess && dotRenewals.IsSuccess && isoRenewals.IsSuccess &&
+                            trainingRenewals.IsSuccess;
+
+        if (allSucceeded)
+        {
+            var merged = Enumerable.Empty<CalendarEntryViewModel>()
+                .Concat(annualAudit.Data!.Items.ToEntries())
+                .Concat(epa.Data!.Items.ToEntries())
+                .Concat(dotInspections.Data!.Items.ToEntries())
+                .Concat(environmentalSampling.Data!.Items.ToEntries())
+                .Concat(equipmentInspections.Data!.Items.ToEntries())
+                .Concat(oshaInspections.Data!.Items.ToEntries())
+                .Concat(dotRenewals.Data!.Items.ToEntries())
+                .Concat(isoRenewals.Data!.Items.ToEntries())
+                .Concat(trainingRenewals.Data!.Items.ToEntries());
+
+            State.SetEntries(merged);
+        }
+        else
+        {
+            State.SetListError("Unable to load one or more regulatory calendar sources at this time.");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

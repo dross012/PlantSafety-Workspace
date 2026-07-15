@@ -1,0 +1,68 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-14
+    FILE DESCRIPTION: Canonical error boundary — one of the 11 non-forkable
+      shared components mandated by the Platform UI Architecture Master
+      Specification (Volume 0) §4. Directly inherits Blazor's
+      ErrorBoundaryBase (rather than wrapping a nested &lt;ErrorBoundary&gt;
+      child) so unhandled render-time exceptions thrown by ChildContent are
+      captured and replaced with the standardized error banner
+      (.ps-alert/.ps-alert--danger, matching the pattern already used for
+      API-fault errors in AdminSetupPage/AlertsListPage) instead of crashing
+      the whole page. Per explicit UI Agent instructions this component
+      wraps content rather than rendering a static error div.
+      Pure/stateless/parameter-driven per UI001-UI005 — no injected
+      services; exceptions are surfaced to the caller via OnError for the
+      caller's own logging/UI-service to record (Volume 0 §9 Observability).
+    Inputs: ChildContent (required), Message (optional override)
+    Outputs: OnRetry (fired after the boundary recovers), OnError (fired
+      with the captured exception so the caller can log/report it)
+    Accessibility: role="alert" announces immediately; retry button is
+      keyboard reachable per WCAG 2.2 AA (Volume 0 §8).
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+@inherits Microsoft.AspNetCore.Components.ErrorBoundaryBase
+
+@if (CurrentException is null)
+{
+    @ChildContent
+}
+else
+{
+    <div class="ps-alert ps-alert--danger" role="alert">
+        <strong>Something went wrong.</strong>
+        <p>@Message</p>
+        <div class="ps-error-boundary-actions">
+            <button type="button" class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="RetryAsync">Retry</button>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>User-facing, security-safe error message (never a raw exception message).</summary>
+    [Parameter]
+    public string Message { get; set; } = "An unexpected error occurred. Please try again.";
+
+    /// <summary>Fired when the user activates Retry, after the boundary has recovered.</summary>
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    /// <summary>Fired with the captured exception the moment it is caught, for caller-side logging.</summary>
+    [Parameter]
+    public EventCallback<Exception> OnError { get; set; }
+
+    /// <inheritdoc />
+    protected override Task OnErrorAsync(Exception exception)
+        => OnError.HasDelegate ? OnError.InvokeAsync(exception) : Task.CompletedTask;
+
+    private async Task RetryAsync()
+    {
+        Recover();
+
+        if (OnRetry.HasDelegate)
+        {
+            await OnRetry.InvokeAsync();
+        }
+    }
+}

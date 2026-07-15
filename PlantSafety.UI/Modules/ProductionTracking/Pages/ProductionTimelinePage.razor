@@ -1,0 +1,112 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-07-14
+   FILE DESCRIPTION: Production Timeline page (Volume T1 §4). Plant-wide
+     chronological event/delay/transition visualization. Built from the
+     canonical Shared component library (DataGridComponent,
+     ErrorBoundaryComponent, LoadingIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/production-tracking/timeline"
+
+@inject ProductionTimelineState State
+@inject ProductionTrackingApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.ProductionTracking.ApiClients
+@using PlantSafety.UI.Modules.ProductionTracking.Models
+@using PlantSafety.UI.Modules.ProductionTracking.State
+
+<PageTitle>Production Timeline — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The production timeline could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/production-tracking" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ErrorMessage is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading production timeline…" />
+        }
+        else if (State.Events.Count == 0)
+        {
+            <div class="ps-alert" role="status">No timeline events recorded.</div>
+        }
+        else
+        {
+            <div role="status" class="ps-text-sm ps-text-muted">
+                Timeline showing @State.Events.Count events from @State.Events.Min(e => e.TimestampUtc).ToString("HH:mm") to @State.Events.Max(e => e.TimestampUtc).ToString("HH:mm") UTC.
+            </div>
+            <DataGridComponent TItem="TimelineEventDto"
+                                Items="State.Events"
+                                Headers="_headers"
+                                KeySelector="e => e.EventId"
+                                EmptyMessage="No timeline events recorded."
+                                AriaLabel="Production timeline"
+                                EnableVirtualization="true">
+                <RowTemplate Context="ev">
+                    <td>@ev.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                    <td>@ev.EventType</td>
+                    <td>@ev.Description</td>
+                    <td><a href="/modules/production-tracking/runs/@ev.RunId" class="ps-btn ps-btn-ghost ps-btn-sm">Open Run</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Time", "Type", "Description", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Production Timeline",
+            activeModuleCode: "production-tracking",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Production Tracking", Href = RouteDefinitions.ProductionTrackingDashboard },
+                new BreadcrumbItem { Label = "Timeline" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        var envelope = await ApiClient.GetTimelineAsync();
+
+        if (envelope.IsSuccess)
+            State.SetEvents(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load production timeline: {envelope.FaultType}");
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}
