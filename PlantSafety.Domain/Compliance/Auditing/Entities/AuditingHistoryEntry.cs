@@ -1,12 +1,16 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Compliance.Auditing
 //  Layer:          Domain
 //  File:           AuditingHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 — extended with audit-specific audit-trail fields
+//                  (score/findings/rating deltas) alongside the generic status
+//                  transition, mirroring the AlertHistoryEntry convention.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
+//  Description:    Immutable entity representing a single lifecycle transition (and,
+//                  where relevant, findings/score change) for an Auditing aggregate.
 //                  Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Compliance.Auditing.Entities;
@@ -26,6 +30,15 @@ public sealed class AuditingHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Findings count recorded at the time of this transition.</summary>
+    public int FindingsCountAtTransition { get; private set; }
+
+    /// <summary>Compliance score recorded at the time of this transition, if known.</summary>
+    public decimal? ScoreAtTransition { get; private set; }
+
+    /// <summary>Compliance rating recorded at the time of this transition.</summary>
+    public string? ComplianceRatingAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +55,19 @@ public sealed class AuditingHistoryEntry
     public AuditingHistoryEntry(
         Guid historyId, AuditingId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        int findingsCountAtTransition = 0, decimal? scoreAtTransition = null,
+        string? complianceRatingAtTransition = null)
     {
-        HistoryId     = historyId;
-        AuditingId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                    = historyId;
+        AuditingId                   = Id;
+        PreviousStatus                = previousStatus;
+        NewStatus                     = newStatus;
+        FindingsCountAtTransition     = findingsCountAtTransition;
+        ScoreAtTransition              = scoreAtTransition;
+        ComplianceRatingAtTransition  = complianceRatingAtTransition;
+        ChangedAtUtc                  = changedAtUtc;
+        ChangedBy                     = changedBy;
+        Notes                         = notes;
     }
 }

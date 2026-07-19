@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Analytics.ScoreCards
 //  Layer:          Domain
 //  File:           ScoreCardsHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with performance-index audit-trail field
+//                  alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  ScoreCards aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Analytics.ScoreCards.Entities;
 
@@ -26,6 +28,9 @@ public sealed class ScoreCardsHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Performance index recorded at the time of this transition.</summary>
+    public decimal PerformanceIndexAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +47,16 @@ public sealed class ScoreCardsHistoryEntry
     public ScoreCardsHistoryEntry(
         Guid historyId, ScoreCardsId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        decimal performanceIndexAtTransition = 0m)
     {
-        HistoryId     = historyId;
-        ScoreCardsId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                        = historyId;
+        ScoreCardsId                     = Id;
+        PreviousStatus                    = previousStatus;
+        NewStatus                         = newStatus;
+        PerformanceIndexAtTransition      = performanceIndexAtTransition;
+        ChangedAtUtc                      = changedAtUtc;
+        ChangedBy                         = changedBy;
+        Notes                             = notes;
     }
 }

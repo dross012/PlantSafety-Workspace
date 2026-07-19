@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Compliance.Compliance
 //  Layer:          Domain
 //  File:           ComplianceHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with compliance-score/non-conformance
+//                  audit-trail fields alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  Compliance aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Compliance.Compliance.Entities;
 
@@ -26,6 +28,12 @@ public sealed class ComplianceHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Compliance score recorded at the time of this transition.</summary>
+    public decimal ComplianceScoreAtTransition { get; private set; }
+
+    /// <summary>Non-conformance count recorded at the time of this transition.</summary>
+    public int NonConformanceCountAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +50,17 @@ public sealed class ComplianceHistoryEntry
     public ComplianceHistoryEntry(
         Guid historyId, ComplianceId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        decimal complianceScoreAtTransition = 0m, int nonConformanceCountAtTransition = 0)
     {
-        HistoryId     = historyId;
-        ComplianceId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                        = historyId;
+        ComplianceId                     = Id;
+        PreviousStatus                    = previousStatus;
+        NewStatus                         = newStatus;
+        ComplianceScoreAtTransition       = complianceScoreAtTransition;
+        NonConformanceCountAtTransition   = nonConformanceCountAtTransition;
+        ChangedAtUtc                      = changedAtUtc;
+        ChangedBy                         = changedBy;
+        Notes                             = notes;
     }
 }

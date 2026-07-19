@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Compliance.Policy
 //  Layer:          Domain
 //  File:           PolicyHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with policy-version/acknowledgment
+//                  audit-trail fields alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  Policy aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Compliance.Policy.Entities;
 
@@ -26,6 +28,12 @@ public sealed class PolicyHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Policy version recorded at the time of this transition.</summary>
+    public int PolicyVersionAtTransition { get; private set; }
+
+    /// <summary>Acknowledgment count recorded at the time of this transition.</summary>
+    public int AcknowledgmentCountAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +50,17 @@ public sealed class PolicyHistoryEntry
     public PolicyHistoryEntry(
         Guid historyId, PolicyId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        int policyVersionAtTransition = 1, int acknowledgmentCountAtTransition = 0)
     {
-        HistoryId     = historyId;
-        PolicyId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                          = historyId;
+        PolicyId                           = Id;
+        PreviousStatus                      = previousStatus;
+        NewStatus                           = newStatus;
+        PolicyVersionAtTransition           = policyVersionAtTransition;
+        AcknowledgmentCountAtTransition      = acknowledgmentCountAtTransition;
+        ChangedAtUtc                        = changedAtUtc;
+        ChangedBy                           = changedBy;
+        Notes                               = notes;
     }
 }

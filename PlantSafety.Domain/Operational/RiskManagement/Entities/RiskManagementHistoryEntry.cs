@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Operational.RiskManagement
 //  Layer:          Domain
 //  File:           RiskManagementHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with risk-score audit-trail field
+//                  alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  RiskManagement aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Operational.RiskManagement.Entities;
 
@@ -26,6 +28,9 @@ public sealed class RiskManagementHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Computed risk score (likelihood * severity) recorded at the time of this transition.</summary>
+    public int RiskScoreAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +47,16 @@ public sealed class RiskManagementHistoryEntry
     public RiskManagementHistoryEntry(
         Guid historyId, RiskManagementId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        int riskScoreAtTransition = 0)
     {
-        HistoryId     = historyId;
-        RiskManagementId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                  = historyId;
+        RiskManagementId            = Id;
+        PreviousStatus               = previousStatus;
+        NewStatus                    = newStatus;
+        RiskScoreAtTransition        = riskScoreAtTransition;
+        ChangedAtUtc                 = changedAtUtc;
+        ChangedBy                    = changedBy;
+        Notes                        = notes;
     }
 }

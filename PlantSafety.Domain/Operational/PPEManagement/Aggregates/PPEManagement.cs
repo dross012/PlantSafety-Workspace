@@ -1,12 +1,18 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Operational.PPEManagement
 //  Layer:          Domain
 //  File:           PPEManagement.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended from identity-only scaffold with the full
+//                  PPE allocation/tracking record shape grounded in
+//                  project_plantsafety_domains.md Module 14 (PPE: "PPE allocation,
+//                  compliance, and tracking"). Additive-only evolution.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
+//  Description:    Aggregate root for the PPEManagement bounded context. Tracks a
+//                  single PPE issuance record: the worker, item, issue/return dates,
+//                  and inspection/compliance state.
 //                  Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Operational.PPEManagement.Aggregates;
@@ -19,8 +25,37 @@ public sealed partial class PPEManagement
     /// <summary>Strong-typed identity of this PPEManagement aggregate.</summary>
     public PPEManagementId PPEManagementId { get; private set; }
 
+    /// <summary>Tenant that owns this PPE record.</summary>
+    public Guid TenantId { get; private set; }
+
+    /// <summary>Site this PPE record is scoped to. Null means enterprise-level.</summary>
+    public Guid? SiteId { get; private set; }
+
     /// <summary>Current lifecycle status.</summary>
     public PPEManagementStatus Status { get; private set; }
+
+    // ---- PPE-specific business properties -------------------------------------
+
+    /// <summary>Worker this PPE record is issued to.</summary>
+    public UserId WorkerId { get; private set; }
+
+    /// <summary>PPE type classification (e.g., HeadProtection, RespiratoryProtection, FallProtection).</summary>
+    public string PpeType { get; private set; } = string.Empty;
+
+    /// <summary>Specific PPE item description/model.</summary>
+    public string PpeItem { get; private set; } = string.Empty;
+
+    /// <summary>Compliance status: Compliant, Overdue, Expired, NonCompliant.</summary>
+    public string ComplianceStatus { get; private set; } = "Compliant";
+
+    /// <summary>UTC timestamp the PPE was issued.</summary>
+    public UtcTimestamp? IssuedAtUtc { get; private set; }
+
+    /// <summary>UTC timestamp the PPE was returned, if applicable.</summary>
+    public UtcTimestamp? ReturnedAtUtc { get; private set; }
+
+    /// <summary>UTC timestamp the PPE is next due for inspection.</summary>
+    public UtcTimestamp? InspectionDueAtUtc { get; private set; }
 
     /// <summary>UTC creation timestamp.</summary>
     public UtcTimestamp CreatedAtUtc { get; private set; }
@@ -47,14 +82,30 @@ public sealed partial class PPEManagement
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
-        PerformedByActor actor)
+        PerformedByActor actor,
+        Guid tenantId = default,
+        Guid? siteId = null,
+        UserId workerId = default,
+        string ppeType = "",
+        string ppeItem = "",
+        string complianceStatus = "Compliant",
+        UtcTimestamp? issuedAtUtc = null,
+        UtcTimestamp? inspectionDueAtUtc = null)
     {
         var agg = new PPEManagement
         {
-            PPEManagementId    = PPEManagementId.New(),
-            Status      = PPEManagementStatus.Created,
-            CreatedAtUtc = createdAtUtc,
-            CreatedBy    = createdBy,
+            PPEManagementId       = PPEManagementId.New(),
+            TenantId              = tenantId,
+            SiteId                = siteId,
+            Status                = PPEManagementStatus.Created,
+            WorkerId              = workerId,
+            PpeType               = (ppeType ?? string.Empty).Trim(),
+            PpeItem               = (ppeItem ?? string.Empty).Trim(),
+            ComplianceStatus      = (complianceStatus ?? "Compliant").Trim(),
+            IssuedAtUtc           = issuedAtUtc ?? createdAtUtc,
+            InspectionDueAtUtc    = inspectionDueAtUtc,
+            CreatedAtUtc          = createdAtUtc,
+            CreatedBy             = createdBy,
         };
 
         agg.AddDomainEvent(new PPEManagementCreatedEvent(

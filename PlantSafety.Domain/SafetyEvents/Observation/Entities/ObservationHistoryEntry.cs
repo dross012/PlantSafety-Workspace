@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         SafetyEvents.Observation
 //  Layer:          Domain
 //  File:           ObservationHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with corrective-action audit-trail field
+//                  alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for an
+//                  Observation aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.SafetyEvents.Observation.Entities;
 
@@ -26,6 +28,9 @@ public sealed class ObservationHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Corrective-action-required flag recorded at the time of this transition.</summary>
+    public bool CorrectiveActionRequiredAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +47,16 @@ public sealed class ObservationHistoryEntry
     public ObservationHistoryEntry(
         Guid historyId, ObservationId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        bool correctiveActionRequiredAtTransition = false)
     {
-        HistoryId     = historyId;
-        ObservationId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                                 = historyId;
+        ObservationId                              = Id;
+        PreviousStatus                              = previousStatus;
+        NewStatus                                   = newStatus;
+        CorrectiveActionRequiredAtTransition        = correctiveActionRequiredAtTransition;
+        ChangedAtUtc                                = changedAtUtc;
+        ChangedBy                                   = changedBy;
+        Notes                                       = notes;
     }
 }

@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         SafetyEvents.IncidentManagement
 //  Layer:          Domain
 //  File:           IncidentManagementHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with severity/root-cause audit-trail
+//                  fields alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for an
+//                  IncidentManagement aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.SafetyEvents.IncidentManagement.Entities;
 
@@ -26,6 +28,12 @@ public sealed class IncidentManagementHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Severity recorded at the time of this transition.</summary>
+    public string? SeverityAtTransition { get; private set; }
+
+    /// <summary>Root cause recorded at the time of this transition, once determined.</summary>
+    public string? RootCauseAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +50,17 @@ public sealed class IncidentManagementHistoryEntry
     public IncidentManagementHistoryEntry(
         Guid historyId, IncidentManagementId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        string? severityAtTransition = null, string? rootCauseAtTransition = null)
     {
-        HistoryId     = historyId;
+        HistoryId                 = historyId;
         IncidentManagementId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        PreviousStatus             = previousStatus;
+        NewStatus                  = newStatus;
+        SeverityAtTransition       = severityAtTransition;
+        RootCauseAtTransition      = rootCauseAtTransition;
+        ChangedAtUtc                = changedAtUtc;
+        ChangedBy                   = changedBy;
+        Notes                       = notes;
     }
 }

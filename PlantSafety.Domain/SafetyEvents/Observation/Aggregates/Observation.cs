@@ -1,12 +1,19 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         SafetyEvents.Observation
 //  Layer:          Domain
 //  File:           Observation.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended from identity-only scaffold with the full
+//                  field-observation record shape grounded in
+//                  project_plantsafety_domains.md Module 11 (Observation: "Field-level
+//                  observations, hazard detection, behavior classification").
+//                  Additive-only evolution.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
+//  Description:    Aggregate root for the Observation bounded context. Tracks a
+//                  single field observation: its classification (safe/at-risk),
+//                  hazard category, location, description, and follow-up state.
 //                  Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.SafetyEvents.Observation.Aggregates;
@@ -19,8 +26,37 @@ public sealed partial class Observation
     /// <summary>Strong-typed identity of this Observation aggregate.</summary>
     public ObservationId ObservationId { get; private set; }
 
+    /// <summary>Tenant that owns this observation record.</summary>
+    public Guid TenantId { get; private set; }
+
+    /// <summary>Site this observation is scoped to. Null means enterprise-level.</summary>
+    public Guid? SiteId { get; private set; }
+
     /// <summary>Current lifecycle status.</summary>
     public ObservationStatus Status { get; private set; }
+
+    // ---- Observation-specific business properties --------------------------------
+
+    /// <summary>Identity of the worker/observer who captured this observation.</summary>
+    public UserId ObserverId { get; private set; }
+
+    /// <summary>Observation classification: SafeBehavior, AtRiskBehavior, HazardCondition.</summary>
+    public string ObservationType { get; private set; } = "SafeBehavior";
+
+    /// <summary>Hazard category, when the observation identifies a hazard (e.g., Slip/Trip, Ergonomic, PPE).</summary>
+    public string HazardCategory { get; private set; } = string.Empty;
+
+    /// <summary>Physical location the observation was made at.</summary>
+    public string Location { get; private set; } = string.Empty;
+
+    /// <summary>Narrative description of what was observed.</summary>
+    public string Description { get; private set; } = string.Empty;
+
+    /// <summary>Indicates whether corrective action is required as a result of this observation.</summary>
+    public bool CorrectiveActionRequired { get; private set; }
+
+    /// <summary>UTC timestamp any required follow-up is due.</summary>
+    public UtcTimestamp? FollowUpDueAtUtc { get; private set; }
 
     /// <summary>UTC creation timestamp.</summary>
     public UtcTimestamp CreatedAtUtc { get; private set; }
@@ -47,14 +83,32 @@ public sealed partial class Observation
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
-        PerformedByActor actor)
+        PerformedByActor actor,
+        Guid tenantId = default,
+        Guid? siteId = null,
+        UserId observerId = default,
+        string observationType = "SafeBehavior",
+        string hazardCategory = "",
+        string location = "",
+        string description = "",
+        bool correctiveActionRequired = false,
+        UtcTimestamp? followUpDueAtUtc = null)
     {
         var agg = new Observation
         {
-            ObservationId    = ObservationId.New(),
-            Status      = ObservationStatus.Created,
-            CreatedAtUtc = createdAtUtc,
-            CreatedBy    = createdBy,
+            ObservationId               = ObservationId.New(),
+            TenantId                    = tenantId,
+            SiteId                      = siteId,
+            Status                      = ObservationStatus.Created,
+            ObserverId                  = observerId,
+            ObservationType             = (observationType ?? "SafeBehavior").Trim(),
+            HazardCategory              = (hazardCategory ?? string.Empty).Trim(),
+            Location                    = (location ?? string.Empty).Trim(),
+            Description                 = (description ?? string.Empty).Trim(),
+            CorrectiveActionRequired    = correctiveActionRequired,
+            FollowUpDueAtUtc            = followUpDueAtUtc,
+            CreatedAtUtc                = createdAtUtc,
+            CreatedBy                   = createdBy,
         };
 
         agg.AddDomainEvent(new ObservationCreatedEvent(

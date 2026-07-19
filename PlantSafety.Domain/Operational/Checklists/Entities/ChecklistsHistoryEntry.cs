@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Operational.Checklists
 //  Layer:          Domain
 //  File:           ChecklistsHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with completion/exception audit-trail
+//                  fields alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  Checklists aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Operational.Checklists.Entities;
 
@@ -26,6 +28,12 @@ public sealed class ChecklistsHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Completed items count recorded at the time of this transition.</summary>
+    public int CompletedItemsAtTransition { get; private set; }
+
+    /// <summary>Exception count recorded at the time of this transition.</summary>
+    public int ExceptionCountAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +50,17 @@ public sealed class ChecklistsHistoryEntry
     public ChecklistsHistoryEntry(
         Guid historyId, ChecklistsId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        int completedItemsAtTransition = 0, int exceptionCountAtTransition = 0)
     {
-        HistoryId     = historyId;
-        ChecklistsId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                     = historyId;
+        ChecklistsId                  = Id;
+        PreviousStatus                 = previousStatus;
+        NewStatus                      = newStatus;
+        CompletedItemsAtTransition     = completedItemsAtTransition;
+        ExceptionCountAtTransition     = exceptionCountAtTransition;
+        ChangedAtUtc                   = changedAtUtc;
+        ChangedBy                      = changedBy;
+        Notes                          = notes;
     }
 }

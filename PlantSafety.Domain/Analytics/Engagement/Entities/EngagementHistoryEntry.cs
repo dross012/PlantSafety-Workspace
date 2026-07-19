@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Analytics.Engagement
 //  Layer:          Domain
 //  File:           EngagementHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with engagement-score audit-trail field
+//                  alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for an
+//                  Engagement aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Analytics.Engagement.Entities;
 
@@ -26,6 +28,9 @@ public sealed class EngagementHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Engagement score recorded at the time of this transition.</summary>
+    public decimal EngagementScoreAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +47,16 @@ public sealed class EngagementHistoryEntry
     public EngagementHistoryEntry(
         Guid historyId, EngagementId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        decimal engagementScoreAtTransition = 0m)
     {
-        HistoryId     = historyId;
-        EngagementId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                       = historyId;
+        EngagementId                    = Id;
+        PreviousStatus                   = previousStatus;
+        NewStatus                        = newStatus;
+        EngagementScoreAtTransition      = engagementScoreAtTransition;
+        ChangedAtUtc                     = changedAtUtc;
+        ChangedBy                        = changedBy;
+        Notes                            = notes;
     }
 }

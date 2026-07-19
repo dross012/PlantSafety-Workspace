@@ -1,13 +1,16 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Compliance.ManagementOfChange
 //  Layer:          Domain
 //  File:           ManagementOfChangeHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with MOC-specific audit-trail fields
+//                  (approval status/risk level snapshot) alongside the generic
+//                  status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  ManagementOfChange aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Compliance.ManagementOfChange.Entities;
 
@@ -26,6 +29,12 @@ public sealed class ManagementOfChangeHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Approval status recorded at the time of this transition.</summary>
+    public string? ApprovalStatusAtTransition { get; private set; }
+
+    /// <summary>Risk level recorded at the time of this transition.</summary>
+    public string? RiskLevelAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +51,17 @@ public sealed class ManagementOfChangeHistoryEntry
     public ManagementOfChangeHistoryEntry(
         Guid historyId, ManagementOfChangeId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        string? approvalStatusAtTransition = null, string? riskLevelAtTransition = null)
     {
-        HistoryId     = historyId;
-        ManagementOfChangeId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                     = historyId;
+        ManagementOfChangeId          = Id;
+        PreviousStatus                = previousStatus;
+        NewStatus                     = newStatus;
+        ApprovalStatusAtTransition    = approvalStatusAtTransition;
+        RiskLevelAtTransition         = riskLevelAtTransition;
+        ChangedAtUtc                  = changedAtUtc;
+        ChangedBy                     = changedBy;
+        Notes                         = notes;
     }
 }

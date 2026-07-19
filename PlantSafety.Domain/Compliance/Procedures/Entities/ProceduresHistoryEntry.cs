@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Compliance.Procedures
 //  Layer:          Domain
 //  File:           ProceduresHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with revision-number audit-trail field
+//                  alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  Procedures aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Compliance.Procedures.Entities;
 
@@ -26,6 +28,9 @@ public sealed class ProceduresHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Revision number recorded at the time of this transition.</summary>
+    public int RevisionNumberAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +47,16 @@ public sealed class ProceduresHistoryEntry
     public ProceduresHistoryEntry(
         Guid historyId, ProceduresId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        int revisionNumberAtTransition = 1)
     {
-        HistoryId     = historyId;
-        ProceduresId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                    = historyId;
+        ProceduresId                 = Id;
+        PreviousStatus                = previousStatus;
+        NewStatus                     = newStatus;
+        RevisionNumberAtTransition    = revisionNumberAtTransition;
+        ChangedAtUtc                  = changedAtUtc;
+        ChangedBy                     = changedBy;
+        Notes                         = notes;
     }
 }

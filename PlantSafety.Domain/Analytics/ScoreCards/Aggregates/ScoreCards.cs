@@ -1,12 +1,19 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Analytics.ScoreCards
 //  Layer:          Domain
 //  File:           ScoreCards.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended from identity-only scaffold with the full
+//                  scorecard record shape grounded in project_plantsafety_domains.md
+//                  Module 17 (Score Cards: KPI scoring, performance index
+//                  computation, executive reporting).
+//                  Additive-only evolution.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
+//  Description:    Aggregate root for the ScoreCards bounded context. Tracks a single
+//                  generated scorecard: its reporting period, KPI category, computed
+//                  performance index, and generation scope.
 //                  Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Analytics.ScoreCards.Aggregates;
@@ -19,8 +26,34 @@ public sealed partial class ScoreCards
     /// <summary>Strong-typed identity of this ScoreCards aggregate.</summary>
     public ScoreCardsId ScoreCardsId { get; private set; }
 
+    /// <summary>Tenant that owns this scorecard record.</summary>
+    public Guid TenantId { get; private set; }
+
+    /// <summary>Site this scorecard is scoped to. Null means enterprise-level.</summary>
+    public Guid? SiteId { get; private set; }
+
     /// <summary>Current lifecycle status.</summary>
     public ScoreCardsStatus Status { get; private set; }
+
+    // ---- Scorecard-specific business properties -------------------------------------
+
+    /// <summary>Human-readable scorecard name.</summary>
+    public string ScoreCardName { get; private set; } = string.Empty;
+
+    /// <summary>Reporting period this scorecard covers (e.g., "2026-Q3").</summary>
+    public string ReportingPeriod { get; private set; } = string.Empty;
+
+    /// <summary>KPI category this scorecard reports on (e.g., Safety, Compliance, Operations).</summary>
+    public string KpiCategory { get; private set; } = string.Empty;
+
+    /// <summary>Computed performance index (0-100).</summary>
+    public decimal PerformanceIndex { get; private set; }
+
+    /// <summary>Site this scorecard was generated for, if site-scoped. Null means enterprise-wide.</summary>
+    public Guid? GeneratedForSiteId { get; private set; }
+
+    /// <summary>UTC timestamp this scorecard was generated.</summary>
+    public UtcTimestamp GeneratedAtUtc { get; private set; }
 
     /// <summary>UTC creation timestamp.</summary>
     public UtcTimestamp CreatedAtUtc { get; private set; }
@@ -47,14 +80,29 @@ public sealed partial class ScoreCards
         UtcTimestamp createdAtUtc,
         CorrelationId correlationId,
         CausationId causationId,
-        PerformedByActor actor)
+        PerformedByActor actor,
+        Guid tenantId = default,
+        Guid? siteId = null,
+        string scoreCardName = "",
+        string reportingPeriod = "",
+        string kpiCategory = "",
+        decimal performanceIndex = 0m,
+        Guid? generatedForSiteId = null)
     {
         var agg = new ScoreCards
         {
-            ScoreCardsId    = ScoreCardsId.New(),
-            Status      = ScoreCardsStatus.Created,
-            CreatedAtUtc = createdAtUtc,
-            CreatedBy    = createdBy,
+            ScoreCardsId          = ScoreCardsId.New(),
+            TenantId              = tenantId,
+            SiteId                = siteId,
+            Status                = ScoreCardsStatus.Created,
+            ScoreCardName         = (scoreCardName ?? string.Empty).Trim(),
+            ReportingPeriod       = (reportingPeriod ?? string.Empty).Trim(),
+            KpiCategory           = (kpiCategory ?? string.Empty).Trim(),
+            PerformanceIndex      = performanceIndex,
+            GeneratedForSiteId    = generatedForSiteId,
+            GeneratedAtUtc        = createdAtUtc,
+            CreatedAtUtc          = createdAtUtc,
+            CreatedBy             = createdBy,
         };
 
         agg.AddDomainEvent(new ScoreCardsCreatedEvent(

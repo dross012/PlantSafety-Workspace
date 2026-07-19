@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Operational.Contractor
 //  Layer:          Domain
 //  File:           ContractorHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with readiness-score/qualification
+//                  audit-trail fields alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  Contractor aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Operational.Contractor.Entities;
 
@@ -26,6 +28,12 @@ public sealed class ContractorHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Readiness score recorded at the time of this transition.</summary>
+    public decimal ReadinessScoreAtTransition { get; private set; }
+
+    /// <summary>Qualification status recorded at the time of this transition.</summary>
+    public string? QualificationStatusAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +50,17 @@ public sealed class ContractorHistoryEntry
     public ContractorHistoryEntry(
         Guid historyId, ContractorId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        decimal readinessScoreAtTransition = 0m, string? qualificationStatusAtTransition = null)
     {
-        HistoryId     = historyId;
-        ContractorId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                          = historyId;
+        ContractorId                       = Id;
+        PreviousStatus                      = previousStatus;
+        NewStatus                           = newStatus;
+        ReadinessScoreAtTransition          = readinessScoreAtTransition;
+        QualificationStatusAtTransition     = qualificationStatusAtTransition;
+        ChangedAtUtc                        = changedAtUtc;
+        ChangedBy                           = changedBy;
+        Notes                               = notes;
     }
 }

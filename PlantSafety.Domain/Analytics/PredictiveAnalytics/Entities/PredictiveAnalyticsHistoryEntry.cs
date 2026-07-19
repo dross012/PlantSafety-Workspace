@@ -1,13 +1,15 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Analytics.PredictiveAnalytics
 //  Layer:          Domain
 //  File:           PredictiveAnalyticsHistoryEntry.cs
 //  Created:        2026-06-17
+//  Updated:        2026-07-18 -- extended with predicted-risk-score audit-trail
+//                  field alongside the generic status transition.
 //  Author:         David (Ted) + Copilot
 //  SchemaVersion:  2026.1
-//  Description:    
-//                  Additive-only evolution.
+//  Description:    Immutable entity representing a single lifecycle transition for a
+//                  PredictiveAnalytics aggregate. Additive-only evolution.
 // ============================================================================
 namespace PlantSafety.Domain.Analytics.PredictiveAnalytics.Entities;
 
@@ -26,6 +28,9 @@ public sealed class PredictiveAnalyticsHistoryEntry
     /// <summary>Status after the transition.</summary>
     public string NewStatus { get; private set; }
 
+    /// <summary>Predicted risk score recorded at the time of this transition.</summary>
+    public decimal PredictedRiskScoreAtTransition { get; private set; }
+
     /// <summary>UTC instant of the transition.</summary>
     public UtcTimestamp ChangedAtUtc { get; private set; }
 
@@ -42,14 +47,16 @@ public sealed class PredictiveAnalyticsHistoryEntry
     public PredictiveAnalyticsHistoryEntry(
         Guid historyId, PredictiveAnalyticsId Id,
         string previousStatus, string newStatus,
-        UtcTimestamp changedAtUtc, string changedBy, string? notes = null)
+        UtcTimestamp changedAtUtc, string changedBy, string? notes = null,
+        decimal predictedRiskScoreAtTransition = 0m)
     {
-        HistoryId     = historyId;
-        PredictiveAnalyticsId      = Id;
-        PreviousStatus = previousStatus;
-        NewStatus      = newStatus;
-        ChangedAtUtc   = changedAtUtc;
-        ChangedBy      = changedBy;
-        Notes          = notes;
+        HistoryId                            = historyId;
+        PredictiveAnalyticsId                = Id;
+        PreviousStatus                        = previousStatus;
+        NewStatus                             = newStatus;
+        PredictedRiskScoreAtTransition         = predictedRiskScoreAtTransition;
+        ChangedAtUtc                           = changedAtUtc;
+        ChangedBy                              = changedBy;
+        Notes                                  = notes;
     }
 }
