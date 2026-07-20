@@ -253,5 +253,89 @@ public sealed class TenantSessionContextRlsTests(IntegrationTestWebAppFactory fa
         count.Should().Be(2, "both inserts within the same unit of work should have succeeded under RLS for Tenant A");
     }
 
+    /// <summary>
+    /// Reproduces the "read-only repository" shape used throughout the production codebase
+    /// (e.g. <c>ObservationRepository</c>, <c>CultureRepository</c>, and ~40 similar
+    /// GetById/GetAll repositories): the method opens a connection via
+    /// <see cref="ISqlConnectionFactory.CreateReadConnection"/> but never issues a query on
+    /// it directly — the actual SELECT is delegated to <see cref="DapperQueryExecutor"/>,
+    /// which opens and session-scopes its own internal connection. This proves that shape is
+    /// safe under RLS (the locally-opened connection is inert) even though a naive read of
+    /// the call site looks like a bypass of the chokepoint.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRepositoryShape_UnusedLocalReadConnectionPlusQueryExecutor_StillEnforcesRls()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var connectionFactory = scope.ServiceProvider.GetRequiredService<ISqlConnectionFactory>();
+        var queryExecutor = scope.ServiceProvider.GetRequiredService<DapperQueryExecutor>();
+
+        // Mirrors production repositories: a read connection is opened locally (and disposed
+        // unused) while the real query runs through the shared queryExecutor chokepoint.
+        using var conn = connectionFactory.CreateReadConnection();
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", TenantB)
+            .Build();
+
+        var rows = await queryExecutor.QueryAsync<WidgetRow>(
+            "[RlsTest].[usp_GetWidgets]",
+            parameters);
+
+        rows.Should().ContainSingle("queryExecutor sets SESSION_CONTEXT on its own connection regardless of the caller's unused local connection");
+        rows[0].TenantId.Should().Be(TenantB);
+    }
+
+    /// <summary>
+    /// Reproduces the write-side shape used throughout the production codebase (e.g.
+    /// <c>IncidentDapperRepository</c>, <c>ObservationDapperRepository</c>): the repository
+    /// opens its own connection/transaction via <c>ISqlConnectionFactory.CreateConnection()</c>
+    /// and hands both to <see cref="DapperCommandExecutor"/>, which sets SESSION_CONTEXT on
+    /// that exact connection before executing. Proves cross-tenant writes on that connection
+    /// are correctly scoped and cannot leak into another tenant's rows.
+    /// </summary>
+    [Fact]
+    public async Task WriteRepositoryShape_CreateConnectionHandedToCommandExecutor_ScopesInsertToCallingTenant()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var connectionFactory = scope.ServiceProvider.GetRequiredService<ISqlConnectionFactory>();
+        var commandExecutor = scope.ServiceProvider.GetRequiredService<DapperCommandExecutor>();
+
+        using var conn = connectionFactory.CreateConnection();
+        using var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted);
+
+        var widgetId = Guid.NewGuid();
+        var insert = new StoredProcedureBuilder()
+            .AddGuid("TenantId", TenantB)
+            .AddGuid("WidgetId", widgetId)
+            .AddString("Name", "Tenant B Repo-Shape Widget")
+            .Build();
+
+        await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_InsertWidget]", insert, tx, commandTimeout: 30);
+        tx.Commit();
+
+        await using var verifyConn = new SqlConnection(ConnectionString);
+        await verifyConn.OpenAsync();
+
+        // Under Tenant A's context, Tenant B's newly-inserted widget must be invisible.
+        await verifyConn.SetTenantSessionContextAsync(TenantA);
+        var visibleToTenantA = await verifyConn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM [RlsTest].[Widgets] WHERE WidgetId = @widgetId",
+            new { widgetId });
+        visibleToTenantA.Should().Be(0, "RLS must hide Tenant B's row from a Tenant A session context");
+
+        await using var verifyConnB = new SqlConnection(ConnectionString);
+        await verifyConnB.OpenAsync();
+        await verifyConnB.SetTenantSessionContextAsync(TenantB);
+        var visibleToTenantB = await verifyConnB.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM [RlsTest].[Widgets] WHERE WidgetId = @widgetId",
+            new { widgetId });
+        visibleToTenantB.Should().Be(1, "Tenant B's own session context must see the row it inserted");
+    }
+
     private sealed record WidgetRow(Guid WidgetId, Guid TenantId, string Name);
 }
