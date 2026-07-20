@@ -10,6 +10,7 @@
 //                  Deterministic, parallel-safe, additive-only.
 // ============================================================================
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using PlantSafety.Infrastructure.Common.Configuration;
 
 namespace PlantSafety.IntegrationTests.Setup;
@@ -29,7 +30,7 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
     public string ConnectionString => _sqlContainer.GetConnectionString();
 
     /// <inheritdoc/>
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _sqlContainer.StartAsync();
         await TestDatabaseFactory.ApplySchemaAsync(ConnectionString);
@@ -37,7 +38,7 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
     }
 
     /// <inheritdoc/>
-    public new async Task DisposeAsync()
+    public new async ValueTask DisposeAsync()
     {
         await _sqlContainer.DisposeAsync();
     }
@@ -47,12 +48,16 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
     {
         builder.UseEnvironment("IntegrationTest");
 
-        builder.ConfigureServices(services =>
+        // DatabaseOptions properties are init-only (deliberate immutability per the
+        // architecture rules), so the Testcontainers connection string must be supplied
+        // as a configuration override BEFORE binding, not by mutating an already-bound
+        // instance via services.Configure(...).
+        builder.ConfigureAppConfiguration((_, config) =>
         {
-            services.Configure<DatabaseOptions>(opts =>
+            config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                opts.ConnectionString      = ConnectionString;
-                opts.ReadConnectionString  = ConnectionString;
+                [$"{DatabaseOptions.SectionName}:{nameof(DatabaseOptions.ConnectionString)}"] = ConnectionString,
+                [$"{DatabaseOptions.SectionName}:{nameof(DatabaseOptions.ReadConnectionString)}"] = ConnectionString,
             });
         });
     }

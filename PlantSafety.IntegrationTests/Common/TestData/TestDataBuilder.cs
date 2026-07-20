@@ -18,14 +18,15 @@ namespace PlantSafety.IntegrationTests.Common.TestData;
 public static class TestDataBuilder
 {
     /// <summary>Returns a valid test TenantId.</summary>
-    public static TenantId BuildTenantId() => TenantId.FromGuid(TestIds.TenantId);
+    public static PlantSafety.Domain.Common.Types.StrongIds.TenantId BuildTenantId() =>
+        PlantSafety.Domain.Common.Types.StrongIds.TenantId.FromGuid(TestIds.TenantId);
 
     /// <summary>Returns a valid test UserId (CRUD authorship).</summary>
     public static UserId BuildUserId() => UserId.FromGuid(TestIds.ActorId);
 
     /// <summary>Returns a valid test CorrelationId.</summary>
-    public static CorrelationId BuildCorrelationId() => CorrelationId.FromGuid(TestIds.CorrelationId);
+    public static CorrelationId BuildCorrelationId() => new(TestIds.CorrelationId);
 
     /// <summary>Returns a valid test CausationId.</summary>
-    public static CausationId BuildCausationId() => CausationId.FromGuid(TestIds.CausationId);
+    public static CausationId BuildCausationId() => new(TestIds.CausationId);
 }
