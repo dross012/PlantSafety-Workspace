@@ -1,0 +1,429 @@
+-- =============================================
+-- Migration:     160-fulltext-search-prep.sql
+-- Author:        Trigger & Function / Index Orchestrator Agent (SQL surface)
+-- Create date:   2026-07-19
+-- Description:   Full-Text Search -- FUTURE ACTIVATION SCRIPT ONLY, NOT
+--                EXECUTED against PlantSafety.CoreDB objects (the catalog
+--                probe below is the sole exception, and it is created AND
+--                dropped in this same run, purely to live-verify the
+--                block). Confirmed feature-not-installed on this Express
+--                instance (live-verified below, not assumed). Follows the
+--                same "prep, don't attempt" pattern as the Phase 11
+--                Resource Governor future-activation script
+--                (Phase11-Performance\114-resource-governor-future-work.sql)
+--                and the Phase 9 Always Encrypted prep
+--                (Phase9-Security\92-always-encrypted-prep.sql). CLR
+--                assemblies are explicitly OUT of scope for this pass (no
+--                genuine need identified for custom CLR functions/
+--                aggregates in this schema) and are not addressed here.
+--
+-- *** Live availability verification (2026-07-19) ***
+--   SELECT SERVERPROPERTY('IsFullTextInstalled')  -->  0  (NOT installed)
+--   SELECT SERVERPROPERTY('Edition')               -->  'Express Edition (64-bit)'
+--   SELECT SERVERPROPERTY('ProductVersion')         -->  '17.0.4065.4'
+--   SQL Server Express DOES support Full-Text Search, but only if the
+--   "Full-Text and Semantic Extractions for Search" feature was selected
+--   at install time -- IsFullTextInstalled = 0 confirms it was not, on
+--   this instance. This is a genuine, confirmed, install-time feature
+--   block, not an edition-hard-block like Resource Governor.
+--
+-- *** Live probe: metadata layer vs. functional layer (2026-07-19) ***
+--   1. CREATE FULLTEXT CATALOG FTCAT_TestProbe AS DEFAULT;
+--      Result: SUCCEEDED (fulltext catalog metadata is a lightweight
+--      sys.fulltext_catalogs row; SQL Server allows creating this even
+--      without the FTS component loaded).
+--   2. CREATE FULLTEXT INDEX ON SafetyEvents.IncidentManagement(Description
+--      LANGUAGE 1033) KEY INDEX PK_SafetyEvents_IncidentManagement
+--      ON FTCAT_TestProbe WITH CHANGE_TRACKING AUTO;
+--      Result (actual server error, captured live, not paraphrased):
+--        "Msg 7609, Level 17, State 5 ... Full-Text Search is not
+--        installed, or a full-text component cannot be loaded."
+--   3. DROP FULLTEXT CATALOG FTCAT_TestProbe; -- cleanup, confirmed
+--      sys.fulltext_catalogs row count back to 0 for the probe name.
+--   This proves the block is real and functional (not just a
+--   SERVERPROPERTY flag): catalog *metadata* can be created, but the
+--   actual full-text index -- and therefore CONTAINS/FREETEXT querying --
+--   cannot, because the full-text engine component itself isn't loaded.
+--   Exactly analogous to the Resource Governor finding (metadata-only
+--   creation succeeds, functional activation fails) documented in
+--   Phase11-Performance\114-resource-governor-future-work.sql.
+--
+-- *** Why nothing is executed here, not even "metadata only" ***
+-- Per the platform's "zero drift, always re-verified" rule, and per the
+-- same reasoning already applied to Resource Governor: a full-text
+-- catalog with no working indexes would sit inert, unenforced, and
+-- unverifiable (CONTAINS/FREETEXT would always fail against it). This
+-- script is DOCUMENTATION + a FUTURE ACTIVATION SCRIPT for a future
+-- engineer working against an instance with the Full-Text Search
+-- component installed, not a migration to run today. Do not run the
+-- commented activation block below against this instance until
+-- SERVERPROPERTY('IsFullTextInstalled') = 1 has been re-verified.
+--
+-- *** How to actually enable this feature (no workaround attempted) ***
+-- Full-Text Search must be added via SQL Server Setup (Feature Selection
+-- -> "Full-Text and Semantic Extractions for Search"), either by re-running
+-- setup.exe /ADDLOCAL=FullText (modify existing SQLEXPRESS instance) or by
+-- reinstalling with the feature selected. This cannot be enabled with T-SQL
+-- alone -- it is an engine component, not a database-level setting. No
+-- attempt was made to work around this (per task instruction).
+--
+-- =============================================================
+-- Genuinely justified free-text search candidates (identified from what's
+-- actually built, per the No-Guessing Rule -- reusing exactly the columns
+-- Phase 7 classified as sensitive free-text narrative content in
+-- Phase7-Governance\72-data-classification.sql; nothing speculative added).
+-- Short categorical/enum-like fields that Phase 7 also classified
+-- (IncidentManagement.InjuryType, WorkerWellBeing.WorkerWellBeing.
+-- WellBeingRiskLevel) are DELIBERATELY EXCLUDED here -- they are short
+-- coded values, not narrative prose, and gain nothing from CONTAINS/
+-- FREETEXT over a plain equality/LIKE filter.
+--
+--   PlantSafety.CoreDB:
+--     SafetyEvents.IncidentManagement.Description               nvarchar(MAX)
+--     SafetyEvents.IncidentManagement.RootCause                 nvarchar(MAX)
+--     SafetyEvents.IncidentManagement.CorrectiveActions          nvarchar(MAX)
+--     SafetyEvents.Observation.Description                      nvarchar(MAX)
+--     SafetyEvents.ObservationHistoryEntry.Notes                 nvarchar(MAX)
+--     SafetyEvents.EmergencyManagementHistoryEntry.Notes         nvarchar(MAX)
+--     SafetyEvents.IncidentManagementHistoryEntry.Notes          nvarchar(MAX)
+--     SafetyEvents.IncidentManagementHistoryEntry.RootCauseAtTransition
+--                                                                 nvarchar(MAX)
+--
+-- *** Live-verified prerequisite: unique, single-column, non-nullable
+--     clustered index on each candidate table (required as the FULLTEXT
+--     INDEX KEY INDEX) -- checked live 2026-07-19, all five tables already
+--     satisfy this via their existing clustered StrongId PK, nothing to
+--     add ***
+--   SafetyEvents.IncidentManagement               PK_SafetyEvents_IncidentManagement               CLUSTERED, unique, PK
+--   SafetyEvents.Observation                       PK_SafetyEvents_Observation                       CLUSTERED, unique, PK
+--   SafetyEvents.ObservationHistoryEntry           PK_SafetyEvents_ObservationHistoryEntry           CLUSTERED, unique, PK
+--   SafetyEvents.EmergencyManagementHistoryEntry   PK_SafetyEvents_EmergencyManagementHistoryEntry   CLUSTERED, unique, PK
+--   SafetyEvents.IncidentManagementHistoryEntry    PK_SafetyEvents_IncidentManagementHistoryEntry    CLUSTERED, unique, PK
+--
+-- Note: Dynamic Data Masking (Phase 9, Phase9-Security\91-dynamic-data-
+-- masking.sql) is applied to some of these same narrative columns. DDM is
+-- presentation-layer only (masks values returned to non-privileged
+-- callers); Full-Text Search operates on the underlying unmasked data at
+-- the storage/index level regardless of masking, so it remains valid to
+-- index these columns for search -- masking and full-text indexing are
+-- orthogonal controls and do not conflict.
+-- =============================================================
+
+-- =============================================================
+-- FUTURE ACTIVATION SCRIPT (run only after installing the Full-Text
+-- Search engine component -- re-verify
+-- SELECT SERVERPROPERTY('IsFullTextInstalled') = 1 first)
+-- =============================================================
+--
+-- USE [PlantSafety.CoreDB];
+-- GO
+--
+-- ------------------------------------------------------------
+-- -- 1. Full-text catalog (single catalog for all SafetyEvents
+-- --    narrative columns -- no genuine reason found to split into
+-- --    multiple catalogs for this small, single-database column set).
+-- ------------------------------------------------------------
+-- IF NOT EXISTS (SELECT 1 FROM sys.fulltext_catalogs WHERE name = 'FTCAT_CoreDB_SafetyNarratives')
+--     CREATE FULLTEXT CATALOG FTCAT_CoreDB_SafetyNarratives WITH ACCENT_SENSITIVITY = ON;
+-- GO
+--
+-- ------------------------------------------------------------
+-- -- 2. Full-text indexes. Default system stoplist is used -- no genuine
+-- --    domain-specific noise-word set was identified (safety-incident
+-- --    narrative vocabulary, e.g. "forklift", "guard", "lockout", is
+-- --    exactly the signal we want indexed, not noise; the default
+-- --    English stoplist's function words are the only correct exclusion
+-- --    here). CHANGE_TRACKING AUTO keeps indexes current as rows are
+-- --    inserted/updated, consistent with this platform's append-only /
+-- --    audit-trail patterns.
+-- ------------------------------------------------------------
+-- IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('SafetyEvents.IncidentManagement'))
+--     CREATE FULLTEXT INDEX ON SafetyEvents.IncidentManagement
+--         (Description LANGUAGE 1033, RootCause LANGUAGE 1033, CorrectiveActions LANGUAGE 1033)
+--         KEY INDEX PK_SafetyEvents_IncidentManagement
+--         ON FTCAT_CoreDB_SafetyNarratives
+--         WITH CHANGE_TRACKING AUTO, STOPLIST = SYSTEM;
+-- GO
+--
+-- IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('SafetyEvents.Observation'))
+--     CREATE FULLTEXT INDEX ON SafetyEvents.Observation
+--         (Description LANGUAGE 1033)
+--         KEY INDEX PK_SafetyEvents_Observation
+--         ON FTCAT_CoreDB_SafetyNarratives
+--         WITH CHANGE_TRACKING AUTO, STOPLIST = SYSTEM;
+-- GO
+--
+-- IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('SafetyEvents.ObservationHistoryEntry'))
+--     CREATE FULLTEXT INDEX ON SafetyEvents.ObservationHistoryEntry
+--         (Notes LANGUAGE 1033)
+--         KEY INDEX PK_SafetyEvents_ObservationHistoryEntry
+--         ON FTCAT_CoreDB_SafetyNarratives
+--         WITH CHANGE_TRACKING AUTO, STOPLIST = SYSTEM;
+-- GO
+--
+-- IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('SafetyEvents.EmergencyManagementHistoryEntry'))
+--     CREATE FULLTEXT INDEX ON SafetyEvents.EmergencyManagementHistoryEntry
+--         (Notes LANGUAGE 1033)
+--         KEY INDEX PK_SafetyEvents_EmergencyManagementHistoryEntry
+--         ON FTCAT_CoreDB_SafetyNarratives
+--         WITH CHANGE_TRACKING AUTO, STOPLIST = SYSTEM;
+-- GO
+--
+-- IF NOT EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('SafetyEvents.IncidentManagementHistoryEntry'))
+--     CREATE FULLTEXT INDEX ON SafetyEvents.IncidentManagementHistoryEntry
+--         (Notes LANGUAGE 1033, RootCauseAtTransition LANGUAGE 1033)
+--         KEY INDEX PK_SafetyEvents_IncidentManagementHistoryEntry
+--         ON FTCAT_CoreDB_SafetyNarratives
+--         WITH CHANGE_TRACKING AUTO, STOPLIST = SYSTEM;
+-- GO
+--
+-- ------------------------------------------------------------
+-- -- 3. Demo procedure #1: CONTAINS-based keyword search across
+-- --    IncidentManagement narrative columns. Same canonical TRY/CATCH +
+-- --    error-logging + best-effort audit-logging pattern as every other
+-- --    Phase 6 procedure (see Phase6-StoredProcedures\
+-- --    60-coredb-procedures.sql, sp_IncidentManagement_List, mirrored
+-- --    here). RLS-compatible: this proc does NOT bypass Row-Level
+-- --    Security -- it relies on the session already having called
+-- --    sp_set_session_context(N'TenantId', <guid>) per the Phase 9 RLS
+-- --    model, and additionally accepts an explicit @TenantId filter
+-- --    parameter (defense-in-depth, same optional-filter pattern already
+-- --    used by sp_IncidentManagement_List) so results are always scoped
+-- --    to the calling tenant even if RLS predicate evaluation is ever
+-- --    misconfigured for a given login.
+-- ------------------------------------------------------------
+-- CREATE OR ALTER PROCEDURE [SafetyEvents].sp_IncidentManagement_SearchByKeyword
+--     @SearchTerm nvarchar(200),
+--     @TenantId uniqueidentifier = NULL,
+--     @PageNumber int = 1,
+--     @PageSize int = 50
+-- AS
+-- BEGIN
+--     SET NOCOUNT ON;
+--     SET XACT_ABORT ON;
+--     BEGIN TRY
+--         IF @SearchTerm IS NULL OR LEN(LTRIM(RTRIM(@SearchTerm))) = 0
+--             THROW 50001, N'SearchTerm is required.', 1;
+--         IF @PageNumber IS NULL OR @PageNumber < 1
+--             THROW 50001, N'PageNumber must be a positive integer.', 1;
+--         IF @PageSize IS NULL OR @PageSize < 1
+--             THROW 50001, N'PageSize must be a positive integer.', 1;
+--         ------------------------------------------------------------
+--         -- Audit: best-effort, non-fatal
+--         ------------------------------------------------------------
+--         BEGIN TRY
+--             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (
+--                 TableName, SourceDatabase, Operation, ChangedBy, ChangeTime,
+--                 ViewerAccessed, ErrorContext, Severity, Module
+--             )
+--             VALUES (
+--                 N'IncidentManagement', DB_NAME(), N'VIEW', SYSTEM_USER, SYSUTCDATETIME(),
+--                 1, CONCAT(N'SearchTerm=', @SearchTerm, N'; PageNumber=', @PageNumber, N'; PageSize=', @PageSize), 0, OBJECT_NAME(@@PROCID)
+--             );
+--         END TRY
+--         BEGIN CATCH
+--             -- Audit failures must never block primary operation
+--         END CATCH;
+--         ------------------------------------------------------------
+--         -- Main operation -- CONTAINS against the composite full-text
+--         -- index; RLS filters rows to the session's TenantId
+--         -- automatically, @TenantId param adds an explicit second filter.
+--         ------------------------------------------------------------
+--         SELECT e.IncidentManagementId, e.Status, e.CreatedUtc, e.TenantId, e.SiteId,
+--                e.Title, e.Description, e.Severity, e.Location, e.IncidentOccurredAtUtc,
+--                e.InjuryType, e.RootCause, e.CorrectiveActions
+--         FROM [SafetyEvents].[IncidentManagement] AS e
+--         WHERE ISNULL(e.IsDeleted, 0) = 0
+--           AND (@TenantId IS NULL OR e.TenantId = @TenantId)
+--           AND CONTAINS((e.Description, e.RootCause, e.CorrectiveActions), @SearchTerm)
+--         ORDER BY e.IncidentManagementId
+--         OFFSET (@PageNumber - 1) * @PageSize ROWS
+--         FETCH NEXT @PageSize ROWS ONLY;
+--     END TRY
+--     BEGIN CATCH
+--         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'SearchTerm=', @SearchTerm, N'; PageNumber=', @PageNumber, N'; PageSize=', @PageSize, N'; User=', SYSTEM_USER);
+--         DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+--             N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+--             N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+--             N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+--         DECLARE @__SourceDatabase nvarchar(128) = DB_NAME();
+--         DECLARE @__Module nvarchar(128) = OBJECT_NAME(@@PROCID);
+--
+--         INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog (
+--             ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage,
+--             ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module
+--         )
+--         VALUES (
+--             ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(),
+--             SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, @__SourceDatabase, @__Module
+--         );
+--
+--         BEGIN TRY
+--             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (
+--                 TableName, SourceDatabase, Operation, ChangedBy, ChangeTime,
+--                 BeforeSnapshot, AfterSnapshot, ErrorContext, Severity, Module, ViewerAccessed
+--             )
+--             VALUES (
+--                 N'IncidentManagement', DB_NAME(), N'VIEW', SYSTEM_USER, SYSUTCDATETIME(),
+--                 NULL, NULL, @__ErrorContext, ERROR_SEVERITY(), OBJECT_NAME(@@PROCID), 0
+--             );
+--         END TRY
+--         BEGIN CATCH
+--             -- Audit failures must never block primary error propagation
+--         END CATCH;
+--
+--         THROW;
+--     END CATCH
+-- END
+-- GO
+--
+-- ------------------------------------------------------------
+-- -- 4. Demo procedure #2: FREETEXT-based natural-language search across
+-- --    Observation.Description, same canonical pattern, same RLS
+-- --    session-context reliance.
+-- ------------------------------------------------------------
+-- CREATE OR ALTER PROCEDURE [SafetyEvents].sp_Observation_SearchByFreeText
+--     @SearchPhrase nvarchar(400),
+--     @TenantId uniqueidentifier = NULL,
+--     @PageNumber int = 1,
+--     @PageSize int = 50
+-- AS
+-- BEGIN
+--     SET NOCOUNT ON;
+--     SET XACT_ABORT ON;
+--     BEGIN TRY
+--         IF @SearchPhrase IS NULL OR LEN(LTRIM(RTRIM(@SearchPhrase))) = 0
+--             THROW 50001, N'SearchPhrase is required.', 1;
+--         IF @PageNumber IS NULL OR @PageNumber < 1
+--             THROW 50001, N'PageNumber must be a positive integer.', 1;
+--         IF @PageSize IS NULL OR @PageSize < 1
+--             THROW 50001, N'PageSize must be a positive integer.', 1;
+--         ------------------------------------------------------------
+--         -- Audit: best-effort, non-fatal
+--         ------------------------------------------------------------
+--         BEGIN TRY
+--             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (
+--                 TableName, SourceDatabase, Operation, ChangedBy, ChangeTime,
+--                 ViewerAccessed, ErrorContext, Severity, Module
+--             )
+--             VALUES (
+--                 N'Observation', DB_NAME(), N'VIEW', SYSTEM_USER, SYSUTCDATETIME(),
+--                 1, CONCAT(N'SearchPhrase=', @SearchPhrase, N'; PageNumber=', @PageNumber, N'; PageSize=', @PageSize), 0, OBJECT_NAME(@@PROCID)
+--             );
+--         END TRY
+--         BEGIN CATCH
+--             -- Audit failures must never block primary operation
+--         END CATCH;
+--         ------------------------------------------------------------
+--         -- Main operation
+--         ------------------------------------------------------------
+--         SELECT o.ObservationId, o.Status, o.CreatedUtc, o.TenantId, o.SiteId,
+--                o.ObserverId, o.ObservationType, o.HazardCategory, o.Location,
+--                o.Description, o.CorrectiveActionRequired, o.FollowUpDueAtUtc
+--         FROM [SafetyEvents].[Observation] AS o
+--         WHERE ISNULL(o.IsDeleted, 0) = 0
+--           AND (@TenantId IS NULL OR o.TenantId = @TenantId)
+--           AND FREETEXT(o.Description, @SearchPhrase)
+--         ORDER BY o.ObservationId
+--         OFFSET (@PageNumber - 1) * @PageSize ROWS
+--         FETCH NEXT @PageSize ROWS ONLY;
+--     END TRY
+--     BEGIN CATCH
+--         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'SearchPhrase=', @SearchPhrase, N'; PageNumber=', @PageNumber, N'; PageSize=', @PageSize, N'; User=', SYSTEM_USER);
+--         DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+--             N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+--             N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+--             N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+--         DECLARE @__SourceDatabase nvarchar(128) = DB_NAME();
+--         DECLARE @__Module nvarchar(128) = OBJECT_NAME(@@PROCID);
+--
+--         INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog (
+--             ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage,
+--             ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module
+--         )
+--         VALUES (
+--             ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(),
+--             SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, @__SourceDatabase, @__Module
+--         );
+--
+--         BEGIN TRY
+--             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (
+--                 TableName, SourceDatabase, Operation, ChangedBy, ChangeTime,
+--                 BeforeSnapshot, AfterSnapshot, ErrorContext, Severity, Module, ViewerAccessed
+--             )
+--             VALUES (
+--                 N'Observation', DB_NAME(), N'VIEW', SYSTEM_USER, SYSUTCDATETIME(),
+--                 NULL, NULL, @__ErrorContext, ERROR_SEVERITY(), OBJECT_NAME(@@PROCID), 0
+--             );
+--         END TRY
+--         BEGIN CATCH
+--             -- Audit failures must never block primary error propagation
+--         END CATCH;
+--
+--         THROW;
+--     END CATCH
+-- END
+-- GO
+--
+-- ------------------------------------------------------------
+-- -- 5. Post-activation re-verification and live data test (run once
+-- --    activated, per task step 5 -- NOT run today, documented for the
+-- --    future engineer):
+-- ------------------------------------------------------------
+-- -- a) Confirm indexes populated:
+-- --    SELECT OBJECT_NAME(object_id) AS TableName, is_enabled, crawl_state,
+-- --           change_tracking_state_desc
+-- --    FROM sys.fulltext_indexes;
+-- --    SELECT * FROM sys.dm_fts_index_population; -- poll until row count
+-- --      for the target objects reaches 0 (population complete), or force
+-- --      with: ALTER FULLTEXT INDEX ON SafetyEvents.IncidentManagement
+-- --      START FULL POPULATION;
+-- -- b) Insert a test row inside an explicit transaction, e.g.:
+-- --      BEGIN TRAN;
+-- --      EXEC sp_set_session_context @key = N'TenantId', @value = '<test-tenant-guid>';
+-- --      INSERT INTO SafetyEvents.IncidentManagement (...) VALUES (
+-- --          NEWID(), N'Open', <CreatedBy>, <UpdatedBy>, '<test-tenant-guid>', NULL,
+-- --          N'FTS smoke test', N'A forklift struck the guard rail near dock 4.',
+-- --          N'Minor', N'Dock 4', SYSUTCDATETIME(), N'None', <ReportedByWorkerId>,
+-- --          NULL, N'Operator error', N'Retrain operator', NULL);
+-- --    If full population requires the insert to be committed first (change
+-- --    tracking AUTO should pick up an in-flight-but-uncommitted row's final
+-- --    state once committed, but CONTAINS/FREETEXT only ever see committed
+-- --    data due to how the full-text crawl reads via snapshot/lock-free
+-- --    scan) -- COMMIT, poll sys.dm_fts_index_population until clear, then:
+-- --      EXEC SafetyEvents.sp_IncidentManagement_SearchByKeyword
+-- --           @SearchTerm = N'forklift', @TenantId = '<test-tenant-guid>';
+-- --      -- expect exactly 1 row back (the test row).
+-- --    Then explicitly clean up regardless of whether TRAN was rolled back
+-- --    or committed:
+-- --      DELETE FROM SafetyEvents.IncidentManagement WHERE Title = N'FTS smoke test';
+-- --      -- re-verify:
+-- --      EXEC SafetyEvents.sp_IncidentManagement_SearchByKeyword
+-- --           @SearchTerm = N'forklift', @TenantId = '<test-tenant-guid>';
+-- --      -- expect 0 rows.
+-- =============================================================
+-- END FUTURE ACTIVATION SCRIPT -- nothing above this line (within the
+-- commented block) executes today.
+-- =============================================================
+
+------------------------------------------------------------
+-- Live verification (this part DOES execute): re-confirm the
+-- feature-not-installed block, so this script is self-documenting about
+-- why it took no action, and re-confirm the probe catalog left no residue.
+------------------------------------------------------------
+SET NOCOUNT ON;
+GO
+SELECT
+    SERVERPROPERTY('IsFullTextInstalled') AS IsFullTextInstalled,
+    SERVERPROPERTY('Edition') AS Edition,
+    SERVERPROPERTY('ProductVersion') AS ProductVersion,
+    CASE WHEN CAST(SERVERPROPERTY('IsFullTextInstalled') AS int) = 0
+         THEN N'Full-Text Search NOT INSTALLED on this instance -- future-activation script documented above, not executed. CREATE FULLTEXT CATALOG succeeds (metadata-only) but CREATE FULLTEXT INDEX fails with Msg 7609 (live-verified and probe cleaned up 2026-07-19).'
+         ELSE N'Full-Text Search appears installed -- re-review the future-activation script above with a human before running it.'
+    END AS FullTextSearchStatus;
+GO
+
+SELECT COUNT(*) AS ResidualProbeCatalogs
+FROM sys.fulltext_catalogs
+WHERE name = N'FTCAT_TestProbe';
+GO

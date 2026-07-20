@@ -1,0 +1,167 @@
+-- =============================================
+-- Migration:     114-resource-governor-future-work.sql
+-- Author:        Performance Guardian Agent
+-- Create date:   2026-07-19
+-- Description:   Resource Governor -- FUTURE ACTIVATION SCRIPT ONLY, NOT
+--                EXECUTED. Confirmed edition-blocked on this Express
+--                instance (live-verified below, not assumed). Follows the
+--                same "prep, don't attempt" pattern as the Phase 7 TDE prep
+--                (71-tde-encryption.sql) and Phase 9 Always Encrypted prep
+--                (92-always-encrypted-prep.sql) -- except Resource Governor
+--                cannot even be partially prepped today (unlike TDE/AE,
+--                which have client-side-only prep steps available on any
+--                edition), so nothing in this file is run.
+--
+-- *** Live edition verification (2026-07-19) ***
+--   SELECT SERVERPROPERTY('EngineEdition')  -->  4  (SQL Server Express Edition)
+--   SELECT SERVERPROPERTY('Edition')        -->  'Express Edition (64-bit)'
+--   Attempted: EXEC('ALTER RESOURCE GOVERNOR RECONFIGURE;')
+--   Result (actual server error, captured live, not paraphrased/assumed):
+--     "'ALTER RESOURCE GOVERNOR RECONFIGURE' failed.  The resource governor
+--     is not available in this edition of SQL Server. You can manipulate
+--     resource governor metadata but you will not be able to apply resource
+--     governor configuration."
+--   Per Microsoft's edition feature matrix, Resource Governor requires
+--   Standard, Enterprise, or Developer edition -- Express is explicitly
+--   excluded. This is a genuine, confirmed, edition-level block, not an
+--   assumption.
+--
+-- *** Why nothing is executed here, not even "metadata only" ***
+-- The error message above says Express CAN create resource-governor
+-- metadata objects (pools/groups/classifier function) via DDL, but CANNOT
+-- ever apply/reconfigure them -- meaning any pool/group/classifier created
+-- today would sit inert and unenforced indefinitely on this edition, with
+-- no way to verify it actually governs anything (RECONFIGURE always fails).
+-- Building unenforceable, unverifiable objects would violate the platform's
+-- "zero drift, always re-verified" rule -- there would be no way to
+-- re-verify this control is doing anything. Per the task's explicit
+-- instruction ("if confirmed blocked, write the future-activation script...
+-- documenting the workload classification scheme... don't attempt to build
+-- it"), this file is DOCUMENTATION for a future engineer working against a
+-- Standard+ edition instance, not a migration to run today. Do not run this
+-- script against this Express instance.
+--
+-- =============================================================
+-- FUTURE ACTIVATION SCRIPT (run only after upgrading to Standard/Enterprise/
+-- Developer edition -- re-verify SERVERPROPERTY('EngineEdition') <> 4 first)
+-- =============================================================
+--
+-- *** Workload classification scheme (design, ready to activate) ***
+-- Classification boundary: the same app_executor / readonly_reporting
+-- database-role split already deployed platform-wide in Phase 7
+-- (Persistence\Migrations\Phase7-Governance\75-access-control-rbac.sql):
+--   - app_executor       -- EXECUTE-only role granted per schema to every
+--                            application/service login calling the
+--                            canonical CRUD stored procedures (transactional
+--                            OLTP traffic -- the platform's primary,
+--                            latency-sensitive workload).
+--   - readonly_reporting -- SELECT-only role granted per individual view,
+--                            for BI/reporting-tool logins running ad-hoc
+--                            analytical queries (batch-mode, throughput-
+--                            tolerant, must not starve OLTP traffic of CPU/
+--                            memory when a large report runs).
+-- Resource Governor classification happens at the SERVER level (via
+-- CLASSIFIER_FUNCTION, evaluated once per new session, before the session
+-- reaches any database), using SUSER_SNAME() / login-name matching, NOT
+-- database-role membership directly (database roles are evaluated inside a
+-- database context, which the classifier function runs before). The
+-- classification boundary therefore needs to mirror the SAME split via
+-- login/principal naming convention -- e.g. dedicated SQL/Windows logins
+-- such as [DOMAIN\PlantSafety_AppService] (mapped to app_executor in every
+-- database) vs. [DOMAIN\PlantSafety_ReportingService] (mapped to
+-- readonly_reporting in every database), which is exactly the "future
+-- service/reporting account" pattern already flagged as a TODO in Phase 7's
+-- own header (75-access-control-rbac.sql, lines ~200-204: "ALTER ROLE
+-- app_executor ADD MEMBER [DOMAIN\ServiceAccountOrUser]" / "ALTER ROLE
+-- readonly_reporting ADD MEMBER [DOMAIN\ReportingToolAccount]"). This
+-- migration's classifier function is written against those same two
+-- not-yet-provisioned login names for consistency -- update the literal
+-- login names below once real service-account logins are provisioned.
+--
+-- Two resource pools + two workload groups:
+--   RP_PlantSafety_OLTP / WG_PlantSafety_OLTP        -- app_executor traffic.
+--     Given priority via a lower REQUEST_MAX_CPU_TIME_SEC ceiling is NOT
+--     applied (OLTP should never be artificially capped); instead it gets
+--     the higher IMPORTANCE and a MIN_CPU_PERCENT floor so a runaway
+--     reporting query cannot starve it.
+--   RP_PlantSafety_Reporting / WG_PlantSafety_Reporting -- readonly_reporting
+--     traffic. Capped MAX_CPU_PERCENT and MAX_MEMORY_PERCENT, LOW
+--     importance, and a REQUEST_MAX_CPU_TIME_SEC ceiling so a single
+--     expensive ad-hoc/BI report query cannot monopolize the instance.
+--
+-- CREATE RESOURCE POOL RP_PlantSafety_OLTP
+-- WITH (
+--     MIN_CPU_PERCENT = 40, MAX_CPU_PERCENT = 100,
+--     MIN_MEMORY_PERCENT = 40, MAX_MEMORY_PERCENT = 100
+-- );
+-- GO
+-- CREATE WORKLOAD GROUP WG_PlantSafety_OLTP
+-- WITH (IMPORTANCE = HIGH, REQUEST_MAX_MEMORY_GRANT_PERCENT = 25)
+-- USING RP_PlantSafety_OLTP;
+-- GO
+--
+-- CREATE RESOURCE POOL RP_PlantSafety_Reporting
+-- WITH (
+--     MIN_CPU_PERCENT = 0, MAX_CPU_PERCENT = 40,
+--     MIN_MEMORY_PERCENT = 0, MAX_MEMORY_PERCENT = 40
+-- );
+-- GO
+-- CREATE WORKLOAD GROUP WG_PlantSafety_Reporting
+-- WITH (
+--     IMPORTANCE = LOW,
+--     REQUEST_MAX_CPU_TIME_SEC = 120,
+--     REQUEST_MAX_MEMORY_GRANT_PERCENT = 15
+-- )
+-- USING RP_PlantSafety_Reporting;
+-- GO
+--
+-- CREATE FUNCTION dbo.fn_PlantSafety_RGClassifier()
+-- RETURNS sysname
+-- WITH SCHEMABINDING
+-- AS
+-- BEGIN
+--     DECLARE @grp sysname;
+--     IF SUSER_SNAME() = N'DOMAIN\PlantSafety_ReportingService'  -- TODO: real login, once provisioned
+--         SET @grp = N'WG_PlantSafety_Reporting';
+--     ELSE IF SUSER_SNAME() = N'DOMAIN\PlantSafety_AppService'   -- TODO: real login, once provisioned
+--         SET @grp = N'WG_PlantSafety_OLTP';
+--     ELSE
+--         SET @grp = N'default';  -- deny-by-default posture: unrecognized
+--                                  -- logins (including interactive/dev
+--                                  -- Windows logins) get the unthrottled
+--                                  -- SQL Server "default" group, NOT the
+--                                  -- OLTP-privileged pool, so this
+--                                  -- classifier never silently grants
+--                                  -- elevated resource priority to an
+--                                  -- unexpected caller.
+--     RETURN @grp;
+-- END;
+-- GO
+-- ALTER RESOURCE GOVERNOR WITH (CLASSIFIER_FUNCTION = dbo.fn_PlantSafety_RGClassifier);
+-- ALTER RESOURCE GOVERNOR RECONFIGURE;
+-- GO
+--
+-- *** Post-activation re-verification (run once activated) ***
+-- SELECT * FROM sys.resource_governor_resource_pools;
+-- SELECT * FROM sys.resource_governor_workload_groups;
+-- SELECT * FROM sys.dm_resource_governor_configuration;  -- confirm
+--     classifier_function_id is non-null and is_reconfiguration_pending = 0.
+--
+-- =============================================================
+-- END FUTURE ACTIVATION SCRIPT -- nothing above this line executes today.
+-- =============================================================
+
+------------------------------------------------------------
+-- Live verification (this part DOES execute): re-confirm the edition block,
+-- so this script is self-documenting about why it took no action.
+------------------------------------------------------------
+SET NOCOUNT ON;
+GO
+SELECT
+    SERVERPROPERTY('EngineEdition') AS EngineEdition,
+    SERVERPROPERTY('Edition') AS Edition,
+    CASE WHEN CAST(SERVERPROPERTY('EngineEdition') AS int) = 4
+         THEN N'Resource Governor NOT AVAILABLE (Express) -- future-activation script documented above, not executed.'
+         ELSE N'Edition may support Resource Governor -- re-review the future-activation script above with a human before running it.'
+    END AS ResourceGovernorStatus;
+GO
