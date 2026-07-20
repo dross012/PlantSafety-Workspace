@@ -73,6 +73,7 @@ global using PlantSafety.Infrastructure.Common.Exceptions;
 global using PlantSafety.Infrastructure.Common.Pipelines;
 global using PlantSafety.Infrastructure.Common.Serialization;
 global using PlantSafety.Infrastructure.Persistence.ConnectionFactory;
+global using PlantSafety.Infrastructure.Persistence.Dapper;
 global using PlantSafety.Infrastructure.Persistence.Dapper.Commands;
 global using PlantSafety.Infrastructure.Persistence.Dapper.Queries;
 global using PlantSafety.Infrastructure.Persistence.Dapper.SqlBuilder;

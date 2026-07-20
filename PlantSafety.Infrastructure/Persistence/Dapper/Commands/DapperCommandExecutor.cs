@@ -30,6 +30,12 @@ public sealed class DapperCommandExecutor(ILogger<DapperCommandExecutor> logger)
     {
         try
         {
+            // RLS defense-in-depth: populate SESSION_CONTEXT('TenantId') before touching
+            // any Row-Level-Security-protected table. Idempotent per connection/tenant, so
+            // repeated calls within the same IUnitOfWork/transaction for the same tenant are
+            // safe. No-ops if the call carries no TenantId.
+            await connection.SetTenantSessionContextAsync(parameters.GetTenantId(), transaction, cancellationToken);
+
             logger.LogDebug("Executing stored procedure {ProcedureName}", procedureName);
 
             return await connection.ExecuteAsync(

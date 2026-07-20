@@ -27,6 +27,10 @@ public sealed class DapperQueryExecutor(ISqlConnectionFactory connectionFactory,
 
         try
         {
+            // RLS defense-in-depth: populate SESSION_CONTEXT('TenantId') before touching
+            // any Row-Level-Security-protected table. No-ops if the call carries no TenantId.
+            await conn.SetTenantSessionContextAsync(parameters.GetTenantId(), cancellationToken: cancellationToken);
+
             logger.LogDebug("Query stored procedure {ProcedureName}", procedureName);
             var result = await conn.QueryAsync<T>(procedureName, parameters, commandType: CommandType.StoredProcedure);
             return result.AsList();
@@ -45,6 +49,11 @@ public sealed class DapperQueryExecutor(ISqlConnectionFactory connectionFactory,
         CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateReadConnection();
+
+        // RLS defense-in-depth: populate SESSION_CONTEXT('TenantId') before touching
+        // any Row-Level-Security-protected table. No-ops if the call carries no TenantId.
+        await conn.SetTenantSessionContextAsync(parameters.GetTenantId(), cancellationToken: cancellationToken);
+
         return await conn.QuerySingleOrDefaultAsync<T>(procedureName, parameters, commandType: CommandType.StoredProcedure);
     }
 }
