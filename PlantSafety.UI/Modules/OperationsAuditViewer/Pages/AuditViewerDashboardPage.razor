@@ -1,0 +1,259 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-20
+    FILE DESCRIPTION: Operations Audit Viewer dashboard. Surfaces the shared,
+      cross-database [PlantSafety.AuditDB].dbo.AuditLog table -- real platform audit
+      infrastructure written to by hundreds of stored procedures across all 8 module
+      databases via the dbo.AuditLog synonym -- which previously had no C# or UI
+      visibility. Filters, free-text search, CSV export, and a "Change Detail" panel.
+
+      SAFETY: This page is READ-ONLY by design. There is no create/edit/delete action
+      anywhere on this page -- AuditLog is an append-only audit trail.
+
+      DIFF VIEW SCOPE NOTE: The "Change Detail" panel parses the free-text ErrorContext
+      field into readable Key/Value rows. AuditLog's BeforeSnapshot/AfterSnapshot columns
+      are real but are always null in every current write path across the codebase, so
+      this is NOT a true structured before/after diff -- see AuditLogEntryDto.cs.
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+@page "/modules/operations-audit-viewer"
+
+@inject AuditViewerState State
+@inject AuditViewerApiClient ApiClient
+@inject NavigationState NavState
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.OperationsAuditViewer.ApiClients
+@using PlantSafety.UI.Modules.OperationsAuditViewer.Models
+@using PlantSafety.UI.Modules.OperationsAuditViewer.State
+
+<PageTitle>Operations — Audit Viewer — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Audit Viewer could not be displayed." OnRetry="SearchAsync">
+
+        <section class="ps-section">
+            <h2>Filters</h2>
+            <div class="ps-form-row">
+                <input class="ps-input" placeholder="Table name" @bind="_filter.TableName" aria-label="Table name filter" />
+                <input class="ps-input" placeholder="Operation" @bind="_filter.Operation" aria-label="Operation filter" />
+                <input class="ps-input" placeholder="Changed by" @bind="_filter.ChangedBy" aria-label="Changed by filter" />
+                <input class="ps-input" placeholder="Module" @bind="_filter.Module" aria-label="Module filter" />
+                <input class="ps-input" type="number" placeholder="Severity" @bind="_filter.Severity" aria-label="Severity filter" />
+            </div>
+            <div class="ps-form-row">
+                <label class="ps-form-label" for="from-utc">From (UTC)</label>
+                <input id="from-utc" class="ps-input" type="datetime-local" @bind="_filter.FromUtc" aria-label="From date filter" />
+                <label class="ps-form-label" for="to-utc">To (UTC)</label>
+                <input id="to-utc" class="ps-input" type="datetime-local" @bind="_filter.ToUtc" aria-label="To date filter" />
+                <input class="ps-input" placeholder="Search change detail…" @bind="_filter.SearchText" aria-label="Free-text search over change detail" />
+            </div>
+            <div class="ps-form-row">
+                <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SearchAsync" disabled="@State.IsLoading">
+                    <span class="bi bi-search" aria-hidden="true"></span> @(State.IsLoading ? "Searching…" : "Search")
+                </button>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ResetFiltersAsync" disabled="@State.IsLoading">
+                    Reset
+                </button>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ExportAsync" disabled="@State.IsExporting">
+                    <span class="bi bi-download" aria-hidden="true"></span> @(State.IsExporting ? "Exporting…" : "Export")
+                </button>
+            </div>
+        </section>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.Error</div>
+        }
+
+        @if (State.ExportError is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.ExportError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Searching audit log…" />
+        }
+        else
+        {
+            <section class="ps-section">
+                <h2>Results (@State.TotalCount total)</h2>
+                <DataGridComponent TItem="AuditLogEntryDto"
+                                    Items="State.Items"
+                                    Headers="_resultHeaders"
+                                    EmptyMessage="No audit log entries matched the current filters."
+                                    AriaLabel="Audit log search results">
+                    <RowTemplate Context="item">
+                        <td>@item.ChangeTime.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                        <td>@item.TableName</td>
+                        <td>@item.Operation</td>
+                        <td>@item.ChangedBy</td>
+                        <td>@item.Module</td>
+                        <td>@item.SourceDatabase</td>
+                        <td><SeverityBadgeComponent Severity="@ToSeverityLabel(item.Severity)" Text="@item.Severity.ToString()" /></td>
+                        <td>@(item.ViewerAccessed ? "View" : "Write")</td>
+                        <td>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => State.SelectEntry(item)">
+                                Change Detail
+                            </button>
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+
+                <div class="ps-form-row">
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="PreviousPageAsync" disabled="@(State.IsLoading || _filter.PageNumber <= 1)">
+                        Previous
+                    </button>
+                    <span>Page @_filter.PageNumber</span>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="NextPageAsync" disabled="@(State.IsLoading || !HasNextPage)">
+                        Next
+                    </button>
+                </div>
+            </section>
+
+            @if (State.SelectedEntry is not null)
+            {
+                <section class="ps-section">
+                    <h2>Change Detail</h2>
+                    <div class="ps-alert ps-alert--info" role="note">
+                        <span class="bi bi-info-circle" aria-hidden="true"></span>
+                        AuditLog does not currently store a structured before/after diff for this
+                        row (BeforeSnapshot/AfterSnapshot are reserved columns not yet populated by
+                        any stored procedure). The parsed key/value pairs below come from the
+                        audit row's free-text change-context field.
+                    </div>
+                    <p>
+                        <strong>@State.SelectedEntry.TableName</strong> — @State.SelectedEntry.Operation
+                        by @State.SelectedEntry.ChangedBy at @State.SelectedEntry.ChangeTime.ToString("yyyy-MM-dd HH:mm:ss") UTC
+                        (@State.SelectedEntry.Module)
+                    </p>
+                    @if (State.SelectedChangeDetail.Count == 0)
+                    {
+                        <p class="ps-text-muted">No change-detail context was recorded for this row.</p>
+                    }
+                    else
+                    {
+                        <table class="ps-table" aria-label="Parsed change detail">
+                            <thead>
+                                <tr><th>Field</th><th>Value</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var field in State.SelectedChangeDetail)
+                                {
+                                    <tr>
+                                        <td>@field.Key</td>
+                                        <td>@field.Value</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => State.SelectEntry(null)">Close</button>
+                </section>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _resultHeaders =
+        ["Changed (UTC)", "Table", "Operation", "Changed By", "Module", "Source DB", "Severity", "Type", "Actions"];
+
+    private AuditLogFilter _filter = new();
+
+    private bool HasNextPage => (long)_filter.PageNumber * _filter.PageSize < State.TotalCount;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Audit Viewer",
+            activeModuleCode: "operations-audit-viewer",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Audit Viewer" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+        _filter = State.Filter;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        State.SetFilter(_filter);
+        State.BeginSearch();
+
+        var result = await ApiClient.SearchAsync(_filter);
+
+        if (result.IsSuccess)
+        {
+            State.SetResults(result.Data!.Items, result.Data.TotalCount);
+        }
+        else
+        {
+            State.SetError(result.IsProblem ? result.Problem!.Detail : $"Failed to search audit log: {result.FaultType}");
+        }
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        _filter = new AuditLogFilter();
+        await SearchAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (_filter.PageNumber <= 1) return;
+        _filter.PageNumber--;
+        await SearchAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (!HasNextPage) return;
+        _filter.PageNumber++;
+        await SearchAsync();
+    }
+
+    private async Task ExportAsync()
+    {
+        State.BeginExport();
+
+        var bytes = await ApiClient.DownloadExportCsvAsync(_filter);
+
+        if (bytes is null)
+        {
+            State.SetExportError("Failed to export audit log to CSV.");
+            return;
+        }
+
+        var base64 = Convert.ToBase64String(bytes);
+        var fileName = $"audit-log-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+        await JS.InvokeVoidAsync("plantSafetyDownloadFile", fileName, base64, "text/csv");
+
+        State.CompleteExport();
+    }
+
+    private static string ToSeverityLabel(int severity) => severity switch
+    {
+        <= 0 => "Low",
+        <= 10 => "Medium",
+        <= 18 => "High",
+        _ => "Critical"
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

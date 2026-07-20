@@ -1,0 +1,263 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-19
+    FILE DESCRIPTION: Operations Backup/DR dashboard. Surfaces the real SQL Server
+      backup/DR automation built in Phase 12 (msdb.dbo.usp_PlantSafety_Backup*,
+      usp_PlantSafety_RestoreTest) and Phase 18 (Invoke-PlantSafetyBackup.ps1,
+      PlantSafety_DatabaseSizeLog), which previously had no C# or UI visibility.
+
+      NOT to be confused with Modules/CrossDomain (generic "Backup" entity CRUD stub).
+
+      SAFETY: This page intentionally has NO "restore production database" button.
+      "Run Restore Verify" only ever calls the safe, isolated, self-cleaning
+      usp_PlantSafety_RestoreTest (restores into an isolated *_DRTest database, runs
+      DBCC CHECKDB, always drops it afterwards -- never touches the live database).
+      Actual production restore is a manual, human-run procedure -- this page links to
+      the DR runbook instead of executing one.
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+@page "/modules/operations-backup"
+
+@inject BackupState State
+@inject BackupApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.OperationsBackup.ApiClients
+@using PlantSafety.UI.Modules.OperationsBackup.Models
+@using PlantSafety.UI.Modules.OperationsBackup.State
+
+<PageTitle>Operations — Backup &amp; DR — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Backup &amp; DR dashboard could not be displayed." OnRetry="LoadDashboardAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDashboardAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.Error</div>
+        }
+
+        @if (State.TriggerMessage is not null)
+        {
+            <div class="ps-alert ps-alert--info" role="status">@State.TriggerMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading backup &amp; DR status…" />
+        }
+        else
+        {
+            <section class="ps-section">
+                <h2>Backup Now</h2>
+                <div class="ps-form-row">
+                    <select class="ps-select" @bind="_selectedBackupType" disabled="@State.IsTriggering" aria-label="Backup type">
+                        <option value="@BackupType.Full">Full</option>
+                        <option value="@BackupType.Diff">Differential</option>
+                        <option value="@BackupType.Log">Transaction Log</option>
+                    </select>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="TriggerBackupAsync" disabled="@State.IsTriggering">
+                        @(State.IsTriggering ? "Starting…" : "Backup Now")
+                    </button>
+                </div>
+            </section>
+
+            <section class="ps-section">
+                <h2>Backup Health</h2>
+                <DataGridComponent TItem="BackupHealthDto"
+                                    Items="State.Health"
+                                    Headers="_healthHeaders"
+                                    KeySelector="h => h.DatabaseName"
+                                    EmptyMessage="No PlantSafety.* databases found."
+                                    AriaLabel="Backup health by database">
+                    <RowTemplate Context="item">
+                        <td>@item.DatabaseName</td>
+                        <td><StatusIndicatorComponent Status="@ToOperationalStatus(item.HealthStatus)" Label="@item.HealthStatus" /></td>
+                        <td>@(item.LastFullBackupUtc?.ToString("yyyy-MM-dd HH:mm") + " UTC" ?? "Never")</td>
+                        <td>@item.Reason</td>
+                        <td>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => RunRestoreVerifyAsync(item.DatabaseName)" disabled="@State.IsRestoreVerifying">
+                                @(State.IsRestoreVerifying ? "Verifying…" : "Run Restore Verify")
+                            </button>
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            @if (State.LastRestoreVerify is not null)
+            {
+                <section class="ps-section">
+                    <h2>Last Restore Verify Result</h2>
+                    <p>
+                        <strong>@State.LastRestoreVerify.DatabaseName</strong> —
+                        <SeverityBadgeComponent Severity="@(State.LastRestoreVerify.Result == "OK" ? "Low" : "Critical")" Text="@State.LastRestoreVerify.Result" />
+                        (@State.LastRestoreVerify.StartUtc.ToString("yyyy-MM-dd HH:mm") UTC
+                        @if (State.LastRestoreVerify.EndUtc is not null)
+                        {
+                            <text> – @State.LastRestoreVerify.EndUtc.Value.ToString("HH:mm") UTC</text>
+                        })
+                    </p>
+                    @if (!string.IsNullOrWhiteSpace(State.LastRestoreVerify.Details))
+                    {
+                        <p class="ps-text-muted">@State.LastRestoreVerify.Details</p>
+                    }
+                </section>
+            }
+
+            <section class="ps-section">
+                <h2>Backup Status / History</h2>
+                <DataGridComponent TItem="BackupHistoryItemDto"
+                                    Items="State.History"
+                                    Headers="_historyHeaders"
+                                    EmptyMessage="No backup history found."
+                                    AriaLabel="Backup history">
+                    <RowTemplate Context="item">
+                        <td>@item.DatabaseName</td>
+                        <td>@item.BackupTypeDescription</td>
+                        <td>@item.BackupFinishDateUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@item.SizeMB.ToString("N1") MB</td>
+                        <td>@item.PhysicalDeviceName</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            <section class="ps-section">
+                <h2>Database Size</h2>
+                <DataGridComponent TItem="DatabaseSizeSnapshotDto"
+                                    Items="State.DatabaseSizes"
+                                    Headers="_sizeHeaders"
+                                    EmptyMessage="No database size snapshots found."
+                                    AriaLabel="Database size history">
+                    <RowTemplate Context="item">
+                        <td>@item.DatabaseName</td>
+                        <td>@item.FileLogicalName</td>
+                        <td>@item.FileType</td>
+                        <td>@item.SizeMB.ToString("N1") MB</td>
+                        <td>@(item.UsedSpaceMB?.ToString("N1") + " MB" ?? "—")</td>
+                        <td>@item.CapturedUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            <section class="ps-section">
+                <h2>Disaster Recovery — Production Restore</h2>
+                <div class="ps-alert ps-alert--warning" role="note">
+                    <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                    There is no automated, one-click production restore in PlantSafety by design.
+                    "Run Restore Verify" above only restores a backup into an isolated,
+                    self-cleaning test database and never touches production data. To restore a
+                    live database, an operator must follow the manual DR runbook below.
+                </div>
+                <p>
+                    DR Runbook: <code>Phase18-ExpressChecklist/DR-manual-restore-runbook.md</code>
+                    (see the PlantSafety.Infrastructure repository under
+                    <code>Persistence/Migrations/Phase18-ExpressChecklist/</code>).
+                </p>
+            </section>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _healthHeaders = ["Database", "Health", "Last Full Backup", "Reason", "Actions"];
+    private static readonly string[] _historyHeaders = ["Database", "Type", "Finished", "Size", "File"];
+    private static readonly string[] _sizeHeaders = ["Database", "File", "Type", "Size", "Used", "Captured"];
+
+    private BackupType _selectedBackupType = BackupType.Full;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Backup & DR",
+            activeModuleCode: "operations-backup",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Backup & DR" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        State.BeginLoad();
+
+        var healthTask = ApiClient.GetHealthAsync();
+        var historyTask = ApiClient.GetHistoryAsync();
+        var sizeTask = ApiClient.GetDatabaseSizeAsync();
+
+        await Task.WhenAll(healthTask, historyTask, sizeTask);
+
+        var health = healthTask.Result;
+        var history = historyTask.Result;
+        var size = sizeTask.Result;
+
+        if (health.IsSuccess && history.IsSuccess && size.IsSuccess)
+        {
+            State.SetData(health.Data!, history.Data!, size.Data!);
+        }
+        else
+        {
+            var failure = !health.IsSuccess ? health : !history.IsSuccess ? history : size;
+            State.SetError(failure.IsProblem ? failure.Problem!.Detail : $"Failed to load dashboard: {failure.FaultType}");
+        }
+    }
+
+    private async Task TriggerBackupAsync()
+    {
+        State.BeginTrigger();
+        var result = await ApiClient.TriggerBackupAsync(_selectedBackupType);
+
+        if (result.IsSuccess)
+        {
+            State.SetTriggerMessage($"{_selectedBackupType} backup started (PID {result.Data!.ProcessId?.ToString() ?? "n/a"}). Logs: {result.Data.LogDirectory}");
+        }
+        else
+        {
+            State.SetTriggerMessage(result.IsProblem ? $"Failed to start backup: {result.Problem!.Detail}" : $"Failed to start backup: {result.FaultType}");
+        }
+    }
+
+    private async Task RunRestoreVerifyAsync(string databaseName)
+    {
+        State.BeginRestoreVerify();
+        var result = await ApiClient.RunRestoreVerifyAsync(databaseName);
+
+        if (result.IsSuccess)
+        {
+            State.SetRestoreVerifyResult(result.Data!);
+        }
+        else
+        {
+            State.SetRestoreVerifyError(result.IsProblem ? $"Restore verify failed: {result.Problem!.Detail}" : $"Restore verify failed: {result.FaultType}");
+        }
+    }
+
+    private static string ToOperationalStatus(string healthStatus) => healthStatus switch
+    {
+        "Green" => "Healthy",
+        "Yellow" => "Warning",
+        "Red" => "Critical",
+        _ => "Offline"
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

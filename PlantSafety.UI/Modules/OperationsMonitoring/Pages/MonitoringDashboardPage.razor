@@ -1,0 +1,405 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-20
+    FILE DESCRIPTION: Operations.Monitoring diagnostics dashboard — DB Health, DB Size,
+      DB Performance, DB Errors, DB Deadlocks.
+
+      DB Health reuses the existing /health/ready HealthCheckService aggregation (does NOT
+      re-implement DatabaseHealthCheck/SchemaVersionHealthCheck). DB Size reuses the
+      existing Operations.Backup database-size history
+      (msdb.dbo.PlantSafety_DatabaseSizeLog) via the Monitoring API's passthrough endpoint.
+
+      READ-ONLY page: no trigger/write actions of any kind.
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+@page "/modules/operations-monitoring"
+
+@inject MonitoringState State
+@inject MonitoringApiClient ApiClient
+@inject NavigationState NavState
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.OperationsMonitoring.ApiClients
+@using PlantSafety.UI.Modules.OperationsMonitoring.Models
+@using PlantSafety.UI.Modules.OperationsMonitoring.State
+
+<PageTitle>Operations — Monitoring — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Monitoring dashboard could not be displayed." OnRetry="LoadDashboardAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDashboardAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading monitoring diagnostics…" />
+        }
+        else
+        {
+            <section class="ps-section">
+                <h2>DB Health</h2>
+                @if (State.Health is not null)
+                {
+                    <p>
+                        Overall: <StatusIndicatorComponent Status="@ToOperationalStatus(State.Health.OverallStatus)" Label="@State.Health.OverallStatus" />
+                        <span class="ps-text-muted">(@State.Health.CheckedUtc.ToString("yyyy-MM-dd HH:mm") UTC, @State.Health.TotalDurationMs.ToString("N0") ms)</span>
+                    </p>
+                    <DataGridComponent TItem="HealthCheckEntryDto"
+                                        Items="State.Health.Entries"
+                                        Headers="_healthHeaders"
+                                        KeySelector="h => h.Name"
+                                        EmptyMessage="No health checks registered."
+                                        AriaLabel="Health check entries">
+                        <RowTemplate Context="item">
+                            <td>@item.Name</td>
+                            <td><StatusIndicatorComponent Status="@ToOperationalStatus(item.Status)" Label="@item.Status" /></td>
+                            <td>@item.Description</td>
+                            <td>@item.DurationMs.ToString("N0") ms</td>
+                        </RowTemplate>
+                    </DataGridComponent>
+                }
+            </section>
+
+            <section class="ps-section">
+                <h2>DB Size</h2>
+                <DataGridComponent TItem="DatabaseSizeSnapshotDto"
+                                    Items="State.DatabaseSizes"
+                                    Headers="_sizeHeaders"
+                                    EmptyMessage="No database size snapshots found."
+                                    AriaLabel="Database size history">
+                    <RowTemplate Context="item">
+                        <td>@item.DatabaseName</td>
+                        <td>@item.FileLogicalName</td>
+                        <td>@item.FileType</td>
+                        <td>@item.SizeMB.ToString("N1") MB</td>
+                        <td>@(item.UsedSpaceMB?.ToString("N1") + " MB" ?? "—")</td>
+                        <td>@item.CapturedUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            <section class="ps-section">
+                <h2>DB Performance (Query Store)</h2>
+                <div class="ps-form-row">
+                    <select class="ps-select" @bind="_selectedDatabaseKey" @bind:after="LoadQueryPerformanceAsync" aria-label="Database">
+                        @foreach (var key in _databaseKeys)
+                        {
+                            <option value="@key">@key</option>
+                        }
+                    </select>
+                </div>
+                <DataGridComponent TItem="QueryPerformanceItemDto"
+                                    Items="State.QueryPerformance"
+                                    Headers="_performanceHeaders"
+                                    EmptyMessage="No Query Store data found for this database."
+                                    AriaLabel="Top queries by average CPU time">
+                    <RowTemplate Context="item">
+                        <td>@item.QueryId</td>
+                        <td>@item.PlanId</td>
+                        <td class="ps-text-truncate" title="@item.QueryText">@item.QueryText</td>
+                        <td>@item.ExecutionCount.ToString("N0")</td>
+                        <td>@item.AvgCpuTimeMs.ToString("N1") ms</td>
+                        <td>@item.AvgDurationMs.ToString("N1") ms</td>
+                        <td>@item.AvgLogicalReads.ToString("N0")</td>
+                        <td>@(item.LastExecutionUtc?.ToString("yyyy-MM-dd HH:mm") + " UTC" ?? "—")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            <section class="ps-section">
+                <h2>DB Errors</h2>
+                <div class="ps-form-row">
+                    <input class="ps-input" type="number" placeholder="Min severity" @bind="_errorFilter.MinSeverity" aria-label="Minimum error severity filter" />
+                    <input class="ps-input" type="number" placeholder="Max severity" @bind="_errorFilter.MaxSeverity" aria-label="Maximum error severity filter" />
+                    <input class="ps-input" placeholder="Source database" @bind="_errorFilter.SourceDatabase" aria-label="Source database filter" />
+                    <input class="ps-input" placeholder="Module (stored procedure)" @bind="_errorFilter.Module" aria-label="Module filter" />
+                    <input class="ps-input" placeholder="Error procedure" @bind="_errorFilter.ErrorProcedure" aria-label="Error procedure filter" />
+                </div>
+                <div class="ps-form-row">
+                    <label class="ps-form-label" for="errors-since-utc">Since (UTC)</label>
+                    <input id="errors-since-utc" class="ps-input" type="datetime-local" @bind="_errorFilter.SinceUtc" aria-label="Since date filter" />
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadErrorsAsync" disabled="@State.IsLoading">
+                        <span class="bi bi-search" aria-hidden="true"></span> Apply Filters
+                    </button>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ResetErrorFiltersAsync" disabled="@State.IsLoading">
+                        Reset
+                    </button>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ExportErrorsAsync" disabled="@State.IsExportingErrors">
+                        <span class="bi bi-download" aria-hidden="true"></span> @(State.IsExportingErrors ? "Exporting…" : "Export")
+                    </button>
+                </div>
+
+                @if (State.ExportError is not null)
+                {
+                    <div class="ps-alert ps-alert--warning" role="alert">@State.ExportError</div>
+                }
+
+                <DataGridComponent TItem="ErrorLogItemDto"
+                                    Items="State.Errors"
+                                    Headers="_errorHeaders"
+                                    EmptyMessage="No recent errors found."
+                                    AriaLabel="Recent database errors">
+                    <RowTemplate Context="item">
+                        <td>@item.ErrorDateUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@item.ErrorNumber</td>
+                        <td><SeverityBadgeComponent Severity="@ToSeverityBand(item.ErrorSeverity)" Text="@item.ErrorSeverity?.ToString()" /></td>
+                        <td>@item.SourceDatabase</td>
+                        <td>@item.Module</td>
+                        <td class="ps-text-truncate" title="@item.ErrorMessage">@item.ErrorMessage</td>
+                        <td>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => State.SelectError(item)">
+                                Context Detail
+                            </button>
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+
+                @if (State.SelectedError is not null)
+                {
+                    <div class="ps-section">
+                        <h3>Context Detail</h3>
+                        <div class="ps-alert ps-alert--info" role="note">
+                            <span class="bi bi-info-circle" aria-hidden="true"></span>
+                            [PlantSafety.ErrorDB].dbo.ErrorLog has no CorrelationId column, so this is
+                            NOT a correlation ID lookup -- these are the parsed key/value pairs from
+                            the row's free-text ErrorContext field, which may or may not include a
+                            caller-supplied identifier.
+                        </div>
+                        <p>
+                            <strong>@State.SelectedError.ErrorProcedure</strong> (@State.SelectedError.SourceDatabase) —
+                            @State.SelectedError.ErrorDateUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC
+                        </p>
+                        @if (State.SelectedContextDetail.Count == 0)
+                        {
+                            <p class="ps-text-muted">No context was recorded for this row.</p>
+                        }
+                        else
+                        {
+                            <table class="ps-table" aria-label="Parsed error context detail">
+                                <thead>
+                                    <tr><th>Field</th><th>Value</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var field in State.SelectedContextDetail)
+                                    {
+                                        <tr>
+                                            <td>@field.Key</td>
+                                            <td>@field.Value</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => State.SelectError(null)">Close</button>
+                    </div>
+                }
+            </section>
+
+            <section class="ps-section">
+                <h2>DB Deadlocks</h2>
+                <DataGridComponent TItem="DeadlockEventDto"
+                                    Items="State.Deadlocks"
+                                    Headers="_deadlockHeaders"
+                                    EmptyMessage="No deadlock events found in the system_health ring buffer."
+                                    AriaLabel="Recent deadlock events">
+                    <RowTemplate Context="item">
+                        <td>@item.EventTimeUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                        <td>@item.VictimProcessId</td>
+                        <td>@item.ParticipantCount</td>
+                        <td class="ps-text-truncate" title="@item.ResourceSummary">@item.ResourceSummary</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _healthHeaders = ["Check", "Status", "Description", "Duration"];
+    private static readonly string[] _sizeHeaders = ["Database", "File", "Type", "Size", "Used", "Captured"];
+    private static readonly string[] _performanceHeaders = ["Query Id", "Plan Id", "Query Text", "Executions", "Avg CPU", "Avg Duration", "Avg Reads", "Last Execution"];
+    private static readonly string[] _errorHeaders = ["Logged", "Error #", "Severity", "Database", "Module", "Message", "Actions"];
+    private static readonly string[] _deadlockHeaders = ["Occurred", "Victim", "Participants", "Resources"];
+
+    private static readonly string[] _databaseKeys =
+    [
+        "CoreDB", "ArchiveDB", "CloudIdentityDB", "PredictiveDB",
+        "ReportingDB", "IntegrationDB", "DiagnosticsDB", "ExportImportDB"
+    ];
+
+    private string _selectedDatabaseKey = "CoreDB";
+    private ErrorLogFilter _errorFilter = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Monitoring",
+            activeModuleCode: "operations-monitoring",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Monitoring" }
+            ]);
+
+        _selectedDatabaseKey = State.SelectedDatabaseKey;
+        _errorFilter = State.ErrorLogFilter;
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        State.BeginLoad();
+
+        var healthTask = ApiClient.GetHealthAsync();
+        var sizeTask = ApiClient.GetDatabaseSizeAsync();
+        var performanceTask = ApiClient.GetQueryPerformanceAsync(_selectedDatabaseKey);
+        var errorsTask = ApiClient.GetErrorsAsync();
+        var deadlocksTask = ApiClient.GetDeadlocksAsync();
+
+        await Task.WhenAll(healthTask, sizeTask, performanceTask, errorsTask, deadlocksTask);
+
+        var health = healthTask.Result;
+        var size = sizeTask.Result;
+        var performance = performanceTask.Result;
+        var errors = errorsTask.Result;
+        var deadlocks = deadlocksTask.Result;
+
+        if (health.IsSuccess && size.IsSuccess && performance.IsSuccess && errors.IsSuccess && deadlocks.IsSuccess)
+        {
+            State.SetData(health.Data!, size.Data!, performance.Data!, errors.Data!, deadlocks.Data!);
+        }
+        else if (!health.IsSuccess)
+        {
+            State.SetError(health.IsProblem ? $"Failed to load DB health: {health.Problem!.Detail}" : $"Failed to load DB health: {health.FaultType}");
+        }
+        else if (!size.IsSuccess)
+        {
+            State.SetError(size.IsProblem ? $"Failed to load DB size: {size.Problem!.Detail}" : $"Failed to load DB size: {size.FaultType}");
+        }
+        else if (!performance.IsSuccess)
+        {
+            State.SetError(performance.IsProblem ? $"Failed to load DB performance: {performance.Problem!.Detail}" : $"Failed to load DB performance: {performance.FaultType}");
+        }
+        else if (!errors.IsSuccess)
+        {
+            State.SetError(errors.IsProblem ? $"Failed to load DB errors: {errors.Problem!.Detail}" : $"Failed to load DB errors: {errors.FaultType}");
+        }
+        else
+        {
+            State.SetError(deadlocks.IsProblem ? $"Failed to load DB deadlocks: {deadlocks.Problem!.Detail}" : $"Failed to load DB deadlocks: {deadlocks.FaultType}");
+        }
+    }
+
+    private async Task LoadQueryPerformanceAsync()
+    {
+        State.SetSelectedDatabaseKey(_selectedDatabaseKey);
+
+        var result = await ApiClient.GetQueryPerformanceAsync(_selectedDatabaseKey);
+        if (result.IsSuccess)
+        {
+            State.SetData(State.Health!, State.DatabaseSizes, result.Data!, State.Errors, State.Deadlocks);
+        }
+        else
+        {
+            State.SetError(result.IsProblem ? $"Failed to load query performance: {result.Problem!.Detail}" : $"Failed to load query performance: {result.FaultType}");
+        }
+    }
+
+    private async Task LoadErrorsAsync()
+    {
+        State.SetErrorLogFilter(_errorFilter);
+
+        var result = await ApiClient.GetErrorsAsync(
+            minSeverity: _errorFilter.MinSeverity,
+            sinceUtc: _errorFilter.SinceUtc,
+            maxSeverity: _errorFilter.MaxSeverity,
+            sourceDatabase: _errorFilter.SourceDatabase,
+            module: _errorFilter.Module,
+            errorProcedure: _errorFilter.ErrorProcedure);
+
+        if (result.IsSuccess)
+        {
+            State.SetErrors(result.Data!);
+        }
+        else
+        {
+            State.SetError(result.IsProblem ? $"Failed to load DB errors: {result.Problem!.Detail}" : $"Failed to load DB errors: {result.FaultType}");
+        }
+    }
+
+    private async Task ResetErrorFiltersAsync()
+    {
+        _errorFilter = new ErrorLogFilter();
+        await LoadErrorsAsync();
+    }
+
+    private async Task ExportErrorsAsync()
+    {
+        State.BeginErrorExport();
+
+        var bytes = await ApiClient.DownloadErrorLogExportCsvAsync(
+            minSeverity: _errorFilter.MinSeverity,
+            sinceUtc: _errorFilter.SinceUtc,
+            maxSeverity: _errorFilter.MaxSeverity,
+            sourceDatabase: _errorFilter.SourceDatabase,
+            module: _errorFilter.Module,
+            errorProcedure: _errorFilter.ErrorProcedure);
+
+        if (bytes is null)
+        {
+            State.SetExportError("Failed to export DB errors to CSV.");
+            return;
+        }
+
+        var base64 = Convert.ToBase64String(bytes);
+        var fileName = $"error-log-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+        await JS.InvokeVoidAsync("plantSafetyDownloadFile", fileName, base64, "text/csv");
+
+        State.CompleteErrorExport();
+    }
+
+    /// <summary>
+    /// Maps a raw ErrorSeverity to a display severity band, following SQL Server's own
+    /// documented severity ranges: 0-10 informational, 11-16 user-correctable/typical app
+    /// errors, 17-19 resource/severe errors, 20-25 fatal/system errors.
+    /// </summary>
+    private static string ToSeverityBand(int? errorSeverity) => errorSeverity switch
+    {
+        null => "Info",
+        <= 10 => "Low",
+        <= 16 => "Medium",
+        <= 19 => "High",
+        _ => "Critical"
+    };
+
+    private static string ToOperationalStatus(string status) => status switch
+    {
+        "Healthy" => "Healthy",
+        "Degraded" => "Warning",
+        "Unhealthy" => "Critical",
+        _ => "Offline"
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

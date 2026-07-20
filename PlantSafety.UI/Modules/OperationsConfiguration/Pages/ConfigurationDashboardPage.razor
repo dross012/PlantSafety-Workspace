@@ -1,0 +1,172 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-20
+    FILE DESCRIPTION: Operations Configuration Framework dashboard. Surfaces the real
+      Phase 14 Governance [System].[FeatureFlag] tables (144-feature-flags.sql), confirmed
+      present ONLY in PlantSafety.ArchiveDB and PlantSafety.IntegrationDB.
+
+      SCOPE NOTE: The roadmap deliverable for this module was "a configuration editor:
+      feature flags, thresholds, routing rules, tenant overrides." A full search of
+      PlantSafety.Infrastructure\Persistence\Migrations\**\*.sql for tables named
+      Threshold/RoutingRule/TenantOverride/TenantConfig (or similar) found NO backing SQL
+      Server tables for thresholds, routing rules, or tenant overrides as of this build
+      (2026-07-20) — only unrelated EnvironmentalHealth.Threshold *columns* exist, which
+      are ordinary domain data, not a configuration-editor target. Per the No-Guessing
+      Rule for Schema Generation, this page deliberately does NOT fabricate editors for
+      those three areas; it is scoped honestly to feature-flag management only, with the
+      note below left in place until real tables are built.
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+@page "/modules/operations-configuration"
+
+@inject ConfigurationState State
+@inject ConfigurationApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.OperationsConfiguration.ApiClients
+@using PlantSafety.UI.Modules.OperationsConfiguration.Models
+@using PlantSafety.UI.Modules.OperationsConfiguration.State
+
+<PageTitle>Operations — Configuration — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Configuration dashboard could not be displayed." OnRetry="LoadDashboardAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDashboardAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.Error</div>
+        }
+
+        @if (State.ToggleMessage is not null)
+        {
+            <div class="ps-alert ps-alert--info" role="status">@State.ToggleMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading feature flags…" />
+        }
+        else
+        {
+            <section class="ps-section">
+                <h2>Feature Flags</h2>
+                <p class="ps-text-muted">
+                    DB-level ops kill-switches from <code>[System].[FeatureFlag]</code>, checked
+                    directly by SQL Server-side jobs/procedures (independent of the API process
+                    being up). Toggling a flag here is a normal, reversible update — every change
+                    is recorded with your identity and timestamp in the flag's UpdatedBy/UpdatedUtc
+                    columns.
+                </p>
+                <DataGridComponent TItem="FeatureFlagDto"
+                                    Items="State.Flags"
+                                    Headers="_flagHeaders"
+                                    KeySelector="f => ConfigurationState.FlagKey(f.DatabaseKey, f.FlagName)"
+                                    EmptyMessage="No feature flags found."
+                                    AriaLabel="Feature flags">
+                    <RowTemplate Context="item">
+                        <td>@item.DatabaseKey</td>
+                        <td>@item.FlagName</td>
+                        <td>
+                            <StatusIndicatorComponent Status="@(item.IsEnabled ? "Healthy" : "Offline")" Label="@(item.IsEnabled ? "Enabled" : "Disabled")" />
+                        </td>
+                        <td>@item.Description</td>
+                        <td>@item.UpdatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@item.UpdatedBy</td>
+                        <td>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm"
+                                    @onclick="() => ToggleFlagAsync(item)"
+                                    disabled="@(State.TogglingFlagKey == ConfigurationState.FlagKey(item.DatabaseKey, item.FlagName))">
+                                @(State.TogglingFlagKey == ConfigurationState.FlagKey(item.DatabaseKey, item.FlagName)
+                                    ? "Updating…"
+                                    : (item.IsEnabled ? "Disable" : "Enable"))
+                            </button>
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            <section class="ps-section">
+                <h2>Thresholds / Routing Rules / Tenant Overrides</h2>
+                <div class="ps-alert ps-alert--warning" role="note">
+                    <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                    Out of scope for this build. No SQL Server tables for Thresholds, Routing
+                    Rules, or Tenant Overrides exist in the codebase as of 2026-07-20 (confirmed by
+                    searching every migration script under
+                    <code>PlantSafety.Infrastructure\Persistence\Migrations</code>). This page will
+                    not fabricate editors for data that does not exist — these sections will be
+                    added once real backing tables are built.
+                </div>
+            </section>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _flagHeaders = ["Database", "Flag", "Status", "Description", "Last Updated", "Updated By", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Configuration",
+            activeModuleCode: "operations-configuration",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Configuration" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        State.BeginLoad();
+
+        var result = await ApiClient.GetAllFeatureFlagsAsync();
+
+        if (result.IsSuccess)
+        {
+            State.SetData(result.Data!);
+        }
+        else
+        {
+            State.SetError(result.IsProblem ? result.Problem!.Detail : $"Failed to load feature flags: {result.FaultType}");
+        }
+    }
+
+    private async Task ToggleFlagAsync(FeatureFlagDto item)
+    {
+        State.BeginToggle(item.DatabaseKey, item.FlagName);
+
+        var result = await ApiClient.SetFeatureFlagEnabledAsync(item.DatabaseKey, item.FlagName, !item.IsEnabled);
+
+        if (result.IsSuccess)
+        {
+            State.ApplyToggleResult(result.Data!);
+        }
+        else
+        {
+            State.SetToggleError(result.IsProblem ? $"Failed to update {item.FlagName}: {result.Problem!.Detail}" : $"Failed to update {item.FlagName}: {result.FaultType}");
+        }
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

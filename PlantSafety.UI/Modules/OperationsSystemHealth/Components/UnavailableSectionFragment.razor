@@ -1,0 +1,24 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-20
+    FILE DESCRIPTION: Small reusable fragment rendered by SystemHealthDashboardPage for
+      any rollup section the API marked unavailable (see SystemHealthSectionDto{T}).
+      Degrades a single card in place rather than blanking the whole dashboard.
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+<div class="ps-alert ps-alert--warning" role="status">
+    <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+    @Label is currently unavailable@(string.IsNullOrWhiteSpace(Reason) ? "." : $": {Reason}")
+</div>
+
+@code {
+    /// <summary>The section label shown in the "X is currently unavailable" message.</summary>
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>The sanitized, user-safe reason the section is unavailable, if known.</summary>
+    [Parameter]
+    public string? Reason { get; set; }
+}

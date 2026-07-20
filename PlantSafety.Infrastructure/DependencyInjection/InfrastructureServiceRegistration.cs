@@ -74,6 +74,28 @@ using PlantSafety.Application.Features.ContinuousImprovement.Handlers.CAPA;
 using PlantSafety.Infrastructure.Features.ContinuousImprovement.CAPA.Repositories;
 using PlantSafety.Application.Features.Operational.Handlers.Training;
 using PlantSafety.Infrastructure.Features.Operational.Training.Repositories;
+using PlantSafety.Application.Operations.Backup.Repositories;
+using PlantSafety.Infrastructure.Operations.Backup.Options;
+using PlantSafety.Infrastructure.Operations.Backup.Persistence;
+using PlantSafety.Application.Operations.SchemaGuard.Repositories;
+using PlantSafety.Infrastructure.Operations.SchemaGuard.Options;
+using PlantSafety.Infrastructure.Operations.SchemaGuard.Persistence;
+using PlantSafety.Infrastructure.Operations.SchemaGuard.FileSystem;
+using PlantSafety.Application.Operations.Monitoring.Repositories;
+using PlantSafety.Infrastructure.Operations.Monitoring.Options;
+using PlantSafety.Infrastructure.Operations.Monitoring.Persistence;
+using PlantSafety.Application.Operations.AuditViewer.Repositories;
+using PlantSafety.Infrastructure.Operations.AuditViewer.Options;
+using PlantSafety.Infrastructure.Operations.AuditViewer.Persistence;
+using PlantSafety.Application.Operations.Archival.Repositories;
+using PlantSafety.Infrastructure.Operations.Archival.Options;
+using PlantSafety.Infrastructure.Operations.Archival.Persistence;
+using PlantSafety.Application.Operations.Configuration.Repositories;
+using PlantSafety.Infrastructure.Operations.Configuration.Options;
+using PlantSafety.Infrastructure.Operations.Configuration.Persistence;
+using PlantSafety.Application.Operations.SystemHealth.Repositories;
+using PlantSafety.Infrastructure.Operations.SystemHealth.Options;
+using PlantSafety.Infrastructure.Operations.SystemHealth.Persistence;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -188,6 +210,67 @@ public static class InfrastructureServiceRegistration
 
         // Features tree — Operational module repositories
         services.AddScoped<ITrainingRepository, TrainingDapperRepository>();
+
+        // Operations — Backup/DR (Phase 12 + Phase 18 SQL Server backup automation, surfaced
+        // for the first time in C#/UI here; NOT the unrelated CrossDomain.Backup CRUD stub).
+        services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
+        services.AddScoped<IBackupRepository, BackupDapperRepository>();
+
+        // Operations — Schema Drift Guard (Phase 7 Governance [System].[SchemaMigrations]
+        // tracking, compared against a filesystem manifest scan of Migrations\**\*.sql).
+        // Manifest provider is a Singleton: it scans the filesystem once and caches the
+        // result in-process for the lifetime of the app instance.
+        services.Configure<SchemaGuardOptions>(configuration.GetSection(SchemaGuardOptions.SectionName));
+        services.AddScoped<ISchemaVersionRepository, SchemaVersionDapperRepository>();
+        services.AddSingleton<IMigrationManifestProvider, MigrationManifestProvider>();
+
+        // Operations — Archival (Phase 7 Governance retention/purge automation:
+        // sp_AuditLog_Purge/sp_ErrorLog_Purge/sp_IntegrationLogEntry_Purge/
+        // sp_ReplayRecord_Purge/sp_DiagnosticEvent_Purge, 74-retention-archival.sql, plus
+        // Phase 18 Invoke-PlantSafetyPurge.ps1 Task Scheduler automation), surfaced for the
+        // first time in C#/UI here. Sibling module to Operations.Backup/SchemaGuard.
+        services.Configure<ArchivalOptions>(configuration.GetSection(ArchivalOptions.SectionName));
+        services.AddScoped<IArchivalRepository, ArchivalDapperRepository>();
+
+        // Operations — Audit Viewer (read-only search/export/diff view over the shared,
+        // cross-database [PlantSafety.AuditDB].dbo.AuditLog table written to by hundreds of
+        // stored procedures across all 8 module databases via the dbo.AuditLog synonym --
+        // Phase8-Structural\83-synonyms-audit-error.sql). Sibling module to
+        // Operations.Backup/SchemaGuard/Archival. Never issues INSERT/UPDATE/DELETE.
+        services.Configure<AuditViewerOptions>(configuration.GetSection(AuditViewerOptions.SectionName));
+        services.AddScoped<IAuditLogRepository, AuditLogDapperRepository>();
+
+        // Operations — Monitoring (DB Performance via per-database Query Store, DB Errors via
+        // the shared [PlantSafety.ErrorDB].dbo.ErrorLog table, DB Deadlocks via the built-in
+        // "system_health" Extended Events session). DB Health and DB Size are deliberately NOT
+        // duplicated here -- see IDatabaseHealthReportProvider (wraps the existing
+        // HealthCheckService) and GetMonitoringDatabaseSizeQueryHandler (delegates to the
+        // existing IBackupRepository) respectively. Sibling module to Operations.Backup/
+        // SchemaGuard/Archival/AuditViewer.
+        services.Configure<MonitoringOptions>(configuration.GetSection(MonitoringOptions.SectionName));
+        services.AddScoped<IMonitoringRepository, MonitoringDapperRepository>();
+        services.AddScoped<IDatabaseHealthReportProvider, DatabaseHealthReportProvider>();
+
+        // Operations — Configuration (Phase 14 Governance [System].[FeatureFlag] editor,
+        // 144-feature-flags.sql), confirmed present ONLY in PlantSafety.ArchiveDB and
+        // PlantSafety.IntegrationDB (verified by reading the full migration script). Each
+        // database's flags are independent — no cross-database sync. "Thresholds" /
+        // "Routing Rules" / "Tenant Overrides" have no backing SQL Server tables in this
+        // codebase as of this build and are deliberately out of scope — see
+        // IFeatureFlagRepository. Sibling module to Operations.Backup/SchemaGuard/
+        // Archival/AuditViewer/Monitoring.
+        services.Configure<ConfigurationOptions>(configuration.GetSection(ConfigurationOptions.SectionName));
+        services.AddScoped<IFeatureFlagRepository, FeatureFlagDapperRepository>();
+
+        // Operations — System Health (Step 10/10, final roadmap deliverable: unified rollup
+        // dashboard over Backup/SchemaGuard/Monitoring/Archival/AuditViewer/Configuration via
+        // MediatR ISender fan-out, plus the two genuinely new pieces here -- SQL Server
+        // version/edition of the primary tenant connection (SERVERPROPERTY) and live Windows
+        // Task Scheduler status for the Phase 18 automation jobs (schtasks.exe). App version is
+        // a pure Assembly read with no repository. Sibling module to Operations.Backup/
+        // SchemaGuard/Archival/AuditViewer/Monitoring/Configuration.
+        services.Configure<SystemHealthOptions>(configuration.GetSection(SystemHealthOptions.SectionName));
+        services.AddScoped<ISystemHealthRepository, SystemHealthDapperRepository>();
 
         return services;
     }

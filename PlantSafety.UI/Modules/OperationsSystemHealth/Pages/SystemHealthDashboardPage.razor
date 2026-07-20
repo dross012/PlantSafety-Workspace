@@ -1,0 +1,276 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-20
+    FILE DESCRIPTION: Operations.SystemHealth unified rollup dashboard -- the final
+      deliverable (Step 10/10) of the "bring C# up to the SQL Server hardening standard"
+      roadmap. Presents backup health, schema health, DB health, DB performance/error
+      counts, purge status, recent audit activity, feature flags, Task Scheduler job
+      status, app version, and DB version as a grid of status cards, each linking through
+      to its full owning module's dashboard page. Any section the API marked unavailable
+      renders a degraded "Unavailable" card instead of blanking the whole page.
+
+      READ-ONLY page: no trigger/write actions of any kind.
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+@page "/modules/operations-system-health"
+
+@inject SystemHealthState State
+@inject SystemHealthApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.OperationsSystemHealth.ApiClients
+@using PlantSafety.UI.Modules.OperationsSystemHealth.Components
+@using PlantSafety.UI.Modules.OperationsSystemHealth.Models
+@using PlantSafety.UI.Modules.OperationsSystemHealth.State
+
+<PageTitle>Operations — System Health — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The System Health dashboard could not be displayed." OnRetry="LoadDashboardAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDashboardAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+            @if (State.Report is not null)
+            {
+                <span class="ps-text-muted">Generated @State.Report.GeneratedUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</span>
+            }
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading System Health rollup…" />
+        }
+        else if (State.Report is not null)
+        {
+            var report = State.Report;
+
+            <div class="ps-card-grid">
+
+                @* ── Platform Versions ─────────────────────────────────────────── *@
+                <div class="ps-card">
+                    <h3>Platform Versions</h3>
+                    <p><strong>App Version:</strong> @report.AppVersion</p>
+                    @if (report.DatabaseVersion.IsAvailable && report.DatabaseVersion.Data is not null)
+                    {
+                        <p><strong>DB Version:</strong> @report.DatabaseVersion.Data.ProductVersion (@report.DatabaseVersion.Data.Edition, @report.DatabaseVersion.Data.ProductLevel)</p>
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.DatabaseVersion.UnavailableReason" Label="DB Version" />
+                    }
+                </div>
+
+                @* ── Backup Health ──────────────────────────────────────────────── *@
+                <div class="ps-card">
+                    <h3>Backup Health</h3>
+                    @if (report.BackupHealth.IsAvailable && report.BackupHealth.Data is not null)
+                    {
+                        @foreach (var db in report.BackupHealth.Data)
+                        {
+                            <p>
+                                <StatusIndicatorComponent Status="@ToOperationalStatus(db.HealthStatus)" Label="@db.DatabaseName" />
+                            </p>
+                        }
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.BackupHealth.UnavailableReason" Label="Backup Health" />
+                    }
+                    <a class="ps-btn ps-btn-ghost ps-btn-sm" href="@RouteDefinitions.OperationsBackupDashboard">View Backup Dashboard</a>
+                </div>
+
+                @* ── Schema Health ──────────────────────────────────────────────── *@
+                <div class="ps-card">
+                    <h3>Schema Drift</h3>
+                    @if (report.SchemaHealth.IsAvailable && report.SchemaHealth.Data is not null)
+                    {
+                        @foreach (var db in report.SchemaHealth.Data)
+                        {
+                            <p>
+                                <StatusIndicatorComponent Status="@ToOperationalStatus(db.Status)" Label="@($"{db.DatabaseKey} ({db.AppliedCount} applied)")" />
+                            </p>
+                        }
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.SchemaHealth.UnavailableReason" Label="Schema Health" />
+                    }
+                    <a class="ps-btn ps-btn-ghost ps-btn-sm" href="@RouteDefinitions.OperationsSchemaGuardDashboard">View Schema Guard Dashboard</a>
+                </div>
+
+                @* ── DB Health ───────────────────────────────────────────────────── *@
+                <div class="ps-card">
+                    <h3>DB Health</h3>
+                    @if (report.DatabaseHealth.IsAvailable && report.DatabaseHealth.Data is not null)
+                    {
+                        <p>
+                            <StatusIndicatorComponent Status="@ToOperationalStatus(report.DatabaseHealth.Data.OverallStatus)" Label="@report.DatabaseHealth.Data.OverallStatus" />
+                            <span class="ps-text-muted">(@report.DatabaseHealth.Data.Entries.Count checks, @report.DatabaseHealth.Data.TotalDurationMs.ToString("N0") ms)</span>
+                        </p>
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.DatabaseHealth.UnavailableReason" Label="DB Health" />
+                    }
+                    <a class="ps-btn ps-btn-ghost ps-btn-sm" href="@RouteDefinitions.OperationsMonitoringDashboard">View Monitoring Dashboard</a>
+                </div>
+
+                @* ── DB Performance / Errors ───────────────────────────────────── *@
+                <div class="ps-card">
+                    <h3>DB Performance &amp; Errors (24h)</h3>
+                    @if (report.MonitoringSummary.IsAvailable && report.MonitoringSummary.Data is not null)
+                    {
+                        <p><strong>@report.MonitoringSummary.Data.RecentErrorCount</strong> errors logged, <strong>@report.MonitoringSummary.Data.HighSeverityErrorCount</strong> high severity</p>
+                        <p><strong>@report.MonitoringSummary.Data.TopQueriesByCpu.Count</strong> Query Store rows tracked (CoreDB)</p>
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.MonitoringSummary.UnavailableReason" Label="DB Performance / Errors" />
+                    }
+                    <a class="ps-btn ps-btn-ghost ps-btn-sm" href="@RouteDefinitions.OperationsMonitoringDashboard">View Monitoring Dashboard</a>
+                </div>
+
+                @* ── Purge Status ──────────────────────────────────────────────── *@
+                <div class="ps-card">
+                    <h3>Purge Status</h3>
+                    @if (report.PurgeStatus.IsAvailable && report.PurgeStatus.Data is not null)
+                    {
+                        <p><strong>@report.PurgeStatus.Data.Count</strong> recent purge runs</p>
+                        <p>
+                            <strong>@report.PurgeStatus.Data.Count(j => j.Status == "Failed")</strong> failed
+                        </p>
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.PurgeStatus.UnavailableReason" Label="Purge Status" />
+                    }
+                    <a class="ps-btn ps-btn-ghost ps-btn-sm" href="@RouteDefinitions.OperationsArchivalDashboard">View Archival Dashboard</a>
+                </div>
+
+                @* ── Audit Activity ────────────────────────────────────────────── *@
+                <div class="ps-card">
+                    <h3>Audit Activity (24h)</h3>
+                    @if (report.RecentAuditActivityCount.IsAvailable)
+                    {
+                        <p><strong>@report.RecentAuditActivityCount.Data</strong> audit log entries</p>
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.RecentAuditActivityCount.UnavailableReason" Label="Audit Activity" />
+                    }
+                    <a class="ps-btn ps-btn-ghost ps-btn-sm" href="@RouteDefinitions.OperationsAuditViewerDashboard">View Audit Viewer</a>
+                </div>
+
+                @* ── Feature Flags ─────────────────────────────────────────────── *@
+                <div class="ps-card">
+                    <h3>Feature Flags</h3>
+                    @if (report.FeatureFlags.IsAvailable && report.FeatureFlags.Data is not null)
+                    {
+                        <p><strong>@report.FeatureFlags.Data.Count(f => f.IsEnabled)</strong> of <strong>@report.FeatureFlags.Data.Count</strong> flags enabled</p>
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.FeatureFlags.UnavailableReason" Label="Feature Flags" />
+                    }
+                    <a class="ps-btn ps-btn-ghost ps-btn-sm" href="@RouteDefinitions.OperationsConfigurationDashboard">View Configuration Dashboard</a>
+                </div>
+
+                @* ── Task Scheduler ────────────────────────────────────────────── *@
+                <div class="ps-card ps-card--wide">
+                    <h3>Task Scheduler Automation (Phase 18)</h3>
+                    @if (report.TaskSchedulerJobs.IsAvailable && report.TaskSchedulerJobs.Data is not null)
+                    {
+                        <DataGridComponent TItem="TaskSchedulerJobStatusDto"
+                                            Items="report.TaskSchedulerJobs.Data"
+                                            Headers="_taskSchedulerHeaders"
+                                            EmptyMessage="No known Task Scheduler jobs configured."
+                                            AriaLabel="Task Scheduler job status">
+                            <RowTemplate Context="item">
+                                <td>@item.TaskName</td>
+                                <td>@item.Category</td>
+                                <td><StatusIndicatorComponent Status="@ToOperationalStatus(item.Status)" Label="@item.Status" /></td>
+                                <td>@(item.LastRunTimeUtc?.ToString("yyyy-MM-dd HH:mm") + " UTC" ?? "—")</td>
+                                <td>@(item.LastResult ?? "—")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                    else
+                    {
+                        <UnavailableSectionFragment Reason="@report.TaskSchedulerJobs.UnavailableReason" Label="Task Scheduler" />
+                    }
+                </div>
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _taskSchedulerHeaders = ["Task", "Category", "Status", "Last Run", "Last Result"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "System Health",
+            activeModuleCode: "operations-system-health",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "System Health" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        State.BeginLoad();
+
+        var result = await ApiClient.GetReportAsync();
+
+        if (result.IsSuccess && result.Data is not null)
+        {
+            State.SetReport(result.Data);
+        }
+        else
+        {
+            State.SetError(result.IsProblem ? $"Failed to load System Health report: {result.Problem!.Detail}" : $"Failed to load System Health report: {result.FaultType}");
+        }
+    }
+
+    /// <summary>
+    /// Maps the various section-specific status strings ("Green"/"Yellow"/"Red",
+    /// "Current"/"Drifted"/"Unknown", "Healthy"/"Degraded"/"Unhealthy",
+    /// "Ready"/"Running"/"Disabled"/"Unavailable") onto StatusIndicatorComponent's
+    /// canonical operational status vocabulary.
+    /// </summary>
+    private static string ToOperationalStatus(string status) => status switch
+    {
+        "Green" or "Current" or "Healthy" or "Ready" => "Healthy",
+        "Yellow" or "Degraded" or "Running" => "Warning",
+        "Red" or "Drifted" or "Unhealthy" => "Critical",
+        "Disabled" => "Offline",
+        _ => "Offline"
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

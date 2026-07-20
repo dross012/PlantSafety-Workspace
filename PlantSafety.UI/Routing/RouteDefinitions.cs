@@ -279,6 +279,29 @@ public static class RouteDefinitions
     /// <summary>Project scheduling dashboard.</summary>
     public const string ProjectSchedulingDashboard = "/modules/project-scheduling";
 
+    // ── Operations ────────────────────────────────────────────────────────────
+
+    /// <summary>Operations backup/DR dashboard (Phase 12 + Phase 18 SQL Server backup automation).</summary>
+    public const string OperationsBackupDashboard = "/modules/operations-backup";
+
+    /// <summary>Operations schema drift guard dashboard (Phase 7 Governance [System].[SchemaMigrations] tracking).</summary>
+    public const string OperationsSchemaGuardDashboard = "/modules/operations-schema-guard";
+
+    /// <summary>Operations archival/purge dashboard (Phase 7 Governance retention/purge automation).</summary>
+    public const string OperationsArchivalDashboard = "/modules/operations-archival";
+
+    /// <summary>Operations audit viewer dashboard (shared cross-database dbo.AuditLog search/export/diff view).</summary>
+    public const string OperationsAuditViewerDashboard = "/modules/operations-audit-viewer";
+
+    /// <summary>Operations monitoring dashboard (DB Health, DB Size, DB Performance, DB Errors, DB Deadlocks).</summary>
+    public const string OperationsMonitoringDashboard = "/modules/operations-monitoring";
+
+    /// <summary>Operations configuration dashboard (Phase 14 Governance [System].[FeatureFlag] editor; feature flags only — see page for Thresholds/Routing Rules/Tenant Overrides scope note).</summary>
+    public const string OperationsConfigurationDashboard = "/modules/operations-configuration";
+
+    /// <summary>Operations System Health rollup dashboard (Step 10/10: unified view over Backup/SchemaGuard/Monitoring/Archival/AuditViewer/Configuration health plus app/DB version and Task Scheduler status).</summary>
+    public const string OperationsSystemHealthDashboard = "/modules/operations-system-health";
+
     // ── Diagnostics (Part XI-A) ───────────────────────────────────────────────
 
     /// <summary>DiagnosticsViewer main page.</summary>

@@ -141,7 +141,8 @@ public static class ServiceCollectionExtensions
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
             .AddCheck<RedisHealthCheck>("redis", tags: ["ready"])
-            .AddCheck<ServiceBusHealthCheck>("servicebus", tags: ["ready"]);
+            .AddCheck<ServiceBusHealthCheck>("servicebus", tags: ["ready"])
+            .AddCheck<SchemaVersionHealthCheck>("schema-version", tags: ["ready"]);
 
         return services;
     }

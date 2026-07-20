@@ -18,6 +18,13 @@ using PlantSafety.UI.Infrastructure.Auth;
 using PlantSafety.UI.Infrastructure.Correlation;
 using PlantSafety.UI.Modules.Alerts.ApiClients;
 using PlantSafety.UI.Modules.DiagnosticsViewer.Services;
+using PlantSafety.UI.Modules.OperationsAuditViewer.ApiClients;
+using PlantSafety.UI.Modules.OperationsBackup.ApiClients;
+using PlantSafety.UI.Modules.SchemaGuard.ApiClients;
+using PlantSafety.UI.Modules.OperationsArchival.ApiClients;
+using PlantSafety.UI.Modules.OperationsMonitoring.ApiClients;
+using PlantSafety.UI.Modules.OperationsConfiguration.ApiClients;
+using PlantSafety.UI.Modules.OperationsSystemHealth.ApiClients;
 using PlantSafety.UI.State;
 
 namespace PlantSafety.UI;
@@ -75,6 +82,13 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.ProcessManagement.State.ProcessManagementState>();
         builder.Services.AddSingleton<Modules.WorkerWellBeing.State.WorkerWellBeingState>();
         builder.Services.AddSingleton<Modules.EnvironmentalHealth.State.EnvironmentalHealthState>();
+        builder.Services.AddSingleton<Modules.OperationsBackup.State.BackupState>();
+        builder.Services.AddSingleton<Modules.SchemaGuard.State.SchemaGuardState>();
+        builder.Services.AddSingleton<Modules.OperationsMonitoring.State.MonitoringState>();
+        builder.Services.AddSingleton<Modules.OperationsArchival.State.ArchivalState>();
+        builder.Services.AddSingleton<Modules.OperationsAuditViewer.State.AuditViewerState>();
+        builder.Services.AddSingleton<Modules.OperationsConfiguration.State.ConfigurationState>();
+        builder.Services.AddSingleton<Modules.OperationsSystemHealth.State.SystemHealthState>();
 
         // ── Typed HttpClients ──────────────────────────────────────────────────
         // Handler pipeline: CorrelationHandler → AuthorizationMessageHandler → HttpClientHandler
@@ -84,6 +98,13 @@ public static class MauiProgram
         RegisterApiClient<Modules.ProcessManagement.ApiClients.ProcessManagementApiClient>(builder, "process-management");
         RegisterApiClient<Modules.WorkerWellBeing.ApiClients.WorkerWellBeingApiClient>(builder, "worker-wellbeing");
         RegisterApiClient<Modules.EnvironmentalHealth.ApiClients.EnvironmentalHealthApiClient>(builder, "environmental-health");
+        RegisterApiClient<BackupApiClient>(builder, "operations-backup");
+        RegisterApiClient<SchemaGuardApiClient>(builder, "operations-schema-guard");
+        RegisterApiClient<MonitoringApiClient>(builder, "operations-monitoring");
+        RegisterApiClient<ArchivalApiClient>(builder, "operations-archival");
+        RegisterApiClient<AuditViewerApiClient>(builder, "operations-audit-viewer");
+        RegisterApiClient<ConfigurationApiClient>(builder, "operations-configuration");
+        RegisterApiClient<SystemHealthApiClient>(builder, "operations-system-health");
 
         // ── Logging ────────────────────────────────────────────────────────────
 #if DEBUG

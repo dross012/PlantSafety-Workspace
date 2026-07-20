@@ -1,0 +1,313 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-20
+    FILE DESCRIPTION: Operations Archival/Purge dashboard. Surfaces the real Phase 7
+      Governance retention/purge automation (74-retention-archival.sql:
+      sp_AuditLog_Purge, sp_ErrorLog_Purge, sp_IntegrationLogEntry_Purge,
+      sp_ReplayRecord_Purge, sp_DiagnosticEvent_Purge) and Phase 18
+      (Invoke-PlantSafetyPurge.ps1 Task Scheduler automation), which previously had no C#
+      or UI visibility. Sibling module to Operations Backup &amp; DR / Schema Drift Guard.
+
+      SAFETY: "Run Purge Now" triggers the SAME procedures that already run unattended
+      daily -- it only ever deletes rows older than a TierPolicy-governed retention cutoff,
+      never all rows, and the ErrorLog target is expected to show "Blocked" (an existing
+      immutability trigger, not a failure). There is no destructive "purge everything"
+      capability here.
+
+      DATA SIZE FORECAST: computed entirely client-side from the existing Operations.Backup
+      database-size history via a simple two-point linear extrapolation (earliest vs latest
+      snapshot). This is a documented approximation, not a precision forecast -- see
+      DataSizeForecastDto.
+
+      RETENTION SETTINGS: read-only display of Archival.TierPolicy. A settings EDITOR that
+      writes back to TierPolicy is out of scope for this pass (stretch/optional per the
+      roadmap) -- changing retention windows is a governance decision, not a routine
+      operator action, so it is deliberately omitted here rather than added speculatively.
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+@page "/modules/operations-archival"
+
+@inject ArchivalState State
+@inject ArchivalApiClient ApiClient
+@inject BackupApiClient BackupApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.OperationsArchival.ApiClients
+@using PlantSafety.UI.Modules.OperationsArchival.Models
+@using PlantSafety.UI.Modules.OperationsArchival.State
+@using PlantSafety.UI.Modules.OperationsBackup.ApiClients
+@using BackupModels = PlantSafety.UI.Modules.OperationsBackup.Models
+
+<PageTitle>Operations — Archival &amp; Purge — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Archival &amp; Purge dashboard could not be displayed." OnRetry="LoadDashboardAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDashboardAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.Error</div>
+        }
+
+        @if (State.PurgeMessage is not null)
+        {
+            <div class="ps-alert ps-alert--info" role="status">@State.PurgeMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading archival &amp; purge status…" />
+        }
+        else
+        {
+            <section class="ps-section">
+                <h2>Run Purge Now</h2>
+                <div class="ps-form-row">
+                    <select class="ps-select" @bind="_selectedTargetValue" disabled="@State.IsPurging" aria-label="Purge target">
+                        <option value="ALL">All targets</option>
+                        @foreach (var target in State.Targets)
+                        {
+                            <option value="@target.Target">@target.DatabaseName — @target.ProcedureName</option>
+                        }
+                    </select>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="TriggerPurgeAsync" disabled="@State.IsPurging">
+                        @(State.IsPurging ? "Purging…" : "Run Purge Now")
+                    </button>
+                </div>
+                <p class="ps-text-muted">
+                    Runs the same, already-scheduled retention purge procedure(s) early. Only
+                    rows older than the configured retention window are deleted. The ErrorLog
+                    target is expected to report "Blocked" (protected by an immutability trigger).
+                </p>
+            </section>
+
+            <section class="ps-section">
+                <h2>Purge Targets</h2>
+                <DataGridComponent TItem="PurgeTargetDto"
+                                    Items="State.Targets"
+                                    Headers="_targetHeaders"
+                                    KeySelector="t => t.Zone"
+                                    EmptyMessage="No purge targets configured."
+                                    AriaLabel="Purge targets">
+                    <RowTemplate Context="item">
+                        <td>@item.DatabaseName</td>
+                        <td>@item.ProcedureName</td>
+                        <td>@item.Zone</td>
+                        <td>@item.Description</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            <section class="ps-section">
+                <h2>Purge Status / History</h2>
+                <DataGridComponent TItem="ArchivalJobDto"
+                                    Items="State.History"
+                                    Headers="_historyHeaders"
+                                    EmptyMessage="No purge history found."
+                                    AriaLabel="Purge history">
+                    <RowTemplate Context="item">
+                        <td>@item.PartitionKey</td>
+                        <td><SeverityBadgeComponent Severity="@ToSeverity(item.Status)" Text="@item.Status" /></td>
+                        <td>@item.StartedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@(item.CompletedAtUtc?.ToString("yyyy-MM-dd HH:mm") + " UTC" ?? "—")</td>
+                        <td>@item.FailureReason</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            <section class="ps-section">
+                <h2>Retention Settings</h2>
+                <p class="ps-text-muted">Read-only. Retention windows are a governance decision — see Archival.TierPolicy. No in-app editor in this pass.</p>
+                <DataGridComponent TItem="TierPolicyDto"
+                                    Items="State.RetentionSettings"
+                                    Headers="_retentionHeaders"
+                                    KeySelector="r => r.Zone"
+                                    EmptyMessage="No retention policies found."
+                                    AriaLabel="Retention settings">
+                    <RowTemplate Context="item">
+                        <td>@item.Zone</td>
+                        <td>@item.SourceTier → @item.TargetTier</td>
+                        <td>@item.TransitionAfterDays days</td>
+                        <td>@item.CreatedUtc.ToString("yyyy-MM-dd") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            <section class="ps-section">
+                <h2>Data Size Forecast <span class="ps-text-muted">(approximate)</span></h2>
+                <p class="ps-text-muted">
+                    Derived from Operations Backup &amp; DR's database size history via a simple
+                    two-point linear extrapolation (earliest snapshot vs. latest snapshot). This
+                    is an approximation to give a directional sense of growth, not a precise or
+                    statistically validated forecast.
+                </p>
+                <DataGridComponent TItem="DataSizeForecastDto"
+                                    Items="State.Forecasts"
+                                    Headers="_forecastHeaders"
+                                    KeySelector="f => f.DatabaseName"
+                                    EmptyMessage="No database size history available to forecast from."
+                                    AriaLabel="Data size forecast">
+                    <RowTemplate Context="item">
+                        <td>@item.DatabaseName</td>
+                        <td>@item.LatestSizeMB.ToString("N1") MB</td>
+                        <td>@item.DailyGrowthMB.ToString("N2") MB/day</td>
+                        <td>@item.Projected30DayMB.ToString("N1") MB</td>
+                        <td>@item.Projected90DayMB.ToString("N1") MB</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _targetHeaders = ["Database", "Procedure", "Zone", "Description"];
+    private static readonly string[] _historyHeaders = ["Zone", "Status", "Started", "Completed", "Detail"];
+    private static readonly string[] _retentionHeaders = ["Zone", "Tier Transition", "Retention Window", "Created"];
+    private static readonly string[] _forecastHeaders = ["Database", "Latest Size", "Daily Growth (approx.)", "+30 Days (approx.)", "+90 Days (approx.)"];
+
+    private string _selectedTargetValue = "ALL";
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Archival & Purge",
+            activeModuleCode: "operations-archival",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Archival & Purge" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        State.BeginLoad();
+
+        var targetsTask = ApiClient.GetPurgeTargetsAsync();
+        var historyTask = ApiClient.GetPurgeStatusAsync();
+        var retentionTask = ApiClient.GetRetentionSettingsAsync();
+        var sizeTask = BackupApiClient.GetDatabaseSizeAsync(top: 500);
+
+        await Task.WhenAll(targetsTask, historyTask, retentionTask, sizeTask);
+
+        var targets = targetsTask.Result;
+        var history = historyTask.Result;
+        var retention = retentionTask.Result;
+        var size = sizeTask.Result;
+
+        if (targets.IsSuccess && history.IsSuccess && retention.IsSuccess && size.IsSuccess)
+        {
+            var forecasts = BuildForecasts(size.Data!);
+            State.SetData(targets.Data!, history.Data!, retention.Data!, forecasts);
+        }
+        else
+        {
+            var failure = !targets.IsSuccess ? targets : !history.IsSuccess ? history : !retention.IsSuccess ? retention : size;
+            State.SetError(failure.IsProblem ? failure.Problem!.Detail : $"Failed to load dashboard: {failure.FaultType}");
+        }
+    }
+
+    /// <summary>
+    /// Approximate "Data Size Forecast": groups the Operations.Backup database size history
+    /// by database and snapshot timestamp (summing across data/log files), then extrapolates
+    /// linearly from the earliest to the latest snapshot. Documented as an approximation,
+    /// not a claim of precision -- see DataSizeForecastDto.
+    /// </summary>
+    private static List<DataSizeForecastDto> BuildForecasts(IReadOnlyList<BackupModels.DatabaseSizeSnapshotDto> snapshots)
+    {
+        var forecasts = new List<DataSizeForecastDto>();
+
+        var byDatabase = snapshots.GroupBy(s => s.DatabaseName);
+
+        foreach (var databaseGroup in byDatabase)
+        {
+            var byTimestamp = databaseGroup
+                .GroupBy(s => s.CapturedUtc)
+                .Select(g => new { CapturedUtc = g.Key, TotalSizeMB = g.Sum(x => x.SizeMB) })
+                .OrderBy(x => x.CapturedUtc)
+                .ToList();
+
+            if (byTimestamp.Count < 2)
+            {
+                continue; // Not enough history to extrapolate a trend.
+            }
+
+            var earliest = byTimestamp[0];
+            var latest = byTimestamp[^1];
+
+            var elapsedDays = (decimal)(latest.CapturedUtc - earliest.CapturedUtc).TotalDays;
+            var dailyGrowthMB = elapsedDays > 0 ? (latest.TotalSizeMB - earliest.TotalSizeMB) / elapsedDays : 0m;
+
+            forecasts.Add(new DataSizeForecastDto
+            {
+                DatabaseName = databaseGroup.Key,
+                EarliestSizeMB = earliest.TotalSizeMB,
+                EarliestCapturedUtc = earliest.CapturedUtc,
+                LatestSizeMB = latest.TotalSizeMB,
+                LatestCapturedUtc = latest.CapturedUtc,
+                DailyGrowthMB = dailyGrowthMB,
+                Projected30DayMB = latest.TotalSizeMB + (dailyGrowthMB * 30),
+                Projected90DayMB = latest.TotalSizeMB + (dailyGrowthMB * 90),
+            });
+        }
+
+        return forecasts.OrderBy(f => f.DatabaseName).ToList();
+    }
+
+    private async Task TriggerPurgeAsync()
+    {
+        State.BeginPurge();
+
+        PurgeTarget? target = _selectedTargetValue == "ALL"
+            ? null
+            : Enum.Parse<PurgeTarget>(_selectedTargetValue);
+
+        var result = await ApiClient.TriggerPurgeAsync(target);
+
+        if (result.IsSuccess)
+        {
+            var summary = string.Join("; ", result.Data!.Select(r => $"{r.Zone}: {r.Status}"));
+            State.SetPurgeMessage($"Purge run complete — {summary}");
+
+            var historyResult = await ApiClient.GetPurgeStatusAsync();
+            if (historyResult.IsSuccess)
+            {
+                State.SetHistory(historyResult.Data!);
+            }
+        }
+        else
+        {
+            State.SetPurgeMessage(result.IsProblem ? $"Failed to trigger purge: {result.Problem!.Detail}" : $"Failed to trigger purge: {result.FaultType}");
+        }
+    }
+
+    private static string ToSeverity(string status) => status switch
+    {
+        "Completed" => "Low",
+        "Blocked" => "Medium",
+        "Failed" => "Critical",
+        _ => "Medium"
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

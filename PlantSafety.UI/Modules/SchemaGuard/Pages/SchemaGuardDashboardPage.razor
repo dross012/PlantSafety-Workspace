@@ -1,0 +1,174 @@
+@*  ============================================================
+    AUTHOR: PlantSafety Platform
+    CREATED: 2026-07-20
+    FILE DESCRIPTION: Operations Schema Drift Guard dashboard. Compares the migration
+      script manifest (Migrations\**\*.sql) against each database's [System].
+      [SchemaMigrations] table (Phase 7 Governance), which previously had no C# or UI
+      visibility.
+
+      SAFETY: This page intentionally has NO button that executes a .sql migration
+      script against a live database. "View Migration Instructions" only ever returns
+      the exact sqlcmd command an operator runs manually.
+    SchemaVersion: 2026.1
+    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+    ============================================================ *@
+
+@page "/modules/operations-schema-guard"
+
+@inject SchemaGuardState State
+@inject SchemaGuardApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.SchemaGuard.ApiClients
+@using PlantSafety.UI.Modules.SchemaGuard.Models
+@using PlantSafety.UI.Modules.SchemaGuard.State
+
+<PageTitle>Operations — Schema Drift Guard — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Schema Drift Guard dashboard could not be displayed." OnRetry="LoadDashboardAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDashboardAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading schema drift status…" />
+        }
+        else
+        {
+            <section class="ps-section">
+                <h2>Schema Health</h2>
+                <DataGridComponent TItem="SchemaDatabaseHealthDto"
+                                    Items="State.Health"
+                                    Headers="_healthHeaders"
+                                    KeySelector="h => h.DatabaseKey"
+                                    EmptyMessage="No known databases found."
+                                    AriaLabel="Schema drift status by database">
+                    <RowTemplate Context="item">
+                        <td>@item.DatabaseKey</td>
+                        <td><StatusIndicatorComponent Status="@ToOperationalStatus(item.Status)" Label="@item.Status" /></td>
+                        <td>@item.AppliedCount</td>
+                        <td>@item.MissingScripts.Count</td>
+                        <td>
+                            @if (item.MissingScripts.Count > 0)
+                            {
+                                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => LoadInstructionsAsync(item.DatabaseKey)" disabled="@State.IsLoadingInstructions">
+                                    @(State.IsLoadingInstructions && State.InstructionsDatabaseKey == item.DatabaseKey ? "Loading…" : "View Migration Instructions")
+                                </button>
+                            }
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </section>
+
+            @if (State.InstructionsDatabaseKey is not null && !State.IsLoadingInstructions)
+            {
+                <section class="ps-section">
+                    <h2>Migration Instructions — @State.InstructionsDatabaseKey</h2>
+                    <div class="ps-alert ps-alert--warning" role="note">
+                        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                        There is no automated "run migration" execution in PlantSafety by design.
+                        Apply each script below manually via your normal deployment tooling.
+                    </div>
+                    @if (State.Instructions.Count == 0)
+                    {
+                        <p class="ps-text-muted">No missing scripts.</p>
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="MigrationInstructionDto"
+                                            Items="State.Instructions"
+                                            Headers="_instructionHeaders"
+                                            EmptyMessage="No missing scripts."
+                                            AriaLabel="Missing migration scripts">
+                            <RowTemplate Context="item">
+                                <td>@item.ScriptName</td>
+                                <td>@(item.ResolvedPath ?? "Not found on disk")</td>
+                                <td><code>@item.Instructions</code></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                </section>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _healthHeaders = ["Database", "Status", "Applied", "Missing", "Actions"];
+    private static readonly string[] _instructionHeaders = ["Script", "Resolved Path", "Manual Command"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Schema Drift Guard",
+            activeModuleCode: "operations-schema-guard",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Schema Drift Guard" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        State.BeginLoad();
+
+        var result = await ApiClient.GetHealthAsync();
+
+        if (result.IsSuccess)
+        {
+            State.SetHealth(result.Data!);
+        }
+        else
+        {
+            State.SetError(result.IsProblem ? result.Problem!.Detail : $"Failed to load schema health: {result.FaultType}");
+        }
+    }
+
+    private async Task LoadInstructionsAsync(string databaseKey)
+    {
+        State.BeginLoadInstructions(databaseKey);
+        var result = await ApiClient.GetMigrationInstructionsAsync(databaseKey);
+
+        if (result.IsSuccess)
+        {
+            State.SetInstructions(result.Data!);
+        }
+        else
+        {
+            State.SetInstructions([]);
+            State.SetError(result.IsProblem ? result.Problem!.Detail : $"Failed to load migration instructions: {result.FaultType}");
+        }
+    }
+
+    private static string ToOperationalStatus(string schemaStatus) => schemaStatus switch
+    {
+        "Current" => "Healthy",
+        "Drifted" => "Critical",
+        _ => "Offline"
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}
