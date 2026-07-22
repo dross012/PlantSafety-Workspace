@@ -1,0 +1,1 @@
+C:\Users\dross\source\PlantSafety\PlantSafety.UI\PlantSafety.UI.csproj;x64

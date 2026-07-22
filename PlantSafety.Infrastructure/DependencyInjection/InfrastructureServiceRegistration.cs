@@ -11,8 +11,10 @@
 // ============================================================================
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
+using PlantSafety.Application.Abstractions.Clock;
 using PlantSafety.Infrastructure.BackgroundJobs;
 using PlantSafety.Infrastructure.Caching;
+using PlantSafety.Infrastructure.Common.Clock;
 using PlantSafety.Infrastructure.Common.Extensions;
 using PlantSafety.Infrastructure.Common.Mapping;
 using PlantSafety.Infrastructure.ExternalServices;
@@ -96,6 +98,37 @@ using PlantSafety.Infrastructure.Operations.Configuration.Persistence;
 using PlantSafety.Application.Operations.SystemHealth.Repositories;
 using PlantSafety.Infrastructure.Operations.SystemHealth.Options;
 using PlantSafety.Infrastructure.Operations.SystemHealth.Persistence;
+using PlantSafety.Infrastructure.EmployeeSafety.DependencyInjection;
+using PlantSafety.Infrastructure.ContractorSafety.DependencyInjection;
+using PlantSafety.Infrastructure.MachineSafety.DependencyInjection;
+using PlantSafety.Infrastructure.SafetyProcedures.DependencyInjection;
+using PlantSafety.Infrastructure.SafetyPolicies.DependencyInjection;
+using PlantSafety.Infrastructure.AccidentManagement.DependencyInjection;
+using PlantSafety.Infrastructure.RiskManagement.DependencyInjection;
+using PlantSafety.Infrastructure.Scorecards.DependencyInjection;
+using PlantSafety.Infrastructure.Scheduling.DependencyInjection;
+using PlantSafety.Infrastructure.PPE.DependencyInjection;
+using PlantSafety.Infrastructure.PermitToWork.DependencyInjection;
+using PlantSafety.Infrastructure.Observability.DependencyInjection;
+using PlantSafety.Infrastructure.Checklists.DependencyInjection;
+using PlantSafety.Infrastructure.Auditing.DependencyInjection;
+using PlantSafety.Infrastructure.SafetyCulture.DependencyInjection;
+using PlantSafety.Infrastructure.Alerts.DependencyInjection;
+using PlantSafety.Infrastructure.Dashboards.DependencyInjection;
+using PlantSafety.Infrastructure.Analytics.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.DependencyInjection;
+using PlantSafety.Infrastructure.Features.DependencyInjection;
+using PlantSafety.Infrastructure.Integrations.DependencyInjection;
+using PlantSafety.Infrastructure.Operational.DependencyInjection;
+using PlantSafety.Infrastructure.Persistence.Repositories.CrossDomain;
+using PlantSafety.Infrastructure.SafetyEvents.DependencyInjection;
+using PlantSafety.Infrastructure.ContinuousImprovement.DependencyInjection;
+using PlantSafety.Infrastructure.Financials.DependencyInjection;
+using PlantSafety.Infrastructure.HealthChecks.DependencyInjection;
+using PlantSafety.Infrastructure.Intelligence.DependencyInjection;
+using PlantSafety.Infrastructure.PlanningProjects.DependencyInjection;
+using PlantSafety.Application.Compliance.Commands;
+using PlantSafety.Infrastructure.Compliance.Commands.Persistence;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -117,16 +150,42 @@ public static class InfrastructureServiceRegistration
         DapperTypeHandlers.RegisterAll();
 
         // Persistence
-        services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
+        // Singleton: SqlConnectionFactory is stateless (wraps only immutable DatabaseOptions and
+        // opens a new SqlConnection per call), so it's safe to consume from singleton hosted
+        // services (OutboxProcessor, ProcessedEventsCleaner) without the scoped-from-singleton
+        // DI validation error.
+        services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddScoped<DapperCommandExecutor>();
         services.AddScoped<DapperQueryExecutor>();
         services.AddScoped<IOutboxWriter, OutboxWriter>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        // Application-layer transactional Unit of Work (consumed by TransactionBehavior<,> for
+        // EVERY ICommand). Registered here with the FULLY QUALIFIED interface name -- deliberately
+        // NOT relying on the ambiguous bare "IUnitOfWork" that this file's `using
+        // PlantSafety.Infrastructure.Persistence.UnitOfWork;` resolves to -- because that name
+        // collides with the differently-shaped PlantSafety.Infrastructure.Persistence.UnitOfWork.
+        // IUnitOfWork registered immediately above. See TransactionalUnitOfWork.cs remarks for the
+        // full history of this bug (previously: zero registration, so TransactionBehavior<,> could
+        // not be constructed for any command in any module).
+        services.AddScoped<PlantSafety.Application.Behaviors.Transactions.IUnitOfWork, TransactionalUnitOfWork>();
+
         // Caching
         services.AddStackExchangeRedisCache(opts =>
             opts.Configuration = configuration.GetConnectionString("Redis"));
         services.AddScoped<ICacheService, DistributedCacheService>();
+
+        // Application-layer cache abstraction (consumed by CachingBehavior<,>, which wraps EVERY
+        // MediatR request). Registered with the FULLY QUALIFIED interface name for the same reason
+        // as the IUnitOfWork registration above: PlantSafety.Application.Abstractions.Caching.
+        // ICacheService and PlantSafety.Infrastructure.Caching.ICacheService (registered
+        // immediately above via the bare "ICacheService" this file's `using
+        // PlantSafety.Infrastructure.Caching;` resolves to) are two differently-shaped interfaces
+        // with the same simple name. Previously the Application interface had NO implementation
+        // and NO registration at all, so CachingBehavior<,> could never be constructed for any
+        // request. See ApplicationCacheServiceAdapter.cs remarks for the full history.
+        services.AddScoped<PlantSafety.Application.Abstractions.Caching.ICacheService, ApplicationCacheServiceAdapter>();
 
         // Identity
         services.AddHttpContextAccessor();
@@ -271,6 +330,48 @@ public static class InfrastructureServiceRegistration
         // SchemaGuard/Archival/AuditViewer/Monitoring/Configuration.
         services.Configure<SystemHealthOptions>(configuration.GetSection(SystemHealthOptions.SectionName));
         services.AddScoped<ISystemHealthRepository, SystemHealthDapperRepository>();
+
+        // Legacy-taxonomy modules (17 modules added per the PlantSafety Program Structure
+        // master prompt) — Infrastructure layer built with Dapper + stored procedures, no EF.
+        services
+            .AddEmployeeSafetyInfrastructure()
+            .AddContractorSafetyInfrastructure()
+            .AddMachineSafetyInfrastructure()
+            .AddSafetyProceduresInfrastructure()
+            .AddSafetyPoliciesInfrastructure()
+            .AddAccidentManagementInfrastructure()
+            .AddRiskManagementInfrastructure()
+            .AddScorecardsInfrastructure()
+            .AddSchedulingInfrastructure()
+            .AddPPEInfrastructure()
+            .AddPermitToWorkInfrastructure()
+            .AddObservabilityInfrastructure()
+            .AddChecklistsInfrastructure()
+            .AddAuditingInfrastructure()
+            .AddSafetyCultureInfrastructure()
+            .AddAlertsInfrastructure()
+            .AddDashboardsInfrastructure();
+
+        // Legacy-module repositories (pre-existing Compliance/Analytics/Operational/etc.
+        // modules whose Application-layer repository interfaces had no Infrastructure
+        // implementation until this pass — closes the ValidateOnBuild gap documented in
+        // PlantSafety.Api/Program.cs).
+        services
+            .AddComplianceLegacyRepositories()
+            .AddComplianceLegacyRepositoriesBatch2()
+            .AddOperationalLegacyRepositories()
+            .AddAnalyticsLegacyRepositories()
+            .AddSafetyEventsLegacyRepositories()
+            .AddIntegrationsInfrastructure()
+            .AddCrossDomainRepositories()
+            .AddFeaturesLegacyRepositories()
+            .AddIntelligenceRepositories()
+            .AddContinuousImprovementRepositories()
+            .AddPlanningProjectsRepositories()
+            .AddHealthChecksRepositories()
+            .AddFinancialsRepositories();
+
+        services.AddScoped<IComplianceBulkRepository, ComplianceBulkDapperRepository>();
 
         return services;
     }

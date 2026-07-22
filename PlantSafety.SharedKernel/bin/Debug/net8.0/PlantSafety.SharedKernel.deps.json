@@ -30,7 +30,6 @@
       "MessagePack/3.1.7": {
         "dependencies": {
           "MessagePack.Annotations": "3.1.7",
-          "MessagePackAnalyzer": "3.1.7",
           "Microsoft.NET.StringTools": "17.11.4"
         },
         "runtime": {
@@ -48,7 +47,6 @@
           }
         }
       },
-      "MessagePackAnalyzer/3.1.7": {},
       "Microsoft.Extensions.DependencyInjection/10.0.8": {
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.8"
@@ -77,10 +75,6 @@
         }
       },
       "MongoDB.Bson/3.1.0": {
-        "dependencies": {
-          "System.Memory": "4.5.5",
-          "System.Runtime.CompilerServices.Unsafe": "5.0.0"
-        },
         "runtime": {
           "lib/net6.0/MongoDB.Bson.dll": {
             "assemblyVersion": "3.1.0.0",
@@ -107,8 +101,6 @@
           }
         }
       },
-      "System.Memory/4.5.5": {},
-      "System.Runtime.CompilerServices.Unsafe/5.0.0": {},
       "YamlDotNet/18.0.0": {
         "runtime": {
           "lib/net8.0/YamlDotNet.dll": {
@@ -145,13 +137,6 @@
       "sha512": "sha512-IW1yX9viarFl/Dsio5G+pM90JkOSW4xhAiJcKxPPF5rzyp2/yCpieWju8G99QLEmaQeze2uQMEskUBA59YZmkw==",
       "path": "messagepack.annotations/3.1.7",
       "hashPath": "messagepack.annotations.3.1.7.nupkg.sha512"
-    },
-    "MessagePackAnalyzer/3.1.7": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-ZF+OOJTRS7Ogzb4gG36hPKVQk3kEbp6kkUcdRjhddDq/uSGcV4BKIdYiyJipExXyE/zsqYb0ic215O9kI+fjPA==",
-      "path": "messagepackanalyzer/3.1.7",
-      "hashPath": "messagepackanalyzer.3.1.7.nupkg.sha512"
     },
     "Microsoft.Extensions.DependencyInjection/10.0.8": {
       "type": "package",
@@ -194,20 +179,6 @@
       "sha512": "sha512-d6QOukTpDzs7zZv9tPnBZMtvHDNeHJQXUhMx54g4urUQsXK3oo9U70H9HvklYq7hlQ4A7AHJl7EVEqyCXXIl8Q==",
       "path": "protobuf-net.core/3.2.56",
       "hashPath": "protobuf-net.core.3.2.56.nupkg.sha512"
-    },
-    "System.Memory/4.5.5": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-XIWiDvKPXaTveaB7HVganDlOCRoj03l+jrwNvcge/t8vhGYKvqV+dMv6G4SAX2NoNmN0wZfVPTAlFwZcZvVOUw==",
-      "path": "system.memory/4.5.5",
-      "hashPath": "system.memory.4.5.5.nupkg.sha512"
-    },
-    "System.Runtime.CompilerServices.Unsafe/5.0.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-ZD9TMpsmYJLrxbbmdvhwt9YEgG5WntEnZ/d1eH8JBX9LBp+Ju8BSBhUGbZMNVHHomWo2KVImJhTDl2hIgw/6MA==",
-      "path": "system.runtime.compilerservices.unsafe/5.0.0",
-      "hashPath": "system.runtime.compilerservices.unsafe.5.0.0.nupkg.sha512"
     },
     "YamlDotNet/18.0.0": {
       "type": "package",

@@ -1,0 +1,15 @@
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\bin\Debug\net8.0\PlantSafety.Domain.deps.json
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\bin\Debug\net8.0\PlantSafety.Domain.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\bin\Debug\net8.0\PlantSafety.Domain.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\bin\Debug\net8.0\PlantSafety.SharedKernel.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\bin\Debug\net8.0\PlantSafety.SharedKernel.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\PlantSafety.Domain.csproj.AssemblyReference.cache
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\PlantSafety.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\PlantSafety.Domain.AssemblyInfoInputs.cache
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\PlantSafety.Domain.AssemblyInfo.cs
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\PlantSafety.Domain.csproj.CoreCompileInputs.cache
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\PlantSaf.3CAE5AC9.Up2Date
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\PlantSafety.Domain.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\refint\PlantSafety.Domain.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\PlantSafety.Domain.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Domain\obj\Debug\net8.0\ref\PlantSafety.Domain.dll

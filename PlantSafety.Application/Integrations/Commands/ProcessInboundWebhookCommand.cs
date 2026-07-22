@@ -3,7 +3,7 @@
 // FILE DESCRIPTION: Command to process an inbound webhook event received from an external system.
 // SchemaVersion: 1
 
-using MediatR;
+using PlantSafety.Application.Abstractions.Messaging;
 using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Integrations.Commands;
@@ -27,4 +27,24 @@ public sealed record ProcessInboundWebhookCommand(
     Guid TenantId,
     Guid? SiteId,
     DateTimeOffset OccurredAt,
-    string RawPayload) : IRequest<Result<ProcessInboundWebhookResult>>;
+    string RawPayload) : ICommand<Result<ProcessInboundWebhookResult>>
+{
+    /// <summary>Gets the unique identifier of this command instance (UUIDv7).</summary>
+    public Guid CommandId { get; init; } = Guid.NewGuid();
+
+    /// <summary>Gets the correlation identifier that groups all operations in a single business transaction.</summary>
+    public Guid CorrelationId { get; init; } = Guid.NewGuid();
+
+    /// <summary>Gets the causation identifier that identifies the immediate parent command or event.</summary>
+    public Guid? CausationId { get; init; }
+
+    /// <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+    public DateTime RequestedAtUtc { get; init; } = DateTime.UtcNow;
+
+    /// <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+    public string ApiVersionToken { get; init; } = "v1";
+
+    /// <summary>Gets the identifier of the actor who initiated the command.
+    /// Placeholder: inbound webhooks originate from external systems, not a PlantSafety user actor; defaults to <see cref="Guid.Empty"/>.</summary>
+    public Guid ActorId { get; init; } = Guid.Empty;
+}

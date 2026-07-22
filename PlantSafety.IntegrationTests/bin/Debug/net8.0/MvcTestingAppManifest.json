@@ -1,0 +1,7 @@
+{
+  "PlantSafety.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Api",
+  "PlantSafety.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Application",
+  "PlantSafety.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Domain",
+  "PlantSafety.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Infrastructure",
+  "PlantSafety.SharedKernel, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel"
+}

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "OIrRd5EiwXE=",
+  "dgSpecHash": "qzE2R9njBsQ=",
   "success": true,
   "projectFilePath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj",
   "expectedPackageFiles": [
@@ -16,7 +16,10 @@
     "C:\\Users\\dross\\.nuget\\packages\\protobuf-net.core\\3.2.56\\protobuf-net.core.3.2.56.nupkg.sha512",
     "C:\\Users\\dross\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
     "C:\\Users\\dross\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\5.0.0\\system.runtime.compilerservices.unsafe.5.0.0.nupkg.sha512",
-    "C:\\Users\\dross\\.nuget\\packages\\yamldotnet\\18.0.0\\yamldotnet.18.0.0.nupkg.sha512"
+    "C:\\Users\\dross\\.nuget\\packages\\yamldotnet\\18.0.0\\yamldotnet.18.0.0.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.29\\microsoft.netcore.app.ref.8.0.29.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.29\\microsoft.windowsdesktop.app.ref.8.0.29.nupkg.sha512",
+    "C:\\Users\\dross\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.29\\microsoft.aspnetcore.app.ref.8.0.29.nupkg.sha512"
   ],
   "logs": []
 }

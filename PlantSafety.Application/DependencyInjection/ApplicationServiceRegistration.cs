@@ -28,6 +28,23 @@ using PlantSafety.Application.Financials.DependencyInjection;
 using PlantSafety.Application.Operational.DependencyInjection;
 using PlantSafety.Application.PlanningProjects.DependencyInjection;
 using PlantSafety.Application.SafetyEvents.DependencyInjection;
+using PlantSafety.Application.EmployeeSafety.DependencyInjection;
+using PlantSafety.Application.ContractorSafety.DependencyInjection;
+using PlantSafety.Application.MachineSafety.DependencyInjection;
+using PlantSafety.Application.SafetyProcedures.DependencyInjection;
+using PlantSafety.Application.Alerts.DependencyInjection;
+using PlantSafety.Application.Dashboards.DependencyInjection;
+using PlantSafety.Application.SafetyPolicies.DependencyInjection;
+using PlantSafety.Application.AccidentManagement.DependencyInjection;
+using PlantSafety.Application.RiskManagement.DependencyInjection;
+using PlantSafety.Application.Scorecards.DependencyInjection;
+using PlantSafety.Application.Scheduling.DependencyInjection;
+using PlantSafety.Application.PPE.DependencyInjection;
+using PlantSafety.Application.PermitToWork.DependencyInjection;
+using PlantSafety.Application.Observability.DependencyInjection;
+using PlantSafety.Application.Checklists.DependencyInjection;
+using PlantSafety.Application.Auditing.DependencyInjection;
+using PlantSafety.Application.SafetyCulture.DependencyInjection;
 
 namespace PlantSafety.Application.DependencyInjection;
 
@@ -91,7 +108,24 @@ public static class ApplicationServiceRegistration
             .AddPlanningProjectsApplicationServices()
             .AddOperationalApplicationServices()
             .AddContinuousImprovementApplicationServices()
-            .AddEnterpriseFabricApplicationServices();
+            .AddEnterpriseFabricApplicationServices()
+            .AddEmployeeSafetyApplicationServices()
+            .AddContractorSafetyApplicationServices()
+            .AddMachineSafetyApplicationServices()
+            .AddSafetyProceduresApplicationServices()
+            .AddAlertsApplicationServices()
+            .AddDashboardsApplicationServices()
+            .AddSafetyPoliciesApplicationServices()
+            .AddAccidentManagementApplicationServices()
+            .AddRiskManagementApplicationServices()
+            .AddScorecardsApplicationServices()
+            .AddSchedulingApplicationServices()
+            .AddPPEApplicationServices()
+            .AddPermitToWorkApplicationServices()
+            .AddObservabilityApplicationServices()
+            .AddChecklistsApplicationServices()
+            .AddAuditingApplicationServices()
+            .AddSafetyCultureApplicationServices();
 
         return services;
     }

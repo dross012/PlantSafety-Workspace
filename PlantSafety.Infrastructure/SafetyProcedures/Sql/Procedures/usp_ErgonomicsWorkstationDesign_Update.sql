@@ -1,0 +1,61 @@
+﻿-- ============================================================================
+--  Project:        PlantSafety.Platform
+--  Module:         SafetyProcedures.ErgonomicsWorkstationDesign
+--  Layer:          Infrastructure - SQL Scripts
+--  File:           usp_ErgonomicsWorkstationDesign_Update.sql
+--  Created:        2026-07-21
+--  Author:         PlantSafety Platform Team
+--  SchemaVersion:  2026.1
+--  Description:    Full-row update procedure for [SafetyProcedures].[ErgonomicsWorkstationDesign], backing
+--                  IErgonomicsWorkstationDesignRepository.UpdateAsync (all lifecycle transitions persist the
+--                  aggregate's full current state). Standard error envelope: TRY/CATCH with
+--                  transaction rollback and THROW. Additive-only evolution.
+-- ============================================================================
+
+CREATE OR ALTER PROCEDURE [SafetyProcedures].[usp_ErgonomicsWorkstationDesign_Update]
+    @CorrelationId UNIQUEIDENTIFIER = NULL,
+    @ActorId       UNIQUEIDENTIFIER = NULL,
+    @NowUtc        DATETIME2(3),
+    @ErgonomicsWorkstationDesignId UNIQUEIDENTIFIER,
+    @TenantId UNIQUEIDENTIFIER,
+    @SiteId UNIQUEIDENTIFIER = NULL,
+    @Status NVARCHAR(100),
+    @ProcedureTitle NVARCHAR(400),
+    @DesignCategory NVARCHAR(100),
+    @WorkstationLocation NVARCHAR(400),
+    @ApprovedByUserId UNIQUEIDENTIFIER,
+    @AssessedAtUtc DATETIME2(3) = NULL,
+    @NextAssessmentDueAtUtc DATETIME2(3) = NULL,
+    @RiskFactorCount INT,
+    @ErgonomicsScore DECIMAL(9,2) = NULL,
+    @CreatedAtUtc DATETIME2(3),
+    @CreatedBy UNIQUEIDENTIFIER
+AS
+SET NOCOUNT ON;
+BEGIN TRY
+    BEGIN TRANSACTION;
+        UPDATE [SafetyProcedures].[ErgonomicsWorkstationDesign]
+        SET
+        [SiteId] = @SiteId,
+        [Status] = @Status,
+        [ProcedureTitle] = @ProcedureTitle,
+        [DesignCategory] = @DesignCategory,
+        [WorkstationLocation] = @WorkstationLocation,
+        [ApprovedByUserId] = @ApprovedByUserId,
+        [AssessedAtUtc] = @AssessedAtUtc,
+        [NextAssessmentDueAtUtc] = @NextAssessmentDueAtUtc,
+        [RiskFactorCount] = @RiskFactorCount,
+        [ErgonomicsScore] = @ErgonomicsScore,
+        [ModifiedAtUtc] = @NowUtc,
+        [ModifiedBy] = @ActorId,
+        [CorrelationId] = @CorrelationId
+        WHERE [ErgonomicsWorkstationDesignId] = @ErgonomicsWorkstationDesignId
+          AND [TenantId] = @TenantId
+          AND ISNULL([IsDeleted], 0) = 0;
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+GO

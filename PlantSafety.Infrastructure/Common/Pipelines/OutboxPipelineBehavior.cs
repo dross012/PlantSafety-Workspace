@@ -52,4 +52,10 @@ public interface IOutboxWriter
 
     /// <summary>Writes all pending domain events to the outbox table.</summary>
     Task FlushAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Discards all pending (un-flushed) domain events without writing them.
+    /// Called on transaction rollback so no integration events are published for a failed command.
+    /// </summary>
+    void Clear();
 }

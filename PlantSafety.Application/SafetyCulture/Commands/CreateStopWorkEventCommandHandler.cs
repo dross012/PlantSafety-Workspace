@@ -1,0 +1,66 @@
+﻿// AUTHOR: PlantSafety Platform Team
+// CREATED: 2026-07-20
+// FILE DESCRIPTION: Handler for CreateStopWorkEventCommand. Pure orchestration: constructs the StopWorkEvent aggregate via its domain factory method and persists it through the domain repository interface. No business rules live here.
+// SchemaVersion: 1
+
+using MediatR;
+using Microsoft.Extensions.Logging;
+using PlantSafety.SharedKernel.Identifiers;
+using PlantSafety.SharedKernel.Primitives.ValueTypes;
+using PlantSafety.Domain.SafetyCulture.StopWorkEvent.Interfaces;
+
+using PlantSafety.Application.Common.Errors;
+using PlantSafety.Application.Common.Results;
+
+namespace PlantSafety.Application.SafetyCulture.Commands;
+
+/// <summary>Handles <see cref="CreateStopWorkEventCommand"/>.</summary>
+public sealed class CreateStopWorkEventCommandHandler : IRequestHandler<CreateStopWorkEventCommand, Result<CreateStopWorkEventResult>>
+{
+    private readonly IStopWorkEventRepository _repository;
+    private readonly ILogger<CreateStopWorkEventCommandHandler> _logger;
+
+    /// <summary>Initialises dependencies.</summary>
+    public CreateStopWorkEventCommandHandler(IStopWorkEventRepository repository, ILogger<CreateStopWorkEventCommandHandler> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+
+    /// <inheritdoc/>
+    public async Task<Result<CreateStopWorkEventResult>> Handle(CreateStopWorkEventCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var ownerId = UserId.FromGuid(request.OwnerId);
+
+
+            var aggregate = PlantSafety.Domain.SafetyCulture.StopWorkEvent.Aggregates.StopWorkEvent.Create(
+                createdBy: ownerId,
+                createdAtUtc: UtcTimestamp.Now(),
+                correlationId: new CorrelationId(request.CorrelationId),
+                causationId: new CausationId(request.CausationId),
+                actor: PerformedByActor.User(ownerId),
+                tenantId: request.TenantId,
+                siteId: request.SiteId,
+                workArea: request.WorkArea,
+                hazardDescription: request.HazardDescription,
+                initiatedByActor: PerformedByActor.User(ownerId));
+
+            await _repository.AddAsync(aggregate, cancellationToken);
+
+            return Result<CreateStopWorkEventResult>.Success(new CreateStopWorkEventResult(
+                aggregate.StopWorkEventId.Value,
+                aggregate.Status.ToString()));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create StopWorkEvent for Tenant {TenantId}", request.TenantId);
+
+            return Result<CreateStopWorkEventResult>.Failure(new ApplicationError(
+                "SafetyCulture.StopWorkEvent.CreateFailed",
+                "Unable to create the StopWorkEvent record at this time.",
+                Guid.NewGuid()));
+        }
+    }
+}
