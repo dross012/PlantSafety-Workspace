@@ -70,4 +70,49 @@ public sealed class DapperCommandExecutor(
             throw new PersistenceException(procedureName, string.Empty, ex);
         }
     }
+
+    /// <summary>
+    /// Executes a write stored procedure that ends with an explicit <c>SELECT @@ROWCOUNT;</c>
+    /// and returns that value. <see cref="ExecuteAsync"/> wraps <c>SqlCommand.ExecuteNonQuery</c>,
+    /// which returns -1 (not the true affected-row count) for any procedure using
+    /// <c>SET NOCOUNT ON</c> -- the platform-wide convention for every stored procedure in this
+    /// codebase. A rowcount-based optimistic-concurrency check (<c>if (rowsAffected == 0) throw
+    /// ConcurrencyConflictException</c>) against <see cref="ExecuteAsync"/>'s return value can
+    /// therefore never fire for any such procedure, silently disabling concurrency enforcement.
+    /// Use this method instead for any procedure whose caller needs an accurate affected-row
+    /// count; the procedure must end with <c>SELECT @@ROWCOUNT;</c> as its final statement.
+    /// </summary>
+    public async Task<int> ExecuteScalarAsync(
+        IDbConnection connection,
+        string procedureName,
+        DynamicParameters parameters,
+        IDbTransaction? transaction = null,
+        int? commandTimeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var tenantId = parameters.GetTenantId();
+            if (tenantContextOptions.Value.EnableTenantContextPropagation && tenantId == Guid.Empty)
+            {
+                throw new TenantContextRequiredException(procedureName);
+            }
+
+            await connection.SetTenantSessionContextAsync(tenantId, transaction, cancellationToken);
+
+            logger.LogDebug("Executing stored procedure {ProcedureName} (scalar)", procedureName);
+
+            return await connection.ExecuteScalarAsync<int>(
+                sql: procedureName,
+                param: parameters,
+                transaction: transaction,
+                commandTimeout: commandTimeout ?? 30,
+                commandType: CommandType.StoredProcedure);
+        }
+        catch (SqlException ex)
+        {
+            logger.LogError(ex, "Stored procedure {ProcedureName} failed with SQL error {ErrorNumber}", procedureName, ex.Number);
+            throw new PersistenceException(procedureName, string.Empty, ex);
+        }
+    }
 }

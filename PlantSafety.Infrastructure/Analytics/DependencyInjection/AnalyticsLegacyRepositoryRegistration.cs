@@ -79,6 +79,7 @@ public static class AnalyticsLegacyRepositoryRegistration
     public static IServiceCollection AddAnalyticsLegacyRepositories(this IServiceCollection services)
     {
         // Culture subsystem
+        services.AddScoped<Application.Common.Interfaces.Persistence.ICultureRepository, CultureRepository>();
         services.AddScoped<IBehaviorRepository, BehaviorDapperRepository>();
         services.AddScoped<ICultureIndexRepository, CultureIndexDapperRepository>();
         services.AddScoped<IEngagementScoringRepository, EngagementScoringDapperRepository>();

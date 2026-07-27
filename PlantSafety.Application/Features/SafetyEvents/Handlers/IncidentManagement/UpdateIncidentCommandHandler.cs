@@ -18,6 +18,7 @@
 // SchemaVersion: 2
 
 using Microsoft.Extensions.Logging;
+using PlantSafety.Application.Abstractions.Caching;
 using PlantSafety.Application.Abstractions.Messaging;
 using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Update;
 using PlantSafety.Domain.SafetyEvents.IncidentManagement.Enums;
@@ -39,16 +40,19 @@ public sealed class UpdateIncidentCommandHandler : ICommandHandler<UpdateInciden
 {
     private readonly IIncidentRepository _incidentRepository;
     private readonly IIncidentReadRepository _incidentReadRepository;
+    private readonly ICacheService _cacheService;
     private readonly ILogger<UpdateIncidentCommandHandler> _logger;
 
     /// <summary>Initialises dependencies.</summary>
     public UpdateIncidentCommandHandler(
         IIncidentRepository incidentRepository,
         IIncidentReadRepository incidentReadRepository,
+        ICacheService cacheService,
         ILogger<UpdateIncidentCommandHandler> logger)
     {
         _incidentRepository = incidentRepository;
         _incidentReadRepository = incidentReadRepository;
+        _cacheService = cacheService;
         _logger = logger;
     }
 
@@ -115,6 +119,13 @@ public sealed class UpdateIncidentCommandHandler : ICommandHandler<UpdateInciden
             actorId: request.ActorId,
             correlationId: request.CorrelationId,
             cancellationToken: cancellationToken);
+
+        // GetIncidentByIdQuery.CacheKey uses this exact "incidents:{TenantId}:{IncidentId}" format
+        // (ICacheableQuery) -- without this, a read immediately after this write can return a
+        // stale cached IncidentDto until the entry's TTL expires (a real read-after-write
+        // consistency gap, previously undetectable because IDistributedCache was unreachable --
+        // see InitTestHost.ConfigureWebHost's in-memory-cache override remarks).
+        await _cacheService.RemoveAsync($"incidents:{request.TenantId}:{request.IncidentId}", cancellationToken);
 
         _logger.LogInformation(
             "Incident {IncidentId} updated for Tenant {TenantId} by Actor {ActorId} CorrelationId {CorrelationId}",

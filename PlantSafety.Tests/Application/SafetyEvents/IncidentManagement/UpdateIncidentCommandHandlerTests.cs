@@ -21,6 +21,7 @@
 //  Description:    Unit tests for UpdateIncidentCommandHandler with mocked IIncidentRepository and
 //                  IIncidentReadRepository. Isolated, deterministic, <50ms per test. No I/O, no network.
 // ============================================================================
+using PlantSafety.Application.Abstractions.Caching;
 using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Update;
 using PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement;
@@ -34,8 +35,9 @@ public sealed class UpdateIncidentCommandHandlerTests : UnitTestBase
 {
     private readonly IIncidentRepository _repository = Substitute.For<IIncidentRepository>();
     private readonly IIncidentReadRepository _readRepository = Substitute.For<IIncidentReadRepository>();
+    private readonly ICacheService _cacheService = Substitute.For<ICacheService>();
 
-    private UpdateIncidentCommandHandler Sut() => new(_repository, _readRepository, NullLogger<UpdateIncidentCommandHandler>());
+    private UpdateIncidentCommandHandler Sut() => new(_repository, _readRepository, _cacheService, NullLogger<UpdateIncidentCommandHandler>());
 
     private static UpdateIncidentCommand ValidCommand(Guid incidentId) => new()
     {

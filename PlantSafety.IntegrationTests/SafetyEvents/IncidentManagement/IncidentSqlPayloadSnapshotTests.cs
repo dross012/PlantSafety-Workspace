@@ -197,7 +197,7 @@ public sealed class IncidentSqlPayloadSnapshotTests(IntegrationTestWebAppFactory
                 ReportedAtUtc, Severity, Status, Location, ReportedByWorkerId,
                 AssignedInvestigatorId, ClosedAtUtc, DeletionReason, DeletedAtUtc, IsDeleted,
                 LastModifiedByActorId, LastModifiedAtUtc, CreatedAtUtc, CreatedBy,
-                CONVERT(NVARCHAR(34), RowVersion, 1) AS RowVersion
+                CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS RowVersion
             FROM [SafetyEvents].[Incident]
             WHERE IncidentId = @IncidentId
             """,

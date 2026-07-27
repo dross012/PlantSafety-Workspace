@@ -99,7 +99,7 @@ public sealed class IncidentDapperRepository(
             .AddString("ETag", eTag, size: 64)
             .Build();
 
-        var rowsAffected = await commandExecutor.ExecuteAsync(conn, "[SafetyEvents].[usp_Incident_Update]", parameters, tx);
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[SafetyEvents].[usp_Incident_Update]", parameters, tx);
         if (rowsAffected == 0)
         {
             throw new ConcurrencyConflictException(
@@ -147,7 +147,7 @@ public sealed class IncidentDapperRepository(
             .AddString("ETag", eTag, size: 64)
             .Build();
 
-        var rowsAffected = await commandExecutor.ExecuteAsync(conn, "[SafetyEvents].[usp_Incident_SoftDelete]", parameters, tx);
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[SafetyEvents].[usp_Incident_SoftDelete]", parameters, tx);
         if (rowsAffected == 0)
         {
             throw new ConcurrencyConflictException(

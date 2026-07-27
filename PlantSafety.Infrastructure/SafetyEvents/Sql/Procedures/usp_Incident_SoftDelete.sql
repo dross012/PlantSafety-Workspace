@@ -19,6 +19,11 @@
 --                  (see AccidentManagement.Accident / RiskMgmt.Risk). TRY/CATCH with
 --                  AuditDB/ErrorDB logging per the pattern already established by
 --                  usp_Accident_Update. Additive-only evolution.
+--  UPDATED:        2026-07-27 -- same @@ROWCOUNT-suppressed-by-NOCOUNT fix as usp_Incident_Update
+--                  -- see that file's matching remark for the full explanation. @RowsAffected is
+--                  captured before the audit INSERT and returned via SELECT;
+--                  IncidentDapperRepository.SoftDeleteAsync now reads it via
+--                  DapperCommandExecutor.ExecuteScalarAsync instead of ExecuteAsync.
 -- ============================================================================
 
 CREATE OR ALTER PROCEDURE [SafetyEvents].[usp_Incident_SoftDelete]
@@ -46,12 +51,16 @@ BEGIN
           AND IsDeleted = 0
           AND CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag;
 
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
+
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
             VALUES (N'Incident', DB_NAME(), N'DELETE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT @RowsAffected;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);

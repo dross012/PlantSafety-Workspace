@@ -22,6 +22,16 @@
 --                  same rows-affected-based concurrency contract the caller expects.
 --                  TRY/CATCH with AuditDB/ErrorDB logging per the pattern already established by
 --                  usp_Accident_Update. Additive-only evolution.
+--  UPDATED:        2026-07-27 -- SET NOCOUNT ON (below) suppresses the "N row(s) affected"
+--                  message ADO.NET's SqlCommand.ExecuteNonQuery relies on, so it always returns
+--                  -1 regardless of the true row count -- IncidentDapperRepository.UpdateAsync's
+--                  "if (rowsAffected == 0) throw ConcurrencyConflictException" check could
+--                  therefore never fire, silently disabling ETag-based concurrency enforcement
+--                  (a stale/wrong ETag would always appear to "succeed"). @@ROWCOUNT is captured
+--                  into @RowsAffected immediately after the UPDATE (before the audit INSERT, which
+--                  would otherwise reset @@ROWCOUNT to its own 0-or-1) and returned via an explicit
+--                  SELECT, which IncidentDapperRepository.UpdateAsync now reads via
+--                  DapperCommandExecutor.ExecuteScalarAsync instead of ExecuteAsync.
 -- ============================================================================
 
 CREATE OR ALTER PROCEDURE [SafetyEvents].[usp_Incident_Update]
@@ -54,12 +64,16 @@ BEGIN
           AND IsDeleted = 0
           AND CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag;
 
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
+
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
             VALUES (N'Incident', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT @RowsAffected;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);

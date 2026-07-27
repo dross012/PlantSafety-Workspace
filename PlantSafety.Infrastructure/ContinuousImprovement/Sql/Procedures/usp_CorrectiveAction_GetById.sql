@@ -44,7 +44,7 @@ BEGIN
             Status,
             CompletedAtUtc,
             LastModifiedAtUtc,
-            CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag
+            CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
         FROM [ContinuousImprovement].[CorrectiveAction]
         WHERE CaId = @CaId
           AND TenantId = @TenantId

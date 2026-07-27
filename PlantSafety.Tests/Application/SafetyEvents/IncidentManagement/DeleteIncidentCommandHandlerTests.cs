@@ -10,6 +10,7 @@
 //                  IIncidentRepository.
 //                  Isolated, deterministic, <50ms per test. No I/O, no network.
 // ============================================================================
+using PlantSafety.Application.Abstractions.Caching;
 using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Delete;
 using PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement;
 
@@ -18,8 +19,9 @@ namespace PlantSafety.Tests.Application.SafetyEvents.IncidentManagement;
 public sealed class DeleteIncidentCommandHandlerTests : UnitTestBase
 {
     private readonly IIncidentRepository _repository = Substitute.For<IIncidentRepository>();
+    private readonly ICacheService _cacheService = Substitute.For<ICacheService>();
 
-    private DeleteIncidentCommandHandler Sut() => new(_repository, NullLogger<DeleteIncidentCommandHandler>());
+    private DeleteIncidentCommandHandler Sut() => new(_repository, _cacheService, NullLogger<DeleteIncidentCommandHandler>());
 
     private static DeleteIncidentCommand ValidCommand(Guid incidentId) => new()
     {

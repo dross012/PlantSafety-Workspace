@@ -10,7 +10,11 @@
 //                  Deterministic, parallel-safe, additive-only.
 // ============================================================================
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using PlantSafety.Infrastructure.Common.Configuration;
 using Shared.AuditLogging.Infrastructure.Options;
 
@@ -72,6 +76,28 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
                 // through the real Shared.AuditLogging stack in integration tests.
                 [$"{AuditLoggingOptions.SectionName}:{nameof(AuditLoggingOptions.AuditDbConnectionString)}"] = ConnectionString,
             });
+        });
+
+        // CreateCultureCommandHandler now depends only on ICultureRepository (implemented by
+        // PlantSafety.Infrastructure.Analytics.Culture.Persistence.CultureRepository and
+        // registered via AnalyticsLegacyRepositoryRegistration.AddAnalyticsLegacyRepositories,
+        // called from InfrastructureServiceRegistration). No test-only DI stubs are required here
+        // anymore -- see CreateCultureCommandHandler's file header for why the previously-required
+        // SharedKernel.Abstractions.IUnitOfWork / Application-layer IOutboxWriter stubs were removed.
+
+        // InfrastructureServiceRegistration.AddInfrastructure registers IDistributedCache via
+        // AddStackExchangeRedisCache(opts => opts.Configuration = configuration.GetConnectionString("Redis")),
+        // which this test host never supplies -- every MediatR request goes through
+        // CachingBehavior<,>, which calls ApplicationCacheServiceAdapter.GetAsync, which throws
+        // ArgumentNullException from StackExchange.Redis's ConfigurationOptions.Parse(null) the
+        // moment any command/query is sent, regardless of module. No Testcontainers Redis instance
+        // is provisioned (unlike SQL Server) -- swap in an in-memory IDistributedCache for the test
+        // host instead, the standard WebApplicationFactory pattern for out-of-process test
+        // dependencies that don't need to be exercised for real.
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IDistributedCache>();
+            services.AddDistributedMemoryCache();
         });
     }
 }

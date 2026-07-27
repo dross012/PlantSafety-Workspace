@@ -2428,7 +2428,7 @@
         <member name="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand"/>.</summary>
         </member>
-        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler.#ctor(PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository,PlantSafety.SharedKernel.Abstractions.IUnitOfWork,PlantSafety.Application.Common.Interfaces.Persistence.IOutboxWriter,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler})">
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler.#ctor(PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler})">
             <summary>Initializes dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler.Handle(PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand,System.Threading.CancellationToken)">
@@ -27529,7 +27529,7 @@
             Soft-deletes an Incident by setting its Status to <c>Archived</c>.
             </summary>
         </member>
-        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.DeleteIncidentCommandHandler.#ctor(PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.DeleteIncidentCommandHandler})">
+        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.DeleteIncidentCommandHandler.#ctor(PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository,PlantSafety.Application.Abstractions.Caching.ICacheService,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.DeleteIncidentCommandHandler})">
             <summary>Initialises dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.DeleteIncidentCommandHandler.Handle(PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Delete.DeleteIncidentCommand,System.Threading.CancellationToken)">
@@ -27654,7 +27654,7 @@
             the existing partial-update repository call, and stages an outbox event.
             </summary>
         </member>
-        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler.#ctor(PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository,PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler})">
+        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler.#ctor(PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository,PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentReadRepository,PlantSafety.Application.Abstractions.Caching.ICacheService,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler})">
             <summary>Initialises dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler.Handle(PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Update.UpdateIncidentCommand,System.Threading.CancellationToken)">

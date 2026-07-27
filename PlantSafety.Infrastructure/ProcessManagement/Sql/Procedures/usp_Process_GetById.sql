@@ -27,7 +27,7 @@ SELECT
         [Version],
         [OwnerId],
         [LastModifiedAtUtc],
-        CONVERT(NVARCHAR(34), [RowVersion], 1) AS [ETag]
+        CONVERT(NVARCHAR(34), CAST([RowVersion] AS BINARY(8)), 1) AS [ETag]
 FROM [ProcessManagement].[Processes]
 WHERE [TenantId] = @TenantId
   AND [ProcessId] = @ProcessId;

@@ -31,17 +31,25 @@ public static class TestDatabaseFactory
                            WHERE TABLE_SCHEMA = 'System' AND TABLE_NAME = 'OutboxMessages')
             BEGIN
                 CREATE TABLE [System].[OutboxMessages] (
-                    MessageId     UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWSEQUENTIALID(),
-                    EventType     NVARCHAR(200)    NOT NULL,
-                    SchemaVersion NVARCHAR(20)     NOT NULL DEFAULT '2026.1',
-                    TenantId      UNIQUEIDENTIFIER NOT NULL,
-                    ActorId       UNIQUEIDENTIFIER NOT NULL,
-                    CorrelationId UNIQUEIDENTIFIER NOT NULL,
-                    OccurredAt    DATETIME2(3)     NOT NULL,
-                    Payload       NVARCHAR(MAX)    NOT NULL,
-                    Processed     BIT              NOT NULL DEFAULT 0,
-                    ProcessedAt   DATETIME2(3)         NULL
+                    MessageId       UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_OutboxMessages PRIMARY KEY,
+                    EventType       NVARCHAR(200)    NOT NULL,
+                    SchemaVersion   NVARCHAR(50)     NOT NULL,
+                    TenantId        NVARCHAR(100)    NOT NULL,
+                    ActorId         NVARCHAR(100)    NOT NULL,
+                    CorrelationId   NVARCHAR(100)    NOT NULL,
+                    OccurredAt      DATETIME2(3)     NOT NULL,
+                    Payload         NVARCHAR(MAX)    NOT NULL,
+                    Processed       BIT              NOT NULL CONSTRAINT DF_OutboxMessages_Processed DEFAULT (0),
+                    ProcessedAt     DATETIME2(3)     NULL,
+                    CreatedAt       DATETIME2(3)     NOT NULL CONSTRAINT DF_OutboxMessages_CreatedAt DEFAULT (SYSUTCDATETIME())
                 );
+
+                CREATE INDEX IX_OutboxMessages_Processed_OccurredAt
+                    ON [System].[OutboxMessages] (Processed, OccurredAt)
+                    INCLUDE (MessageId);
+
+                CREATE INDEX IX_OutboxMessages_TenantId
+                    ON [System].[OutboxMessages] (TenantId);
             END;
 
             IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES
@@ -52,6 +60,34 @@ public static class TestDatabaseFactory
                     ProcessedAt DATETIME2(3)     NOT NULL
                 );
             END;");
+
+        // Matches PlantSafety.Infrastructure/Persistence/Scripts/Procedures/usp_OutboxMessages_Insert.sql
+        // verbatim -- previously missing entirely, so any test exercising a handler that writes a
+        // domain event through OutboxWriter.FlushAsync failed with "Could not find stored procedure
+        // 'System.usp_OutboxMessages_Insert'" the moment TransactionBehavior.Handle committed.
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [System].[usp_OutboxMessages_Insert]
+                @MessageId          UNIQUEIDENTIFIER,
+                @EventType          NVARCHAR(200),
+                @SchemaVersion      NVARCHAR(50),
+                @EnvelopeTenantId   NVARCHAR(100),
+                @ActorId            NVARCHAR(100),
+                @CorrelationId      NVARCHAR(100),
+                @OccurredAt         DATETIME2(3),
+                @Payload            NVARCHAR(MAX)
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+
+                INSERT INTO [System].[OutboxMessages]
+                    (MessageId, EventType, SchemaVersion, TenantId, ActorId, CorrelationId, OccurredAt, Payload, Processed)
+                VALUES
+                    (@MessageId, @EventType, @SchemaVersion, @EnvelopeTenantId, @ActorId, @CorrelationId, @OccurredAt, @Payload, 0);
+
+            END TRY
+            BEGIN CATCH
+                THROW;
+            END CATCH;");
     }
 
     /// <summary>
@@ -145,11 +181,17 @@ public static class TestDatabaseFactory
     /// Count/SearchCount</c>) against the Testcontainers database, mirroring the canonical,
     /// version-controlled definitions in PlantSafety.Infrastructure\SafetyEvents\Sql\Tables\
     /// Incident.sql and \Procedures\usp_Incident_*.sql / usp_IncidentRead_*.sql verbatim. Unlike
-    /// <see cref="ApplySharedAuditLoggingSchemaAsync"/>, no statements need to be stripped here --
-    /// the write procedures' cross-database AuditLog/ErrorLog writes are already wrapped in their
-    /// own defensive BEGIN TRY/END TRY (empty CATCH) blocks in the canonical scripts, so they
-    /// silently no-op against the Testcontainers instance's single-database topology instead of
-    /// failing the surrounding operation.
+    /// <see cref="ApplySharedAuditLoggingSchemaAsync"/>, the write procedures' AuditLog/ErrorLog
+    /// writes are wrapped in their own defensive BEGIN TRY/END TRY (empty CATCH) blocks in the
+    /// canonical scripts, so they silently no-op if those tables are unreachable. That TRY/CATCH
+    /// only shields *runtime* errors (e.g. a missing table in an existing database, resolved via
+    /// deferred name resolution) -- referencing a three-part name whose *database* doesn't exist
+    /// at all is a bind-time error SQL Server raises before the TRY block ever executes, so it is
+    /// NOT swallowed. The <c>[PlantSafety.AuditDB]</c> / <c>[PlantSafety.ErrorDB]</c> three-part
+    /// prefixes are therefore stripped down to <c>dbo.AuditLog</c> / <c>dbo.ErrorLog</c> below,
+    /// matching the single-database Testcontainers topology (dbo.AuditLog is created by
+    /// <see cref="ApplySharedAuditLoggingSchemaAsync"/>; dbo.ErrorLog is intentionally left
+    /// uncreated so its INSERT still no-ops via the now-catchable "missing table" error).
     /// </summary>
     public static async Task ApplyIncidentManagementSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
     {
@@ -228,7 +270,7 @@ public static class TestDatabaseFactory
                     );
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'Incident', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -239,7 +281,7 @@ public static class TestDatabaseFactory
                     DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
                         VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -280,19 +322,23 @@ public static class TestDatabaseFactory
                       AND IsDeleted = 0
                       AND CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag;
 
+                    DECLARE @RowsAffected INT = @@ROWCOUNT;
+
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'Incident', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
                     END CATCH;
+
+                    SELECT @RowsAffected;
                 END TRY
                 BEGIN CATCH
                     DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);
                     DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
                         VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -328,19 +374,23 @@ public static class TestDatabaseFactory
                       AND IsDeleted = 0
                       AND CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag;
 
+                    DECLARE @RowsAffected INT = @@ROWCOUNT;
+
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'Incident', DB_NAME(), N'DELETE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
                     END CATCH;
+
+                    SELECT @RowsAffected;
                 END TRY
                 BEGIN CATCH
                     DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'IncidentId=', @IncidentId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);
                     DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
                         VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -362,7 +412,8 @@ public static class TestDatabaseFactory
                 SELECT
                     IncidentId, TenantId, SiteId, Title, Description, IncidentOccurredAtUtc, ReportedAtUtc,
                     Severity, Status, Location, ReportedByWorkerId, AssignedInvestigatorId, ClosedAtUtc,
-                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag,
+                    CreatedAtUtc, CreatedBy
                 FROM [SafetyEvents].[Incident]
                 WHERE IncidentId = @IncidentId AND TenantId = @TenantId AND IsDeleted = 0;
             END;");
@@ -387,7 +438,8 @@ public static class TestDatabaseFactory
                 SELECT
                     IncidentId, TenantId, SiteId, Title, Description, IncidentOccurredAtUtc, ReportedAtUtc,
                     Severity, Status, Location, ReportedByWorkerId, AssignedInvestigatorId, ClosedAtUtc,
-                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag,
+                    CreatedAtUtc, CreatedBy
                 FROM [SafetyEvents].[Incident]
                 WHERE TenantId = @TenantId
                   AND IsDeleted = 0
@@ -425,7 +477,8 @@ public static class TestDatabaseFactory
                 SELECT
                     IncidentId, TenantId, SiteId, Title, Description, IncidentOccurredAtUtc, ReportedAtUtc,
                     Severity, Status, Location, ReportedByWorkerId, AssignedInvestigatorId, ClosedAtUtc,
-                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag,
+                    CreatedAtUtc, CreatedBy
                 FROM [SafetyEvents].[Incident]
                 WHERE TenantId = @TenantId
                   AND IsDeleted = 0
@@ -601,7 +654,7 @@ public static class TestDatabaseFactory
                     );
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'Risk', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'RiskId=', @RiskId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -661,7 +714,7 @@ public static class TestDatabaseFactory
                     WHERE RiskId = @RiskId AND IsDeleted = 0;
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'Risk', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'RiskId=', @RiskId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -732,7 +785,7 @@ public static class TestDatabaseFactory
                     END
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'ControlMeasure', DB_NAME(), CASE WHEN @__IsInsert = 1 THEN N'INSERT' ELSE N'UPDATE' END, SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'ControlMeasureId=', @ControlMeasureId, N'; RiskId=', @RiskId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -890,7 +943,7 @@ public static class TestDatabaseFactory
                     );
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'Accident', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'AccidentId=', @AccidentId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -945,7 +998,7 @@ public static class TestDatabaseFactory
                     WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0;
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'Accident', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'AccidentId=', @AccidentId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
@@ -1039,7 +1092,7 @@ public static class TestDatabaseFactory
                     END
 
                     BEGIN TRY
-                        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
                         VALUES (N'CorrectiveAction', DB_NAME(), CASE WHEN @__IsInsert = 1 THEN N'INSERT' ELSE N'UPDATE' END, SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CorrectiveActionId=', @CorrectiveActionId, N'; AccidentId=', @AccidentId), 0, OBJECT_NAME(@@PROCID));
                     END TRY
                     BEGIN CATCH
