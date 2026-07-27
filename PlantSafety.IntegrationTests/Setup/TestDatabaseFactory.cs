@@ -4418,4 +4418,1147 @@ ORDER BY [LastUpdatedAtUtc] DESC;
     }
 
 
+
+    public static async Task ApplyAnalyticsSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Analytics')
+                EXEC('CREATE SCHEMA Analytics AUTHORIZATION dbo;');");
+
+        // Table: AnalyticsExportItems.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AnalyticsExportItems' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[AnalyticsExportItems] (
+        [Id]                UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [ResourceType]      NVARCHAR(100)       NOT NULL,
+        [ResourceId]        UNIQUEIDENTIFIER    NOT NULL,
+        [Title]             NVARCHAR(300)       NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [EffectiveAtUtc]    DATETIME2(3)        NOT NULL,
+        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_AnalyticsExportItems_TenantId_EffectiveAtUtc]
+        ON [Analytics].[AnalyticsExportItems] ([TenantId], [EffectiveAtUtc])
+        INCLUDE ([SiteId], [Status], [ResourceType]);
+END
+");
+
+        // Table: Behavior.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Behavior' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[Behavior] (
+        [ObservationId]     UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [EmployeeId]        UNIQUEIDENTIFIER    NOT NULL,
+        [BehaviorCategory]  NVARCHAR(200)       NOT NULL,
+        [ObservationType]   NVARCHAR(50)        NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [ObservedAtUtc]     DATETIME2(3)        NOT NULL,
+        [ObservedBy]        UNIQUEIDENTIFIER    NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_Behavior_TenantId_ObservedAtUtc]
+        ON [Analytics].[Behavior] ([TenantId], [ObservedAtUtc])
+        INCLUDE ([SiteId], [Status], [BehaviorCategory]);
+END
+");
+
+        // Table: ComplianceFailure.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ComplianceFailure' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[ComplianceFailure] (
+        [PredictionId]       UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]           UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]             UNIQUEIDENTIFIER    NULL,
+        [ComplianceArea]     NVARCHAR(200)       NOT NULL,
+        [FailureProbability] DECIMAL(18,4)       NOT NULL,
+        [RiskLevel]          NVARCHAR(50)        NOT NULL,
+        [Status]             NVARCHAR(50)        NOT NULL,
+        [PredictedAtUtc]     DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_ComplianceFailure_TenantId_PredictedAtUtc]
+        ON [Analytics].[ComplianceFailure] ([TenantId], [PredictedAtUtc])
+        INCLUDE ([SiteId], [Status], [RiskLevel]);
+END
+");
+
+        // Table: Culture.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Culture' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[Culture] (
+        CultureId          UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Culture PRIMARY KEY,
+        TenantId            UNIQUEIDENTIFIER NOT NULL,
+        SiteId              UNIQUEIDENTIFIER NULL,
+        Status              NVARCHAR(30)     NOT NULL,
+        SurveyPeriod        NVARCHAR(20)     NOT NULL,
+        CultureIndexScore   DECIMAL(5,2)     NOT NULL,
+        EngagementScore     DECIMAL(5,2)     NOT NULL,
+        ParticipationRate   DECIMAL(5,2)     NOT NULL,
+        TopRiskTheme        NVARCHAR(200)    NOT NULL,
+        CreatedAtUtc        DATETIME2(3)     NOT NULL,
+        CreatedBy           UNIQUEIDENTIFIER NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_Culture_TenantId] ON [Analytics].[Culture] (TenantId);
+END
+");
+
+        // Table: CultureIndex.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CultureIndex' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[CultureIndex] (
+        [IndexSnapshotId]   UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [CultureDimension]  NVARCHAR(200)       NOT NULL,
+        [IndexScore]        DECIMAL(18,4)       NOT NULL,
+        [TrendDirection]    NVARCHAR(50)        NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_CultureIndex_TenantId_CalculatedAtUtc]
+        ON [Analytics].[CultureIndex] ([TenantId], [CalculatedAtUtc])
+        INCLUDE ([SiteId], [Status], [CultureDimension]);
+END
+");
+
+        // Table: DashboardTrendAnalysis.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DashboardTrendAnalysis' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[DashboardTrendAnalysis] (
+        [TrendPointId]      UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [MetricName]        NVARCHAR(200)       NOT NULL,
+        [MetricValue]       DECIMAL(18,4)       NOT NULL,
+        [TrendDirection]    NVARCHAR(50)        NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_DashboardTrendAnalysis_TenantId_CalculatedAtUtc]
+        ON [Analytics].[DashboardTrendAnalysis] ([TenantId], [CalculatedAtUtc])
+        INCLUDE ([SiteId], [Status], [MetricName]);
+END
+");
+
+        // Table: Department.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Department' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[Department] (
+        [ScoreCardId]       UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [DepartmentName]    NVARCHAR(200)       NOT NULL,
+        [ScoreValue]        DECIMAL(18,4)       NOT NULL,
+        [RankPercentile]    DECIMAL(18,4)       NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_Department_TenantId_ScoredAtUtc]
+        ON [Analytics].[Department] ([TenantId], [ScoredAtUtc])
+        INCLUDE ([SiteId], [Status], [DepartmentName]);
+END
+");
+
+        // Table: EngagementDataPoints.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'EngagementDataPoints' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[EngagementDataPoints] (
+        [DataPointId]       UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [Label]              NVARCHAR(300)       NOT NULL,
+        [Value]              DECIMAL(18,4)       NOT NULL,
+        [Trend]              NVARCHAR(50)        NULL,
+        [RecordedAtUtc]      DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_EngagementDataPoints_TenantId_RecordedAtUtc]
+        ON [Analytics].[EngagementDataPoints] ([TenantId], [RecordedAtUtc])
+        INCLUDE ([SiteId], [Label]);
+END
+");
+
+        // Table: EngagementScoring.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'EngagementScoring' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[EngagementScoring] (
+        [ScoreId]           UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [EmployeeId]        UNIQUEIDENTIFIER    NOT NULL,
+        [EngagementScore]   DECIMAL(18,4)       NOT NULL,
+        [ScoreCategory]     NVARCHAR(100)       NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_EngagementScoring_TenantId_ScoredAtUtc]
+        ON [Analytics].[EngagementScoring] ([TenantId], [ScoredAtUtc])
+        INCLUDE ([SiteId], [Status], [ScoreCategory]);
+END
+");
+
+        // Table: Executive.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Executive' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[Executive] (
+        [SummaryId]         UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [MetricName]        NVARCHAR(200)       NOT NULL,
+        [MetricValue]       DECIMAL(18,4)       NOT NULL,
+        [TargetValue]       DECIMAL(18,4)       NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [SnapshotAtUtc]     DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_Executive_TenantId_SnapshotAtUtc]
+        ON [Analytics].[Executive] ([TenantId], [SnapshotAtUtc])
+        INCLUDE ([SiteId], [Status], [MetricName]);
+END
+");
+
+        // Table: FatigueRiskModeling.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'FatigueRiskModeling' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[FatigueRiskModeling] (
+        [RiskAssessmentId]   UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]           UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]             UNIQUEIDENTIFIER    NULL,
+        [EmployeeId]         UNIQUEIDENTIFIER    NOT NULL,
+        [FatigueRiskScore]   DECIMAL(18,4)       NOT NULL,
+        [RiskLevel]          NVARCHAR(50)        NOT NULL,
+        [Status]             NVARCHAR(50)        NOT NULL,
+        [AssessedAtUtc]      DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_FatigueRiskModeling_TenantId_AssessedAtUtc]
+        ON [Analytics].[FatigueRiskModeling] ([TenantId], [AssessedAtUtc])
+        INCLUDE ([SiteId], [Status], [RiskLevel]);
+END
+");
+
+        // Table: IncidentPrediction.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'IncidentPrediction' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[IncidentPrediction] (
+        [PredictionId]         UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]             UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]               UNIQUEIDENTIFIER    NULL,
+        [IncidentCategory]     NVARCHAR(200)       NOT NULL,
+        [PredictedProbability] DECIMAL(18,4)       NOT NULL,
+        [RiskLevel]            NVARCHAR(50)        NOT NULL,
+        [Status]               NVARCHAR(50)        NOT NULL,
+        [PredictedAtUtc]       DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_IncidentPrediction_TenantId_PredictedAtUtc]
+        ON [Analytics].[IncidentPrediction] ([TenantId], [PredictedAtUtc])
+        INCLUDE ([SiteId], [Status], [RiskLevel]);
+END
+");
+
+        // Table: KPISnapshots.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'KPISnapshots' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[KPISnapshots] (
+        [SnapshotId]        UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [KpiName]           NVARCHAR(200)       NOT NULL,
+        [KpiValue]          DECIMAL(18,4)       NOT NULL,
+        [UnitOfMeasure]     NVARCHAR(50)        NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [SnapshotAtUtc]     DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_KPISnapshots_TenantId_SnapshotAtUtc]
+        ON [Analytics].[KPISnapshots] ([TenantId], [SnapshotAtUtc])
+        INCLUDE ([SiteId], [Status], [KpiName]);
+END
+");
+
+        // Table: PredictiveAnalytics.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PredictiveAnalytics' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[PredictiveAnalytics] (
+        [PredictionId]      UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [ModelName]         NVARCHAR(200)       NOT NULL,
+        [Score]             DECIMAL(18,4)       NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [GeneratedAtUtc]    DATETIME2(3)        NOT NULL,
+        [GeneratedBy]       UNIQUEIDENTIFIER    NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_PredictiveAnalytics_TenantId_GeneratedAtUtc]
+        ON [Analytics].[PredictiveAnalytics] ([TenantId], [GeneratedAtUtc])
+        INCLUDE ([SiteId], [Status], [ModelName]);
+END
+");
+
+        // Table: ReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ReadModel' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[ReadModel] (
+        [RowId]             UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [WidgetName]        NVARCHAR(200)       NOT NULL,
+        [WidgetValue]       NVARCHAR(400)       NOT NULL,
+        [DisplayOrder]      INT                 NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [RefreshedAtUtc]    DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_ReadModel_TenantId_RefreshedAtUtc]
+        ON [Analytics].[ReadModel] ([TenantId], [RefreshedAtUtc])
+        INCLUDE ([SiteId], [Status], [WidgetName], [DisplayOrder]);
+END
+");
+
+        // Table: Reporting.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Reporting' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[Reporting] (
+        [ReportItemId]      UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [ReportName]        NVARCHAR(300)       NOT NULL,
+        [ReportCategory]    NVARCHAR(100)       NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [GeneratedAtUtc]    DATETIME2(3)        NOT NULL,
+        [GeneratedBy]       UNIQUEIDENTIFIER    NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_Reporting_TenantId_GeneratedAtUtc]
+        ON [Analytics].[Reporting] ([TenantId], [GeneratedAtUtc])
+        INCLUDE ([SiteId], [Status], [ReportCategory]);
+END
+");
+
+        // Table: RiskForecasting.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'RiskForecasting' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[RiskForecasting] (
+        [ForecastId]           UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]             UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]               UNIQUEIDENTIFIER    NULL,
+        [RiskCategory]         NVARCHAR(200)       NOT NULL,
+        [ForecastValue]        DECIMAL(18,4)       NOT NULL,
+        [ForecastHorizonDays]  INT                 NOT NULL,
+        [Status]               NVARCHAR(50)        NOT NULL,
+        [ForecastedAtUtc]      DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_RiskForecasting_TenantId_ForecastedAtUtc]
+        ON [Analytics].[RiskForecasting] ([TenantId], [ForecastedAtUtc])
+        INCLUDE ([SiteId], [Status], [RiskCategory]);
+END
+");
+
+        // Table: Schedules.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Schedules' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[Schedules] (
+        [ScheduleItemId]    UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [ScheduleName]      NVARCHAR(200)       NOT NULL,
+        [Frequency]         NVARCHAR(50)        NOT NULL,
+        [NextRunAtUtc]      DATETIME2(3)        NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [CreatedAtUtc]      DATETIME2(3)        NOT NULL,
+        [CreatedBy]         UNIQUEIDENTIFIER    NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_Schedules_TenantId_NextRunAtUtc]
+        ON [Analytics].[Schedules] ([TenantId], [NextRunAtUtc])
+        INCLUDE ([SiteId], [Status], [ScheduleName]);
+END
+");
+
+        // Table: ScoreCardsCompliance.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ScoreCardsCompliance' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[ScoreCardsCompliance] (
+        [ScoreCardId]       UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [ComplianceArea]    NVARCHAR(200)       NOT NULL,
+        [ScoreValue]        DECIMAL(18,4)       NOT NULL,
+        [MaxScore]          DECIMAL(18,4)       NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_ScoreCardsCompliance_TenantId_ScoredAtUtc]
+        ON [Analytics].[ScoreCardsCompliance] ([TenantId], [ScoredAtUtc])
+        INCLUDE ([SiteId], [Status], [ComplianceArea]);
+END
+");
+
+        // Table: ScoreCardsTraining.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ScoreCardsTraining' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[ScoreCardsTraining] (
+        [ScoreCardId]       UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [EmployeeId]        UNIQUEIDENTIFIER    NOT NULL,
+        [CompletionRate]    DECIMAL(18,4)       NOT NULL,
+        [CoursesCompleted]  INT                 NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_ScoreCardsTraining_TenantId_ScoredAtUtc]
+        ON [Analytics].[ScoreCardsTraining] ([TenantId], [ScoredAtUtc])
+        INCLUDE ([SiteId], [Status], [EmployeeId]);
+END
+");
+
+        // Table: Supervisor.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Supervisor' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[Supervisor] (
+        [ScoreCardId]       UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [SupervisorId]      UNIQUEIDENTIFIER    NOT NULL,
+        [ScoreValue]        DECIMAL(18,4)       NOT NULL,
+        [TeamSize]          INT                 NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_Supervisor_TenantId_ScoredAtUtc]
+        ON [Analytics].[Supervisor] ([TenantId], [ScoredAtUtc])
+        INCLUDE ([SiteId], [Status], [SupervisorId]);
+END
+");
+
+        // Table: TrendAnalysis.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TrendAnalysis' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[TrendAnalysis] (
+        [TrendPointId]      UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [MetricName]        NVARCHAR(200)       NOT NULL,
+        [MetricValue]       DECIMAL(18,4)       NOT NULL,
+        [TrendDirection]    NVARCHAR(50)        NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_TrendAnalysis_TenantId_CalculatedAtUtc]
+        ON [Analytics].[TrendAnalysis] ([TenantId], [CalculatedAtUtc])
+        INCLUDE ([SiteId], [Status], [MetricName]);
+END
+");
+
+        // Table: TrendModeling.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TrendModeling' AND schema_id = SCHEMA_ID('Analytics'))
+BEGIN
+    CREATE TABLE [Analytics].[TrendModeling] (
+        [TrendModelId]      UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [MetricName]        NVARCHAR(200)       NOT NULL,
+        [PredictedValue]    DECIMAL(18,4)       NOT NULL,
+        [ModelConfidence]   DECIMAL(18,4)       NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [GeneratedAtUtc]    DATETIME2(3)        NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_TrendModeling_TenantId_GeneratedAtUtc]
+        ON [Analytics].[TrendModeling] ([TenantId], [GeneratedAtUtc])
+        INCLUDE ([SiteId], [Status], [MetricName]);
+END
+");
+
+        // Procedure: usp_AnalyticsExportItems_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_AnalyticsExportItems_List]
+    @TenantId       UNIQUEIDENTIFIER,
+    @SiteId         UNIQUEIDENTIFIER = NULL,
+    @FromUtc        DATETIME2(3) = NULL,
+    @ToUtc          DATETIME2(3),
+    @Status         NVARCHAR(50) = NULL,
+    @MaxRecords     INT
+AS
+SET NOCOUNT ON;
+
+SELECT TOP (@MaxRecords)
+        [Id],
+        [TenantId],
+        [SiteId],
+        [ResourceType],
+        [ResourceId],
+        [Title],
+        [Status],
+        [EffectiveAtUtc],
+        [OwnerId]
+FROM [Analytics].[AnalyticsExportItems]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND (@FromUtc IS NULL OR [EffectiveAtUtc] >= @FromUtc)
+  AND [EffectiveAtUtc] <= @ToUtc
+  AND (@Status IS NULL OR [Status] = @Status)
+ORDER BY [EffectiveAtUtc] DESC;
+");
+
+        // Procedure: usp_Behavior_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Behavior_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ObservationId],
+        [TenantId],
+        [SiteId],
+        [EmployeeId],
+        [BehaviorCategory],
+        [ObservationType],
+        [Status],
+        [ObservedAtUtc],
+        [ObservedBy]
+FROM [Analytics].[Behavior]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ObservedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ObservedAtUtc] DESC;
+");
+
+        // Procedure: usp_ComplianceFailure_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_ComplianceFailure_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [PredictionId],
+        [TenantId],
+        [SiteId],
+        [ComplianceArea],
+        [FailureProbability],
+        [RiskLevel],
+        [Status],
+        [PredictedAtUtc]
+FROM [Analytics].[ComplianceFailure]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [PredictedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [PredictedAtUtc] DESC;
+");
+
+        // Procedure: usp_Culture_GetAll.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Culture_GetAll]
+    @TenantId UNIQUEIDENTIFIER
+AS
+SET NOCOUNT ON;
+BEGIN
+    SELECT
+        CultureId, TenantId, SiteId, Status, SurveyPeriod, CultureIndexScore, EngagementScore,
+        ParticipationRate, TopRiskTheme, CreatedAtUtc, CreatedBy
+    FROM [Analytics].[Culture]
+    WHERE TenantId = @TenantId
+    ORDER BY CreatedAtUtc DESC;
+END
+");
+
+        // Procedure: usp_Culture_GetById.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Culture_GetById]
+    @TenantId  UNIQUEIDENTIFIER,
+    @CultureId UNIQUEIDENTIFIER
+AS
+SET NOCOUNT ON;
+BEGIN
+    SELECT
+        CultureId, TenantId, SiteId, Status, SurveyPeriod, CultureIndexScore, EngagementScore,
+        ParticipationRate, TopRiskTheme, CreatedAtUtc, CreatedBy
+    FROM [Analytics].[Culture]
+    WHERE CultureId = @CultureId AND TenantId = @TenantId;
+END
+");
+
+        // Procedure: usp_Culture_Insert.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Culture_Insert]
+    @CultureId          UNIQUEIDENTIFIER,
+    @TenantId           UNIQUEIDENTIFIER,
+    @SiteId             UNIQUEIDENTIFIER = NULL,
+    @Status             NVARCHAR(30),
+    @SurveyPeriod       NVARCHAR(20),
+    @CultureIndexScore  DECIMAL(5,2),
+    @EngagementScore    DECIMAL(5,2),
+    @ParticipationRate  DECIMAL(5,2),
+    @TopRiskTheme       NVARCHAR(200),
+    @CreatedAtUtc       DATETIME2(3),
+    @CreatedBy          UNIQUEIDENTIFIER
+AS
+SET NOCOUNT ON;
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+        INSERT INTO [Analytics].[Culture]
+        (
+            CultureId, TenantId, SiteId, Status, SurveyPeriod, CultureIndexScore, EngagementScore,
+            ParticipationRate, TopRiskTheme, CreatedAtUtc, CreatedBy
+        )
+        VALUES
+        (
+            @CultureId, @TenantId, @SiteId, @Status, @SurveyPeriod, @CultureIndexScore, @EngagementScore,
+            @ParticipationRate, @TopRiskTheme, @CreatedAtUtc, @CreatedBy
+        );
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+");
+
+        // Procedure: usp_CultureIndex_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_CultureIndex_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [IndexSnapshotId],
+        [TenantId],
+        [SiteId],
+        [CultureDimension],
+        [IndexScore],
+        [TrendDirection],
+        [Status],
+        [CalculatedAtUtc]
+FROM [Analytics].[CultureIndex]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [CalculatedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [CalculatedAtUtc] DESC;
+");
+
+        // Procedure: usp_DashboardTrendAnalysis_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_DashboardTrendAnalysis_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [TrendPointId],
+        [TenantId],
+        [SiteId],
+        [MetricName],
+        [MetricValue],
+        [TrendDirection],
+        [Status],
+        [CalculatedAtUtc]
+FROM [Analytics].[DashboardTrendAnalysis]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [CalculatedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [CalculatedAtUtc] DESC;
+");
+
+        // Procedure: usp_Department_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Department_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ScoreCardId],
+        [TenantId],
+        [SiteId],
+        [DepartmentName],
+        [ScoreValue],
+        [RankPercentile],
+        [Status],
+        [ScoredAtUtc]
+FROM [Analytics].[Department]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScoredAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScoredAtUtc] DESC;
+");
+
+        // Procedure: usp_EngagementDataPoints_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_EngagementDataPoints_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [Label],
+        [Value],
+        [Trend]
+FROM [Analytics].[EngagementDataPoints]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [RecordedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [RecordedAtUtc] DESC;
+");
+
+        // Procedure: usp_EngagementScoring_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_EngagementScoring_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ScoreId],
+        [TenantId],
+        [SiteId],
+        [EmployeeId],
+        [EngagementScore],
+        [ScoreCategory],
+        [Status],
+        [ScoredAtUtc]
+FROM [Analytics].[EngagementScoring]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScoredAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScoredAtUtc] DESC;
+");
+
+        // Procedure: usp_Executive_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Executive_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [SummaryId],
+        [TenantId],
+        [SiteId],
+        [MetricName],
+        [MetricValue],
+        [TargetValue],
+        [Status],
+        [SnapshotAtUtc]
+FROM [Analytics].[Executive]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [SnapshotAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [SnapshotAtUtc] DESC;
+");
+
+        // Procedure: usp_FatigueRiskModeling_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_FatigueRiskModeling_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [RiskAssessmentId],
+        [TenantId],
+        [SiteId],
+        [EmployeeId],
+        [FatigueRiskScore],
+        [RiskLevel],
+        [Status],
+        [AssessedAtUtc]
+FROM [Analytics].[FatigueRiskModeling]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [AssessedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [AssessedAtUtc] DESC;
+");
+
+        // Procedure: usp_IncidentPrediction_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_IncidentPrediction_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [PredictionId],
+        [TenantId],
+        [SiteId],
+        [IncidentCategory],
+        [PredictedProbability],
+        [RiskLevel],
+        [Status],
+        [PredictedAtUtc]
+FROM [Analytics].[IncidentPrediction]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [PredictedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [PredictedAtUtc] DESC;
+");
+
+        // Procedure: usp_KPISnapshots_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_KPISnapshots_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [SnapshotId],
+        [TenantId],
+        [SiteId],
+        [KpiName],
+        [KpiValue],
+        [UnitOfMeasure],
+        [Status],
+        [SnapshotAtUtc]
+FROM [Analytics].[KPISnapshots]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [SnapshotAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [SnapshotAtUtc] DESC;
+");
+
+        // Procedure: usp_PredictiveAnalytics_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_PredictiveAnalytics_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [PredictionId],
+        [TenantId],
+        [SiteId],
+        [ModelName],
+        [Score],
+        [Status],
+        [GeneratedAtUtc],
+        [GeneratedBy]
+FROM [Analytics].[PredictiveAnalytics]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [GeneratedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [GeneratedAtUtc] DESC;
+");
+
+        // Procedure: usp_ReadModel_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_ReadModel_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [RowId],
+        [TenantId],
+        [SiteId],
+        [WidgetName],
+        [WidgetValue],
+        [DisplayOrder],
+        [Status],
+        [RefreshedAtUtc]
+FROM [Analytics].[ReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [RefreshedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [DisplayOrder] ASC, [RefreshedAtUtc] DESC;
+");
+
+        // Procedure: usp_Reporting_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Reporting_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ReportItemId],
+        [TenantId],
+        [SiteId],
+        [ReportName],
+        [ReportCategory],
+        [Status],
+        [GeneratedAtUtc],
+        [GeneratedBy]
+FROM [Analytics].[Reporting]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [GeneratedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [GeneratedAtUtc] DESC;
+");
+
+        // Procedure: usp_RiskForecasting_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_RiskForecasting_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ForecastId],
+        [TenantId],
+        [SiteId],
+        [RiskCategory],
+        [ForecastValue],
+        [ForecastHorizonDays],
+        [Status],
+        [ForecastedAtUtc]
+FROM [Analytics].[RiskForecasting]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ForecastedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ForecastedAtUtc] DESC;
+");
+
+        // Procedure: usp_Schedules_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Schedules_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ScheduleItemId],
+        [TenantId],
+        [SiteId],
+        [ScheduleName],
+        [Frequency],
+        [NextRunAtUtc],
+        [Status],
+        [CreatedAtUtc],
+        [CreatedBy]
+FROM [Analytics].[Schedules]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [NextRunAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [NextRunAtUtc] ASC;
+");
+
+        // Procedure: usp_ScoreCardsCompliance_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_ScoreCardsCompliance_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ScoreCardId],
+        [TenantId],
+        [SiteId],
+        [ComplianceArea],
+        [ScoreValue],
+        [MaxScore],
+        [Status],
+        [ScoredAtUtc]
+FROM [Analytics].[ScoreCardsCompliance]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScoredAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScoredAtUtc] DESC;
+");
+
+        // Procedure: usp_ScoreCardsTraining_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_ScoreCardsTraining_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ScoreCardId],
+        [TenantId],
+        [SiteId],
+        [EmployeeId],
+        [CompletionRate],
+        [CoursesCompleted],
+        [Status],
+        [ScoredAtUtc]
+FROM [Analytics].[ScoreCardsTraining]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScoredAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScoredAtUtc] DESC;
+");
+
+        // Procedure: usp_Supervisor_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_Supervisor_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ScoreCardId],
+        [TenantId],
+        [SiteId],
+        [SupervisorId],
+        [ScoreValue],
+        [TeamSize],
+        [Status],
+        [ScoredAtUtc]
+FROM [Analytics].[Supervisor]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScoredAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScoredAtUtc] DESC;
+");
+
+        // Procedure: usp_TrendAnalysis_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_TrendAnalysis_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [TrendPointId],
+        [TenantId],
+        [SiteId],
+        [MetricName],
+        [MetricValue],
+        [TrendDirection],
+        [Status],
+        [CalculatedAtUtc]
+FROM [Analytics].[TrendAnalysis]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [CalculatedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [CalculatedAtUtc] DESC;
+");
+
+        // Procedure: usp_TrendModeling_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Analytics].[usp_TrendModeling_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [TrendModelId],
+        [TenantId],
+        [SiteId],
+        [MetricName],
+        [PredictedValue],
+        [ModelConfidence],
+        [Status],
+        [GeneratedAtUtc]
+FROM [Analytics].[TrendModeling]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [GeneratedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [GeneratedAtUtc] DESC;
+");
+
+    }
+
+
 }
