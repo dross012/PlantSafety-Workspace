@@ -2861,7 +2861,11 @@ BEGIN TRY
           AND TenantId = @TenantId
           AND (@SiteId IS NULL OR SiteId = @SiteId);
 
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
+
     COMMIT TRANSACTION;
+
+    SELECT @RowsAffected;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
@@ -5556,6 +5560,1260 @@ WHERE TenantId = @TenantId
   AND (@SiteId IS NULL OR SiteId = @SiteId)
   AND [GeneratedAtUtc] BETWEEN @FromUtc AND @ToUtc
 ORDER BY [GeneratedAtUtc] DESC;
+");
+
+    }
+
+
+
+    public static async Task ApplyOperationalSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Operational')
+                EXEC('CREATE SCHEMA Operational AUTHORIZATION dbo;');");
+
+        // Table: AlertsReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AlertsReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[AlertsReadModel] (
+        [AlertId]         UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [Message]                 NVARCHAR(400)       NOT NULL,
+        [Severity]                NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [TriggeredAtUtc]  DATETIME2(3)        NOT NULL,
+        [AcknowledgedBy]  UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_AlertsReadModel_TenantId_TriggeredAtUtc]
+        ON [Operational].[AlertsReadModel] ([TenantId], [TriggeredAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: ChecklistsReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ChecklistsReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[ChecklistsReadModel] (
+        [ChecklistId]     UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [Name]                    NVARCHAR(400)       NOT NULL,
+        [Category]                NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [CompletedAtUtc]  DATETIME2(3)        NOT NULL,
+        [CompletedBy]     UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_ChecklistsReadModel_TenantId_CompletedAtUtc]
+        ON [Operational].[ChecklistsReadModel] ([TenantId], [CompletedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: ClassesReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ClassesReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[ClassesReadModel] (
+        [ClassId]         UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [Title]                   NVARCHAR(400)       NOT NULL,
+        [InstructorId]            UNIQUEIDENTIFIER    NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL
+
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_ClassesReadModel_TenantId_ScheduledAtUtc]
+        ON [Operational].[ClassesReadModel] ([TenantId], [ScheduledAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: CompetencyManagementReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CompetencyManagementReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[CompetencyManagementReadModel] (
+        [CompetencyRecordId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [EmployeeId]              UNIQUEIDENTIFIER    NOT NULL,
+        [CompetencyArea]          NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [AssessedAtUtc]   DATETIME2(3)        NOT NULL,
+        [AssessedBy]      UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_CompetencyManagementReadModel_TenantId_AssessedAtUtc]
+        ON [Operational].[CompetencyManagementReadModel] ([TenantId], [AssessedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: ContractorReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ContractorReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[ContractorReadModel] (
+        [ContractorRecordId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [ContractorName]          NVARCHAR(400)       NOT NULL,
+        [ServiceType]             NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [OnboardedAtUtc]  DATETIME2(3)        NOT NULL,
+        [ApprovedBy]      UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_ContractorReadModel_TenantId_OnboardedAtUtc]
+        ON [Operational].[ContractorReadModel] ([TenantId], [OnboardedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: CoursesReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CoursesReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[CoursesReadModel] (
+        [CourseId]        UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [Title]                   NVARCHAR(400)       NOT NULL,
+        [Category]                NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [PublishedAtUtc]  DATETIME2(3)        NOT NULL,
+        [PublishedBy]     UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_CoursesReadModel_TenantId_PublishedAtUtc]
+        ON [Operational].[CoursesReadModel] ([TenantId], [PublishedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: EquipmentSafetyReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'EquipmentSafetyReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[EquipmentSafetyReadModel] (
+        [EquipmentSafetyRecordId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [EquipmentId]             UNIQUEIDENTIFIER    NOT NULL,
+        [EquipmentName]           NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [InspectedAtUtc]  DATETIME2(3)        NOT NULL,
+        [InspectedBy]     UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_EquipmentSafetyReadModel_TenantId_InspectedAtUtc]
+        ON [Operational].[EquipmentSafetyReadModel] ([TenantId], [InspectedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: ErgonomicsReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ErgonomicsReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[ErgonomicsReadModel] (
+        [ErgonomicsAssessmentId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [WorkstationId]           UNIQUEIDENTIFIER    NOT NULL,
+        [RiskLevel]               NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [AssessedAtUtc]   DATETIME2(3)        NOT NULL,
+        [AssessedBy]      UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_ErgonomicsReadModel_TenantId_AssessedAtUtc]
+        ON [Operational].[ErgonomicsReadModel] ([TenantId], [AssessedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: FatigueManagementReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'FatigueManagementReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[FatigueManagementReadModel] (
+        [FatigueRecordId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [EmployeeId]              UNIQUEIDENTIFIER    NOT NULL,
+        [FatigueRiskLevel]        NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [RecordedAtUtc]   DATETIME2(3)        NOT NULL,
+        [RecordedBy]      UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_FatigueManagementReadModel_TenantId_RecordedAtUtc]
+        ON [Operational].[FatigueManagementReadModel] ([TenantId], [RecordedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: HazardAssessmentsReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'HazardAssessmentsReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[HazardAssessmentsReadModel] (
+        [HazardAssessmentId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [HazardDescription]       NVARCHAR(400)       NOT NULL,
+        [RiskLevel]               NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [AssessedAtUtc]   DATETIME2(3)        NOT NULL,
+        [AssessedBy]      UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_HazardAssessmentsReadModel_TenantId_AssessedAtUtc]
+        ON [Operational].[HazardAssessmentsReadModel] ([TenantId], [AssessedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: HazardousMaterialsReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'HazardousMaterialsReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[HazardousMaterialsReadModel] (
+        [HazardousMaterialId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [MaterialName]            NVARCHAR(400)       NOT NULL,
+        [HazardClass]             NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [RegisteredAtUtc] DATETIME2(3)        NOT NULL,
+        [RegisteredBy]    UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_HazardousMaterialsReadModel_TenantId_RegisteredAtUtc]
+        ON [Operational].[HazardousMaterialsReadModel] ([TenantId], [RegisteredAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: IndustrialHygieneReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'IndustrialHygieneReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[IndustrialHygieneReadModel] (
+        [IndustrialHygieneSampleId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [SampleType]              NVARCHAR(400)       NOT NULL,
+        [ExposureLevel]           NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [SampledAtUtc]    DATETIME2(3)        NOT NULL,
+        [SampledBy]       UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_IndustrialHygieneReadModel_TenantId_SampledAtUtc]
+        ON [Operational].[IndustrialHygieneReadModel] ([TenantId], [SampledAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: InspectionsReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'InspectionsReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[InspectionsReadModel] (
+        [InspectionId]    UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [InspectionType]          NVARCHAR(400)       NOT NULL,
+        [Outcome]                 NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [InspectedAtUtc]  DATETIME2(3)        NOT NULL,
+        [InspectedBy]     UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_InspectionsReadModel_TenantId_InspectedAtUtc]
+        ON [Operational].[InspectionsReadModel] ([TenantId], [InspectedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: JobSafetyAnalysisReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'JobSafetyAnalysisReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[JobSafetyAnalysisReadModel] (
+        [JobSafetyAnalysisId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [TaskName]                NVARCHAR(400)       NOT NULL,
+        [RiskLevel]               NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [AnalyzedAtUtc]   DATETIME2(3)        NOT NULL,
+        [AnalyzedBy]      UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_JobSafetyAnalysisReadModel_TenantId_AnalyzedAtUtc]
+        ON [Operational].[JobSafetyAnalysisReadModel] ([TenantId], [AnalyzedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: LockoutTagoutReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'LockoutTagoutReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[LockoutTagoutReadModel] (
+        [LockoutTagoutId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [EquipmentId]             UNIQUEIDENTIFIER    NOT NULL,
+        [LockType]                NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [LockedAtUtc]     DATETIME2(3)        NOT NULL,
+        [LockedBy]        UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_LockoutTagoutReadModel_TenantId_LockedAtUtc]
+        ON [Operational].[LockoutTagoutReadModel] ([TenantId], [LockedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: OperationalExportItems.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'OperationalExportItems' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[OperationalExportItems] (
+        [Id]                UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]          UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]            UNIQUEIDENTIFIER    NULL,
+        [ResourceType]      NVARCHAR(100)       NOT NULL,
+        [ResourceId]        UNIQUEIDENTIFIER    NOT NULL,
+        [Title]             NVARCHAR(300)       NOT NULL,
+        [Status]            NVARCHAR(50)        NOT NULL,
+        [EffectiveAtUtc]    DATETIME2(3)        NOT NULL,
+        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_OperationalExportItems_TenantId_EffectiveAtUtc]
+        ON [Operational].[OperationalExportItems] ([TenantId], [EffectiveAtUtc])
+        INCLUDE ([SiteId], [Status], [ResourceType]);
+END
+");
+
+        // Table: OperationalResources.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'OperationalResources' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[OperationalResources] (
+        Id               UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        TenantId         UNIQUEIDENTIFIER NOT NULL,
+        SiteId           UNIQUEIDENTIFIER NULL,
+        ResourceType     NVARCHAR(100)    NOT NULL,
+        Status           NVARCHAR(50)     NOT NULL,
+        AssignedToUserId UNIQUEIDENTIFIER NULL,
+        Notes            NVARCHAR(MAX)    NULL,
+        UpdatedAtUtc     DATETIME2(3)     NOT NULL,
+        UpdatedBy        UNIQUEIDENTIFIER NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_OperationalResources_TenantId_SiteId] ON [Operational].[OperationalResources] (TenantId, SiteId);
+END
+");
+
+        // Table: PermitsToWorkReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PermitsToWorkReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[PermitsToWorkReadModel] (
+        [PermitId]        UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [PermitType]              NVARCHAR(400)       NOT NULL,
+        [WorkDescription]         NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [IssuedAtUtc]     DATETIME2(3)        NOT NULL,
+        [IssuedBy]        UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_PermitsToWorkReadModel_TenantId_IssuedAtUtc]
+        ON [Operational].[PermitsToWorkReadModel] ([TenantId], [IssuedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: PPEManagementReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PPEManagementReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[PPEManagementReadModel] (
+        [PPERecordId]     UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [EmployeeId]              UNIQUEIDENTIFIER    NOT NULL,
+        [PPEType]                 NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [IssuedAtUtc]     DATETIME2(3)        NOT NULL,
+        [IssuedBy]        UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_PPEManagementReadModel_TenantId_IssuedAtUtc]
+        ON [Operational].[PPEManagementReadModel] ([TenantId], [IssuedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: PredictiveMaintenanceReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PredictiveMaintenanceReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[PredictiveMaintenanceReadModel] (
+        [PredictiveMaintenanceAlertId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [EquipmentId]             UNIQUEIDENTIFIER    NOT NULL,
+        [PredictedFailureType]    NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [PredictedAtUtc]  DATETIME2(3)        NOT NULL,
+        [ReviewedBy]      UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_PredictiveMaintenanceReadModel_TenantId_PredictedAtUtc]
+        ON [Operational].[PredictiveMaintenanceReadModel] ([TenantId], [PredictedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: PreventiveMaintenanceReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PreventiveMaintenanceReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[PreventiveMaintenanceReadModel] (
+        [PreventiveMaintenanceTaskId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [EquipmentId]             UNIQUEIDENTIFIER    NOT NULL,
+        [TaskDescription]         NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
+        [CompletedBy]     UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_PreventiveMaintenanceReadModel_TenantId_ScheduledAtUtc]
+        ON [Operational].[PreventiveMaintenanceReadModel] ([TenantId], [ScheduledAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: RiskManagementReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'RiskManagementReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[RiskManagementReadModel] (
+        [RiskRecordId]    UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [RiskDescription]         NVARCHAR(400)       NOT NULL,
+        [RiskLevel]               NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [IdentifiedAtUtc] DATETIME2(3)        NOT NULL,
+        [IdentifiedBy]    UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_RiskManagementReadModel_TenantId_IdentifiedAtUtc]
+        ON [Operational].[RiskManagementReadModel] ([TenantId], [IdentifiedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: SchedulesReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SchedulesReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[SchedulesReadModel] (
+        [ScheduleId]      UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [ShiftName]               NVARCHAR(400)       NOT NULL,
+        [ScheduleType]            NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
+        [AssignedBy]      UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_SchedulesReadModel_TenantId_ScheduledAtUtc]
+        ON [Operational].[SchedulesReadModel] ([TenantId], [ScheduledAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: SeminarsReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SeminarsReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[SeminarsReadModel] (
+        [SeminarId]       UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [Title]                   NVARCHAR(400)       NOT NULL,
+        [PresenterId]             UNIQUEIDENTIFIER    NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL
+
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_SeminarsReadModel_TenantId_ScheduledAtUtc]
+        ON [Operational].[SeminarsReadModel] ([TenantId], [ScheduledAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: TrainingReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TrainingReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[TrainingReadModel] (
+        [TrainingRecordId] UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [EmployeeId]              UNIQUEIDENTIFIER    NOT NULL,
+        [CourseName]              NVARCHAR(400)       NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [CompletedAtUtc]  DATETIME2(3)        NOT NULL,
+        [CertifiedBy]     UNIQUEIDENTIFIER    NULL
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_TrainingReadModel_TenantId_CompletedAtUtc]
+        ON [Operational].[TrainingReadModel] ([TenantId], [CompletedAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Table: WebinarsReadModel.sql
+        await conn.ExecuteAsync(@"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'WebinarsReadModel' AND schema_id = SCHEMA_ID('Operational'))
+BEGIN
+    CREATE TABLE [Operational].[WebinarsReadModel] (
+        [WebinarId]       UNIQUEIDENTIFIER    NOT NULL PRIMARY KEY,
+        [TenantId]              UNIQUEIDENTIFIER    NOT NULL,
+        [SiteId]                UNIQUEIDENTIFIER    NULL,
+        [Title]                   NVARCHAR(400)       NOT NULL,
+        [HostId]                  UNIQUEIDENTIFIER    NOT NULL,
+        [Status]                NVARCHAR(50)        NOT NULL,
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL
+
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_WebinarsReadModel_TenantId_ScheduledAtUtc]
+        ON [Operational].[WebinarsReadModel] ([TenantId], [ScheduledAtUtc])
+        INCLUDE ([SiteId]);
+END
+");
+
+        // Procedure: usp_Alerts_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Alerts_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [AlertId],
+        [TenantId],
+        [SiteId],
+        [Message],
+        [Severity],
+        [Status],
+        [TriggeredAtUtc],
+        [AcknowledgedBy]
+FROM [Operational].[AlertsReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [TriggeredAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [TriggeredAtUtc] DESC;
+");
+
+        // Procedure: usp_Checklists_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Checklists_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ChecklistId],
+        [TenantId],
+        [SiteId],
+        [Name],
+        [Category],
+        [Status],
+        [CompletedAtUtc],
+        [CompletedBy]
+FROM [Operational].[ChecklistsReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [CompletedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [CompletedAtUtc] DESC;
+");
+
+        // Procedure: usp_Classes_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Classes_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ClassId],
+        [TenantId],
+        [SiteId],
+        [Title],
+        [InstructorId],
+        [Status],
+        [ScheduledAtUtc]
+FROM [Operational].[ClassesReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScheduledAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScheduledAtUtc] DESC;
+");
+
+        // Procedure: usp_CompetencyManagement_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_CompetencyManagement_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [CompetencyRecordId],
+        [TenantId],
+        [SiteId],
+        [EmployeeId],
+        [CompetencyArea],
+        [Status],
+        [AssessedAtUtc],
+        [AssessedBy]
+FROM [Operational].[CompetencyManagementReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [AssessedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [AssessedAtUtc] DESC;
+");
+
+        // Procedure: usp_Contractor_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Contractor_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ContractorRecordId],
+        [TenantId],
+        [SiteId],
+        [ContractorName],
+        [ServiceType],
+        [Status],
+        [OnboardedAtUtc],
+        [ApprovedBy]
+FROM [Operational].[ContractorReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [OnboardedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [OnboardedAtUtc] DESC;
+");
+
+        // Procedure: usp_Courses_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Courses_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [CourseId],
+        [TenantId],
+        [SiteId],
+        [Title],
+        [Category],
+        [Status],
+        [PublishedAtUtc],
+        [PublishedBy]
+FROM [Operational].[CoursesReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [PublishedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [PublishedAtUtc] DESC;
+");
+
+        // Procedure: usp_EquipmentSafety_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_EquipmentSafety_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [EquipmentSafetyRecordId],
+        [TenantId],
+        [SiteId],
+        [EquipmentId],
+        [EquipmentName],
+        [Status],
+        [InspectedAtUtc],
+        [InspectedBy]
+FROM [Operational].[EquipmentSafetyReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [InspectedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [InspectedAtUtc] DESC;
+");
+
+        // Procedure: usp_Ergonomics_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Ergonomics_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ErgonomicsAssessmentId],
+        [TenantId],
+        [SiteId],
+        [WorkstationId],
+        [RiskLevel],
+        [Status],
+        [AssessedAtUtc],
+        [AssessedBy]
+FROM [Operational].[ErgonomicsReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [AssessedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [AssessedAtUtc] DESC;
+");
+
+        // Procedure: usp_FatigueManagement_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_FatigueManagement_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [FatigueRecordId],
+        [TenantId],
+        [SiteId],
+        [EmployeeId],
+        [FatigueRiskLevel],
+        [Status],
+        [RecordedAtUtc],
+        [RecordedBy]
+FROM [Operational].[FatigueManagementReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [RecordedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [RecordedAtUtc] DESC;
+");
+
+        // Procedure: usp_HazardAssessments_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_HazardAssessments_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [HazardAssessmentId],
+        [TenantId],
+        [SiteId],
+        [HazardDescription],
+        [RiskLevel],
+        [Status],
+        [AssessedAtUtc],
+        [AssessedBy]
+FROM [Operational].[HazardAssessmentsReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [AssessedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [AssessedAtUtc] DESC;
+");
+
+        // Procedure: usp_HazardousMaterials_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_HazardousMaterials_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [HazardousMaterialId],
+        [TenantId],
+        [SiteId],
+        [MaterialName],
+        [HazardClass],
+        [Status],
+        [RegisteredAtUtc],
+        [RegisteredBy]
+FROM [Operational].[HazardousMaterialsReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [RegisteredAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [RegisteredAtUtc] DESC;
+");
+
+        // Procedure: usp_IndustrialHygiene_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_IndustrialHygiene_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [IndustrialHygieneSampleId],
+        [TenantId],
+        [SiteId],
+        [SampleType],
+        [ExposureLevel],
+        [Status],
+        [SampledAtUtc],
+        [SampledBy]
+FROM [Operational].[IndustrialHygieneReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [SampledAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [SampledAtUtc] DESC;
+");
+
+        // Procedure: usp_Inspections_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Inspections_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [InspectionId],
+        [TenantId],
+        [SiteId],
+        [InspectionType],
+        [Outcome],
+        [Status],
+        [InspectedAtUtc],
+        [InspectedBy]
+FROM [Operational].[InspectionsReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [InspectedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [InspectedAtUtc] DESC;
+");
+
+        // Procedure: usp_JobSafetyAnalysis_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_JobSafetyAnalysis_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [JobSafetyAnalysisId],
+        [TenantId],
+        [SiteId],
+        [TaskName],
+        [RiskLevel],
+        [Status],
+        [AnalyzedAtUtc],
+        [AnalyzedBy]
+FROM [Operational].[JobSafetyAnalysisReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [AnalyzedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [AnalyzedAtUtc] DESC;
+");
+
+        // Procedure: usp_LockoutTagout_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_LockoutTagout_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [LockoutTagoutId],
+        [TenantId],
+        [SiteId],
+        [EquipmentId],
+        [LockType],
+        [Status],
+        [LockedAtUtc],
+        [LockedBy]
+FROM [Operational].[LockoutTagoutReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [LockedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [LockedAtUtc] DESC;
+");
+
+        // Procedure: usp_OperationalExportItems_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_OperationalExportItems_List]
+    @TenantId       UNIQUEIDENTIFIER,
+    @SiteId         UNIQUEIDENTIFIER = NULL,
+    @FromUtc        DATETIME2(3) = NULL,
+    @ToUtc          DATETIME2(3),
+    @Status         NVARCHAR(50) = NULL,
+    @MaxRecords     INT
+AS
+SET NOCOUNT ON;
+
+SELECT TOP (@MaxRecords)
+        [Id],
+        [TenantId],
+        [SiteId],
+        [ResourceType],
+        [ResourceId],
+        [Title],
+        [Status],
+        [EffectiveAtUtc],
+        [OwnerId]
+FROM [Operational].[OperationalExportItems]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND (@FromUtc IS NULL OR [EffectiveAtUtc] >= @FromUtc)
+  AND [EffectiveAtUtc] <= @ToUtc
+  AND (@Status IS NULL OR [Status] = @Status)
+ORDER BY [EffectiveAtUtc] DESC;
+");
+
+        // Procedure: usp_OperationalResources_BulkUpdate.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_OperationalResources_BulkUpdate]
+    @TenantId         UNIQUEIDENTIFIER,
+    @SiteId           UNIQUEIDENTIFIER = NULL,
+    @ResourceId       UNIQUEIDENTIFIER,
+    @Operation        NVARCHAR(50),
+    @AssignedToUserId UNIQUEIDENTIFIER = NULL,
+    @Notes            NVARCHAR(MAX) = NULL,
+    @NowUtc           DATETIME2(3)
+AS
+SET NOCOUNT ON;
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+        UPDATE [Operational].[OperationalResources]
+        SET
+            Status = CASE @Operation
+                        WHEN 'Close'    THEN 'Closed'
+                        WHEN 'Approve'  THEN 'Approved'
+                        WHEN 'Reject'   THEN 'Rejected'
+                        WHEN 'Reopen'   THEN 'Open'
+                        ELSE Status
+                     END,
+            AssignedToUserId = CASE WHEN @Operation = 'Reassign' THEN @AssignedToUserId ELSE AssignedToUserId END,
+            Notes = COALESCE(@Notes, Notes),
+            UpdatedAtUtc = @NowUtc
+        WHERE Id = @ResourceId
+          AND TenantId = @TenantId
+          AND (@SiteId IS NULL OR SiteId = @SiteId);
+
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
+
+    COMMIT TRANSACTION;
+
+    SELECT @RowsAffected;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+");
+
+        // Procedure: usp_PermitsToWork_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_PermitsToWork_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [PermitId],
+        [TenantId],
+        [SiteId],
+        [PermitType],
+        [WorkDescription],
+        [Status],
+        [IssuedAtUtc],
+        [IssuedBy]
+FROM [Operational].[PermitsToWorkReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [IssuedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [IssuedAtUtc] DESC;
+");
+
+        // Procedure: usp_PPEManagement_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_PPEManagement_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [PPERecordId],
+        [TenantId],
+        [SiteId],
+        [EmployeeId],
+        [PPEType],
+        [Status],
+        [IssuedAtUtc],
+        [IssuedBy]
+FROM [Operational].[PPEManagementReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [IssuedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [IssuedAtUtc] DESC;
+");
+
+        // Procedure: usp_PredictiveMaintenance_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_PredictiveMaintenance_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [PredictiveMaintenanceAlertId],
+        [TenantId],
+        [SiteId],
+        [EquipmentId],
+        [PredictedFailureType],
+        [Status],
+        [PredictedAtUtc],
+        [ReviewedBy]
+FROM [Operational].[PredictiveMaintenanceReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [PredictedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [PredictedAtUtc] DESC;
+");
+
+        // Procedure: usp_PreventiveMaintenance_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_PreventiveMaintenance_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [PreventiveMaintenanceTaskId],
+        [TenantId],
+        [SiteId],
+        [EquipmentId],
+        [TaskDescription],
+        [Status],
+        [ScheduledAtUtc],
+        [CompletedBy]
+FROM [Operational].[PreventiveMaintenanceReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScheduledAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScheduledAtUtc] DESC;
+");
+
+        // Procedure: usp_RiskManagement_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_RiskManagement_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [RiskRecordId],
+        [TenantId],
+        [SiteId],
+        [RiskDescription],
+        [RiskLevel],
+        [Status],
+        [IdentifiedAtUtc],
+        [IdentifiedBy]
+FROM [Operational].[RiskManagementReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [IdentifiedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [IdentifiedAtUtc] DESC;
+");
+
+        // Procedure: usp_Schedules_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Schedules_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [ScheduleId],
+        [TenantId],
+        [SiteId],
+        [ShiftName],
+        [ScheduleType],
+        [Status],
+        [ScheduledAtUtc],
+        [AssignedBy]
+FROM [Operational].[SchedulesReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScheduledAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScheduledAtUtc] DESC;
+");
+
+        // Procedure: usp_Seminars_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Seminars_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [SeminarId],
+        [TenantId],
+        [SiteId],
+        [Title],
+        [PresenterId],
+        [Status],
+        [ScheduledAtUtc]
+FROM [Operational].[SeminarsReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScheduledAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScheduledAtUtc] DESC;
+");
+
+        // Procedure: usp_Training_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Training_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [TrainingRecordId],
+        [TenantId],
+        [SiteId],
+        [EmployeeId],
+        [CourseName],
+        [Status],
+        [CompletedAtUtc],
+        [CertifiedBy]
+FROM [Operational].[TrainingReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [CompletedAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [CompletedAtUtc] DESC;
+");
+
+        // Procedure: usp_Webinars_List.sql
+        await conn.ExecuteAsync(@"
+CREATE OR ALTER PROCEDURE [Operational].[usp_Webinars_List]
+    @TenantId   UNIQUEIDENTIFIER,
+    @SiteId     UNIQUEIDENTIFIER = NULL,
+    @FromUtc    DATETIME2(3),
+    @ToUtc      DATETIME2(3)
+AS
+SET NOCOUNT ON;
+
+SELECT
+        [WebinarId],
+        [TenantId],
+        [SiteId],
+        [Title],
+        [HostId],
+        [Status],
+        [ScheduledAtUtc]
+FROM [Operational].[WebinarsReadModel]
+WHERE TenantId = @TenantId
+  AND (@SiteId IS NULL OR SiteId = @SiteId)
+  AND [ScheduledAtUtc] BETWEEN @FromUtc AND @ToUtc
+ORDER BY [ScheduledAtUtc] DESC;
 ");
 
     }

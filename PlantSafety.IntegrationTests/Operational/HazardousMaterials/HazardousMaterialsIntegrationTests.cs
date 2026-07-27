@@ -32,9 +32,9 @@ public sealed class HazardousMaterialsIntegrationTests(IntegrationTestWebAppFact
         await using var conn = new SqlConnection(ConnectionString);
         await conn.ExecuteAsync(
             @"INSERT INTO [System].[OutboxMessages]
-                (MessageId, EventType, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
+                (MessageId, EventType, SchemaVersion, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
               VALUES
-                (NEWID(), @EventType, @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
+                (NEWID(), @EventType, N'1.0', @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
             new
             {
                 EventType     = "Operational.HazardousMaterialsCreated",
@@ -57,16 +57,16 @@ public sealed class HazardousMaterialsIntegrationTests(IntegrationTestWebAppFact
 
         await conn.ExecuteAsync(
             @"INSERT INTO [System].[OutboxMessages]
-                (MessageId, EventType, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
+                (MessageId, EventType, SchemaVersion, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
               VALUES
-                (NEWID(), 'Operational.HazardousMaterialsCorrelation', @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
+                (NEWID(), 'Operational.HazardousMaterialsCorrelation', N'1.0', @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
             new { TenantId, ActorId, CorrelationId = correlationId, Now = FixedUtcNow });
 
-        var storedCorrelationId = await conn.ExecuteScalarAsync<Guid>(
+        var storedCorrelationId = await conn.ExecuteScalarAsync<string>(
             "SELECT TOP 1 CorrelationId FROM [System].[OutboxMessages] WHERE CorrelationId = @CorrelationId",
             new { CorrelationId = correlationId });
 
-        storedCorrelationId.Should().Be(correlationId, "CorrelationId must propagate from command to outbox");
+        Guid.Parse(storedCorrelationId!).Should().Be(correlationId, "CorrelationId must propagate from command to outbox");
     }
 
     [Fact]

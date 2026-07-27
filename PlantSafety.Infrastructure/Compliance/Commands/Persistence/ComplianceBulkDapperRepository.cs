@@ -71,7 +71,7 @@ public sealed class ComplianceBulkDapperRepository(
                     .AddDateTime("NowUtc", nowUtc)
                     .Build();
 
-                var rowsAffected = await commandExecutor.ExecuteAsync(
+                var rowsAffected = await commandExecutor.ExecuteScalarAsync(
                     conn,
                     "[Compliance].[usp_ComplianceResources_BulkUpdate]",
                     sqlParameters,

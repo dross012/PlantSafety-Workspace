@@ -43,7 +43,16 @@ BEGIN TRY
           AND TenantId = @TenantId
           AND (@SiteId IS NULL OR SiteId = @SiteId);
 
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
+
     COMMIT TRANSACTION;
+
+    -- SET NOCOUNT ON means SqlCommand.ExecuteNonQuery (DapperCommandExecutor.ExecuteAsync) always
+    -- returns -1, not the true affected-row count -- OperationalBulkDapperRepository.BulkUpdateAsync's
+    -- "rowsAffected > 0" not-found check could therefore never distinguish a real update from a
+    -- miss, silently reporting NOT_FOUND for every successful bulk update. Callers must switch to
+    -- DapperCommandExecutor.ExecuteScalarAsync to read this explicit rowcount.
+    SELECT @RowsAffected;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;

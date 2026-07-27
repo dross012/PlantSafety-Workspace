@@ -71,7 +71,7 @@ public sealed class OperationalBulkDapperRepository(
                     .AddDateTime("NowUtc", nowUtc)
                     .Build();
 
-                var rowsAffected = await commandExecutor.ExecuteAsync(
+                var rowsAffected = await commandExecutor.ExecuteScalarAsync(
                     conn,
                     "[Operational].[usp_OperationalResources_BulkUpdate]",
                     sqlParameters,
