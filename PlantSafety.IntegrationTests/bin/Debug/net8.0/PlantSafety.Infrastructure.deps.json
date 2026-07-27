@@ -21,6 +21,8 @@
           "Polly": "8.5.0",
           "Serilog": "4.3.0",
           "Shared.AuditLogging.Infrastructure": "1.0.0",
+          "Shared.DomainEvents.Abstractions": "1.0.0",
+          "Shared.EventBus.Infrastructure": "1.0.0",
           "StackExchange.Redis": "2.13.1"
         },
         "runtime": {
@@ -816,6 +818,44 @@
             "fileVersion": "1.0.0.0"
           }
         }
+      },
+      "Shared.DomainEvents.Abstractions/1.0.0": {
+        "runtime": {
+          "Shared.DomainEvents.Abstractions.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Shared.EventBus.Abstractions/1.0.0": {
+        "dependencies": {
+          "Shared.DomainEvents.Abstractions": "1.0.0"
+        },
+        "runtime": {
+          "Shared.EventBus.Abstractions.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Shared.EventBus.Infrastructure/1.0.0": {
+        "dependencies": {
+          "Dapper": "2.1.79",
+          "Microsoft.Data.SqlClient": "7.0.1",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.9",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.9",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.9",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.9",
+          "Microsoft.Extensions.Options": "10.0.9",
+          "Shared.DomainEvents.Abstractions": "1.0.0",
+          "Shared.EventBus.Abstractions": "1.0.0"
+        },
+        "runtime": {
+          "Shared.EventBus.Infrastructure.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
       }
     }
   },
@@ -1273,6 +1313,21 @@
       "sha512": ""
     },
     "Shared.AuditLogging.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Shared.DomainEvents.Abstractions/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Shared.EventBus.Abstractions/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Shared.EventBus.Infrastructure/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

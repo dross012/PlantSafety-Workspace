@@ -17,7 +17,14 @@
 --                  TRY/CATCH + THROW only (no AuditLog/ErrorLog writes), matching the
 --                  established read-procedure convention in this module (see
 --                  usp_CrisisEvent_List / usp_CrisisEvent_Count) -- read procedures do not
---                  write audit or error-log entries. Additive-only evolution.
+--                  write audit or error-log entries.
+--                  UPDATED 2026-07-27 (Claude Code refactoring-agent): added CreatedAtUtc/CreatedBy
+--                  to the result set (real, pre-existing columns on [SafetyEvents].[Incident]) so
+--                  IncidentReadDapperRepository.GetByIdAsync's IncidentReadModel carries everything
+--                  UpdateIncidentCommandHandler needs to call IncidentManagement.Rehydrate(...)
+--                  without a second query -- part of wiring Create/Update through the
+--                  IncidentManagement aggregate (see plantsafety-architecture.md Sec.5.1).
+--                  Additive-only evolution.
 -- ============================================================================
 
 CREATE OR ALTER PROCEDURE [SafetyEvents].[usp_IncidentRead_GetById]
@@ -46,7 +53,9 @@ BEGIN
             ClosedAtUtc,
             LastModifiedByActorId,
             LastModifiedAtUtc,
-            CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag
+            CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag,
+            CreatedAtUtc,
+            CreatedBy
         FROM [SafetyEvents].[Incident]
         WHERE IncidentId = @IncidentId
           AND TenantId = @TenantId

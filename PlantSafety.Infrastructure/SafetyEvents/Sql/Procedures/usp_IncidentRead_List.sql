@@ -15,7 +15,11 @@
 --                  following the usp_CrisisEvent_List precedent (CASE-based sortable-column
 --                  switch with a fixed tiebreaker). Column list mirrors IncidentReadModel.
 --                  TRY/CATCH + THROW only (no AuditLog/ErrorLog writes) per the established
---                  read-procedure convention. Additive-only evolution.
+--                  read-procedure convention.
+--                  UPDATED 2026-07-27 (Claude Code refactoring-agent): added CreatedAtUtc/CreatedBy
+--                  to the result set to match the now-required IncidentReadModel columns (see
+--                  usp_IncidentRead_GetById.sql for the Rehydrate-wiring rationale).
+--                  Additive-only evolution.
 -- ============================================================================
 
 CREATE OR ALTER PROCEDURE [SafetyEvents].[usp_IncidentRead_List]
@@ -52,7 +56,9 @@ BEGIN
             ClosedAtUtc,
             LastModifiedByActorId,
             LastModifiedAtUtc,
-            CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag
+            CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag,
+            CreatedAtUtc,
+            CreatedBy
         FROM [SafetyEvents].[Incident]
         WHERE TenantId = @TenantId
           AND IsDeleted = 0

@@ -1,9 +1,19 @@
 // AUTHOR: PlantSafety Platform Team
 // CREATED: 2026-06-17
+// UPDATED: 2026-07-27 -- CreateAsync/UpdateAsync now take the Domain
+//   IncidentManagement aggregate (built/rehydrated by the handler via
+//   IncidentManagement.Create/Rehydrate) instead of raw primitives, so that the
+//   aggregate's invariants and domain events are the single source of truth for the
+//   write path. UpdateAsync additionally keeps the original null-means-unchanged
+//   diff parameters (title/description/severity/location/assignedInvestigatorId) so the
+//   Infrastructure implementation can still target the existing ISNULL/COALESCE partial-
+//   update stored procedure rather than overwriting every column.
 // FILE DESCRIPTION: Write-side repository interface for the Incident aggregate.
 //   Implemented in PlantSafety.Infrastructure (stored procedures, Dapper).
 //   Application layer depends only on this interface — no EF Core, no inline SQL.
-// SchemaVersion: 1
+// SchemaVersion: 2
+
+using IncidentAggregate = PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement;
 
 namespace PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement;
 
@@ -15,32 +25,29 @@ namespace PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagem
 public interface IIncidentRepository
 {
     /// <summary>
-    /// Creates a new Incident record.
-    /// Writes an outbox envelope for <c>IncidentCreatedEvent</c> atomically within the transaction.
+    /// Persists a newly <see cref="IncidentAggregate.Create"/>-d aggregate.
+    /// The Infrastructure implementation enqueues the aggregate's pending domain events
+    /// (e.g. <c>IncidentManagementCreatedEvent</c>) to the outbox after a successful write.
     /// </summary>
     Task CreateAsync(
-        Guid incidentId,
-        Guid tenantId,
-        Guid siteId,
-        string title,
-        string description,
-        DateTimeOffset incidentOccurredAtUtc,
-        string severity,
-        string location,
-        Guid reportedByWorkerId,
-        Guid? assignedInvestigatorId,
+        IncidentAggregate aggregate,
         Guid actorId,
         Guid correlationId,
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Updates mutable fields on an existing Incident.
-    /// Only fields with non-null values are updated.
+    /// Persists the result of calling <see cref="IncidentAggregate.UpdateDetails"/> on a
+    /// <see cref="IncidentAggregate.Rehydrate"/>-d aggregate. <paramref name="title"/>/
+    /// <paramref name="description"/>/<paramref name="severity"/>/<paramref name="location"/>/
+    /// <paramref name="assignedInvestigatorId"/> mirror the original null-means-unchanged command
+    /// payload so the Infrastructure implementation can keep using the existing ISNULL/COALESCE
+    /// partial-update stored procedure. Only fields with non-null values are updated.
+    /// The Infrastructure implementation enqueues the aggregate's pending domain events
+    /// (e.g. <c>IncidentManagementUpdatedEvent</c>) to the outbox after a successful write.
     /// Throws <see cref="Common.Errors.ConcurrencyConflictException"/> when ETag is stale.
     /// </summary>
     Task UpdateAsync(
-        Guid tenantId,
-        Guid incidentId,
+        IncidentAggregate aggregate,
         string? title,
         string? description,
         string? severity,

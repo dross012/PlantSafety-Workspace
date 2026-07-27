@@ -4,8 +4,14 @@
 //  Layer:          Tests (Unit)
 //  File:           CreateIncidentCommandHandlerTests.cs
 //  Created:        2026-07-27
-//  Author:         PlantSafety Platform Team (Claude Code unit-testing-agent)
-//  SchemaVersion:  2026.1
+//  Updated:        2026-07-27 -- Rewritten for the aggregate-wired CreateIncidentCommandHandler
+//                  (IncidentManagement.Create -> IIncidentRepository.CreateAsync(aggregate, ...)).
+//                  Also asserts that Create's domain invariants (enforced by the aggregate factory,
+//                  not just Application-layer FluentValidation) are actually reachable from the
+//                  handler, and that the aggregate's own generated identity is what is persisted
+//                  and returned -- not a handler-local id.
+//  Author:         PlantSafety Platform Team (Claude Code refactoring-agent)
+//  SchemaVersion:  2026.2
 //  Description:    Unit tests for CreateIncidentCommandHandler with a mocked IIncidentRepository
 //                  and IDateTimeProvider. Also asserts that the
 //                  IncidentMetrics.IncidentsCreated counter (added in a prior pass) is incremented
@@ -17,6 +23,7 @@ using System.Diagnostics.Metrics;
 using PlantSafety.Application.Abstractions.Clock;
 using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Create;
 using PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement;
+using IncidentAggregate = PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement;
 
 namespace PlantSafety.Tests.Application.SafetyEvents.IncidentManagement;
 
@@ -53,21 +60,12 @@ public sealed class CreateIncidentCommandHandlerTests : UnitTestBase
     };
 
     [Fact]
-    public async Task Handle_WithValidCommand_ShouldCallRepositoryCreateAsync()
+    public async Task Handle_WithValidCommand_ShouldCallRepositoryCreateAsyncWithAggregate()
     {
         await Sut().Handle(ValidCommand(), CancellationToken.None);
 
         await _repository.Received(1).CreateAsync(
-            incidentId: Arg.Any<Guid>(),
-            tenantId: Arg.Any<Guid>(),
-            siteId: Arg.Any<Guid>(),
-            title: Arg.Any<string>(),
-            description: Arg.Any<string>(),
-            incidentOccurredAtUtc: Arg.Any<DateTimeOffset>(),
-            severity: Arg.Any<string>(),
-            location: Arg.Any<string>(),
-            reportedByWorkerId: Arg.Any<Guid>(),
-            assignedInvestigatorId: Arg.Any<Guid?>(),
+            aggregate: Arg.Any<IncidentAggregate>(),
             actorId: Arg.Any<Guid>(),
             correlationId: Arg.Any<Guid>(),
             cancellationToken: Arg.Any<CancellationToken>());
@@ -81,24 +79,63 @@ public sealed class CreateIncidentCommandHandlerTests : UnitTestBase
     }
 
     [Fact]
-    public async Task Handle_WithValidCommand_ShouldPassTenantAndSiteToRepository()
+    public async Task Handle_WithValidCommand_ShouldPassAggregateWithTenantSiteAndTitleToRepository()
     {
         var cmd = ValidCommand();
+        IncidentAggregate? capturedAggregate = null;
+
+        await _repository.CreateAsync(
+            aggregate: Arg.Do<IncidentAggregate>(a => capturedAggregate = a),
+            actorId: Arg.Any<Guid>(),
+            correlationId: Arg.Any<Guid>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+
         await Sut().Handle(cmd, CancellationToken.None);
 
-        await _repository.Received(1).CreateAsync(
-            incidentId: Arg.Any<Guid>(),
-            tenantId: cmd.TenantId,
-            siteId: cmd.SiteId,
-            title: cmd.Title,
-            description: cmd.Description,
-            incidentOccurredAtUtc: cmd.IncidentOccurredAtUtc,
-            severity: cmd.Severity,
-            location: cmd.Location,
-            reportedByWorkerId: cmd.ReportedByWorkerId,
-            assignedInvestigatorId: cmd.AssignedInvestigatorId,
-            actorId: cmd.ActorId,
-            correlationId: cmd.CorrelationId,
+        capturedAggregate.Should().NotBeNull();
+        capturedAggregate!.TenantId.Should().Be(cmd.TenantId);
+        capturedAggregate.SiteId.Should().Be(cmd.SiteId);
+        capturedAggregate.Title.Should().Be(cmd.Title);
+        capturedAggregate.Description.Should().Be(cmd.Description);
+        capturedAggregate.Severity.Should().Be(cmd.Severity);
+        capturedAggregate.Location.Should().Be(cmd.Location);
+        capturedAggregate.ReportedByWorkerId.Value.Should().Be(cmd.ReportedByWorkerId);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnedIncidentId_ShouldMatchAggregateIdentity()
+    {
+        var cmd = ValidCommand();
+        IncidentAggregate? capturedAggregate = null;
+
+        await _repository.CreateAsync(
+            aggregate: Arg.Do<IncidentAggregate>(a => capturedAggregate = a),
+            actorId: Arg.Any<Guid>(),
+            correlationId: Arg.Any<Guid>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+
+        var incidentId = await Sut().Handle(cmd, CancellationToken.None);
+
+        capturedAggregate.Should().NotBeNull();
+        incidentId.Should().Be(capturedAggregate!.IncidentManagementId.Value);
+    }
+
+    [Fact]
+    public async Task Handle_WithWhitespaceOnlyTitle_ShouldThrowArgumentException_BeforeCallingRepository()
+    {
+        // The Domain aggregate's Create factory rejects a whitespace-only Title even though
+        // FluentValidation's NotEmpty already blocks it upstream -- this asserts the invariant is
+        // now *also* enforced at the aggregate level the handler goes through, not merely at the
+        // Application-layer validator, and that the repository is never called when it fails.
+        var cmd = ValidCommand() with { Title = "   " };
+
+        var act = async () => await Sut().Handle(cmd, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        await _repository.DidNotReceive().CreateAsync(
+            aggregate: Arg.Any<IncidentAggregate>(),
+            actorId: Arg.Any<Guid>(),
+            correlationId: Arg.Any<Guid>(),
             cancellationToken: Arg.Any<CancellationToken>());
     }
 

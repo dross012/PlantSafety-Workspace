@@ -123,4 +123,17 @@ public sealed record IncidentReadModel
 
     /// <summary>Row version for concurrency.</summary>
     public required string ETag { get; init; }
+
+    /// <summary>
+    /// UTC record-creation timestamp. Added so <see cref="IIncidentReadRepository.GetByIdAsync"/>
+    /// callers can <c>IncidentManagement.Rehydrate</c> the Domain aggregate (2026-07-27 Create/Update
+    /// handler wiring) without a second round-trip; mirrors [SafetyEvents].[Incident].CreatedAtUtc.
+    /// </summary>
+    public required DateTimeOffset CreatedAtUtc { get; init; }
+
+    /// <summary>
+    /// Identity of the user who created this record. Added for the same Rehydrate purpose as
+    /// <see cref="CreatedAtUtc"/>; mirrors [SafetyEvents].[Incident].CreatedBy.
+    /// </summary>
+    public required Guid CreatedBy { get; init; }
 }

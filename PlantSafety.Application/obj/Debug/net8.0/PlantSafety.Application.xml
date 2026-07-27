@@ -27512,7 +27512,8 @@
         <member name="T:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.CreateIncidentCommandHandler">
             <summary>
             Handles <see cref="T:PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Create.CreateIncidentCommand"/>.
-            Creates a new Incident record via the domain repository and stages an outbox event.
+            Builds the <see cref="T:PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement"/> via its <c>Create</c> domain factory (enforcing all
+            aggregate invariants), persists it via the domain repository, and stages an outbox event.
             Returns the new <see cref="T:System.Guid"/> (UUIDv7) for the created incident.
             </summary>
         </member>
@@ -27595,16 +27596,23 @@
             Methods are called only inside an open UoW transaction (enforced by TransactionBehavior).
             </summary>
         </member>
-        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository.CreateAsync(System.Guid,System.Guid,System.Guid,System.String,System.String,System.DateTimeOffset,System.String,System.String,System.Guid,System.Nullable{System.Guid},System.Guid,System.Guid,System.Threading.CancellationToken)">
+        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository.CreateAsync(PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement,System.Guid,System.Guid,System.Threading.CancellationToken)">
             <summary>
-            Creates a new Incident record.
-            Writes an outbox envelope for <c>IncidentCreatedEvent</c> atomically within the transaction.
+            Persists a newly <see cref="M:PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement.Create(PlantSafety.SharedKernel.Identifiers.UserId,PlantSafety.SharedKernel.Primitives.ValueTypes.UtcTimestamp,PlantSafety.SharedKernel.Identifiers.CorrelationId,PlantSafety.SharedKernel.Identifiers.CausationId,PlantSafety.SharedKernel.Primitives.ValueTypes.PerformedByActor,System.Guid,System.Guid,System.String,System.String,System.String,System.String,PlantSafety.SharedKernel.Identifiers.UserId,System.Nullable{PlantSafety.SharedKernel.Primitives.ValueTypes.UtcTimestamp},System.Nullable{PlantSafety.SharedKernel.Identifiers.UserId})"/>-d aggregate.
+            The Infrastructure implementation enqueues the aggregate's pending domain events
+            (e.g. <c>IncidentManagementCreatedEvent</c>) to the outbox after a successful write.
             </summary>
         </member>
-        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository.UpdateAsync(System.Guid,System.Guid,System.String,System.String,System.String,System.String,System.Nullable{System.Guid},System.String,System.Guid,System.Guid,System.Threading.CancellationToken)">
+        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository.UpdateAsync(PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement,System.String,System.String,System.String,System.String,System.Nullable{System.Guid},System.String,System.Guid,System.Guid,System.Threading.CancellationToken)">
             <summary>
-            Updates mutable fields on an existing Incident.
-            Only fields with non-null values are updated.
+            Persists the result of calling <see cref="M:PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement.UpdateDetails(System.String,System.String,System.String,System.String,System.Nullable{PlantSafety.SharedKernel.Identifiers.UserId},PlantSafety.SharedKernel.Primitives.ValueTypes.UtcTimestamp,PlantSafety.SharedKernel.Primitives.ValueTypes.PerformedByActor,PlantSafety.SharedKernel.Identifiers.CorrelationId,PlantSafety.SharedKernel.Identifiers.CausationId)"/> on a
+            <see cref="M:PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement.Rehydrate(PlantSafety.Domain.SafetyEvents.IncidentManagement.ValueObjects.Ids.IncidentManagementId,System.Guid,System.Guid,PlantSafety.Domain.SafetyEvents.IncidentManagement.Enums.IncidentManagementStatus,System.String,System.String,System.String,System.String,PlantSafety.SharedKernel.Primitives.ValueTypes.UtcTimestamp,PlantSafety.SharedKernel.Primitives.ValueTypes.UtcTimestamp,PlantSafety.SharedKernel.Identifiers.UserId,System.Nullable{PlantSafety.SharedKernel.Identifiers.UserId},System.Nullable{PlantSafety.SharedKernel.Primitives.ValueTypes.UtcTimestamp},System.String,PlantSafety.SharedKernel.Primitives.ValueTypes.UtcTimestamp,PlantSafety.SharedKernel.Identifiers.UserId)"/>-d aggregate. <paramref name="title"/>/
+            <paramref name="description"/>/<paramref name="severity"/>/<paramref name="location"/>/
+            <paramref name="assignedInvestigatorId"/> mirror the original null-means-unchanged command
+            payload so the Infrastructure implementation can keep using the existing ISNULL/COALESCE
+            partial-update stored procedure. Only fields with non-null values are updated.
+            The Infrastructure implementation enqueues the aggregate's pending domain events
+            (e.g. <c>IncidentManagementUpdatedEvent</c>) to the outbox after a successful write.
             Throws <see cref="T:PlantSafety.Application.Common.Errors.ConcurrencyConflictException"/> when ETag is stale.
             </summary>
         </member>
@@ -27641,10 +27649,12 @@
         <member name="T:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler">
             <summary>
             Handles <see cref="T:PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Update.UpdateIncidentCommand"/>.
-            Updates mutable fields on an existing Incident and stages an outbox event.
+            Loads the current Incident, rehydrates the <see cref="T:PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement"/>, applies
+            <c>UpdateDetails</c> (enforcing lifecycle invariants), persists only the changed fields via
+            the existing partial-update repository call, and stages an outbox event.
             </summary>
         </member>
-        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler.#ctor(PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler})">
+        <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler.#ctor(PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentRepository,PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler})">
             <summary>Initialises dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.UpdateIncidentCommandHandler.Handle(PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Update.UpdateIncidentCommand,System.Threading.CancellationToken)">
@@ -27959,6 +27969,19 @@
         </member>
         <member name="P:PlantSafety.Application.Features.SafetyEvents.Mappings.IncidentManagement.IncidentReadModel.ETag">
             <summary>Row version for concurrency.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Features.SafetyEvents.Mappings.IncidentManagement.IncidentReadModel.CreatedAtUtc">
+            <summary>
+            UTC record-creation timestamp. Added so <see cref="!:IIncidentReadRepository.GetByIdAsync"/>
+            callers can <c>IncidentManagement.Rehydrate</c> the Domain aggregate (2026-07-27 Create/Update
+            handler wiring) without a second round-trip; mirrors [SafetyEvents].[Incident].CreatedAtUtc.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.Features.SafetyEvents.Mappings.IncidentManagement.IncidentReadModel.CreatedBy">
+            <summary>
+            Identity of the user who created this record. Added for the same Rehydrate purpose as
+            <see cref="P:PlantSafety.Application.Features.SafetyEvents.Mappings.IncidentManagement.IncidentReadModel.CreatedAtUtc"/>; mirrors [SafetyEvents].[Incident].CreatedBy.
+            </summary>
         </member>
         <member name="T:PlantSafety.Application.Features.SafetyEvents.Metrics.IncidentMetrics">
             <summary>
