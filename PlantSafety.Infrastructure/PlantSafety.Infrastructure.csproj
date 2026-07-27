@@ -208,6 +208,10 @@
     <PackageReference Include="MassTransit" Version="8.4.1" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.4.1" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
+    <!-- Polly: transient-SQL-error retry pipeline for SqlConnectionFactory, matching the
+         pattern already established by Intelligence.Infrastructure's SqlResiliencePipeline
+         (Intelligence.Infrastructure.Shared.Resilience). Same version pinned for consistency. -->
+    <PackageReference Include="Polly" Version="8.5.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.13.1" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />

@@ -2394,6 +2394,46 @@
         <member name="M:PlantSafety.Application.Analytics.Culture.Behavior.Repositories.IBehaviorRepository.GetBehaviorObservationsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns Behavior items for the tenant/site within the given UTC date range.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand">
+            <summary>Creates a new <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate under the Analytics.Culture bounded context.</summary>
+            <param name="TenantId">Tenant that owns the new culture record.</param>
+            <param name="UserId">Identity of the user creating the record (CRUD authorship).</param>
+            <param name="CorrelationId">Operation-group correlation identifier.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event.</param>
+            <param name="Actor">Actor performing this domain action.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand.#ctor(PlantSafety.SharedKernel.Identifiers.TenantId,PlantSafety.SharedKernel.Identifiers.UserId,PlantSafety.SharedKernel.Identifiers.CorrelationId,PlantSafety.SharedKernel.Identifiers.CausationId,PlantSafety.SharedKernel.Primitives.ValueTypes.PerformedByActor)">
+            <summary>Creates a new <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate under the Analytics.Culture bounded context.</summary>
+            <param name="TenantId">Tenant that owns the new culture record.</param>
+            <param name="UserId">Identity of the user creating the record (CRUD authorship).</param>
+            <param name="CorrelationId">Operation-group correlation identifier.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event.</param>
+            <param name="Actor">Actor performing this domain action.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand.TenantId">
+            <summary>Tenant that owns the new culture record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand.UserId">
+            <summary>Identity of the user creating the record (CRUD authorship).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand.CorrelationId">
+            <summary>Operation-group correlation identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand.CausationId">
+            <summary>Identifier of the immediate parent command or event.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand.Actor">
+            <summary>Actor performing this domain action.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler.#ctor(PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository,PlantSafety.SharedKernel.Abstractions.IUnitOfWork,PlantSafety.Application.Common.Interfaces.Persistence.IOutboxWriter,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler.Handle(PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.Culture.CultureIndex.Handlers.GetCultureIndexQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.CultureIndex.Queries.GetCultureIndexQuery"/>.</summary>
         </member>
@@ -2594,6 +2634,69 @@
         <member name="M:PlantSafety.Application.Analytics.Culture.EngagementScoring.Repositories.IEngagementScoringRepository.GetEngagementScoresAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns EngagementScoring items for the tenant/site within the given UTC date range.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse">
+            <summary>Response DTO projecting a <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate.</summary>
+            <param name="CultureId">Underlying identifier value of the Culture aggregate.</param>
+            <param name="TenantId">Tenant that owns this culture record.</param>
+            <param name="SurveyPeriod">Survey period this measurement covers.</param>
+            <param name="CultureIndexScore">Computed safety culture index score (0-100).</param>
+            <param name="EngagementScore">Computed engagement score (0-100).</param>
+            <param name="ParticipationRate">Survey participation rate (0-100).</param>
+            <param name="TopRiskTheme">Top risk theme identified from this survey period.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse.#ctor(System.Guid,System.Guid,System.String,System.Decimal,System.Decimal,System.Decimal,System.String)">
+            <summary>Response DTO projecting a <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate.</summary>
+            <param name="CultureId">Underlying identifier value of the Culture aggregate.</param>
+            <param name="TenantId">Tenant that owns this culture record.</param>
+            <param name="SurveyPeriod">Survey period this measurement covers.</param>
+            <param name="CultureIndexScore">Computed safety culture index score (0-100).</param>
+            <param name="EngagementScore">Computed engagement score (0-100).</param>
+            <param name="ParticipationRate">Survey participation rate (0-100).</param>
+            <param name="TopRiskTheme">Top risk theme identified from this survey period.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse.CultureId">
+            <summary>Underlying identifier value of the Culture aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse.TenantId">
+            <summary>Tenant that owns this culture record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse.SurveyPeriod">
+            <summary>Survey period this measurement covers.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse.CultureIndexScore">
+            <summary>Computed safety culture index score (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse.EngagementScore">
+            <summary>Computed engagement score (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse.ParticipationRate">
+            <summary>Survey participation rate (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse.TopRiskTheme">
+            <summary>Top risk theme identified from this survey period.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Mappings.CultureMappings">
+            <summary>Static mapping helpers for the <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Mappings.CultureMappings.ToResponse(PlantSafety.Domain.Analytics.Culture.Aggregates.Culture)">
+            <summary>Projects a <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate into a <see cref="T:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Queries.GetCultureQuery">
+            <summary>Retrieves a single Culture record by <paramref name="Id"/>, scoped to <paramref name="TenantId"/>.</summary>
+            <param name="Id">Identifier of the Culture record to retrieve.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Queries.GetCultureQuery.#ctor(System.Guid,PlantSafety.SharedKernel.Identifiers.TenantId)">
+            <summary>Retrieves a single Culture record by <paramref name="Id"/>, scoped to <paramref name="TenantId"/>.</summary>
+            <param name="Id">Identifier of the Culture record to retrieve.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Queries.GetCultureQuery.Id">
+            <summary>Identifier of the Culture record to retrieve.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Queries.GetCultureQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.Culture.TrendModeling.Handlers.GetTrendModelingQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.TrendModeling.Queries.GetTrendModelingQuery"/>.</summary>
         </member>
@@ -2693,6 +2796,12 @@
         </member>
         <member name="M:PlantSafety.Application.Analytics.Culture.TrendModeling.Repositories.ITrendModelingRepository.GetTrendModelsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns TrendModeling items for the tenant/site within the given UTC date range.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Validators.CreateCultureCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand"/> before it reaches the handler.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Validators.CreateCultureCommandValidator.#ctor">
+            <summary>Configures validation rules for <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand"/>.</summary>
         </member>
         <member name="T:PlantSafety.Application.Analytics.Dashboard.Executive.Handlers.GetExecutiveQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Executive.Queries.GetExecutiveQuery"/>.</summary>
@@ -8749,6 +8858,27 @@
             <param name="message">The sanitized error message.</param>
             <param name="correlationId">The correlation identifier for lineage tracing.</param>
             <exception cref="T:PlantSafety.Application.Common.Errors.DomainRuleException">Thrown when the condition is false.</exception>
+        </member>
+        <member name="T:PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository">
+            <summary>Write-side repository contract for the <see cref="T:PlantSafety.Domain.Analytics.Culture.Aggregates.Culture"/> aggregate.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository.AddAsync(PlantSafety.Domain.Analytics.Culture.Aggregates.Culture,System.Threading.CancellationToken)">
+            <summary>Persists a newly created <see cref="T:PlantSafety.Domain.Analytics.Culture.Aggregates.Culture"/> aggregate.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Common.Interfaces.Persistence.IOutboxWriter">
+            <summary>
+            Application-layer contract for writing pending domain events to the outbox.
+            Mirrors the Infrastructure-layer <c>IOutboxWriter</c> by design — see file header.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.Common.Interfaces.Persistence.IOutboxWriter.HasPendingEvents">
+            <summary>Returns <see langword="true"/> when there are un-flushed domain events.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Common.Interfaces.Persistence.IOutboxWriter.FlushAsync(System.Threading.CancellationToken)">
+            <summary>Writes all pending domain events to the outbox table.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Common.Interfaces.Persistence.IOutboxWriter.Clear">
+            <summary>Discards all pending (un-flushed) domain events without writing them.</summary>
         </member>
         <member name="T:PlantSafety.Application.Common.Mapping.IMappingProfile`2">
             <summary>
@@ -27830,6 +27960,20 @@
         <member name="P:PlantSafety.Application.Features.SafetyEvents.Mappings.IncidentManagement.IncidentReadModel.ETag">
             <summary>Row version for concurrency.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Features.SafetyEvents.Metrics.IncidentMetrics">
+            <summary>
+            Domain-specific metrics for Incident Management workflows, using the .NET Meter API
+            (compatible with OpenTelemetry / Prometheus exporters), following the same instrumentation
+            pattern as <see cref="T:PlantSafety.Application.Behaviors.Metrics.MetricsBehavior`2"/>.
+            </summary>
+        </member>
+        <member name="F:PlantSafety.Application.Features.SafetyEvents.Metrics.IncidentMetrics.IncidentsCreated">
+            <summary>
+            Counts Incident creation events. Incremented once per successfully persisted Incident,
+            after the record is written and before the handler returns. No high-cardinality labels
+            are used, per the canonical metrics naming rule (module.operation.metric).
+            </summary>
+        </member>
         <member name="T:PlantSafety.Application.Features.SafetyEvents.Models.CrisisManagement.CrisisEventDto">
             <summary>
             Read-side projection of a CrisisEvent aggregate.
@@ -37012,201 +37156,22 @@
         <member name="T:PlantSafety.Application.Operations.AuditViewer.Handlers.SearchAuditLogQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Operations.AuditViewer.Queries.SearchAuditLogQuery"/>.</summary>
         </member>
-        <member name="M:PlantSafety.Application.Operations.AuditViewer.Handlers.SearchAuditLogQueryHandler.#ctor(PlantSafety.Application.Operations.AuditViewer.Repositories.IAuditLogRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operations.AuditViewer.Handlers.SearchAuditLogQueryHandler})">
+        <member name="M:PlantSafety.Application.Operations.AuditViewer.Handlers.SearchAuditLogQueryHandler.#ctor(Shared.AuditLogging.Abstractions.Repositories.IAuditLogRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operations.AuditViewer.Handlers.SearchAuditLogQueryHandler})">
             <summary>Initialises dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Operations.AuditViewer.Handlers.SearchAuditLogQueryHandler.Handle(PlantSafety.Application.Operations.AuditViewer.Queries.SearchAuditLogQuery,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="T:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto">
-            <summary>
-            Projection of a single row from [PlantSafety.AuditDB].dbo.AuditLog, the shared,
-            cross-database, append-only platform audit trail.
-            </summary>
-            <param name="TableName">The domain table/entity the audited operation targeted (e.g. "AiGovernance").</param>
-            <param name="SourceDatabase">The database the write originated from (DB_NAME() at insert time).</param>
-            <param name="Operation">The audited operation ("INSERT", "UPDATE", "DELETE", "VIEW", ...).</param>
-            <param name="ChangedBy">The SQL Server principal (SYSTEM_USER) that performed the operation.</param>
-            <param name="ChangeTime">UTC timestamp the audit row was written (SYSUTCDATETIME()).</param>
-            <param name="ViewerAccessed">True when the audited operation was a read/view rather than a write.</param>
-            <param name="ErrorContext">
-            Free-text detail string, typically "Key=Value; Key=Value" parameter pairs. This is the ONLY
-            field in the confirmed schema that carries change-level detail today -- see the diff-view
-            scope note on this file's header comment.
-            </param>
-            <param name="Severity">Numeric severity (0 for best-effort success-path audit rows; ERROR_SEVERITY() on failure-path rows).</param>
-            <param name="Module">The stored procedure or module that produced the audit row (OBJECT_NAME(@@PROCID)).</param>
-            <param name="BeforeSnapshot">Reserved structured "before" snapshot column. Always null in every current write path.</param>
-            <param name="AfterSnapshot">Reserved structured "after" snapshot column. Always null in every current write path.</param>
-        </member>
-        <member name="M:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.#ctor(System.String,System.String,System.String,System.String,System.DateTime,System.Boolean,System.String,System.Int32,System.String,System.String,System.String)">
-            <summary>
-            Projection of a single row from [PlantSafety.AuditDB].dbo.AuditLog, the shared,
-            cross-database, append-only platform audit trail.
-            </summary>
-            <param name="TableName">The domain table/entity the audited operation targeted (e.g. "AiGovernance").</param>
-            <param name="SourceDatabase">The database the write originated from (DB_NAME() at insert time).</param>
-            <param name="Operation">The audited operation ("INSERT", "UPDATE", "DELETE", "VIEW", ...).</param>
-            <param name="ChangedBy">The SQL Server principal (SYSTEM_USER) that performed the operation.</param>
-            <param name="ChangeTime">UTC timestamp the audit row was written (SYSUTCDATETIME()).</param>
-            <param name="ViewerAccessed">True when the audited operation was a read/view rather than a write.</param>
-            <param name="ErrorContext">
-            Free-text detail string, typically "Key=Value; Key=Value" parameter pairs. This is the ONLY
-            field in the confirmed schema that carries change-level detail today -- see the diff-view
-            scope note on this file's header comment.
-            </param>
-            <param name="Severity">Numeric severity (0 for best-effort success-path audit rows; ERROR_SEVERITY() on failure-path rows).</param>
-            <param name="Module">The stored procedure or module that produced the audit row (OBJECT_NAME(@@PROCID)).</param>
-            <param name="BeforeSnapshot">Reserved structured "before" snapshot column. Always null in every current write path.</param>
-            <param name="AfterSnapshot">Reserved structured "after" snapshot column. Always null in every current write path.</param>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.TableName">
-            <summary>The domain table/entity the audited operation targeted (e.g. "AiGovernance").</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.SourceDatabase">
-            <summary>The database the write originated from (DB_NAME() at insert time).</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.Operation">
-            <summary>The audited operation ("INSERT", "UPDATE", "DELETE", "VIEW", ...).</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.ChangedBy">
-            <summary>The SQL Server principal (SYSTEM_USER) that performed the operation.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.ChangeTime">
-            <summary>UTC timestamp the audit row was written (SYSUTCDATETIME()).</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.ViewerAccessed">
-            <summary>True when the audited operation was a read/view rather than a write.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.ErrorContext">
-            <summary>
-            Free-text detail string, typically "Key=Value; Key=Value" parameter pairs. This is the ONLY
-            field in the confirmed schema that carries change-level detail today -- see the diff-view
-            scope note on this file's header comment.
-            </summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.Severity">
-            <summary>Numeric severity (0 for best-effort success-path audit rows; ERROR_SEVERITY() on failure-path rows).</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.Module">
-            <summary>The stored procedure or module that produced the audit row (OBJECT_NAME(@@PROCID)).</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.BeforeSnapshot">
-            <summary>Reserved structured "before" snapshot column. Always null in every current write path.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto.AfterSnapshot">
-            <summary>Reserved structured "after" snapshot column. Always null in every current write path.</summary>
-        </member>
-        <member name="T:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria">
-            <summary>Optional filter + pagination criteria for searching the shared AuditLog table.</summary>
-            <param name="TableName">Optional exact match on the audited table/entity name.</param>
-            <param name="Operation">Optional exact match on the audited operation ("INSERT", "UPDATE", "DELETE", "VIEW").</param>
-            <param name="ChangedBy">Optional exact match on the SQL principal that performed the operation.</param>
-            <param name="Module">Optional exact match on the stored procedure/module name.</param>
-            <param name="Severity">Optional exact match on numeric severity.</param>
-            <param name="FromUtc">Optional inclusive lower bound on ChangeTime (UTC).</param>
-            <param name="ToUtc">Optional inclusive upper bound on ChangeTime (UTC).</param>
-            <param name="SearchText">
-            Optional free-text match against ErrorContext (the field that carries change-detail
-            key/value pairs -- see AuditLogEntryDto's diff-view scope note).
-            </param>
-            <param name="PageNumber">1-based page number. Defaults to 1.</param>
-            <param name="PageSize">Maximum rows per page. Defaults to 50.</param>
-        </member>
-        <member name="M:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.#ctor(System.String,System.String,System.String,System.String,System.Nullable{System.Int32},System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.String,System.Int32,System.Int32)">
-            <summary>Optional filter + pagination criteria for searching the shared AuditLog table.</summary>
-            <param name="TableName">Optional exact match on the audited table/entity name.</param>
-            <param name="Operation">Optional exact match on the audited operation ("INSERT", "UPDATE", "DELETE", "VIEW").</param>
-            <param name="ChangedBy">Optional exact match on the SQL principal that performed the operation.</param>
-            <param name="Module">Optional exact match on the stored procedure/module name.</param>
-            <param name="Severity">Optional exact match on numeric severity.</param>
-            <param name="FromUtc">Optional inclusive lower bound on ChangeTime (UTC).</param>
-            <param name="ToUtc">Optional inclusive upper bound on ChangeTime (UTC).</param>
-            <param name="SearchText">
-            Optional free-text match against ErrorContext (the field that carries change-detail
-            key/value pairs -- see AuditLogEntryDto's diff-view scope note).
-            </param>
-            <param name="PageNumber">1-based page number. Defaults to 1.</param>
-            <param name="PageSize">Maximum rows per page. Defaults to 50.</param>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.TableName">
-            <summary>Optional exact match on the audited table/entity name.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.Operation">
-            <summary>Optional exact match on the audited operation ("INSERT", "UPDATE", "DELETE", "VIEW").</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.ChangedBy">
-            <summary>Optional exact match on the SQL principal that performed the operation.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.Module">
-            <summary>Optional exact match on the stored procedure/module name.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.Severity">
-            <summary>Optional exact match on numeric severity.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.FromUtc">
-            <summary>Optional inclusive lower bound on ChangeTime (UTC).</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.ToUtc">
-            <summary>Optional inclusive upper bound on ChangeTime (UTC).</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.SearchText">
-            <summary>
-            Optional free-text match against ErrorContext (the field that carries change-detail
-            key/value pairs -- see AuditLogEntryDto's diff-view scope note).
-            </summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.PageNumber">
-            <summary>1-based page number. Defaults to 1.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria.PageSize">
-            <summary>Maximum rows per page. Defaults to 50.</summary>
-        </member>
-        <member name="T:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchResultDto">
-            <summary>A single page of AuditLog search results plus paging metadata.</summary>
-            <param name="Items">The audit log entries for the requested page.</param>
-            <param name="PageNumber">The 1-based page number returned.</param>
-            <param name="PageSize">The page size requested.</param>
-            <param name="TotalCount">The total number of rows matching the filter, across all pages.</param>
-        </member>
-        <member name="M:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchResultDto.#ctor(System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Operations.AuditViewer.Models.AuditLogEntryDto},System.Int32,System.Int32,System.Int32)">
-            <summary>A single page of AuditLog search results plus paging metadata.</summary>
-            <param name="Items">The audit log entries for the requested page.</param>
-            <param name="PageNumber">The 1-based page number returned.</param>
-            <param name="PageSize">The page size requested.</param>
-            <param name="TotalCount">The total number of rows matching the filter, across all pages.</param>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchResultDto.Items">
-            <summary>The audit log entries for the requested page.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchResultDto.PageNumber">
-            <summary>The 1-based page number returned.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchResultDto.PageSize">
-            <summary>The page size requested.</summary>
-        </member>
-        <member name="P:PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchResultDto.TotalCount">
-            <summary>The total number of rows matching the filter, across all pages.</summary>
-        </member>
         <member name="T:PlantSafety.Application.Operations.AuditViewer.Queries.SearchAuditLogQuery">
             <summary>Searches [PlantSafety.AuditDB].dbo.AuditLog by optional filters, newest first, paginated.</summary>
             <param name="Criteria">The optional filter and pagination criteria.</param>
         </member>
-        <member name="M:PlantSafety.Application.Operations.AuditViewer.Queries.SearchAuditLogQuery.#ctor(PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria)">
+        <member name="M:PlantSafety.Application.Operations.AuditViewer.Queries.SearchAuditLogQuery.#ctor(Shared.AuditLogging.Abstractions.Models.AuditLogSearchCriteria)">
             <summary>Searches [PlantSafety.AuditDB].dbo.AuditLog by optional filters, newest first, paginated.</summary>
             <param name="Criteria">The optional filter and pagination criteria.</param>
         </member>
         <member name="P:PlantSafety.Application.Operations.AuditViewer.Queries.SearchAuditLogQuery.Criteria">
             <summary>The optional filter and pagination criteria.</summary>
-        </member>
-        <member name="T:PlantSafety.Application.Operations.AuditViewer.Repositories.IAuditLogRepository">
-            <summary>Read-only repository over the shared [PlantSafety.AuditDB].dbo.AuditLog table.</summary>
-        </member>
-        <member name="M:PlantSafety.Application.Operations.AuditViewer.Repositories.IAuditLogRepository.SearchAsync(PlantSafety.Application.Operations.AuditViewer.Models.AuditLogSearchCriteria,System.Threading.CancellationToken)">
-            <summary>
-            Searches AuditLog by the given optional filters, newest first, with pagination.
-            Never mutates AuditLog -- SELECT only.
-            </summary>
         </member>
         <member name="T:PlantSafety.Application.Operations.Backup.Commands.RunRestoreVerifyCommand">
             <summary>Runs a safe, isolated restore-verify against <paramref name="DatabaseName"/>'s latest FULL backup.</summary>

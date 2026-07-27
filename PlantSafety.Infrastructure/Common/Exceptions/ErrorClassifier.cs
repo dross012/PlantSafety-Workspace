@@ -25,8 +25,23 @@ namespace PlantSafety.Infrastructure.Common.Exceptions;
 /// Classifies a <see cref="SqlException"/> raised by a stored procedure call into the
 /// platform's canonical exception taxonomy (<see cref="ConflictException"/>,
 /// <see cref="ConcurrencyConflictException"/>, <see cref="NotFoundException"/>, or
-/// <see cref="PersistenceException"/>). Used by <c>DapperCommandExecutor</c> and
-/// <c>DapperQueryExecutor</c> in their <c>catch (SqlException)</c> blocks.
+/// <see cref="PersistenceException"/>).
+///
+/// DRIFT NOTE (data-access-modernization pass, Checklist Section 2, item 11.2, corrected
+/// 2026-07-27): despite this type's original description, the shared
+/// <c>DapperCommandExecutor</c>/<c>DapperQueryExecutor</c> used by the majority of
+/// PlantSafety's Dapper repositories do NOT call <see cref="Classify"/> -- they
+/// catch <see cref="SqlException"/> and always throw a generic
+/// <see cref="PersistenceException"/>. <see cref="Classify"/> is currently used only by the
+/// six Operations.* admin/ops repositories that intentionally bypass
+/// ISqlConnectionFactory/DapperCommandExecutor/DapperQueryExecutor for documented reasons
+/// (FeatureFlagDapperRepository, MonitoringDapperRepository, ArchivalDapperRepository,
+/// SchemaVersionDapperRepository, BackupDapperRepository, SystemHealthDapperRepository).
+/// Retrofitting the two central executors to call this classifier would change the
+/// exception type thrown by every one of PlantSafety's ~50 mainstream Dapper repositories
+/// (a change with a much larger blast radius than this pass's scope); left as a flagged
+/// follow-up rather than changed blindly. See PlantSafety.Infrastructure.Persistence.Dapper.
+/// Commands.DapperCommandExecutor / Queries.DapperQueryExecutor remarks.
 /// </summary>
 public static class ErrorClassifier
 {

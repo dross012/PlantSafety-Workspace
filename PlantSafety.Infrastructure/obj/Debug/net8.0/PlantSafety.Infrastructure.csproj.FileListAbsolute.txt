@@ -18,3 +18,9 @@ C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\obj\Debug\net8.0\Pl
 C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\obj\Debug\net8.0\refint\PlantSafety.Infrastructure.dll
 C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\obj\Debug\net8.0\PlantSafety.Infrastructure.pdb
 C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\obj\Debug\net8.0\ref\PlantSafety.Infrastructure.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.AuditLogging.Abstractions.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.AuditLogging.Infrastructure.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.AuditLogging.Infrastructure.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.AuditLogging.Infrastructure.xml
+C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.AuditLogging.Abstractions.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.AuditLogging.Abstractions.xml

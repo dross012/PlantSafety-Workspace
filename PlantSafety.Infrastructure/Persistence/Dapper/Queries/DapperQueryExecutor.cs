@@ -18,6 +18,16 @@ namespace PlantSafety.Infrastructure.Persistence.Dapper.Queries;
 /// Executes read (SELECT) stored procedures via Dapper on the read-replica connection.
 /// Returns mapped DTOs; never returns domain objects or IQueryable.
 /// </summary>
+/// <remarks>
+/// FLAGGED (data-access-modernization pass, Checklist Section 2, item 11.2, 2026-07-27):
+/// SqlException failures here are always wrapped as a generic
+/// <see cref="PersistenceException"/>, unlike PlantSafety.Infrastructure.Common.Exceptions.
+/// ErrorClassifier's more granular Conflict/NotFound/ConcurrencyConflict classification used
+/// by the six Operations.* admin repositories. Not changed in this pass: routing every
+/// mainstream repository's SqlException through ErrorClassifier would change the exception
+/// type surfaced platform-wide and needs its own reviewed change, not a drive-by fix. See
+/// ErrorClassifier's DRIFT NOTE for the full reasoning.
+/// </remarks>
 public sealed class DapperQueryExecutor(
     ISqlConnectionFactory connectionFactory,
     ILogger<DapperQueryExecutor> logger,

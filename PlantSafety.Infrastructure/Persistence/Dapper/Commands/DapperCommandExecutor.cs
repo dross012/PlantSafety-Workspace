@@ -19,6 +19,12 @@ namespace PlantSafety.Infrastructure.Persistence.Dapper.Commands;
 /// Executes write (INSERT/UPDATE) stored procedures via Dapper within a supplied
 /// <see cref="IDbTransaction"/>. All parameters are explicit; no dynamic SQL.
 /// </summary>
+/// <remarks>
+/// FLAGGED (data-access-modernization pass, Checklist Section 2, item 11.2, 2026-07-27):
+/// see the matching remark on <c>DapperQueryExecutor</c> / ErrorClassifier's DRIFT NOTE --
+/// this executor also always wraps SqlException as a generic PersistenceException rather
+/// than routing through ErrorClassifier's more granular classification.
+/// </remarks>
 public sealed class DapperCommandExecutor(
     ILogger<DapperCommandExecutor> logger,
     IOptions<TenantContextPropagationOptions> tenantContextOptions)

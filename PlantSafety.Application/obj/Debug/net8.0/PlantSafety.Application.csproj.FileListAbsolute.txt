@@ -17,3 +17,6 @@ C:\Users\dross\source\PlantSafety\PlantSafety.Application\obj\Debug\net8.0\refin
 C:\Users\dross\source\PlantSafety\PlantSafety.Application\obj\Debug\net8.0\PlantSafety.Application.xml
 C:\Users\dross\source\PlantSafety\PlantSafety.Application\obj\Debug\net8.0\PlantSafety.Application.pdb
 C:\Users\dross\source\PlantSafety\PlantSafety.Application\obj\Debug\net8.0\ref\PlantSafety.Application.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Application\bin\Debug\net8.0\Shared.AuditLogging.Abstractions.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Application\bin\Debug\net8.0\Shared.AuditLogging.Abstractions.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Application\bin\Debug\net8.0\Shared.AuditLogging.Abstractions.xml

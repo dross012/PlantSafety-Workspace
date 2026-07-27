@@ -12,6 +12,7 @@ using PlantSafety.Application.Abstractions.Messaging;
 using PlantSafety.Application.Common.Utilities;
 using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Create;
 using PlantSafety.Application.Features.SafetyEvents.Events.IncidentManagement;
+using PlantSafety.Application.Features.SafetyEvents.Metrics;
 
 namespace PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement;
 
@@ -63,6 +64,8 @@ public sealed class CreateIncidentCommandHandler : ICommandHandler<CreateInciden
         _logger.LogInformation(
             "Incident {IncidentId} created for Tenant {TenantId} by Actor {ActorId} CorrelationId {CorrelationId}",
             incidentId, request.TenantId, request.ActorId, request.CorrelationId);
+
+        IncidentMetrics.IncidentsCreated.Add(1);
 
         return incidentId;
     }

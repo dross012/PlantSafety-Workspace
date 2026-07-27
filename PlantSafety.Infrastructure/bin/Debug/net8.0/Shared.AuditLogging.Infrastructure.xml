@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Shared.AuditLogging.Infrastructure</name>
+    </assembly>
+    <members>
+        <member name="T:Shared.AuditLogging.Infrastructure.DependencyInjection.ServiceCollectionExtensions">
+            <summary>Registers Shared.AuditLogging services with the DI container.</summary>
+        </member>
+        <member name="M:Shared.AuditLogging.Infrastructure.DependencyInjection.ServiceCollectionExtensions.AddSharedAuditLogging(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)">
+            <summary>
+            Registers <see cref="T:Shared.AuditLogging.Infrastructure.Options.AuditLoggingOptions"/> (bound from configuration section
+            <see cref="F:Shared.AuditLogging.Infrastructure.Options.AuditLoggingOptions.SectionName"/>) and <see cref="T:Shared.AuditLogging.Abstractions.Repositories.IAuditLogRepository"/>.
+            Read-only -- never registers any type capable of mutating dbo.AuditLog.
+            </summary>
+        </member>
+        <member name="T:Shared.AuditLogging.Infrastructure.Exceptions.AuditLogQueryException">
+            <summary>Thrown when a dbo.usp_SearchAuditLog query fails unrecoverably.</summary>
+        </member>
+        <member name="M:Shared.AuditLogging.Infrastructure.Exceptions.AuditLogQueryException.#ctor(System.String,System.Exception)">
+            <summary>Creates an exception describing a failed AuditLog query.</summary>
+        </member>
+        <member name="T:Shared.AuditLogging.Infrastructure.Options.AuditLoggingOptions">
+            <summary>Strongly typed configuration for Shared.AuditLogging.</summary>
+        </member>
+        <member name="F:Shared.AuditLogging.Infrastructure.Options.AuditLoggingOptions.SectionName">
+            <summary>Configuration section key.</summary>
+        </member>
+        <member name="P:Shared.AuditLogging.Infrastructure.Options.AuditLoggingOptions.AuditDbConnectionString">
+            <summary>Connection string targeting [PlantSafety.AuditDB], where dbo.AuditLog lives.</summary>
+        </member>
+        <member name="P:Shared.AuditLogging.Infrastructure.Options.AuditLoggingOptions.SearchCommandTimeoutSeconds">
+            <summary>Command timeout (seconds) for AuditLog search queries.</summary>
+        </member>
+        <member name="P:Shared.AuditLogging.Infrastructure.Options.AuditLoggingOptions.MaxPageSize">
+            <summary>Maximum page size a caller may request, to bound query and export/report cost.</summary>
+        </member>
+        <member name="T:Shared.AuditLogging.Infrastructure.Persistence.AuditLogDapperRepository">
+            <summary>Dapper-backed, read-only repository over the shared dbo.AuditLog table.</summary>
+        </member>
+        <member name="M:Shared.AuditLogging.Infrastructure.Persistence.AuditLogDapperRepository.#ctor(Microsoft.Extensions.Options.IOptions{Shared.AuditLogging.Infrastructure.Options.AuditLoggingOptions},Microsoft.Extensions.Logging.ILogger{Shared.AuditLogging.Infrastructure.Persistence.AuditLogDapperRepository})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:Shared.AuditLogging.Infrastructure.Persistence.AuditLogDapperRepository.SearchAsync(Shared.AuditLogging.Abstractions.Models.AuditLogSearchCriteria,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Shared.AuditLogging.Infrastructure.Persistence.AuditLogDapperRepository.AuditLogRow">
+            <summary>Raw projection of dbo.AuditLog before mapping to <see cref="T:Shared.AuditLogging.Abstractions.Models.AuditLogEntry"/>.</summary>
+        </member>
+    </members>
+</doc>

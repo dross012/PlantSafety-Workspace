@@ -87,7 +87,7 @@ public sealed class OperationsAuditViewerV1Controller : ControllerBase
         CancellationToken cancellationToken = default)
     {
         // Export intentionally requests the maximum single page (no further pagination) --
-        // the underlying repository caps this at AuditViewerOptions.MaxPageSize regardless.
+        // the underlying repository caps this at Shared.AuditLogging's AuditLoggingOptions.MaxPageSize regardless.
         var criteria = new AuditLogSearchCriteria(
             tableName, operation, changedBy, module, severity, fromUtc, toUtc, searchText, PageNumber: 1, PageSize: 5000);
 

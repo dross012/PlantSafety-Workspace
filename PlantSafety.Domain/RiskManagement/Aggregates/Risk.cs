@@ -119,6 +119,9 @@ public sealed partial class Risk
     /// <summary>Identity of the user who created this record (CRUD authorship).</summary>
     public UserId CreatedBy { get; private set; }
 
+    /// <summary>UTC instant this record was archived, if any.</summary>
+    public UtcTimestamp? ArchivedAtUtc { get; private set; }
+
     // ---- Domain Events -----------------------------------------------------
 
     private readonly List<IRiskDomainEvent> _domainEvents = [];
@@ -302,12 +305,16 @@ public sealed partial class Risk
     }
 
     /// <summary>Archives a Closed risk for long-term retention.</summary>
-    public void Archive(CorrelationId correlationId, CausationId causationId)
+    public void Archive(UtcTimestamp nowUtc, PerformedByActor actor, CorrelationId correlationId, CausationId causationId)
     {
         if (Status != RiskStatus.Closed)
             throw new RiskInvalidStatusTransitionException(RiskId, Status.ToString(), RiskStatus.Archived.ToString(), correlationId, causationId);
 
         Status = RiskStatus.Archived;
+        ArchivedAtUtc = nowUtc;
+
+        AddDomainEvent(new RiskArchivedEvent(
+            RiskEventId.New(), RiskId, nowUtc, actor, correlationId, causationId));
     }
 
     // ---- Helpers -----------------------------------------------------------

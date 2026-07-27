@@ -114,6 +114,9 @@ public sealed partial class Accident
     /// <summary>UTC instant the investigation was closed, if any.</summary>
     public UtcTimestamp? ClosedAtUtc { get; private set; }
 
+    /// <summary>UTC instant this record was archived, if any.</summary>
+    public UtcTimestamp? ArchivedAtUtc { get; private set; }
+
     // ---- Audit ---------------------------------------------------------------
 
     /// <summary>Identity of the accountable owner (typically the reporting supervisor or safety manager).</summary>
@@ -297,12 +300,16 @@ public sealed partial class Accident
     }
 
     /// <summary>Archives a Closed accident record for long-term retention.</summary>
-    public void Archive(CorrelationId correlationId, CausationId causationId)
+    public void Archive(UtcTimestamp nowUtc, PerformedByActor actor, CorrelationId correlationId, CausationId causationId)
     {
         if (Status != AccidentStatus.Closed)
             throw new AccidentInvalidStatusTransitionException(AccidentId, Status.ToString(), AccidentStatus.Archived.ToString(), correlationId, causationId);
 
         Status = AccidentStatus.Archived;
+        ArchivedAtUtc = nowUtc;
+
+        AddDomainEvent(new AccidentArchivedEvent(
+            AccidentEventId.New(), AccidentId, nowUtc, actor, correlationId, causationId));
     }
 
     // ---- Helpers -----------------------------------------------------------

@@ -28,4 +28,12 @@ public sealed class DatabaseOptions
 
     /// <summary>Maximum pool size.</summary>
     public int MaxPoolSize { get; init; } = 100;
+
+    /// <summary>
+    /// Maximum number of retry attempts for transient SQL Server errors encountered while
+    /// opening a connection (0 = no retries). Mirrors Intelligence:Database:MaxRetryCount's
+    /// role in the sibling Intelligence module. See
+    /// <see cref="PlantSafety.Infrastructure.Persistence.ConnectionFactory.SqlResiliencePipeline"/>.
+    /// </summary>
+    public int MaxRetryCount { get; init; } = 3;
 }

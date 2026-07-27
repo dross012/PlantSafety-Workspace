@@ -12,6 +12,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using PlantSafety.Infrastructure.Common.Configuration;
+using Shared.AuditLogging.Infrastructure.Options;
 
 namespace PlantSafety.IntegrationTests.Setup;
 
@@ -34,6 +35,10 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
     {
         await _sqlContainer.StartAsync();
         await TestDatabaseFactory.ApplySchemaAsync(ConnectionString);
+        await TestDatabaseFactory.ApplySharedAuditLoggingSchemaAsync(ConnectionString);
+        await TestDatabaseFactory.ApplyIncidentManagementSchemaAsync(ConnectionString);
+        await TestDatabaseFactory.ApplyRiskManagementSchemaAsync(ConnectionString);
+        await TestDatabaseFactory.ApplyAccidentManagementSchemaAsync(ConnectionString);
         await TestDataSeeder.SeedAsync(ConnectionString);
     }
 
@@ -58,6 +63,14 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
             {
                 [$"{DatabaseOptions.SectionName}:{nameof(DatabaseOptions.ConnectionString)}"] = ConnectionString,
                 [$"{DatabaseOptions.SectionName}:{nameof(DatabaseOptions.ReadConnectionString)}"] = ConnectionString,
+
+                // Shared.AuditLogging's AuditLogDapperRepository opens its own SqlConnection
+                // against AuditLoggingOptions.AuditDbConnectionString rather than the tenant
+                // DatabaseOptions connection strings above (dbo.AuditLog is cross-database,
+                // server-level platform data -- see AuditLoggingOptions.cs). Point it at the
+                // same Testcontainers instance so SearchAuditLogQueryHandler round-trips
+                // through the real Shared.AuditLogging stack in integration tests.
+                [$"{AuditLoggingOptions.SectionName}:{nameof(AuditLoggingOptions.AuditDbConnectionString)}"] = ConnectionString,
             });
         });
     }

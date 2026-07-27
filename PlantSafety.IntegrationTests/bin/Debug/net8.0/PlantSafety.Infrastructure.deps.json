@@ -11,13 +11,16 @@
           "Azure.Storage.Blobs": "12.24.0",
           "Dapper": "2.1.79",
           "MassTransit": "8.4.1",
+          "MassTransit.RabbitMQ": "8.4.1",
           "Microsoft.Data.SqlClient": "7.0.1",
           "Microsoft.Extensions.Caching.StackExchangeRedis": "8.0.0",
           "OpenTelemetry.Extensions.Hosting": "1.9.0",
           "PlantSafety.Application": "1.0.0",
           "PlantSafety.Domain": "1.0.0",
           "PlantSafety.SharedKernel": "1.0.0",
+          "Polly": "8.5.0",
           "Serilog": "4.3.0",
+          "Shared.AuditLogging.Infrastructure": "1.0.0",
           "StackExchange.Redis": "2.13.1"
         },
         "runtime": {
@@ -107,6 +110,18 @@
       "MassTransit.Abstractions/8.4.1": {
         "runtime": {
           "lib/net8.0/MassTransit.Abstractions.dll": {
+            "assemblyVersion": "8.4.1.0",
+            "fileVersion": "8.4.1.0"
+          }
+        }
+      },
+      "MassTransit.RabbitMQ/8.4.1": {
+        "dependencies": {
+          "MassTransit": "8.4.1",
+          "RabbitMQ.Client": "7.1.2"
+        },
+        "runtime": {
+          "lib/net8.0/MassTransit.RabbitMqTransport.dll": {
             "assemblyVersion": "8.4.1.0",
             "fileVersion": "8.4.1.0"
           }
@@ -555,6 +570,25 @@
           }
         }
       },
+      "Polly/8.5.0": {
+        "dependencies": {
+          "Polly.Core": "8.5.0"
+        },
+        "runtime": {
+          "lib/net6.0/Polly.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.5.0.4130"
+          }
+        }
+      },
+      "Polly.Core/8.5.0": {
+        "runtime": {
+          "lib/net8.0/Polly.Core.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.5.0.4130"
+          }
+        }
+      },
       "protobuf-net/3.2.56": {
         "dependencies": {
           "protobuf-net.Core": "3.2.56"
@@ -571,6 +605,14 @@
           "lib/net8.0/protobuf-net.Core.dll": {
             "assemblyVersion": "3.0.0.0",
             "fileVersion": "3.2.56.57311"
+          }
+        }
+      },
+      "RabbitMQ.Client/7.1.2": {
+        "runtime": {
+          "lib/net8.0/RabbitMQ.Client.dll": {
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.1.2.0"
           }
         }
       },
@@ -713,6 +755,7 @@
           "Microsoft.Extensions.Options": "10.0.9",
           "PlantSafety.Domain": "1.0.0",
           "PlantSafety.SharedKernel": "1.0.0",
+          "Shared.AuditLogging.Abstractions": "1.0.0",
           "System.Diagnostics.DiagnosticSource": "10.0.9"
         },
         "runtime": {
@@ -744,6 +787,31 @@
         },
         "runtime": {
           "PlantSafety.SharedKernel.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Shared.AuditLogging.Abstractions/1.0.0": {
+        "runtime": {
+          "Shared.AuditLogging.Abstractions.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Shared.AuditLogging.Infrastructure/1.0.0": {
+        "dependencies": {
+          "Dapper": "2.1.79",
+          "Microsoft.Data.SqlClient": "7.0.1",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.9",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.9",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.9",
+          "Microsoft.Extensions.Options": "10.0.9",
+          "Shared.AuditLogging.Abstractions": "1.0.0"
+        },
+        "runtime": {
+          "Shared.AuditLogging.Infrastructure.dll": {
             "assemblyVersion": "1.0.0.0",
             "fileVersion": "1.0.0.0"
           }
@@ -812,6 +880,13 @@
       "sha512": "sha512-sf0f0Mj3B8lJFt5As2rSFiszOx4YhMDdQmV0CIzQG6PcWGO1ozped+YMJRdBqqTgvtHTjjWJOEMfgYtfXrPu2A==",
       "path": "masstransit.abstractions/8.4.1",
       "hashPath": "masstransit.abstractions.8.4.1.nupkg.sha512"
+    },
+    "MassTransit.RabbitMQ/8.4.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ji0l5I/QByOIdI9A/66qMtLr+cNHW2jYH4+U7hKPbRc5Y9zHCLjYGbI3x5fQhuWzNrp3lRtOZYrXmHCfv/kVFQ==",
+      "path": "masstransit.rabbitmq/8.4.1",
+      "hashPath": "masstransit.rabbitmq.8.4.1.nupkg.sha512"
     },
     "MediatR/14.1.0": {
       "type": "package",
@@ -1058,6 +1133,20 @@
       "path": "pipelines.sockets.unofficial/2.2.16",
       "hashPath": "pipelines.sockets.unofficial.2.2.16.nupkg.sha512"
     },
+    "Polly/8.5.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GBNZPy7i7OpkaIruWPRJ0+AWzdGDQDnKY91b7Ic2aAch4lKhPjUc5KSffpH9krIWe0MoyghqaRxwRC0Uwz2PkA==",
+      "path": "polly/8.5.0",
+      "hashPath": "polly.8.5.0.nupkg.sha512"
+    },
+    "Polly.Core/8.5.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-VYYMZNitZ85UEhwOKkTQI63WEMvzUqwQc74I2mm8h/DBVAMcBBxqYPni4DmuRtbCwngmuONuK2yBJfWNRKzI+A==",
+      "path": "polly.core/8.5.0",
+      "hashPath": "polly.core.8.5.0.nupkg.sha512"
+    },
     "protobuf-net/3.2.56": {
       "type": "package",
       "serviceable": true,
@@ -1071,6 +1160,13 @@
       "sha512": "sha512-d6QOukTpDzs7zZv9tPnBZMtvHDNeHJQXUhMx54g4urUQsXK3oo9U70H9HvklYq7hlQ4A7AHJl7EVEqyCXXIl8Q==",
       "path": "protobuf-net.core/3.2.56",
       "hashPath": "protobuf-net.core.3.2.56.nupkg.sha512"
+    },
+    "RabbitMQ.Client/7.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-y3c6ulgULScWthHw5PLM1ShHRLhxg0vCtzX/hh61gRgNecL3ZC3WoBW2HYHoXOVRqTl99Br9E7CZEytGZEsCyQ==",
+      "path": "rabbitmq.client/7.1.2",
+      "hashPath": "rabbitmq.client.7.1.2.nupkg.sha512"
     },
     "Serilog/4.3.0": {
       "type": "package",
@@ -1167,6 +1263,16 @@
       "sha512": ""
     },
     "PlantSafety.SharedKernel/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Shared.AuditLogging.Abstractions/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Shared.AuditLogging.Infrastructure/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
