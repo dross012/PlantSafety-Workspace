@@ -43,6 +43,7 @@ public sealed class FabricNodesV1Controller : ControllerBase
 
     /// <summary>Registers a new integration fabric node.</summary>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RegisterFabricNodeResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -76,6 +77,7 @@ public sealed class FabricNodesV1Controller : ControllerBase
 
     /// <summary>Returns a single fabric node by identifier.</summary>
     [HttpGet("{nodeId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<FabricNodeResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -109,6 +111,7 @@ public sealed class FabricNodesV1Controller : ControllerBase
 
     /// <summary>Returns the integration fabric node registry for the tenant.</summary>
     [HttpGet]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EnterpriseFabricListResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

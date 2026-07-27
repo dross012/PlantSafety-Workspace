@@ -27,7 +27,7 @@ real aggregates (as opposed to stub markers awaiting a future build-out) are:
 | `AccidentManagement` | `Accident` aggregate, `CorrectiveAction`/`AccidentHistoryEntry` entities, investigation lifecycle (`InvestigationPhase`, `RootCauseCategory`), archival policy | Full aggregate with events (`AccidentCreatedEvent`, `AccidentArchivedEvent`, investigation events) |
 | `RiskManagement` | `Risk` aggregate, `ControlMeasure`/`RiskHistoryEntry` entities, `RiskScore` value object, archival policy | Full aggregate with events (`RiskCreatedEvent`, `RiskArchivedEvent`, assessment events) |
 | `SafetyEvents` | Multiple sub-contexts under one folder: `IncidentManagement` (full aggregate — the "Incident" feature referenced throughout this doc set), `EmergencyManagement` (full aggregate), `Observation` (full aggregate); `CrisisManagement`, `DrillsAndExercises`, `NearMisses`, `RootCauseAnalysis` are stub markers only (`*Stub.cs`, no aggregate yet) | `ISafetyEventRepository` is the shared read contract; each sub-context also has its own repository interface |
-| `ContinuousImprovement` | `CAPA` (Corrective and Preventive Action) — currently a stub marker (`CAPAStub.cs`) at the Domain layer, but a real, tracked table/stored-procedure/repository exists at the Infrastructure layer (`ContinuousImprovement/Sql/Tables/CAPA.sql`, `usp_CAPA_GetActions.sql`, `CAPADapperRepository.cs`) — see "Known gaps" | `RCA` (Root Cause Analysis) is a stub marker only |
+| `ContinuousImprovement` | `CAPA` folder now owns a real `CorrectiveAction` aggregate (`PlantSafety.Domain/ContinuousImprovement/CAPA/Aggregates/CorrectiveAction.cs`, added 2026-07-27, replacing the prior `CAPAStub.cs` placeholder) modeling the write-side `[ContinuousImprovement].[CorrectiveAction]` table (`usp_CorrectiveAction_Create/GetById/List`). This is a *different* table from `[ContinuousImprovement].[CAPA]` (Reporting's read-model, `usp_CAPA_GetActions.sql`, `CAPADapperRepository.cs`) — see §5 for the full CorrectiveAction lifecycle/events/invariants and the disambiguation of the two "CAPA" concepts | `RCA` (Root Cause Analysis) is a stub marker only |
 | `Operational` / `OperationalSafety` / `Operations` (API layer: `PlantSafety.Api/Operations`) | Cross-cutting ops surfaces: Feature Flags (`Operations/Configuration`), System Health, Audit Viewer (`Operations/AuditViewer`), Backup (`CrossDomain/Backup`) | Not a single Domain aggregate — mostly Application/Infrastructure services over shared cross-cutting tables |
 | `Compliance` | `Procedures`/`ProceduresHistoryEntry`-descended sub-aggregates (`SafetyProcedures.*`), `CAPATriggers` | |
 | `Checklists`, `Alerts`, `Analytics`, `Dashboards`, `Scorecards`, `Scheduling` | Supporting/derived aggregates and read models used across contexts | |
@@ -205,15 +205,158 @@ confirmation that no new API endpoints were required — is in
 precedent this pattern followed, and `Shared\SafetyData\docs\README.md` for
 the shared module itself).
 
+## 5. IncidentManagement and CorrectiveAction aggregate redesign (2026-07-27)
+
+This section documents the outcome of the refactoring pass that redesigned
+`PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement`
+and introduced `PlantSafety.Domain.ContinuousImprovement.CAPA.Aggregates.CorrectiveAction`
+to eliminate anemic-aggregate patterns, dead code, and domain-rule drift. Both
+redesigns are grounded strictly in the real stored procedures and table
+columns that already existed — no speculative states or fields were invented.
+
+### 5.1 IncidentManagement aggregate
+
+**Before:** `PlantSafety.Domain/SafetyEvents/IncidentManagement/Aggregates/IncidentManagement.cs`
+was a fully disconnected scaffold: a single parameterless-ish `Create()`
+factory, a generic `Created → Active → Completed → Closed → Archived` status
+enum matched by nothing in the real database, and eight sibling scaffold
+files (`IncidentManagementFactory`, `IIncidentManagementFactory`,
+`IncidentManagementArchivalPolicy`, `IncidentManagementLifecycleRules`, the
+empty `IncidentManagementService` placeholder, `IncidentManagementSnapshot`,
+`IncidentManagementSpecification` + `And`/`Or` combinators, and
+`IncidentManagementHistoryEntry`) — all confirmed to have **zero references
+anywhere outside their own declaring file**. Its own domain repository
+interface (`IIncidentManagementRepository`, `GetByIdAsync`/`ListAsync`/
+`AddAsync`/`UpdateAsync`) had **no Infrastructure implementation and no DI
+registration**. Meanwhile, the real production Incident write path
+(`CreateIncidentCommandHandler`/`UpdateIncidentCommandHandler`/
+`DeleteIncidentCommandHandler` → `IIncidentRepository` →
+`IncidentDapperRepository` → `usp_Incident_Create`/`usp_Incident_Update`/
+`usp_Incident_SoftDelete`) bypassed the Domain aggregate entirely, pushing
+primitives straight to Dapper with only Application-layer FluentValidation
+guarding required fields.
+
+**After:** the aggregate was rewritten to model the real
+`[SafetyEvents].[Incident]` table:
+
+| Lifecycle state | Real trigger | Domain event |
+|---|---|---|
+| `Reported` (initial) | `Create(...)` — mirrors `usp_Incident_Create` (`DF_Incident_Status` default `N'Reported'`) | `IncidentManagementCreatedEvent` |
+| `Reported` (mutated in place) | `UpdateDetails(...)` — mirrors `usp_Incident_Update`'s null-means-unchanged field set (Title/Description/Severity/Location/AssignedInvestigatorId); throws if already `Archived` | `IncidentManagementUpdatedEvent` (new) |
+| `Archived` (terminal) | `Archive(deletionReason, ...)` — mirrors `usp_Incident_SoftDelete` (`IsDeleted = 1`, `Status = N'Archived'`, `DeletionReason` required); throws if already `Archived` | `IncidentManagementArchivedEvent` (new, follows the `AccidentArchivedEvent`/`RiskArchivedEvent` convention) |
+
+**Invariants now enforced by the aggregate:** non-empty `TenantId`/`SiteId`/
+`Title`/`Description`/`Severity`/`Location`/`ReportedByWorkerId` at Create
+(mirrors the table's `NOT NULL` columns); no updates or re-archival once
+`Archived` (`IncidentManagementInvalidStatusTransitionException`); non-empty
+`DeletionReason` to archive.
+
+**`IncidentClosedEvent` was deliberately NOT added.** The `Incident` table
+has a `ClosedAtUtc` column and an *Application-layer* integration event
+(`PlantSafety.Application.Features.SafetyEvents.Events.IncidentManagement.
+IncidentClosedEvent`) already exists, but neither is ever set/raised by any
+stored procedure, command, or handler in the codebase — there is no real
+"Close" transition to ground a domain event in. Per the instruction "don't
+add an event for a transition that doesn't exist," this was left out and is
+flagged here as scaffolding drift for a future, explicit "Close" feature
+(new stored procedure + command) rather than silently wired up.
+
+**Removed as dead code** (zero references outside their own file, verified
+via repo-wide grep before deletion): `IncidentManagementFactory.cs`,
+`IIncidentManagementFactory.cs`, `IIncidentManagementRepository.cs` (the
+aggregate-shaped, never-implemented one — not to be confused with the
+distinct, real, DI-registered `PlantSafety.Application.SafetyEvents.
+IncidentManagement.Repositories.IIncidentManagementRepository`),
+`IncidentManagementArchivalPolicy.cs`, `IncidentManagementLifecycleRules.cs`,
+`IncidentManagementService.cs`, `IncidentManagementSnapshot.cs`,
+`IncidentManagementSpecification.cs`, `IncidentManagementHistoryEntry.cs`.
+`PlantSafety.Domain/GlobalUsing.cs` was updated to drop the corresponding
+now-empty-namespace `global using` lines.
+
+**Scope decision (rule: prefer the smaller, reversible refactor):** the
+production `Create`/`Update`/`Delete` MediatR handlers were **not** rewired
+to load/save through this aggregate — that would require adding a read-then-
+validate step to `Update`/`Delete` (today's SQL `ISNULL`/`COALESCE`-based
+partial-update pattern deliberately avoids a full load), a larger and riskier
+change than this pass's scope. The aggregate is a complete, independently
+unit-tested model of the same invariants, ready to be the target of a future
+handler rewiring; a `Rehydrate(...)` factory was added specifically to
+support that follow-up without raising spurious events on load.
+
+### 5.2 CorrectiveAction (CAPA) aggregate
+
+**Before:** `PlantSafety.Domain/ContinuousImprovement/CAPA/CAPAStub.cs`
+contained only `public static class CAPAModuleMarker { }` — there was no
+Domain aggregate at all. `CreateCorrectiveActionCommandHandler` pushed
+primitives straight to `ICorrectiveActionRepository` →
+`CorrectiveActionDapperRepository` → `usp_CorrectiveAction_Create`, guarded
+only by `CreateCorrectiveActionCommandValidator`. The pre-existing
+Application-layer `CorrectiveActionClosedEvent` integration event was never
+published by anything, and only `Create`/`GetById`/`List` stored procedures
+exist under `PlantSafety.Infrastructure/ContinuousImprovement/Sql/Procedures/`
+— no `Update`/`Complete`/`Close` procedure exists yet.
+
+**After:** `PlantSafety.Domain/ContinuousImprovement/CAPA/Aggregates/
+CorrectiveAction.cs` models `[ContinuousImprovement].[CorrectiveAction]`
+(`CaId`, `SourceEventId`/`SourceEventType`, `Title`, `Description`,
+`ActionType`, `Priority`, `AssignedToWorkerId`, `DueAtUtc`, `Status`,
+`CompletedAtUtc`). The lifecycle states (`Open`/`InProgress`/
+`AwaitingVerification`/`Closed`/`Overdue`) are copied verbatim from the
+workflow-status vocabulary already documented on `CorrectiveActionDto.Status`
+("e.g., Open, InProgress, AwaitingVerification, Closed, Overdue") — no new
+states were invented, and this is a **distinct type** from
+`PlantSafety.Domain.AccidentManagement.Enums.CorrectiveActionStatus` (which
+models the unrelated, already-correct `Accident`-child `CorrectiveAction`
+entity backed by a different table, `[AccidentManagement].[CorrectiveAction]`)
+to respect the Maximalist Module Rule's "zero cross-module leakage."
+
+| Lifecycle state | Method | Real/planned trigger | Domain event |
+|---|---|---|---|
+| `Open` (initial) | `Create(...)` | Real — mirrors `usp_CorrectiveAction_Create` (`DF_CorrectiveAction_Status` default `N'Open'`) | `CorrectiveActionCreatedEvent` |
+| `InProgress` | `Start(...)` | Domain-complete, not yet wired to a command/procedure | `CorrectiveActionStartedEvent` |
+| `AwaitingVerification` | `Complete(...)` | Domain-complete; sets `CompletedAtUtc` (the one completion-timestamp column the table already has) | `CorrectiveActionCompletedEvent` |
+| `Closed` (terminal) | `Close(...)`, only from `AwaitingVerification` | Domain-complete | `CorrectiveActionClosedEvent` (new, Domain-layer) |
+| `Overdue` | `MarkOverdue(...)`, only from `Open`/`InProgress`; no-op otherwise | Domain-complete | `CorrectiveActionMarkedOverdueEvent` |
+
+**Invariants enforced:** non-empty `TenantId`/`SourceEventId`/
+`SourceEventType`/`Title`/`Description`/`ActionType`/`Priority`/
+`AssignedToWorkerId` at Create (mirrors the table's `NOT NULL` columns);
+`Start` only from `Open`; `Complete` only from `Open`/`InProgress`/`Overdue`;
+`Close` only from `AwaitingVerification`
+(`CorrectiveActionInvalidStatusTransitionException` on violation).
+
+**Note on the pre-existing Application-layer `CorrectiveActionClosedEvent`:**
+it declares `ClosedByActorId`/`ClosureNotes` fields with no backing column on
+`[ContinuousImprovement].[CorrectiveAction]` (only `CompletedAtUtc` exists).
+The new Domain-layer `CorrectiveActionClosedEvent` intentionally carries only
+what the schema supports; reconciling the two is a follow-up once a real
+`Close` stored procedure/command is built.
+
+**Scope decision:** as with IncidentManagement, `Start`/`Complete`/`Close`/
+`MarkOverdue` are fully implemented and unit-tested at the Domain layer but
+are **not yet reachable from the API** — only `Create` has an end-to-end
+path. Adding the remaining stored procedures, repository methods, commands,
+handlers, and validators for those four transitions was judged out of scope
+for a refactor pass focused on the Domain layer and its direct dependents
+(rule: prefer the smaller, reversible refactor); it is the natural next
+increment and this document + the new domain tests exist specifically to
+make that increment low-risk.
+
 ## Known gaps / flagged ambiguities
 
-- **`ContinuousImprovement.CAPA` is a Domain-layer stub** (`CAPAStub.cs`) even
-  though a real table, stored procedure, and Dapper repository exist at the
-  Infrastructure layer and Reporting's `CorrectiveAction`/`SafetyCompliance`
-  report types already read from it via `Shared.SafetyData`. The Domain
-  aggregate (rich behavior/invariants/events) has not yet been built — today
-  CAPA is effectively read/write via Infrastructure without a Domain model
-  enforcing its lifecycle rules the way `Accident`/`Risk` do.
+- **`ContinuousImprovement.CAPA` Domain-layer stub was resolved 2026-07-27** —
+  see §5.2 for the full before/after. The `CorrectiveAction` aggregate now
+  enforces Create invariants and the Open → InProgress → AwaitingVerification →
+  Closed (+ Overdue) lifecycle with domain events, but `Start`/`Complete`/
+  `Close`/`MarkOverdue` are **not yet wired to Application-layer commands or
+  new stored procedures** — only Create has an end-to-end command → handler →
+  repository → stored-procedure path today
+  (`CreateCorrectiveActionCommandHandler` → `ICorrectiveActionRepository` →
+  `usp_CorrectiveAction_Create`). This is a deliberate, smaller/reversible
+  scope decision (see §5.2) rather than an oversight — the remaining
+  transitions are domain-complete and unit-tested but need new stored
+  procedures + commands as a tracked follow-up before they can be called from
+  the API.
 - **`SafetyIncident` Reporting integration is a stub** (see table above) —
   flagged explicitly here and in `reporting-integration.md` per this task's
   instructions, since no `Shared.*` module yet exposes PlantSafety's

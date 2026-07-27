@@ -43,6 +43,7 @@ public sealed class SustainabilityV1Controller : ControllerBase
 
     /// <summary>Records a new sustainability metric observation.</summary>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RecordSustainabilityMetricResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -79,6 +80,7 @@ public sealed class SustainabilityV1Controller : ControllerBase
 
     /// <summary>Returns a single sustainability metric by identifier.</summary>
     [HttpGet("{metricId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SustainabilityMetricResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -112,6 +114,7 @@ public sealed class SustainabilityV1Controller : ControllerBase
 
     /// <summary>Returns sustainability metrics for the tenant within the requested reporting window.</summary>
     [HttpGet]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SustainabilityListResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

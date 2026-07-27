@@ -42,6 +42,7 @@ public sealed class OperationsBackupV1Controller : ControllerBase
 
     /// <summary>Triggers an on-demand backup (Full/Diff/Log). Non-blocking -- returns an immediate "Started" acknowledgement.</summary>
     [HttpPost("trigger")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<BackupTriggerResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<BackupTriggerResultDto>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> TriggerAsync([FromBody] TriggerBackupRequest request, CancellationToken cancellationToken)
@@ -56,6 +57,7 @@ public sealed class OperationsBackupV1Controller : ControllerBase
 
     /// <summary>Returns recent backup history from msdb.dbo.backupset, newest first.</summary>
     [HttpGet("history")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<BackupHistoryItemDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHistoryAsync(
         [FromQuery] string? databaseName,
@@ -72,6 +74,7 @@ public sealed class OperationsBackupV1Controller : ControllerBase
 
     /// <summary>Returns recent database size snapshots from msdb.dbo.PlantSafety_DatabaseSizeLog.</summary>
     [HttpGet("database-size")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<DatabaseSizeSnapshotDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDatabaseSizeAsync(
         [FromQuery] string? databaseName,
@@ -93,6 +96,7 @@ public sealed class OperationsBackupV1Controller : ControllerBase
     /// This is NOT a production restore endpoint.
     /// </summary>
     [HttpPost("restore-verify")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<RestoreVerifyResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RestoreVerifyResultDto>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RestoreVerifyAsync([FromBody] RestoreVerifyRequest request, CancellationToken cancellationToken)
@@ -107,6 +111,7 @@ public sealed class OperationsBackupV1Controller : ControllerBase
 
     /// <summary>Returns derived backup-health status (Green/Yellow/Red) for every live PlantSafety.* database.</summary>
     [HttpGet("health")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<BackupHealthDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHealthAsync(CancellationToken cancellationToken)
     {

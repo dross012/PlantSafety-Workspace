@@ -1591,6 +1591,7 @@
     <ProjectReference Include="..\PlantSafety.Domain\PlantSafety.Domain.csproj" />
     <ProjectReference Include="..\PlantSafety.Infrastructure\PlantSafety.Infrastructure.csproj" />
     <ProjectReference Include="..\PlantSafety.SharedKernel\PlantSafety.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\Shared\Authorization\Shared.Authorization.Abstractions\Shared.Authorization.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

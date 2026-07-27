@@ -60,6 +60,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Records a new sensor reading for a MachineProcessMonitoring channel.</summary>
     [HttpPost("machine-process-monitoring/{machineProcessMonitoringId:guid}/record-sensor-reading")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<MachineProcessMonitoringActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MachineProcessMonitoringActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -89,6 +90,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Raises a process anomaly flag for a MachineProcessMonitoring channel.</summary>
     [HttpPost("machine-process-monitoring/{machineProcessMonitoringId:guid}/raise-anomaly-flag")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<MachineProcessMonitoringActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MachineProcessMonitoringActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -116,6 +118,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Acknowledges a threshold breach/anomaly flag for a MachineProcessMonitoring channel.</summary>
     [HttpPost("machine-process-monitoring/{machineProcessMonitoringId:guid}/acknowledge")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<MachineProcessMonitoringActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MachineProcessMonitoringActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -141,6 +144,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Returns MachineProcessMonitoring read-model data for a tenant/site within a date range.</summary>
     [HttpGet("machine-process-monitoring")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<MachineProcessMonitoringQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MachineProcessMonitoringQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -166,6 +170,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Notifies the assigned supervisor of an AutomatedIncidentDetection.</summary>
     [HttpPost("automated-incident-detection/{automatedIncidentDetectionId:guid}/notify-supervisor")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -193,6 +198,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Acknowledges an AutomatedIncidentDetection and begins evidence review.</summary>
     [HttpPost("automated-incident-detection/{automatedIncidentDetectionId:guid}/acknowledge")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -218,6 +224,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Escalates a confirmed AutomatedIncidentDetection into a formal Incident Management record.</summary>
     [HttpPost("automated-incident-detection/{automatedIncidentDetectionId:guid}/escalate-to-incident")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -245,6 +252,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Dismisses an AutomatedIncidentDetection as a false positive.</summary>
     [HttpPost("automated-incident-detection/{automatedIncidentDetectionId:guid}/dismiss")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -272,6 +280,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Returns AutomatedIncidentDetection read-model data for a tenant/site within a date range.</summary>
     [HttpGet("automated-incident-detection")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AutomatedIncidentDetectionQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -297,6 +306,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Returns EnvironmentalAssetMonitoring read-model data for a tenant/site within a date range.</summary>
     [HttpGet("environmental-asset-monitoring")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EnvironmentalAssetMonitoringQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EnvironmentalAssetMonitoringQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -322,6 +332,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Returns FacilityTrafficMonitoring read-model data for a tenant/site within a date range.</summary>
     [HttpGet("facility-traffic-monitoring")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<FacilityTrafficMonitoringQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<FacilityTrafficMonitoringQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -347,6 +358,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Returns PPEBehavioralMonitoring read-model data for a tenant/site within a date range.</summary>
     [HttpGet("ppe-behavioral-monitoring")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PPEBehavioralMonitoringQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEBehavioralMonitoringQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -372,6 +384,7 @@ public sealed class ObservabilityV1Controller : ControllerBase
 
     /// <summary>Applies a single operation uniformly across multiple Observability resources.</summary>
     [HttpPost("bulk")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<BulkUpdateObservabilityResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<BulkUpdateObservabilityResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

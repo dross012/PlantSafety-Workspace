@@ -40,6 +40,7 @@ public sealed class OperationsAuditViewerV1Controller : ControllerBase
 
     /// <summary>Searches the shared AuditLog table by optional filters, newest first, paginated.</summary>
     [HttpGet("search")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResult>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SearchAsync(
@@ -72,6 +73,7 @@ public sealed class OperationsAuditViewerV1Controller : ControllerBase
     /// MaxPageSize). Read-only -- never mutates AuditLog.
     /// </summary>
     [HttpGet("export")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [Produces("text/csv")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResult>), StatusCodes.Status400BadRequest)]

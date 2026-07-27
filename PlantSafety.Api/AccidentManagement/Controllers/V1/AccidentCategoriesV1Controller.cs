@@ -40,6 +40,7 @@ public sealed class AccidentCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("corrective-actions-capa")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<CorrectiveActionsCAPAQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -59,6 +60,7 @@ public sealed class AccidentCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("investigation-root-cause-analysis")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<InvestigationRootCauseAnalysisQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -78,6 +80,7 @@ public sealed class AccidentCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("regulatory-compliance-documentation")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<RegulatoryComplianceDocumentationQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -97,6 +100,7 @@ public sealed class AccidentCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("site-securing-and-triage")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SiteSecuringAndTriageQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

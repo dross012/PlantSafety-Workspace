@@ -45,6 +45,7 @@ public sealed class RoiV1Controller : ControllerBase
 
     /// <summary>Records a new Safety ROI calculation.</summary>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<CalculateRoiResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -78,6 +79,7 @@ public sealed class RoiV1Controller : ControllerBase
 
     /// <summary>Returns the most recent Safety ROI calculation for the given fiscal year.</summary>
     [HttpGet]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<RoiResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -116,6 +118,7 @@ public sealed class RoiV1Controller : ControllerBase
 
     /// <summary>Returns paginated Safety ROI calculation history for the tenant.</summary>
     [HttpGet("history")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<RoiHistoryListResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

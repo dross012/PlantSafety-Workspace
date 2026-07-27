@@ -52,7 +52,7 @@ public sealed class AnalyticsExportV1Controller : Controllers.BaseApiController
     /// or 400 Bad Request if the Application layer returns a failure result.
     /// </returns>
     [HttpGet]
-    [Authorize(Policy = "Analytics.Export")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ServiceFilter(typeof(ExportValidationFilter))]
     public async Task<IActionResult> ExportAsync(
         [FromQuery] ExportRequest request,

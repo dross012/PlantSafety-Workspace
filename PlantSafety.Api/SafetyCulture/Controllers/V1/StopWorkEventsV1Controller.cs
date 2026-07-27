@@ -48,6 +48,7 @@ public sealed class StopWorkEventsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<CreateStopWorkEventResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CreateStopWorkEventResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<CreateStopWorkEventResult>), StatusCodes.Status422UnprocessableEntity)]
@@ -83,6 +84,7 @@ public sealed class StopWorkEventsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Stop work event not found.</response>
     [HttpPost("{stopWorkEventId:guid}/investigate")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<InvestigateStopWorkEventResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<InvestigateStopWorkEventResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<InvestigateStopWorkEventResult>), StatusCodes.Status404NotFound)]
@@ -120,6 +122,7 @@ public sealed class StopWorkEventsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Stop work event not found.</response>
     [HttpPost("{stopWorkEventId:guid}/resolve")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<ResolveStopWorkEventResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ResolveStopWorkEventResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<ResolveStopWorkEventResult>), StatusCodes.Status404NotFound)]

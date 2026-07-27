@@ -60,6 +60,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Places a preventive maintenance task on the PM calendar with a due date.</summary>
     [HttpPost("pm-scheduling/{pmSchedulingId:guid}/schedule")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PMSchedulingActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PMSchedulingActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -87,6 +88,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Records completion of a preventive maintenance task.</summary>
     [HttpPost("pm-scheduling/{pmSchedulingId:guid}/record-completion")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PMSchedulingActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PMSchedulingActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -114,6 +116,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Escalates an overdue preventive maintenance task with a Work Order Priority code (P1-P4).</summary>
     [HttpPost("pm-scheduling/{pmSchedulingId:guid}/escalate")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PMSchedulingActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PMSchedulingActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -141,6 +144,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Returns PMScheduling read-model data for a tenant/site within a date range.</summary>
     [HttpGet("pm-scheduling")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PMSchedulingQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PMSchedulingQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -166,6 +170,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Escalates an overdue P1/P2 work order.</summary>
     [HttpPost("work-order-priority/{workOrderPriorityId:guid}/escalate")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<WorkOrderPriorityActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<WorkOrderPriorityActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -193,6 +198,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Resolves the hazard addressed by a prioritized work order.</summary>
     [HttpPost("work-order-priority/{workOrderPriorityId:guid}/resolve")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<WorkOrderPriorityActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<WorkOrderPriorityActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -220,6 +226,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Returns WorkOrderPriority read-model data for a tenant/site within a date range.</summary>
     [HttpGet("work-order-priority")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<WorkOrderPriorityQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<WorkOrderPriorityQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -245,6 +252,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Returns EmergencyDrillPlanning read-model data for a tenant/site within a date range.</summary>
     [HttpGet("emergency-drill-planning")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -270,6 +278,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Returns HazardIsolationSequencing read-model data for a tenant/site within a date range.</summary>
     [HttpGet("hazard-isolation-sequencing")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -295,6 +304,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Returns ShiftFatigue read-model data for a tenant/site within a date range.</summary>
     [HttpGet("shift-fatigue")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<ShiftFatigueQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ShiftFatigueQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -320,6 +330,7 @@ public sealed class SchedulingV1Controller : ControllerBase
 
     /// <summary>Applies a single operation uniformly across multiple Scheduling resources.</summary>
     [HttpPost("bulk")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<BulkUpdateSchedulingResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<BulkUpdateSchedulingResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

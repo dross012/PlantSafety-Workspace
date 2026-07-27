@@ -47,6 +47,7 @@ public sealed class ScorecardsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="422">Request validation failed.</response>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<CreateScorecardResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -79,6 +80,7 @@ public sealed class ScorecardsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="422">Request or state transition invalid.</response>
     [HttpPost("{scorecardId:guid}/metrics")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RecordScorecardMetricResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -102,6 +104,7 @@ public sealed class ScorecardsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="422">Request or state transition invalid.</response>
     [HttpPost("{scorecardId:guid}/complete-compilation")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<ScorecardStatusResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -125,6 +128,7 @@ public sealed class ScorecardsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="422">Request or state transition invalid.</response>
     [HttpPost("{scorecardId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<ScorecardStatusResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -148,6 +152,7 @@ public sealed class ScorecardsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="422">Request or state transition invalid.</response>
     [HttpPost("{scorecardId:guid}/distribute")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<ScorecardStatusResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -171,6 +176,7 @@ public sealed class ScorecardsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="422">Request or state transition invalid.</response>
     [HttpPost("{scorecardId:guid}/close")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<ScorecardStatusResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

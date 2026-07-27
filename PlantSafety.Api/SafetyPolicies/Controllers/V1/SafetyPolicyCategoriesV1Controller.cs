@@ -64,6 +64,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("confined-space-entry")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<ConfinedSpaceEntryQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -83,6 +84,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("contractor-safety")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<ContractorSafetyQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -102,6 +104,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("electrical-safety")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<ElectricalSafetyQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -121,6 +124,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("emergency-response-evacuation")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponseEvacuationQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -140,6 +144,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("environmental-chemical-safety")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EnvironmentalChemicalSafetyQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -159,6 +164,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("equipment-machine-operation")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EquipmentMachineOperationQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -178,6 +184,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("hazard-communication-assessment")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationAssessmentQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -197,6 +204,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("hot-work")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<HotWorkQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -216,6 +224,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("housekeeping-ergonomics")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<HousekeepingErgonomicsQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -235,6 +244,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("incident-investigation-corrective-action")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<IncidentInvestigationCorrectiveActionQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -254,6 +264,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("machine-maintenance-inspection")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<MachineMaintenanceInspectionQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -273,6 +284,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("material-handling-storage")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -292,6 +304,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("personal-protective-equipment")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PersonalProtectiveEquipmentQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -311,6 +324,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("safety-culture-behavioral")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SafetyCultureBehavioralQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -330,6 +344,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("safety-training-reporting")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SafetyTrainingReportingQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -349,6 +364,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("security-access-control")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SecurityAccessControlQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -368,6 +384,7 @@ public sealed class SafetyPolicyCategoriesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("working-at-heights")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<WorkingAtHeightsQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

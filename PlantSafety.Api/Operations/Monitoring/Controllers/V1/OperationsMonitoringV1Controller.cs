@@ -43,6 +43,7 @@ public sealed class OperationsMonitoringV1Controller : ControllerBase
 
     /// <summary>Returns the aggregated /health/ready readiness report (DB Health).</summary>
     [HttpGet("health")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<DatabaseHealthReportDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHealthAsync(CancellationToken cancellationToken)
     {
@@ -59,6 +60,7 @@ public sealed class OperationsMonitoringV1Controller : ControllerBase
     /// Operations.Backup database-size history (msdb.dbo.PlantSafety_DatabaseSizeLog).
     /// </summary>
     [HttpGet("database-size")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<DatabaseSizeSnapshotDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDatabaseSizeAsync(
         [FromQuery] string? databaseName,
@@ -78,6 +80,7 @@ public sealed class OperationsMonitoringV1Controller : ControllerBase
     /// (DB Performance).
     /// </summary>
     [HttpGet("query-performance/{databaseKey}")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<QueryPerformanceItemDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetQueryPerformanceAsync(
         string databaseKey,
@@ -99,6 +102,7 @@ public sealed class OperationsMonitoringV1Controller : ControllerBase
     /// error-procedure filters.
     /// </summary>
     [HttpGet("errors")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ErrorLogItemDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetErrorsAsync(
         [FromQuery] int? minSeverity,
@@ -127,6 +131,7 @@ public sealed class OperationsMonitoringV1Controller : ControllerBase
     /// (capped at 5000 rows). Read-only -- never mutates ErrorLog.
     /// </summary>
     [HttpGet("errors/export")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [Produces("text/csv")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ErrorLogItemDto>>), StatusCodes.Status400BadRequest)]
@@ -192,6 +197,7 @@ public sealed class OperationsMonitoringV1Controller : ControllerBase
     /// Extended Events session's ring buffer (DB Deadlocks).
     /// </summary>
     [HttpGet("deadlocks")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<DeadlockEventDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDeadlocksAsync(
         [FromQuery] int top = 20,

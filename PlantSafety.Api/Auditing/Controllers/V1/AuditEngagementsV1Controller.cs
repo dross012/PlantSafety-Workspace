@@ -60,6 +60,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<CreateAuditEngagementResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CreateAuditEngagementResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<CreateAuditEngagementResult>), StatusCodes.Status422UnprocessableEntity)]
@@ -98,6 +99,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Audit engagement not found.</response>
     [HttpPost("{auditEngagementId:guid}/schedule")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<ScheduleAuditEngagementResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ScheduleAuditEngagementResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<ScheduleAuditEngagementResult>), StatusCodes.Status404NotFound)]
@@ -136,6 +138,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Audit engagement not found.</response>
     [HttpPost("{auditEngagementId:guid}/start")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<StartAuditEngagementResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<StartAuditEngagementResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<StartAuditEngagementResult>), StatusCodes.Status404NotFound)]
@@ -171,6 +174,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Audit engagement not found.</response>
     [HttpPost("{auditEngagementId:guid}/close")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<CloseAuditEngagementResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CloseAuditEngagementResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<CloseAuditEngagementResult>), StatusCodes.Status404NotFound)]
@@ -209,6 +213,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/efficiency")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EfficiencyQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -227,6 +232,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/facility-assessment")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<FacilityAssessmentQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -245,6 +251,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/inspecting")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<InspectingQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -263,6 +270,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/operations")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<OperationsQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -281,6 +289,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/procedures")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<ProceduresQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -299,6 +308,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/quality-control")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<QualityControlQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -317,6 +327,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/regulatory-compliance")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<RegulatoryComplianceQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -335,6 +346,7 @@ public sealed class AuditEngagementsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/systems")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SystemsQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

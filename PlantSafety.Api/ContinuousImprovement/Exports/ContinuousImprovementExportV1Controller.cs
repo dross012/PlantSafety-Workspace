@@ -44,7 +44,7 @@ public sealed class ContinuousImprovementExportV1Controller : Controllers.BaseAp
     /// <param name="request">Export parameters.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet]
-    [Authorize(Policy = "ContinuousImprovement.Export")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ServiceFilter(typeof(ExportValidationFilter))]
     public async Task<IActionResult> ExportAsync(
         [FromQuery] ExportRequest request,

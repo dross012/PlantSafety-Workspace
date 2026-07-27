@@ -67,6 +67,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("machine-guarding-inspections/{machineGuardingInspectionsId:guid}/begin-corrective-action")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<MachineGuardingInspectionsActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MachineGuardingInspectionsActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -89,6 +90,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("machine-guarding-inspections/{machineGuardingInspectionsId:guid}/close")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<MachineGuardingInspectionsActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MachineGuardingInspectionsActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -112,6 +114,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("machine-guarding-inspections/{machineGuardingInspectionsId:guid}/execute-inspection")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<MachineGuardingInspectionsActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MachineGuardingInspectionsActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -133,6 +136,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("machine-guarding-inspections")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<MachineGuardingInspectionsQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -155,6 +159,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("routine-safety-audits-incident-reporting/{routineSafetyAuditsIncidentReportingId:guid}/begin-corrective-action")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RoutineSafetyAuditsIncidentReportingActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RoutineSafetyAuditsIncidentReportingActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -178,6 +183,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("routine-safety-audits-incident-reporting/{routineSafetyAuditsIncidentReportingId:guid}/close")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<RoutineSafetyAuditsIncidentReportingActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RoutineSafetyAuditsIncidentReportingActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -201,6 +207,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("routine-safety-audits-incident-reporting/{routineSafetyAuditsIncidentReportingId:guid}/conduct")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RoutineSafetyAuditsIncidentReportingActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RoutineSafetyAuditsIncidentReportingActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -222,6 +229,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("routine-safety-audits-incident-reporting")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<RoutineSafetyAuditsIncidentReportingQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -244,6 +252,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("material-handling-storage/{materialHandlingStorageId:guid}/flag-obstruction")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -267,6 +276,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("material-handling-storage/{materialHandlingStorageId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -290,6 +300,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("material-handling-storage/{materialHandlingStorageId:guid}/resolve-obstruction")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -313,6 +324,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("material-handling-storage/{materialHandlingStorageId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -335,6 +347,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("material-handling-storage/{materialHandlingStorageId:guid}/submit-for-approval")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -355,6 +368,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("material-handling-storage")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<MaterialHandlingStorageQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -377,6 +391,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("emergency-response-planning/{emergencyResponsePlanningId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -400,6 +415,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("emergency-response-planning/{emergencyResponsePlanningId:guid}/record-drill")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -423,6 +439,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("emergency-response-planning/{emergencyResponsePlanningId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -445,6 +462,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("emergency-response-planning/{emergencyResponsePlanningId:guid}/schedule-drill")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -468,6 +486,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("emergency-response-planning/{emergencyResponsePlanningId:guid}/submit-for-approval")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -488,6 +507,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("emergency-response-planning")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EmergencyResponsePlanningQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -510,6 +530,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ergonomics-workstation-design/{ergonomicsWorkstationDesignId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -533,6 +554,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ergonomics-workstation-design/{ergonomicsWorkstationDesignId:guid}/record-assessment")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -556,6 +578,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ergonomics-workstation-design/{ergonomicsWorkstationDesignId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -578,6 +601,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ergonomics-workstation-design/{ergonomicsWorkstationDesignId:guid}/schedule-assessment")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -601,6 +625,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ergonomics-workstation-design/{ergonomicsWorkstationDesignId:guid}/submit-for-approval")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -621,6 +646,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("ergonomics-workstation-design")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<ErgonomicsWorkstationDesignQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -643,6 +669,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("hazard-communication-right-to-know/{hazardCommunicationRightToKnowId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -666,6 +693,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("hazard-communication-right-to-know/{hazardCommunicationRightToKnowId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -688,6 +716,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("hazard-communication-right-to-know/{hazardCommunicationRightToKnowId:guid}/schedule-revision")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -710,6 +739,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("hazard-communication-right-to-know/{hazardCommunicationRightToKnowId:guid}/submit-for-approval")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -730,6 +760,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("hazard-communication-right-to-know")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<HazardCommunicationRightToKnowQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -752,6 +783,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("loto-procedures/{lotoProceduresId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -775,6 +807,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("loto-procedures/{lotoProceduresId:guid}/record-annual-audit")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -798,6 +831,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("loto-procedures/{lotoProceduresId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -820,6 +854,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("loto-procedures/{lotoProceduresId:guid}/schedule-revision")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -842,6 +877,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("loto-procedures/{lotoProceduresId:guid}/submit-for-approval")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -862,6 +898,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("loto-procedures")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<LotoProceduresQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -884,6 +921,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ppe-policies/{ppePoliciesId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -907,6 +945,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ppe-policies/{ppePoliciesId:guid}/record-enforcement-audit")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -930,6 +969,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ppe-policies/{ppePoliciesId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -952,6 +992,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ppe-policies/{ppePoliciesId:guid}/schedule-revision")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -974,6 +1015,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Record not found.</response>
     [HttpPost("ppe-policies/{ppePoliciesId:guid}/submit-for-approval")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -994,6 +1036,7 @@ public sealed class SafetyProceduresV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("ppe-policies")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PpePoliciesQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

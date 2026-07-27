@@ -57,6 +57,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<CreateChecklistTemplateResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CreateChecklistTemplateResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<CreateChecklistTemplateResult>), StatusCodes.Status422UnprocessableEntity)]
@@ -96,6 +97,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Checklist template not found.</response>
     [HttpPost("{checklistTemplateId:guid}/items")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<AddChecklistTemplateItemResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AddChecklistTemplateItemResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<AddChecklistTemplateItemResult>), StatusCodes.Status404NotFound)]
@@ -135,6 +137,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Checklist template not found.</response>
     [HttpPost("{checklistTemplateId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PublishChecklistTemplateResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PublishChecklistTemplateResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<PublishChecklistTemplateResult>), StatusCodes.Status404NotFound)]
@@ -170,6 +173,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Checklist template not found.</response>
     [HttpPost("{checklistTemplateId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RetireChecklistTemplateResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RetireChecklistTemplateResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<RetireChecklistTemplateResult>), StatusCodes.Status404NotFound)]
@@ -207,6 +211,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/confined-space-entry")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<ConfinedSpaceEntryQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -225,6 +230,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/contractor-safety")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<ContractorSafetyQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -243,6 +249,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/emergency-systems-and-life-safety")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<EmergencySystemsAndLifeSafetyQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -261,6 +268,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/hazardous-materials-and-chemical-safety")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<HazardousMaterialsAndChemicalSafetyQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -279,6 +287,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/hot-work")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<HotWorkQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -297,6 +306,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/machine-guarding-and-loto")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<MachineGuardingAndLotoQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -315,6 +325,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/personal-protective-equipment")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PersonalProtectiveEquipmentQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -333,6 +344,7 @@ public sealed class ChecklistTemplatesV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/working-at-heights")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<WorkingAtHeightsQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

@@ -53,7 +53,7 @@ public sealed class ComplianceExportV1Controller : Controllers.BaseApiController
     /// </param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet]
-    [Authorize(Policy = "Compliance.Export")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ServiceFilter(typeof(ExportValidationFilter))]
     public async Task<IActionResult> ExportAsync(
         [FromQuery] ExportRequest request,

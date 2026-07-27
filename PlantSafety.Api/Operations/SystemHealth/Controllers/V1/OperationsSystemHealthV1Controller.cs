@@ -39,6 +39,7 @@ public sealed class OperationsSystemHealthV1Controller : ControllerBase
     /// failing the whole report if its underlying data source is unreachable.
     /// </summary>
     [HttpGet("report")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<SystemHealthReportDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<SystemHealthReportDto>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetReportAsync(CancellationToken cancellationToken)

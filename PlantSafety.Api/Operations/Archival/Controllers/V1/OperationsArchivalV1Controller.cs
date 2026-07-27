@@ -40,6 +40,7 @@ public sealed class OperationsArchivalV1Controller : ControllerBase
 
     /// <summary>Returns static metadata describing the 5 live purge targets.</summary>
     [HttpGet("purge/targets")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PurgeTargetDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPurgeTargetsAsync(CancellationToken cancellationToken)
     {
@@ -57,6 +58,7 @@ public sealed class OperationsArchivalV1Controller : ControllerBase
     /// outcome each procedure logged, not a "Started" acknowledgement.
     /// </summary>
     [HttpPost("purge/trigger")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PurgeTriggerResultDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PurgeTriggerResultDto>>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> TriggerPurgeAsync([FromBody] TriggerPurgeRequest request, CancellationToken cancellationToken)
@@ -71,6 +73,7 @@ public sealed class OperationsArchivalV1Controller : ControllerBase
 
     /// <summary>Returns recent purge run history from Archival.ArchivalJob, newest first.</summary>
     [HttpGet("purge/status")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ArchivalJobDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPurgeStatusAsync(
         [FromQuery] string? zone,
@@ -87,6 +90,7 @@ public sealed class OperationsArchivalV1Controller : ControllerBase
 
     /// <summary>Returns the current retention windows from Archival.TierPolicy (read-only).</summary>
     [HttpGet("retention-settings")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<TierPolicyDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRetentionSettingsAsync(CancellationToken cancellationToken)
     {

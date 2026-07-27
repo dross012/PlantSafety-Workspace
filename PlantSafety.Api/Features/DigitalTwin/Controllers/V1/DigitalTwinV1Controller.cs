@@ -44,6 +44,7 @@ public sealed class DigitalTwinV1Controller : ControllerBase
 
     /// <summary>Registers a new Digital Twin in Provisioning status.</summary>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RegisterDigitalTwinResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -75,6 +76,7 @@ public sealed class DigitalTwinV1Controller : ControllerBase
 
     /// <summary>Returns a single Digital Twin asset by identifier.</summary>
     [HttpGet("{twinId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<DigitalTwinAssetResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -108,6 +110,7 @@ public sealed class DigitalTwinV1Controller : ControllerBase
 
     /// <summary>Returns the Digital Twin asset registry for the tenant.</summary>
     [HttpGet]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<DigitalTwinListResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

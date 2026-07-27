@@ -60,6 +60,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<CreateCultureAssessmentResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CreateCultureAssessmentResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<CreateCultureAssessmentResult>), StatusCodes.Status422UnprocessableEntity)]
@@ -97,6 +98,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Culture assessment not found.</response>
     [HttpPost("{cultureAssessmentId:guid}/score")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RecordCultureAssessmentScoreResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RecordCultureAssessmentScoreResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<RecordCultureAssessmentScoreResult>), StatusCodes.Status404NotFound)]
@@ -135,6 +137,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Culture assessment not found.</response>
     [HttpPost("{cultureAssessmentId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PublishCultureAssessmentReportResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PublishCultureAssessmentReportResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<PublishCultureAssessmentReportResult>), StatusCodes.Status404NotFound)]
@@ -172,6 +175,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/behavioral-observation-completion")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<BehavioralObservationCompletionQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -190,6 +194,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/leadership-engagement-frequency")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<LeadershipEngagementFrequencyQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -208,6 +213,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/near-miss-reporting-rate")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<NearMissReportingRateQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -226,6 +232,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/ppe-compliance-rate")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PpeComplianceRateQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -244,6 +251,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/safety-meeting-participation")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SafetyMeetingParticipationQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -262,6 +270,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/safety-suggestion-submissions")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<SafetySuggestionSubmissionsQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -280,6 +289,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/stop-work-actions")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<StopWorkActionsQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -298,6 +308,7 @@ public sealed class CultureAssessmentsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet("analytics/training-completion-rate")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<TrainingCompletionRateQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

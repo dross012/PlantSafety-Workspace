@@ -43,6 +43,7 @@ public sealed class AiGovernanceV1Controller : ControllerBase
 
     /// <summary>Registers a new governed AI/ML model.</summary>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RegisterGovernedModelResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -76,6 +77,7 @@ public sealed class AiGovernanceV1Controller : ControllerBase
 
     /// <summary>Returns a single governed model by identifier.</summary>
     [HttpGet("{modelId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<GovernedModelResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -109,6 +111,7 @@ public sealed class AiGovernanceV1Controller : ControllerBase
 
     /// <summary>Returns the governed AI/ML model registry for the tenant.</summary>
     [HttpGet]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<AiGovernanceListResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

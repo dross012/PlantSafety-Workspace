@@ -50,7 +50,7 @@ public sealed class ComplianceBulkV1Controller : Controllers.BaseApiController
     /// <param name="request">Bulk operation request with resource IDs and target status.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPut("status")]
-    [Authorize(Policy = "Compliance.Update")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [IdempotencyKey]
     public async Task<IActionResult> BulkUpdateStatusAsync(
         [FromBody] BulkOperationRequest request,
@@ -78,7 +78,7 @@ public sealed class ComplianceBulkV1Controller : Controllers.BaseApiController
     /// <param name="request">Bulk operation request. <c>Operation</c> should be <c>"Approve"</c>.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPut("approve")]
-    [Authorize(Policy = "Compliance.Approve")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [IdempotencyKey]
     public async Task<IActionResult> BulkApproveAsync(
         [FromBody] BulkOperationRequest request,
@@ -106,7 +106,7 @@ public sealed class ComplianceBulkV1Controller : Controllers.BaseApiController
     /// <param name="request">Bulk operation request. Must include <c>Parameters["AssignedToUserId"]</c>.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPut("assign")]
-    [Authorize(Policy = "Compliance.Update")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [IdempotencyKey]
     public async Task<IActionResult> BulkAssignAsync(
         [FromBody] BulkOperationRequest request,

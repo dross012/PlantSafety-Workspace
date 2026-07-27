@@ -45,7 +45,7 @@ public sealed class OperationalBulkV1Controller : Controllers.BaseApiController
     /// <param name="request">Resource IDs to mark as complete.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPut("complete")]
-    [Authorize(Policy = "Operational.Update")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [IdempotencyKey]
     public async Task<IActionResult> BulkCompleteAsync(
         [FromBody] BulkOperationRequest request,
@@ -59,7 +59,7 @@ public sealed class OperationalBulkV1Controller : Controllers.BaseApiController
     /// <param name="request">Resource IDs of permits to close.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPut("close")]
-    [Authorize(Policy = "Operational.Approve")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [IdempotencyKey]
     public async Task<IActionResult> BulkCloseAsync(
         [FromBody] BulkOperationRequest request,

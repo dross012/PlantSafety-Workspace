@@ -46,7 +46,7 @@ public sealed class OperationalExportV1Controller : Controllers.BaseApiControlle
     /// <param name="request">Export parameters.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet]
-    [Authorize(Policy = "Operational.Export")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ServiceFilter(typeof(ExportValidationFilter))]
     public async Task<IActionResult> ExportAsync(
         [FromQuery] ExportRequest request,

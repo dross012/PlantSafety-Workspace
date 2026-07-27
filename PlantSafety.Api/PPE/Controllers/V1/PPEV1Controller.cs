@@ -60,6 +60,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Issues the assigned PPE to the worker.</summary>
     [HttpPost("assignments/{ppeAssignmentId:guid}/assign")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -85,6 +86,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Flags a PPEAssignment for replacement.</summary>
     [HttpPost("assignments/{ppeAssignmentId:guid}/flag-for-replacement")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -112,6 +114,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Retires a PPEAssignment.</summary>
     [HttpPost("assignments/{ppeAssignmentId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -137,6 +140,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Records a fit test result for a PPEAssignment.</summary>
     [HttpPost("assignments/{ppeAssignmentId:guid}/record-fit-test")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -166,6 +170,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Returns PPEAssignment read-model data for a tenant/site within a date range.</summary>
     [HttpGet("assignments")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEAssignmentQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -191,6 +196,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Returns PPECategory read-model data for a tenant/site within a date range.</summary>
     [HttpGet("category")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PPECategoryQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPECategoryQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -216,6 +222,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Receives new stock into a PPEInventory item.</summary>
     [HttpPost("inventory/{ppeInventoryId:guid}/receive-stock")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -243,6 +250,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Issues units of PPE out of a PPEInventory item's on-hand stock.</summary>
     [HttpPost("inventory/{ppeInventoryId:guid}/issue-units")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -271,6 +279,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Flags a PPEInventory item for replacement.</summary>
     [HttpPost("inventory/{ppeInventoryId:guid}/flag-for-replacement")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -298,6 +307,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Retires a PPEInventory item from active service.</summary>
     [HttpPost("inventory/{ppeInventoryId:guid}/retire")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -323,6 +333,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Returns PPEInventory read-model data for a tenant/site within a date range.</summary>
     [HttpGet("inventory")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEInventoryQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -348,6 +359,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Returns PPETrainingFit read-model data for a tenant/site within a date range.</summary>
     [HttpGet("training-fit")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PPETrainingFitQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPETrainingFitQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -373,6 +385,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Returns PPEZoneMapping read-model data for a tenant/site within a date range.</summary>
     [HttpGet("zone-mapping")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PPEZoneMappingQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PPEZoneMappingQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -398,6 +411,7 @@ public sealed class PPEV1Controller : ControllerBase
 
     /// <summary>Applies a single operation uniformly across multiple PPE resources.</summary>
     [HttpPost("bulk")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<BulkUpdatePPEResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<BulkUpdatePPEResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

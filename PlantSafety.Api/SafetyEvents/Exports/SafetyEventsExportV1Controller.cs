@@ -51,7 +51,7 @@ public sealed class SafetyEventsExportV1Controller : Controllers.BaseApiControll
     /// </param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet]
-    [Authorize(Policy = "SafetyEvents.Export")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ServiceFilter(typeof(ExportValidationFilter))]
     public async Task<IActionResult> ExportAsync(
         [FromQuery] ExportRequest request,

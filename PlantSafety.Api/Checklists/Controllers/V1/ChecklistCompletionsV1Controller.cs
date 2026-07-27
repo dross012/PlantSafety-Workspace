@@ -46,6 +46,7 @@ public sealed class ChecklistCompletionsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<CreateChecklistCompletionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CreateChecklistCompletionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<CreateChecklistCompletionResult>), StatusCodes.Status422UnprocessableEntity)]
@@ -84,6 +85,7 @@ public sealed class ChecklistCompletionsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Checklist completion not found.</response>
     [HttpPost("{checklistCompletionId:guid}/start")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<StartChecklistCompletionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<StartChecklistCompletionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<StartChecklistCompletionResult>), StatusCodes.Status404NotFound)]
@@ -119,6 +121,7 @@ public sealed class ChecklistCompletionsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Checklist completion not found.</response>
     [HttpPost("{checklistCompletionId:guid}/items/{checklistTemplateItemId:guid}/result")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RecordChecklistItemResultResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RecordChecklistItemResultResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<RecordChecklistItemResultResult>), StatusCodes.Status404NotFound)]
@@ -159,6 +162,7 @@ public sealed class ChecklistCompletionsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Checklist completion not found.</response>
     [HttpPost("{checklistCompletionId:guid}/items/{checklistTemplateItemId:guid}/flag-failed")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<FlagFailedChecklistItemResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<FlagFailedChecklistItemResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<FlagFailedChecklistItemResult>), StatusCodes.Status404NotFound)]
@@ -198,6 +202,7 @@ public sealed class ChecklistCompletionsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Checklist completion not found.</response>
     [HttpPost("{checklistCompletionId:guid}/complete")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<CompleteChecklistCompletionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CompleteChecklistCompletionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<CompleteChecklistCompletionResult>), StatusCodes.Status404NotFound)]

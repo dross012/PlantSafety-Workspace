@@ -357,19 +357,19 @@ global using PlantSafety.Domain.SafetyEvents.EmergencyManagement.Specifications;
 global using PlantSafety.Domain.SafetyEvents.EmergencyManagement.ValueObjects;
 global using PlantSafety.Domain.SafetyEvents.EmergencyManagement.ValueObjects.Ids;
 global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates;
-global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Entities;
 global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Enums;
 global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Events;
 global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Exceptions;
-global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Factories;
-global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Interfaces;
-global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Policies;
-global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Rules;
-global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Services;
-global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Snapshots;
-global using PlantSafety.Domain.SafetyEvents.IncidentManagement.Specifications;
 global using PlantSafety.Domain.SafetyEvents.IncidentManagement.ValueObjects;
 global using PlantSafety.Domain.SafetyEvents.IncidentManagement.ValueObjects.Ids;
+// NOTE (2026-07-27 refactoring pass): Entities/Factories/Interfaces/Policies/Rules/Services/
+// Snapshots/Specifications namespaces removed from this list -- their sole occupants
+// (IncidentManagementHistoryEntry, IncidentManagementFactory/IIncidentManagementFactory,
+// the aggregate-shaped IIncidentManagementRepository, IncidentManagementArchivalPolicy,
+// IncidentManagementLifecycleRules, the empty IncidentManagementService placeholder,
+// IncidentManagementSnapshot, IncidentManagementSpecification) were confirmed dead (zero
+// references anywhere outside their own declaring file) and deleted. See
+// docs/architecture/plantsafety-architecture.md for the full inventory.
 global using PlantSafety.Domain.SafetyEvents.Observation.Aggregates;
 global using PlantSafety.Domain.SafetyEvents.Observation.Entities;
 global using PlantSafety.Domain.SafetyEvents.Observation.Enums;

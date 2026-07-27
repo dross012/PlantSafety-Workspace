@@ -48,6 +48,7 @@ public sealed class AuditFindingsV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<CreateAuditFindingResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CreateAuditFindingResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<CreateAuditFindingResult>), StatusCodes.Status422UnprocessableEntity)]
@@ -87,6 +88,7 @@ public sealed class AuditFindingsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Engagement or finding not found.</response>
     [HttpPost("/api/v{version:apiVersion}/auditing/engagements/{auditEngagementId:guid}/findings/{auditFindingId:guid}/record")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RecordAuditEngagementFindingResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RecordAuditEngagementFindingResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<RecordAuditEngagementFindingResult>), StatusCodes.Status404NotFound)]
@@ -126,6 +128,7 @@ public sealed class AuditFindingsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Finding not found.</response>
     [HttpPost("{auditFindingId:guid}/remediate")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<RemediateAuditFindingResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<RemediateAuditFindingResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<RemediateAuditFindingResult>), StatusCodes.Status404NotFound)]
@@ -163,6 +166,7 @@ public sealed class AuditFindingsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Finding not found.</response>
     [HttpPost("{auditFindingId:guid}/trigger-capa")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<TriggerAuditFindingCapaResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<TriggerAuditFindingCapaResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<TriggerAuditFindingCapaResult>), StatusCodes.Status404NotFound)]
@@ -201,6 +205,7 @@ public sealed class AuditFindingsV1Controller : ControllerBase
     /// <response code="403">Caller does not hold the required policy.</response>
     /// <response code="404">Finding not found.</response>
     [HttpPost("{auditFindingId:guid}/verify")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<VerifyAuditFindingResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<VerifyAuditFindingResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<VerifyAuditFindingResult>), StatusCodes.Status404NotFound)]

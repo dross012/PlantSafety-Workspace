@@ -64,6 +64,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Submits a new Permit-to-Work request (PTW Workflow Step 1 - Permit Request).</summary>
     [HttpPost]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -94,6 +95,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Records the safety officer's hazard assessment and required controls (PTW Workflow Step 2).</summary>
     [HttpPost("{permitWorkflowId:guid}/assess-hazards")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -122,6 +124,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Records that required safety controls have been implemented (PTW Workflow Step 3).</summary>
     [HttpPost("{permitWorkflowId:guid}/implement-controls")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -149,6 +152,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Records supervisor/safety-officer approval of a PermitWorkflow (PTW Workflow Step 4 - Authorization).</summary>
     [HttpPost("{permitWorkflowId:guid}/approve")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -174,6 +178,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Issues an approved PermitWorkflow, making it active (PTW Workflow Step 4/5).</summary>
     [HttpPost("{permitWorkflowId:guid}/issue")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -201,6 +206,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Records the post-work review and closure signature for a permit, closing it (PTW Workflow Step 6 - Close-Out).</summary>
     [HttpPost("{permitWorkflowId:guid}/record-closure-signature")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -228,6 +234,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Archives a closed PermitWorkflow for compliance retention (PTW Workflow Step 7 - Review &amp; Audit).</summary>
     [HttpPost("{permitWorkflowId:guid}/archive")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -253,6 +260,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Declines a PermitWorkflow request, recording the reason for rejection.</summary>
     [HttpPost("{permitWorkflowId:guid}/reject")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -280,6 +288,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Returns PermitWorkflow read-model data for a tenant/site within a date range.</summary>
     [HttpGet("workflow")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitWorkflowQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -305,6 +314,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Publishes a draft PermitTemplate, making it active for permit requests.</summary>
     [HttpPost("templates/{permitTemplateId:guid}/publish")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
     [ProducesResponseType(typeof(ApiResponse<PermitTemplateActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitTemplateActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -330,6 +340,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Deprecates an active PermitTemplate so no new permits may be requested against it.</summary>
     [HttpPost("templates/{permitTemplateId:guid}/deprecate")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<PermitTemplateActionResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitTemplateActionResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -357,6 +368,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Returns PermitTemplate read-model data for a tenant/site within a date range.</summary>
     [HttpGet("templates")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PermitTemplateQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitTemplateQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -382,6 +394,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Returns PermitScheduling read-model data for a tenant/site within a date range.</summary>
     [HttpGet("scheduling")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PermitSchedulingQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitSchedulingQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -407,6 +420,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Returns PermitExpiration read-model data for a tenant/site within a date range.</summary>
     [HttpGet("expiration")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
     [ProducesResponseType(typeof(ApiResponse<PermitExpirationQueryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PermitExpirationQueryResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -432,6 +446,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
 
     /// <summary>Applies a single operation uniformly across multiple PermitToWork resources.</summary>
     [HttpPost("bulk")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [ProducesResponseType(typeof(ApiResponse<BulkUpdatePermitToWorkResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<BulkUpdatePermitToWorkResult>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

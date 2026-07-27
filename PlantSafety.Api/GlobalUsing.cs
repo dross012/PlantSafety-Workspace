@@ -58,3 +58,10 @@ global using PlantSafety.Api.Middleware;
 // Result pattern, StrongId — core cross-cutting types
 global using PlantSafety.SharedKernel;
 global using PlantSafety.SharedKernel.Primitives.Results;
+
+// ── Shared Authorization ────────────────────────────────────────────────────
+// Canonical Safety-domain role and policy-name constants (see
+// docs/architecture/authorization-tiers.md). Prevents role-name string drift
+// across controllers and across the PlantSafety/Reporting module boundary.
+global using Shared.Authorization.Abstractions.Roles;
+global using Shared.Authorization.Abstractions.Policies;

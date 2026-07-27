@@ -34,6 +34,7 @@ public sealed class OperationsSchemaGuardV1Controller : ControllerBase
 
     /// <summary>Returns schema-drift status for every known PlantSafety.* database.</summary>
     [HttpGet("health")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<SchemaDatabaseHealthDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHealthAsync(CancellationToken cancellationToken)
     {
@@ -50,6 +51,7 @@ public sealed class OperationsSchemaGuardV1Controller : ControllerBase
     /// every migration script missing on the given database. Read-only -- executes nothing.
     /// </summary>
     [HttpGet("{databaseKey}/migration-instructions")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<MigrationInstructionDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<MigrationInstructionDto>>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetMigrationInstructionsAsync(string databaseKey, CancellationToken cancellationToken)

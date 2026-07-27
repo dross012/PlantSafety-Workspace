@@ -43,6 +43,7 @@ public sealed class OperationsConfigurationV1Controller : ControllerBase
     /// flags from every known database (currently ArchiveDB and IntegrationDB) concatenated.
     /// </summary>
     [HttpGet("feature-flags")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<FeatureFlagDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<FeatureFlagDto>>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetFeatureFlagsAsync([FromQuery] string? databaseKey, CancellationToken cancellationToken)
@@ -63,6 +64,7 @@ public sealed class OperationsConfigurationV1Controller : ControllerBase
     /// UI infrastructure, which provides GetAsync/PostAsync/PutAsync helpers only.
     /// </summary>
     [HttpPut("{databaseKey}/feature-flags/{flagName}")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<FeatureFlagDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<FeatureFlagDto>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SetFeatureFlagEnabledAsync(

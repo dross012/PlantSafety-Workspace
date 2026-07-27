@@ -46,7 +46,7 @@ public sealed class SafetyEventsBulkV1Controller : Controllers.BaseApiController
     /// <param name="request">Resource IDs to acknowledge.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPut("acknowledge")]
-    [Authorize(Policy = "SafetyEvents.Update")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [IdempotencyKey]
     public async Task<IActionResult> BulkAcknowledgeAsync(
         [FromBody] BulkOperationRequest request,
@@ -60,7 +60,7 @@ public sealed class SafetyEventsBulkV1Controller : Controllers.BaseApiController
     /// <param name="request">Resource IDs to escalate.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPut("escalate")]
-    [Authorize(Policy = "SafetyEvents.Update")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [IdempotencyKey]
     public async Task<IActionResult> BulkEscalateAsync(
         [FromBody] BulkOperationRequest request,
@@ -74,7 +74,7 @@ public sealed class SafetyEventsBulkV1Controller : Controllers.BaseApiController
     /// <param name="request">Resource IDs to close.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPut("close")]
-    [Authorize(Policy = "SafetyEvents.Update")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
     [IdempotencyKey]
     public async Task<IActionResult> BulkCloseAsync(
         [FromBody] BulkOperationRequest request,
