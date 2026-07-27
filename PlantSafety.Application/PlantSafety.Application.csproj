@@ -27,6 +27,12 @@
   <ItemGroup>
     <ProjectReference Include="..\PlantSafety.Domain\PlantSafety.Domain.csproj" />
     <ProjectReference Include="..\PlantSafety.SharedKernel\PlantSafety.SharedKernel.csproj" />
+    <!-- Shared.AuditLogging.Abstractions: the canonical read contract (IAuditLogRepository,
+         AuditLogEntry, AuditLogSearchCriteria, AuditLogSearchResult) for the shared,
+         cross-database [PlantSafety.AuditDB].dbo.AuditLog table, extracted 2026-07-26 so
+         PlantSafety and Reporting both consume the same contract; see
+         Shared\AuditLogging\docs\README.md. -->
+    <ProjectReference Include="..\..\Shared\AuditLogging\Shared.AuditLogging.Abstractions\Shared.AuditLogging.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

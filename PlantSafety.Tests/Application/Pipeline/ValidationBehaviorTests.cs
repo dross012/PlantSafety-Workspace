@@ -10,13 +10,16 @@
 using FluentValidation;
 using MediatR;
 using NSubstitute;
-using PlantSafety.Application.Common.Behaviours;
+using PlantSafety.Application.Behaviors.Validation;
 
 namespace PlantSafety.Tests.Application.Pipeline;
 
 public sealed class ValidationBehaviorTests : UnitTestBase
 {
-    private sealed record TestCommand : IRequest<Unit>;
+    // Must be public (not private/internal): NSubstitute's Castle DynamicProxy needs to
+    // generate a proxy for IValidator<TestCommand> in a separate dynamic assembly, which
+    // requires TestCommand to be externally accessible.
+    public sealed record TestCommand : IRequest<Unit>;
     private sealed class TestCommandValidator : AbstractValidator<TestCommand> { }
 
     [Fact]

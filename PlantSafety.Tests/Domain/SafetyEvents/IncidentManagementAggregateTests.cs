@@ -12,6 +12,7 @@
 using PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates;
 using PlantSafety.Domain.SafetyEvents.IncidentManagement.Events;
 using PlantSafety.Tests.Common.Extensions;
+using PlantSafety.Domain.SafetyEvents.IncidentManagement.Enums;
 
 namespace PlantSafety.Tests.Domain.SafetyEvents;
 

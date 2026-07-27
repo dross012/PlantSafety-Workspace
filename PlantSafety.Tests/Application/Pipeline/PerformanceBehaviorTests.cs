@@ -8,8 +8,10 @@
 //  Description:    Unit tests for MediatR PerformanceBehavior — logs slow requests.
 // ============================================================================
 using MediatR;
+using Microsoft.Extensions.Options;
 using NSubstitute;
-using PlantSafety.Application.Common.Behaviours;
+using PlantSafety.Application.Abstractions.Context;
+using PlantSafety.Application.Behaviors.Performance;
 
 namespace PlantSafety.Tests.Application.Pipeline;
 
@@ -21,7 +23,9 @@ public sealed class PerformanceBehaviorTests : UnitTestBase
     public async Task Handle_ShouldCallNext()
     {
         var logger = NullLogger<PerformanceBehavior<TestCommand, Unit>>();
-        var behavior = new PerformanceBehavior<TestCommand, Unit>(logger);
+        var operationContext = Substitute.For<IOperationContext>();
+        var options = Options.Create(new PerformanceOptions());
+        var behavior = new PerformanceBehavior<TestCommand, Unit>(logger, operationContext, options);
         var next = Substitute.For<RequestHandlerDelegate<Unit>>();
         next.Invoke().Returns(Unit.Value);
 

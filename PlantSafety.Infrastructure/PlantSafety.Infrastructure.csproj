@@ -196,11 +196,17 @@
     <ProjectReference Include="..\PlantSafety.Application\PlantSafety.Application.csproj" />
     <ProjectReference Include="..\PlantSafety.Domain\PlantSafety.Domain.csproj" />
     <ProjectReference Include="..\PlantSafety.SharedKernel\PlantSafety.SharedKernel.csproj" />
+    <!-- Shared.AuditLogging.Infrastructure: Dapper-backed IAuditLogRepository over the
+         shared [PlantSafety.AuditDB].dbo.AuditLog table, extracted from this project
+         2026-07-26 so Reporting can also consume it; see
+         Shared\AuditLogging\docs\README.md. -->
+    <ProjectReference Include="..\..\Shared\AuditLogging\Shared.AuditLogging.Infrastructure\Shared.AuditLogging.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.79" />
     <PackageReference Include="MassTransit" Version="8.4.1" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.4.1" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.13.1" />
     <PackageReference Include="Serilog" Version="4.3.0" />

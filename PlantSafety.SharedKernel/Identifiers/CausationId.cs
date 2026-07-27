@@ -19,5 +19,7 @@ public readonly record struct CausationId
     }
 
     public static CausationId New() => new(Uuid7.New());
+    public static CausationId FromGuid(Guid value) => new(value);
+    public static CausationId Parse(string value) => new(Guid.Parse(value));
     public override string ToString() => Value.ToString("D");
 }

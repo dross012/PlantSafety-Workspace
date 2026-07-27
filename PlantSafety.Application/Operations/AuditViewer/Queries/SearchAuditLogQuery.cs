@@ -5,10 +5,10 @@
 
 using MediatR;
 using PlantSafety.Application.Common.Results;
-using PlantSafety.Application.Operations.AuditViewer.Models;
+using Shared.AuditLogging.Abstractions.Models;
 
 namespace PlantSafety.Application.Operations.AuditViewer.Queries;
 
 /// <summary>Searches [PlantSafety.AuditDB].dbo.AuditLog by optional filters, newest first, paginated.</summary>
 /// <param name="Criteria">The optional filter and pagination criteria.</param>
-public sealed record SearchAuditLogQuery(AuditLogSearchCriteria Criteria) : IRequest<Result<AuditLogSearchResultDto>>;
+public sealed record SearchAuditLogQuery(AuditLogSearchCriteria Criteria) : IRequest<Result<AuditLogSearchResult>>;

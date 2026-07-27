@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for PolicyId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Compliance.Policy.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Compliance.Policy;
 
 public sealed class PolicyIdTests : UnitTestBase

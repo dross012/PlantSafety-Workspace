@@ -28,7 +28,12 @@ public sealed class CreateCultureCommandValidatorTests : UnitTestBase
     [Fact]
     public void EmptyTenantId_ShouldFailValidation()
     {
-        var cmd = new CreateCultureCommand(TenantId.FromGuid(Guid.Empty), TestUserId, TestCorrelationId, TestCausationId, TestActor);
+        // NOTE: TenantId.FromGuid(Guid.Empty) throws ArgumentException (SharedKernel.TenantId
+        // enforces non-empty in its constructor), so it cannot be used to construct an "empty"
+        // instance here. default(TenantId) bypasses that constructor (struct default-value
+        // semantics) and yields a TenantId wrapping Guid.Empty, which is exactly the edge case
+        // this validator rule guards against (e.g. an uninitialized/deserialized TenantId).
+        var cmd = new CreateCultureCommand(default, TestUserId, TestCorrelationId, TestCausationId, TestActor);
         var result = _validator.TestValidate(cmd);
         result.ShouldHaveValidationErrorFor(c => c.TenantId);
     }

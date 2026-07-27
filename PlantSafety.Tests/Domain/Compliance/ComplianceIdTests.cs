@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for ComplianceId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Compliance.Compliance.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Compliance.Compliance;
 
 public sealed class ComplianceIdTests : UnitTestBase

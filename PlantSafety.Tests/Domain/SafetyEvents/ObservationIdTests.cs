@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for ObservationId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.SafetyEvents.Observation.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.SafetyEvents.Observation;
 
 public sealed class ObservationIdTests : UnitTestBase

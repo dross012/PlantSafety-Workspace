@@ -9,12 +9,17 @@
 //  Description:    In-memory fake repository for unit testing aggregate persistence without a database.
 //                  Isolated, deterministic, <50ms per test. No I/O, no network.
 // ============================================================================
+using System.Reflection;
+
 namespace PlantSafety.Tests.Common.Fakes;
 
 /// <summary>
 /// Generic in-memory fake repository for unit tests.
 /// Stores aggregates by their identifier and simulates repository behaviour
 /// without any database, file I/O, or network access.
+/// The identifier is extracted automatically via reflection: the single public
+/// instance property on <typeparamref name="TAggregate"/> whose type is
+/// <typeparamref name="TId"/> (e.g. <c>Alert.AlertId</c>).
 /// </summary>
 /// <typeparam name="TAggregate">The aggregate root type.</typeparam>
 /// <typeparam name="TId">The strong-typed identifier type.</typeparam>
@@ -22,19 +27,23 @@ public sealed class FakeRepository<TAggregate, TId>
     where TAggregate : class
     where TId : struct
 {
+    private static readonly PropertyInfo? IdProperty =
+        typeof(TAggregate).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(p => p.PropertyType == typeof(TId));
+
     private readonly Dictionary<TId, TAggregate> _store = new();
 
     /// <summary>All aggregates currently held in the fake store.</summary>
-    public IReadOnlyDictionary<TId, TAggregate> Store => _store;
+    public IReadOnlyCollection<TAggregate> All => _store.Values.ToList().AsReadOnly();
 
     /// <summary>Returns the aggregate for <paramref name="id"/>, or <c>null</c> if absent.</summary>
     public Task<TAggregate?> GetByIdAsync(TId id, CancellationToken cancellationToken = default)
         => Task.FromResult(_store.TryGetValue(id, out var agg) ? agg : null);
 
-    /// <summary>Stores the aggregate, keyed by <paramref name="id"/>.</summary>
-    public Task AddAsync(TId id, TAggregate aggregate, CancellationToken cancellationToken = default)
+    /// <summary>Stores <paramref name="aggregate"/>, keyed by the identifier extracted from it.</summary>
+    public Task AddAsync(TAggregate aggregate, CancellationToken cancellationToken = default)
     {
-        _store[id] = aggregate;
+        _store[ExtractId(aggregate)] = aggregate;
         return Task.CompletedTask;
     }
 
@@ -46,4 +55,16 @@ public sealed class FakeRepository<TAggregate, TId>
 
     /// <summary>Clears all stored aggregates.</summary>
     public void Clear() => _store.Clear();
+
+    private static TId ExtractId(TAggregate aggregate)
+    {
+        if (IdProperty is null)
+        {
+            throw new InvalidOperationException(
+                $"FakeRepository<{typeof(TAggregate).Name}, {typeof(TId).Name}> could not find a public " +
+                $"property of type {typeof(TId).Name} on {typeof(TAggregate).Name} to use as the identifier.");
+        }
+
+        return (TId)IdProperty.GetValue(aggregate)!;
+    }
 }

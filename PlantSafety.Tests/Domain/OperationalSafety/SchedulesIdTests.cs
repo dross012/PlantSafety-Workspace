@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for SchedulesId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Operational.Schedules.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.OperationalSafety.Schedules;
 
 public sealed class SchedulesIdTests : UnitTestBase

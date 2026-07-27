@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for PPEManagementId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Operational.PPEManagement.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.OperationalSafety.PPEManagement;
 
 public sealed class PPEManagementIdTests : UnitTestBase

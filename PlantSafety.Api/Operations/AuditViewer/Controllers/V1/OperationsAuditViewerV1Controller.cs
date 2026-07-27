@@ -17,8 +17,8 @@
 // ============================================================================
 using System.Text;
 
-using PlantSafety.Application.Operations.AuditViewer.Models;
 using PlantSafety.Application.Operations.AuditViewer.Queries;
+using Shared.AuditLogging.Abstractions.Models;
 
 namespace PlantSafety.Api.Operations.AuditViewer.Controllers.V1;
 
@@ -40,8 +40,8 @@ public sealed class OperationsAuditViewerV1Controller : ControllerBase
 
     /// <summary>Searches the shared AuditLog table by optional filters, newest first, paginated.</summary>
     [HttpGet("search")]
-    [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResultDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResult>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SearchAsync(
         [FromQuery] string? tableName,
         [FromQuery] string? operation,
@@ -61,9 +61,9 @@ public sealed class OperationsAuditViewerV1Controller : ControllerBase
         var result = await _sender.Send(new SearchAuditLogQuery(criteria), cancellationToken);
 
         if (result.IsFailure)
-            return BadRequest(ApiResponse<AuditLogSearchResultDto>.Fail(result.Error.Message, CorrelationId));
+            return BadRequest(ApiResponse<AuditLogSearchResult>.Fail(result.Error.Message, CorrelationId));
 
-        return Ok(ApiResponse<AuditLogSearchResultDto>.Ok(result.Value, CorrelationId));
+        return Ok(ApiResponse<AuditLogSearchResult>.Ok(result.Value, CorrelationId));
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public sealed class OperationsAuditViewerV1Controller : ControllerBase
     [HttpGet("export")]
     [Produces("text/csv")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<AuditLogSearchResult>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ExportAsync(
         [FromQuery] string? tableName,
         [FromQuery] string? operation,
@@ -94,7 +94,7 @@ public sealed class OperationsAuditViewerV1Controller : ControllerBase
         var result = await _sender.Send(new SearchAuditLogQuery(criteria), cancellationToken);
 
         if (result.IsFailure)
-            return BadRequest(ApiResponse<AuditLogSearchResultDto>.Fail(result.Error.Message, CorrelationId));
+            return BadRequest(ApiResponse<AuditLogSearchResult>.Fail(result.Error.Message, CorrelationId));
 
         var csvBytes = Encoding.UTF8.GetBytes(BuildCsv(result.Value.Items));
         var fileName = $"audit-log-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
@@ -103,7 +103,7 @@ public sealed class OperationsAuditViewerV1Controller : ControllerBase
     }
 
     /// <summary>Builds a flat, RFC-4180-quoted CSV from the given audit log entries. No external library required.</summary>
-    private static string BuildCsv(IReadOnlyList<AuditLogEntryDto> items)
+    private static string BuildCsv(IReadOnlyList<AuditLogEntry> items)
     {
         var sb = new StringBuilder();
         sb.AppendLine("TableName,SourceDatabase,Operation,ChangedBy,ChangeTime,ViewerAccessed,Severity,Module,ErrorContext,BeforeSnapshot,AfterSnapshot");

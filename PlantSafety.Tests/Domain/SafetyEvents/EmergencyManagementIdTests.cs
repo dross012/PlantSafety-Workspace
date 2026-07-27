@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for EmergencyManagementId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.SafetyEvents.EmergencyManagement.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.SafetyEvents.EmergencyManagement;
 
 public sealed class EmergencyManagementIdTests : UnitTestBase

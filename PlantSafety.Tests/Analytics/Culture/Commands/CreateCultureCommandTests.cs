@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for CreateCultureCommand record validity.
 // ============================================================================
+using PlantSafety.Application.Analytics.Culture.Commands;
+
 namespace PlantSafety.Tests.Analytics.Culture.Commands;
 
 public sealed class CreateCultureCommandTests : UnitTestBase

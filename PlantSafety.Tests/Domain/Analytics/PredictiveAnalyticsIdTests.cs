@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for PredictiveAnalyticsId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Analytics.PredictiveAnalytics.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Analytics.PredictiveAnalytics;
 
 public sealed class PredictiveAnalyticsIdTests : UnitTestBase

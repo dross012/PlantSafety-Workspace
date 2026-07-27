@@ -18,12 +18,23 @@
 //          - Event Envelope Rule (12.5)
 //      Additive-only evolution.
 // ============================================================================
+using PlantSafety.Domain.Common.Abstractions;
+using PlantSafety.Domain.Operational.Alerts.Events;
 using PlantSafety.Domain.Operational.Alerts.Snapshots;
 
 namespace PlantSafety.Domain.Operational.Alerts.Aggregates;
 
-public sealed partial class Alert
+public sealed partial class Alert : IHasDomainEvents
 {
+    /// <summary>
+    /// Explicit <see cref="IHasDomainEvents"/> projection of <see cref="DomainEvents"/>.
+    /// IReadOnlyCollection&lt;IAlertDomainEvent&gt; cannot be used directly to satisfy
+    /// IReadOnlyCollection&lt;IDomainEvent&gt; via interface implementation (no member-level
+    /// covariance for property implementations), so it is materialized explicitly here.
+    /// </summary>
+    IReadOnlyCollection<IDomainEvent> IHasDomainEvents.DomainEvents
+        => DomainEvents.Cast<IDomainEvent>().ToList();
+
     // ------------------------------------------------------------------------
     // Core Identity & Lifecycle
     // ------------------------------------------------------------------------
@@ -139,6 +150,37 @@ public sealed partial class Alert
 
         return alert;
     }
+
+    /// <summary>
+    /// Convenience overload matching the lighter Create(createdBy, createdAtUtc,
+    /// correlationId, causationId, actor) convention used by other aggregates
+    /// (e.g. Culture, Dashboard). Business fields default to a generic
+    /// worker-safety alert; callers needing full control should use the
+    /// primary <see cref="Create(AlertType, AlertSeverity, string, string, string, UserId, UtcTimestamp, CorrelationId, CausationId, PerformedByActor)"/>
+    /// overload instead.
+    /// </summary>
+    public static Alert Create(
+        UserId createdBy,
+        UtcTimestamp createdAtUtc,
+        CorrelationId correlationId,
+        CausationId causationId,
+        PerformedByActor actor,
+        AlertType? defaultAlertType = null,
+        AlertSeverity? defaultSeverity = null,
+        string defaultTitle = "Untitled Alert",
+        string defaultDescription = "No description provided.",
+        string defaultSourceModule = "Unspecified")
+        => Create(
+            alertType: defaultAlertType ?? AlertType.WorkerSafety,
+            severity: defaultSeverity ?? AlertSeverity.Default,
+            title: defaultTitle,
+            description: defaultDescription,
+            sourceModule: defaultSourceModule,
+            createdBy: createdBy,
+            createdAtUtc: createdAtUtc,
+            correlationId: correlationId,
+            causationId: causationId,
+            actor: actor);
 
     // ------------------------------------------------------------------------
     // SLA

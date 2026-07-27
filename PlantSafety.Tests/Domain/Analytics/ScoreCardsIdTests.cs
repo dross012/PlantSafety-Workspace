@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for ScoreCardsId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Analytics.ScoreCards.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Analytics.ScoreCards;
 
 public sealed class ScoreCardsIdTests : UnitTestBase

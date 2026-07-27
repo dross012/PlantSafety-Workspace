@@ -18,8 +18,15 @@ namespace PlantSafety.Domain.AccidentManagement.Interfaces;
 /// <summary>Domain repository interface for the Accident aggregate root.</summary>
 public interface IAccidentRepository
 {
-    /// <summary>Retrieves a Accident aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<Accident?> GetByIdAsync(AccidentId id, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves a Accident aggregate by its identity, scoped to <paramref name="tenantId"/>, or
+    /// <see langword="null"/> if not found (either because no such id exists, or it belongs to a
+    /// different tenant). <paramref name="tenantId"/> is required so the Infrastructure
+    /// implementation can populate SQL Server SESSION_CONTEXT('TenantId') for Row-Level Security
+    /// and enforce the tenant boundary in the query itself -- see
+    /// docs\lifecycle\security\rls-audit.md.
+    /// </summary>
+    Task<Accident?> GetByIdAsync(AccidentId id, Guid tenantId, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all Accident aggregates matching the given specification.</summary>
     Task<IReadOnlyList<Accident>> ListAsync(AccidentSpecification specification, CancellationToken cancellationToken = default);

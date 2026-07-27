@@ -9,9 +9,11 @@
 //  Description:    Canonical DI registration entry point for all Infrastructure services.
 //                  Additive-only evolution.
 // ============================================================================
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using PlantSafety.Application.Abstractions.Clock;
+using PlantSafety.Infrastructure.Common.Configuration;
 using PlantSafety.Infrastructure.BackgroundJobs;
 using PlantSafety.Infrastructure.Caching;
 using PlantSafety.Infrastructure.Common.Clock;
@@ -36,6 +38,7 @@ using PlantSafety.Infrastructure.OperationalSafety.RiskManagement.Repositories;
 using PlantSafety.Infrastructure.OperationalSafety.Schedules.Interfaces;
 using PlantSafety.Infrastructure.OperationalSafety.Schedules.Repositories;
 using PlantSafety.Infrastructure.Persistence.ConnectionFactory;
+using PlantSafety.Infrastructure.Persistence.Dapper;
 using PlantSafety.Infrastructure.Persistence.Dapper.Commands;
 using PlantSafety.Infrastructure.Persistence.Dapper.Queries;
 using PlantSafety.Infrastructure.Persistence.UnitOfWork;
@@ -86,9 +89,7 @@ using PlantSafety.Infrastructure.Operations.SchemaGuard.FileSystem;
 using PlantSafety.Application.Operations.Monitoring.Repositories;
 using PlantSafety.Infrastructure.Operations.Monitoring.Options;
 using PlantSafety.Infrastructure.Operations.Monitoring.Persistence;
-using PlantSafety.Application.Operations.AuditViewer.Repositories;
-using PlantSafety.Infrastructure.Operations.AuditViewer.Options;
-using PlantSafety.Infrastructure.Operations.AuditViewer.Persistence;
+using Shared.AuditLogging.Infrastructure.DependencyInjection;
 using PlantSafety.Application.Operations.Archival.Repositories;
 using PlantSafety.Infrastructure.Operations.Archival.Options;
 using PlantSafety.Infrastructure.Operations.Archival.Persistence;
@@ -156,6 +157,13 @@ public static class InfrastructureServiceRegistration
         // DI validation error.
         services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+
+        // Tenant-isolation remediation rollout switch (docs\lifecycle\security\rls-audit.md).
+        // Defaults to OFF (unbound section binds to the type's default, EnableTenantContextPropagation
+        // = false) so introducing this option has zero effect until explicitly enabled per the staged
+        // rollout plan: integration tests -> staging -> canary tenant -> global.
+        services.Configure<TenantContextPropagationOptions>(
+            configuration.GetSection(TenantContextPropagationOptions.SectionName));
         services.AddScoped<DapperCommandExecutor>();
         services.AddScoped<DapperQueryExecutor>();
         services.AddScoped<IOutboxWriter, OutboxWriter>();
@@ -195,12 +203,43 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IPermissionService, PermissionService>();
 
         // File storage
+        // BlobServiceClient was previously unregistered (a real DI gap, closed here). Local dev
+        // defaults to the well-known Azurite emulator connection string (publicly documented by
+        // Microsoft, not a secret) via the "BlobStorage:ConnectionString" config key; production
+        // deployments override this with a real Managed-Identity-backed connection string.
+        services.Configure<BlobStorageOptions>(configuration.GetSection(BlobStorageOptions.SectionName));
+        services.AddSingleton(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<BlobStorageOptions>>().Value;
+            var connectionString = string.IsNullOrWhiteSpace(opts.ConnectionString)
+                ? "UseDevelopmentStorage=true"
+                : opts.ConnectionString;
+            return new BlobServiceClient(connectionString);
+        });
         services.AddSingleton<IBlobStorageService, AzureBlobStorageService>();
 
         // Search
         services.AddScoped<ISearchService, AzureSearchService>();
 
         // Messaging
+        // MassTransit.IBus was previously unregistered (a real DI gap, closed here). Local dev
+        // targets a local RabbitMQ broker via the "RabbitMq" config section; production
+        // deployments override with real Azure Service Bus credentials.
+        services.AddMassTransit(x =>
+        {
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                var rabbitHost = configuration["RabbitMq:Host"] ?? "localhost";
+                var rabbitUser = configuration["RabbitMq:Username"] ?? "guest";
+                var rabbitPass = configuration["RabbitMq:Password"] ?? "guest";
+
+                cfg.Host(rabbitHost, "/", h =>
+                {
+                    h.Username(rabbitUser);
+                    h.Password(rabbitPass);
+                });
+            });
+        });
         services.AddScoped<IIntegrationEventPublisher, ServiceBusEventPublisher>();
 
         // Background jobs
@@ -296,8 +335,14 @@ public static class InfrastructureServiceRegistration
         // stored procedures across all 8 module databases via the dbo.AuditLog synonym --
         // Phase8-Structural\83-synonyms-audit-error.sql). Sibling module to
         // Operations.Backup/SchemaGuard/Archival. Never issues INSERT/UPDATE/DELETE.
-        services.Configure<AuditViewerOptions>(configuration.GetSection(AuditViewerOptions.SectionName));
-        services.AddScoped<IAuditLogRepository, AuditLogDapperRepository>();
+        //
+        // As of 2026-07-26, IAuditLogRepository/AuditLogDapperRepository/options moved out
+        // of PlantSafety into the shared Shared.AuditLogging module (dbo.AuditLog is
+        // server-level platform data, not PlantSafety-tenant data) so Reporting's Audit
+        // Report PDF can consume the exact same repository -- see
+        // Shared\AuditLogging\docs\README.md. Configuration section renamed
+        // "Operations:AuditViewer" -> "Shared:AuditLogging".
+        services.AddSharedAuditLogging(configuration);
 
         // Operations — Monitoring (DB Performance via per-database Query Store, DB Errors via
         // the shared [PlantSafety.ErrorDB].dbo.ErrorLog table, DB Deadlocks via the built-in

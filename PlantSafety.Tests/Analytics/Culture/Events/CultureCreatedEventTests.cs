@@ -9,6 +9,7 @@
 // ============================================================================
 using PlantSafety.Domain.Analytics.Culture.Events;
 using PlantSafety.Domain.Analytics.Culture.ValueObjects;
+using PlantSafety.Domain.Analytics.Culture.ValueObjects.Ids;
 using PlantSafety.Tests.Common.Extensions;
 
 namespace PlantSafety.Tests.Analytics.Culture.Events;
@@ -29,7 +30,7 @@ public sealed class CultureCreatedEventTests : UnitTestBase
 
     [Fact]
     public void EventVersion_ShouldBeAtLeast1() =>
-        BuildEvent().EventVersion.Should().BeGreaterOrEqualTo(1);
+        BuildEvent().EventVersion.Should().BeGreaterThanOrEqualTo(1);
 
     [Fact]
     public void OccurredAtUtc_ShouldMatchInput() =>

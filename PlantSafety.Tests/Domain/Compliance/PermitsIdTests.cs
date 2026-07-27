@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for PermitsId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Compliance.Permits.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Compliance.Permits;
 
 public sealed class PermitsIdTests : UnitTestBase

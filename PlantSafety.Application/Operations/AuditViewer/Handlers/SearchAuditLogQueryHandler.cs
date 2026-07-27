@@ -11,14 +11,14 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Common.Results;
-using PlantSafety.Application.Operations.AuditViewer.Models;
 using PlantSafety.Application.Operations.AuditViewer.Queries;
-using PlantSafety.Application.Operations.AuditViewer.Repositories;
+using Shared.AuditLogging.Abstractions.Models;
+using Shared.AuditLogging.Abstractions.Repositories;
 
 namespace PlantSafety.Application.Operations.AuditViewer.Handlers;
 
 /// <summary>Handles <see cref="SearchAuditLogQuery"/>.</summary>
-public sealed class SearchAuditLogQueryHandler : IRequestHandler<SearchAuditLogQuery, Result<AuditLogSearchResultDto>>
+public sealed class SearchAuditLogQueryHandler : IRequestHandler<SearchAuditLogQuery, Result<AuditLogSearchResult>>
 {
     private readonly IAuditLogRepository _repository;
     private readonly ILogger<SearchAuditLogQueryHandler> _logger;
@@ -31,18 +31,18 @@ public sealed class SearchAuditLogQueryHandler : IRequestHandler<SearchAuditLogQ
     }
 
     /// <inheritdoc/>
-    public async Task<Result<AuditLogSearchResultDto>> Handle(SearchAuditLogQuery request, CancellationToken cancellationToken)
+    public async Task<Result<AuditLogSearchResult>> Handle(SearchAuditLogQuery request, CancellationToken cancellationToken)
     {
         try
         {
             var result = await _repository.SearchAsync(request.Criteria, cancellationToken);
-            return Result<AuditLogSearchResultDto>.Success(result);
+            return Result<AuditLogSearchResult>.Success(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to search AuditLog with criteria {@Criteria}.", request.Criteria);
 
-            return Result<AuditLogSearchResultDto>.Failure(new ApplicationError(
+            return Result<AuditLogSearchResult>.Failure(new ApplicationError(
                 "Operations.AuditViewer.SearchFailed",
                 "Unable to search the audit log at this time.",
                 Guid.NewGuid()));

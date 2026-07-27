@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for CertificationId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Compliance.Certification.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Compliance.Certification;
 
 public sealed class CertificationIdTests : UnitTestBase

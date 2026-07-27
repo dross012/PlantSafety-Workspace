@@ -16,9 +16,11 @@
 //          - Deterministic Time Rule (1.1)
 //      Additive-only evolution.
 // ============================================================================
+using PlantSafety.Domain.Common.Abstractions;
+
 namespace PlantSafety.Domain.Operational.Alerts.Events;
 
-public interface IAlertDomainEvent
+public interface IAlertDomainEvent : IDomainEvent
 {
     AlertEventId EventId { get; }
     string EventType { get; }

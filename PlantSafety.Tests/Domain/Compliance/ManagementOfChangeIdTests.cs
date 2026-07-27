@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for ManagementOfChangeId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Compliance.ManagementOfChange.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Compliance.ManagementOfChange;
 
 public sealed class ManagementOfChangeIdTests : UnitTestBase

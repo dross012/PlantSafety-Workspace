@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for RiskManagementId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Operational.RiskManagement.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.OperationalSafety.RiskManagement;
 
 public sealed class RiskManagementIdTests : UnitTestBase

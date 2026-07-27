@@ -14,6 +14,7 @@ GO
 
 CREATE OR ALTER PROCEDURE [AccidentManagement].[usp_Accident_Update]
     @AccidentId                UNIQUEIDENTIFIER,
+    @TenantId                  UNIQUEIDENTIFIER,
     @Status                    NVARCHAR(30),
     @Category                  NVARCHAR(100),
     @SiteSecuredAndTriaged     BIT,
@@ -31,7 +32,10 @@ AS
 SET NOCOUNT ON;
 BEGIN
     BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM [AccidentManagement].[Accident] WHERE AccidentId = @AccidentId AND IsDeleted = 0)
+        -- App-layer tenant scoping (defense-in-depth alongside RLS, per F1 in
+        -- docs\lifecycle\security\rls-audit.md): a caller supplying another tenant's
+        -- AccidentId now finds no matching row here, rather than relying on RLS alone.
+        IF NOT EXISTS (SELECT 1 FROM [AccidentManagement].[Accident] WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0)
             THROW 50004, N'Accident not found or has been deleted.', 1;
 
         UPDATE [AccidentManagement].[Accident]
@@ -51,7 +55,7 @@ BEGIN
             UpdatedBy = @UpdatedBy,
             UpdatedAtUtc = SYSUTCDATETIME(),
             ConcurrencyToken = NEWID()
-        WHERE AccidentId = @AccidentId AND IsDeleted = 0;
+        WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0;
 
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)

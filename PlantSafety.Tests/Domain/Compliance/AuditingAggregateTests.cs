@@ -12,6 +12,7 @@
 using PlantSafety.Domain.Compliance.Auditing.Aggregates;
 using PlantSafety.Domain.Compliance.Auditing.Events;
 using PlantSafety.Tests.Common.Extensions;
+using PlantSafety.Domain.Compliance.Auditing.Enums;
 
 namespace PlantSafety.Tests.Domain.Compliance;
 

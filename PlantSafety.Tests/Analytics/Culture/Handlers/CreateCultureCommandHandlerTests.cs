@@ -10,6 +10,8 @@
 using NSubstitute;
 using PlantSafety.Application.Analytics.Culture.Commands;
 using PlantSafety.Application.Common.Interfaces.Persistence;
+using PlantSafety.SharedKernel.Abstractions;
+using CultureAggregate = PlantSafety.Domain.Analytics.Culture.Aggregates.Culture;
 
 namespace PlantSafety.Tests.Analytics.Culture.Handlers;
 
@@ -26,7 +28,7 @@ public sealed class CreateCultureCommandHandlerTests : UnitTestBase
     {
         var cmd = new CreateCultureCommand(TestTenantId, TestUserId, TestCorrelationId, TestCausationId, TestActor);
         await Sut().Handle(cmd, CancellationToken.None);
-        await _repo.Received(1).AddAsync(Arg.Any<Culture>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).AddAsync(Arg.Any<CultureAggregate>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for RegulatoryCalendarId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Compliance.RegulatoryCalendar.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Compliance.RegulatoryCalendar;
 
 public sealed class RegulatoryCalendarIdTests : UnitTestBase

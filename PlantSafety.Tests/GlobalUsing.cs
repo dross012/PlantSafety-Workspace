@@ -39,7 +39,11 @@ global using PlantSafety.Domain.Common.Abstractions;
 global using PlantSafety.Domain.Common.Base;
 global using PlantSafety.Domain.Common.Exceptions;
 global using PlantSafety.Domain.Common.Rules;
-global using PlantSafety.Domain.Common.Types.StrongIds;
+// NOTE: PlantSafety.Domain.Common.Types.StrongIds intentionally NOT global-used here.
+// It defines its own TenantId that collides with the canonical
+// PlantSafety.SharedKernel.Identifiers.TenantId (used by 250+ production files).
+// Nothing else in this namespace is referenced by the test suite, so the
+// global using was removed rather than aliased.
 
 // ---- PlantSafety: Domain — Operational.Alerts (canonical reference module) -
 global using PlantSafety.Domain.Operational.Alerts.Aggregates;

@@ -28,6 +28,13 @@ public sealed class ConfidenceThresholdTheoryTests : UnitTestBase
         (0.70 >= 0.70).Should().BeTrue("boundary value at exactly 0.70 must be accepted");
 
     [Fact]
-    public void BoundaryValue_OneEpsilonBelowThreshold_ShouldFail() =>
-        (0.70 - double.Epsilon >= 0.70).Should().BeFalse();
+    public void BoundaryValue_OneEpsilonBelowThreshold_ShouldFail()
+    {
+        // NOTE: double.Epsilon (~4.94e-324) is far smaller than the ULP of 0.70, so
+        // "0.70 - double.Epsilon" rounds back to exactly 0.70 and does not actually
+        // move below the threshold. Use a delta large enough to be representable
+        // relative to 0.70 to genuinely exercise the "just below threshold" case.
+        const double justBelowThreshold = 0.70 - 0.0001;
+        (justBelowThreshold >= 0.70).Should().BeFalse();
+    }
 }

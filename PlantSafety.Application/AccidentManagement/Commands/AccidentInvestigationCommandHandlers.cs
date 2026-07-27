@@ -36,7 +36,7 @@ public sealed class AssignAccidentInvestigatorCommandHandler : IRequestHandler<A
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
                 return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
 
@@ -73,7 +73,7 @@ public sealed class RecordAccidentRootCauseCommandHandler : IRequestHandler<Reco
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
                 return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
 
@@ -112,7 +112,7 @@ public sealed class CreateAccidentCorrectiveActionCommandHandler : IRequestHandl
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
                 return Result<CreateAccidentCorrectiveActionResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
 
@@ -152,7 +152,7 @@ public sealed class CompleteAccidentCorrectiveActionCommandHandler : IRequestHan
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
                 return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
 
@@ -189,7 +189,7 @@ public sealed class FileAccidentRegulatoryReportCommandHandler : IRequestHandler
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
                 return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
 
@@ -226,7 +226,7 @@ public sealed class CloseAccidentInvestigationCommandHandler : IRequestHandler<C
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
                 return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
 

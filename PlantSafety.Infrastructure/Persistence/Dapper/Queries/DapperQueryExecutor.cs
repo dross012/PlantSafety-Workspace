@@ -9,13 +9,19 @@
 //  Description:    Executes read stored procedures via Dapper on the read replica.
 //                  Additive-only evolution.
 // ============================================================================
+using Microsoft.Extensions.Options;
+using PlantSafety.Infrastructure.Common.Exceptions;
+
 namespace PlantSafety.Infrastructure.Persistence.Dapper.Queries;
 
 /// <summary>
 /// Executes read (SELECT) stored procedures via Dapper on the read-replica connection.
 /// Returns mapped DTOs; never returns domain objects or IQueryable.
 /// </summary>
-public sealed class DapperQueryExecutor(ISqlConnectionFactory connectionFactory, ILogger<DapperQueryExecutor> logger)
+public sealed class DapperQueryExecutor(
+    ISqlConnectionFactory connectionFactory,
+    ILogger<DapperQueryExecutor> logger,
+    IOptions<TenantContextPropagationOptions> tenantContextOptions)
 {
     /// <summary>Returns a list of <typeparamref name="T"/> from a stored procedure.</summary>
     public async Task<IReadOnlyList<T>> QueryAsync<T>(
@@ -27,9 +33,12 @@ public sealed class DapperQueryExecutor(ISqlConnectionFactory connectionFactory,
 
         try
         {
+            var tenantId = RequireTenantIdIfEnforced(procedureName, parameters);
+
             // RLS defense-in-depth: populate SESSION_CONTEXT('TenantId') before touching
-            // any Row-Level-Security-protected table. No-ops if the call carries no TenantId.
-            await conn.SetTenantSessionContextAsync(parameters.GetTenantId(), cancellationToken: cancellationToken);
+            // any Row-Level-Security-protected table. No-ops if the call carries no TenantId
+            // (permitted only while enforcement, above, is OFF).
+            await conn.SetTenantSessionContextAsync(tenantId, cancellationToken: cancellationToken);
 
             logger.LogDebug("Query stored procedure {ProcedureName}", procedureName);
             var result = await conn.QueryAsync<T>(procedureName, parameters, commandType: CommandType.StoredProcedure);
@@ -50,10 +59,30 @@ public sealed class DapperQueryExecutor(ISqlConnectionFactory connectionFactory,
     {
         using var conn = connectionFactory.CreateReadConnection();
 
+        var tenantId = RequireTenantIdIfEnforced(procedureName, parameters);
+
         // RLS defense-in-depth: populate SESSION_CONTEXT('TenantId') before touching
-        // any Row-Level-Security-protected table. No-ops if the call carries no TenantId.
-        await conn.SetTenantSessionContextAsync(parameters.GetTenantId(), cancellationToken: cancellationToken);
+        // any Row-Level-Security-protected table. No-ops if the call carries no TenantId
+        // (permitted only while enforcement, above, is OFF).
+        await conn.SetTenantSessionContextAsync(tenantId, cancellationToken: cancellationToken);
 
         return await conn.QuerySingleOrDefaultAsync<T>(procedureName, parameters, commandType: CommandType.StoredProcedure);
+    }
+
+    /// <summary>
+    /// Returns the call's TenantId (or <see cref="Guid.Empty"/> if absent). When
+    /// <see cref="TenantContextPropagationOptions.EnableTenantContextPropagation"/> is ON, absence
+    /// of a TenantId parameter is treated as an unmigrated call site and throws instead of
+    /// silently no-opping -- see <see cref="TenantContextPropagationOptions"/> remarks.
+    /// </summary>
+    private Guid RequireTenantIdIfEnforced(string procedureName, DynamicParameters parameters)
+    {
+        var tenantId = parameters.GetTenantId();
+        if (tenantContextOptions.Value.EnableTenantContextPropagation && tenantId == Guid.Empty)
+        {
+            throw new TenantContextRequiredException(procedureName);
+        }
+
+        return tenantId;
     }
 }

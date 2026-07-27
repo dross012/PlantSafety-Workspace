@@ -23,8 +23,8 @@ using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Common.Results;
 using PlantSafety.Application.Operations.Archival.Models;
 using PlantSafety.Application.Operations.Archival.Queries;
-using PlantSafety.Application.Operations.AuditViewer.Models;
 using PlantSafety.Application.Operations.AuditViewer.Queries;
+using Shared.AuditLogging.Abstractions.Models;
 using PlantSafety.Application.Operations.Backup.Models;
 using PlantSafety.Application.Operations.Backup.Queries;
 using PlantSafety.Application.Operations.Configuration.Models;
@@ -74,7 +74,7 @@ public sealed class GetSystemHealthReportQueryHandlerTests : UnitTestBase
             .Returns(Result<IReadOnlyList<ArchivalJobDto>>.Success([]));
 
         _sender.Send(Arg.Any<SearchAuditLogQuery>(), Arg.Any<CancellationToken>())
-            .Returns(Result<AuditLogSearchResultDto>.Success(new AuditLogSearchResultDto([], 1, 1, 7)));
+            .Returns(Result<AuditLogSearchResult>.Success(new AuditLogSearchResult([], 1, 1, 7)));
 
         _sender.Send(Arg.Any<GetAllFeatureFlagsQuery>(), Arg.Any<CancellationToken>())
             .Returns(Result<IReadOnlyList<FeatureFlagDto>>.Success([]));

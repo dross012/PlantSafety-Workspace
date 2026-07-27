@@ -38,18 +38,21 @@ public sealed class AccidentDapperRepository(
     : IAccidentRepository
 {
     /// <inheritdoc/>
-    public async Task<Accident?> GetByIdAsync(AccidentId id, CancellationToken cancellationToken = default)
+    public async Task<Accident?> GetByIdAsync(AccidentId id, Guid tenantId, CancellationToken cancellationToken = default)
     {
-        logger.LogDebug("GetById for Accident {AccidentId}", id.Value);
+        logger.LogDebug("GetById for Accident {AccidentId} Tenant {TenantId}", id.Value, tenantId);
 
-        var parameters = new StoredProcedureBuilder().AddGuid("AccidentId", id.Value).Build();
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("AccidentId", id.Value)
+            .AddGuid("TenantId", tenantId)
+            .Build();
         var row = await queryExecutor.QuerySingleOrDefaultAsync<AccidentRow>(
             "[AccidentManagement].[usp_Accident_GetById]", parameters, cancellationToken);
 
         if (row is null)
             return null;
 
-        var caRows = await GetCorrectiveActionRowsAsync(id, cancellationToken);
+        var caRows = await GetCorrectiveActionRowsAsync(id, tenantId, cancellationToken);
         return Hydrate(row, caRows);
     }
 
@@ -66,7 +69,7 @@ public sealed class AccidentDapperRepository(
 
         foreach (var row in rows)
         {
-            var caRows = await GetCorrectiveActionRowsAsync(AccidentId.FromGuid(row.AccidentId), cancellationToken);
+            var caRows = await GetCorrectiveActionRowsAsync(AccidentId.FromGuid(row.AccidentId), row.TenantId, cancellationToken);
             var aggregate = Hydrate(row, caRows);
             if (predicate(aggregate))
                 results.Add(aggregate);
@@ -136,6 +139,7 @@ public sealed class AccidentDapperRepository(
 
         var parameters = new StoredProcedureBuilder()
             .AddGuid("AccidentId", aggregate.AccidentId.Value)
+            .AddGuid("TenantId", aggregate.TenantId)
             .AddString("Status", aggregate.Status.ToString(), 30)
             .AddString("Category", aggregate.Category.Code, 100)
             .AddBool("SiteSecuredAndTriaged", aggregate.SiteSecuredAndTriaged)
@@ -179,9 +183,12 @@ public sealed class AccidentDapperRepository(
         tx.Commit();
     }
 
-    private async Task<IReadOnlyList<CorrectiveActionRow>> GetCorrectiveActionRowsAsync(AccidentId id, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<CorrectiveActionRow>> GetCorrectiveActionRowsAsync(AccidentId id, Guid tenantId, CancellationToken cancellationToken)
     {
-        var parameters = new StoredProcedureBuilder().AddGuid("AccidentId", id.Value).Build();
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("AccidentId", id.Value)
+            .AddGuid("TenantId", tenantId)
+            .Build();
         return await queryExecutor.QueryAsync<CorrectiveActionRow>(
             "[AccidentManagement].[usp_CorrectiveAction_GetByAccidentId]", parameters, cancellationToken);
     }

@@ -21,31 +21,28 @@ public sealed class AlertValueObjectTests : UnitTestBase
         AlertStatus.Created.Should().Be(AlertStatus.Created);
 
     [Fact]
-    public void AlertSeverity_AllValues_ShouldBeDefinedInEnum()
-    {
-        var values = Enum.GetValues<AlertSeverity>();
-        values.Should().NotBeEmpty("AlertSeverity must define at least one severity level");
-    }
+    public void AlertSeverity_All_ShouldContainAllFiveLevels() =>
+        AlertSeverity.All.Should().HaveCount(5);
 
     [Fact]
-    public void AlertPriority_AllValues_ShouldBeDefinedInEnum()
-    {
-        var values = Enum.GetValues<AlertPriority>();
-        values.Should().NotBeEmpty("AlertPriority must define at least one priority level");
-    }
+    public void AlertPriority_All_ShouldContainAllFiveLevels() =>
+        AlertPriority.All.Should().HaveCount(5);
 
     [Theory]
-    [InlineData(AlertSeverity.Low)]
-    [InlineData(AlertSeverity.Medium)]
-    [InlineData(AlertSeverity.High)]
-    [InlineData(AlertSeverity.Critical)]
-    public void AlertSeverity_IsDefined(AlertSeverity severity) =>
-        Enum.IsDefined(severity).Should().BeTrue();
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void AlertSeverity_KnownLevel_IsValid(int level) =>
+        AlertSeverity.All.Should().Contain(s => s.Level == level && s.IsValid());
 
     [Theory]
-    [InlineData(AlertPriority.Low)]
-    [InlineData(AlertPriority.Medium)]
-    [InlineData(AlertPriority.High)]
-    public void AlertPriority_IsDefined(AlertPriority priority) =>
-        Enum.IsDefined(priority).Should().BeTrue();
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void AlertPriority_KnownLevel_IsValid(int level) =>
+        AlertPriority.All.Should().Contain(p => p.Level == level && p.IsValid());
 }

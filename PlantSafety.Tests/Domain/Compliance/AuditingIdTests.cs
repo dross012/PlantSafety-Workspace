@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for AuditingId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Compliance.Auditing.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Compliance.Auditing;
 
 public sealed class AuditingIdTests : UnitTestBase

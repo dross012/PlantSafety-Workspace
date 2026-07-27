@@ -9,7 +9,8 @@
 // ============================================================================
 using MediatR;
 using NSubstitute;
-using PlantSafety.Application.Common.Behaviours;
+using PlantSafety.Application.Abstractions.Context;
+using PlantSafety.Application.Behaviors.Logging;
 
 namespace PlantSafety.Tests.Application.Pipeline;
 
@@ -17,11 +18,13 @@ public sealed class LoggingBehaviorTests : UnitTestBase
 {
     private sealed record TestCommand : IRequest<Unit>;
 
+    private static IOperationContext StubOperationContext() => Substitute.For<IOperationContext>();
+
     [Fact]
     public async Task Handle_ShouldCallNext()
     {
         var logger = NullLogger<LoggingBehavior<TestCommand, Unit>>();
-        var behavior = new LoggingBehavior<TestCommand, Unit>(logger);
+        var behavior = new LoggingBehavior<TestCommand, Unit>(logger, StubOperationContext());
         var next = Substitute.For<RequestHandlerDelegate<Unit>>();
         next.Invoke().Returns(Unit.Value);
 
@@ -34,7 +37,7 @@ public sealed class LoggingBehaviorTests : UnitTestBase
     public async Task Handle_ShouldReturnNextResult()
     {
         var logger = NullLogger<LoggingBehavior<TestCommand, Unit>>();
-        var behavior = new LoggingBehavior<TestCommand, Unit>(logger);
+        var behavior = new LoggingBehavior<TestCommand, Unit>(logger, StubOperationContext());
         var next = Substitute.For<RequestHandlerDelegate<Unit>>();
         next.Invoke().Returns(Unit.Value);
 

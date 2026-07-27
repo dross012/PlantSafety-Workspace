@@ -62,27 +62,20 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // ── Service Provider Validation ──────────────────────────────────────────────
-// ValidateOnBuild is intentionally disabled. UPDATE (2026-07-22): the ~151 missing
-// legacy-module repository implementations (Compliance, Analytics, Operational,
-// Integrations, CrossDomain, SafetyEvents, Intelligence, ContinuousImprovement,
-// PlanningProjects, HealthChecks, Financials, Features) referenced in the original version
-// of this comment have all been implemented and wired into DI — that part of the technical
-// debt is closed. What remains, confirmed via a real ValidateOnBuild=true run, is exactly
-// TWO genuine external-infrastructure dependencies with no local stand-in:
-//   - Azure.Storage.Blobs.BlobServiceClient (real Azure Storage account/connection string)
-//   - MassTransit.IBus (real message broker — RabbitMQ/Azure Service Bus)
-// Both require real credentials/infrastructure not present in local dev and are out of
-// scope to fake with a no-op stand-in without a deliberate decision to do so. Disabling
-// ValidateOnBuild moves the handful of handlers that depend on these two services from
-// "blocks the entire app from starting" to "fails only if actually invoked" — their true
-// functional state locally either way. ValidateScopes stays ON, so genuine lifetime-mismatch
-// bugs (e.g. a singleton consuming a scoped service) still fail fast.
-// TODO: stand up local dev equivalents (Azurite for Blob Storage, a local RabbitMQ container
-// or an in-memory IBus stand-in) if local end-to-end testing of blob-export/event-publishing
-// features becomes necessary, then re-enable ValidateOnBuild.
+// ValidateOnBuild is enabled. UPDATE (2026-07-22): both remaining external-infrastructure
+// dependencies (Azure.Storage.Blobs.BlobServiceClient, MassTransit.IBus) now have real local
+// dev backends: Azurite (Docker container "plantsafety-azurite", ports 10000-10002) and
+// RabbitMQ (Docker container "plantsafety-rabbitmq", AMQP on 5672, management UI on 15672).
+// Connection info is config-driven via "BlobStorage:ConnectionString" (defaults to
+// "UseDevelopmentStorage=true", the SDK-recognized Azurite shorthand) and the "RabbitMq"
+// section (Host/Username/Password, defaults to localhost/guest/guest) — see
+// InfrastructureServiceRegistration.cs. Production deployments override both with real
+// Managed-Identity/Azure Service Bus credentials via configuration, not code changes.
+// Both containers must be running for local `dotnet run`/F5 to succeed:
+//   docker start plantsafety-azurite plantsafety-rabbitmq
 builder.Host.UseDefaultServiceProvider(options =>
 {
-    options.ValidateOnBuild = false;
+    options.ValidateOnBuild = true;
     options.ValidateScopes = true;
 });
 

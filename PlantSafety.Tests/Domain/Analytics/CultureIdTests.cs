@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for CultureId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Analytics.Culture.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Analytics.Culture;
 
 public sealed class CultureIdTests : UnitTestBase

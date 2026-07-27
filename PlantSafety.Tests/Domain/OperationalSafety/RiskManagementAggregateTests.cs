@@ -9,9 +9,10 @@
 //  Description:    Unit tests for the RiskManagement aggregate in the OperationalSafety bounded context.
 //                  Isolated, deterministic, <50ms per test. No I/O, no network.
 // ============================================================================
-using PlantSafety.Domain.Operational.RiskManagement.Aggregates;
+using RiskManagementAggregate = PlantSafety.Domain.Operational.RiskManagement.Aggregates.RiskManagement;
 using PlantSafety.Domain.Operational.RiskManagement.Events;
 using PlantSafety.Tests.Common.Extensions;
+using PlantSafety.Domain.Operational.RiskManagement.Enums;
 
 namespace PlantSafety.Tests.OperationalSafety.RiskManagement;
 
@@ -20,27 +21,27 @@ public sealed class RiskManagementAggregateTests : UnitTestBase
 {
     [Fact]
     public void Create_ShouldReturnAggregate() =>
-        RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor)
+        RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor)
                .Should().NotBeNull();
 
     [Fact]
     public void Create_ShouldSetStatusCreated()
     {
-        var agg = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var agg = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         agg.Status.Should().Be(RiskManagementStatus.Created);
     }
 
     [Fact]
     public void Create_ShouldRaiseCreatedEvent()
     {
-        var agg = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var agg = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         agg.DomainEvents.ShouldRaiseSingleEvent<RiskManagementCreatedEvent>();
     }
 
     [Fact]
     public void Create_Event_ShouldHaveSchemaVersion2026()
     {
-        var agg = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var agg = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         var evt = agg.DomainEvents.ShouldRaiseSingleEvent<RiskManagementCreatedEvent>();
         evt.SchemaVersion.Should().Be("2026.1");
     }
@@ -48,28 +49,28 @@ public sealed class RiskManagementAggregateTests : UnitTestBase
     [Fact]
     public void Create_ShouldAssignNonEmptyId()
     {
-        var agg = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var agg = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         agg.RiskManagementId.Value.Should().NotBe(Guid.Empty);
     }
 
     [Fact]
     public void Create_ShouldSetCreatedBy()
     {
-        var agg = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var agg = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         agg.CreatedBy.Should().Be(TestUserId);
     }
 
     [Fact]
     public void Create_ShouldSetCreatedAtUtc()
     {
-        var agg = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var agg = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         agg.CreatedAtUtc.Should().Be(FixedTimestamp);
     }
 
     [Fact]
     public void ClearDomainEvents_ShouldEmptyList()
     {
-        var agg = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var agg = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         agg.ClearDomainEvents();
         agg.DomainEvents.Should().BeEmpty();
     }
@@ -77,15 +78,15 @@ public sealed class RiskManagementAggregateTests : UnitTestBase
     [Fact]
     public void TwoAggregates_ShouldHaveDifferentIds()
     {
-        var a1 = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
-        var a2 = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var a1 = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var a2 = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         a1.RiskManagementId.Should().NotBe(a2.RiskManagementId);
     }
 
     [Fact]
     public void Create_Event_OccurredAtUtc_ShouldMatchTimestamp()
     {
-        var agg = RiskManagement.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
+        var agg = RiskManagementAggregate.Create(TestUserId, FixedTimestamp, TestCorrelationId, TestCausationId, TestActor);
         var evt = agg.DomainEvents.ShouldRaiseSingleEvent<RiskManagementCreatedEvent>();
         evt.OccurredAtUtc.Should().Be(FixedTimestamp);
     }

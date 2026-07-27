@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for DashboardId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Analytics.Dashboard.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Analytics.Dashboard;
 
 public sealed class DashboardIdTests : UnitTestBase

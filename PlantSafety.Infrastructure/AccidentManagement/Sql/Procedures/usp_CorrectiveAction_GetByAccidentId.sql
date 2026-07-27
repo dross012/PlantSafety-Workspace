@@ -13,7 +13,8 @@ USE [PlantSafety.CoreDB];
 GO
 
 CREATE OR ALTER PROCEDURE [AccidentManagement].[usp_CorrectiveAction_GetByAccidentId]
-    @AccidentId UNIQUEIDENTIFIER
+    @AccidentId UNIQUEIDENTIFIER,
+    @TenantId UNIQUEIDENTIFIER
 AS
 SET NOCOUNT ON;
 BEGIN
@@ -21,7 +22,9 @@ BEGIN
         CorrectiveActionId, AccidentId, Category, Description, ResponsiblePersonId, DueAtUtc, Status,
         VerificationSteps, CompletionEvidence, CompletedAtUtc, VerifiedAtUtc, VerifiedBy, CreatedAtUtc
     FROM [AccidentManagement].[CorrectiveAction]
-    WHERE AccidentId = @AccidentId AND IsDeleted = 0
+    -- App-layer tenant scoping (defense-in-depth alongside RLS, per F1 in
+    -- docs\lifecycle\security\rls-audit.md).
+    WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0
     ORDER BY CreatedAtUtc ASC;
 END
 GO

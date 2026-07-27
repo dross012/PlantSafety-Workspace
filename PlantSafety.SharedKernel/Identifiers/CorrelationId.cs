@@ -19,5 +19,7 @@ public readonly record struct CorrelationId
     }
 
     public static CorrelationId New() => new(Uuid7.New());
+    public static CorrelationId FromGuid(Guid value) => new(value);
+    public static CorrelationId Parse(string value) => new(Guid.Parse(value));
     public override string ToString() => Value.ToString("D");
 }

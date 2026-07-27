@@ -16,10 +16,10 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using PlantSafety.Application.Operations.AuditViewer.Handlers;
-using PlantSafety.Application.Operations.AuditViewer.Models;
 using PlantSafety.Application.Operations.AuditViewer.Queries;
-using PlantSafety.Application.Operations.AuditViewer.Repositories;
 using PlantSafety.Tests.Common.TestBase;
+using Shared.AuditLogging.Abstractions.Models;
+using Shared.AuditLogging.Abstractions.Repositories;
 
 using Xunit;
 
@@ -31,7 +31,7 @@ public sealed class SearchAuditLogQueryHandlerTests : UnitTestBase
 
     private SearchAuditLogQueryHandler Sut() => new(_repository, NullLogger<SearchAuditLogQueryHandler>());
 
-    private static AuditLogEntryDto SampleEntry() => new(
+    private static AuditLogEntry SampleEntry() => new(
         "AiGovernance",
         "PlantSafety.CoreDB",
         "INSERT",
@@ -47,7 +47,7 @@ public sealed class SearchAuditLogQueryHandlerTests : UnitTestBase
     [Fact]
     public async Task Handle_ShouldReturnResultFromRepository()
     {
-        var expected = new AuditLogSearchResultDto([SampleEntry()], 1, 50, 1);
+        var expected = new AuditLogSearchResult([SampleEntry()], 1, 50, 1);
         _repository.SearchAsync(Arg.Any<AuditLogSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(expected);
 
         var result = await Sut().Handle(new SearchAuditLogQuery(new AuditLogSearchCriteria()), CancellationToken.None);
@@ -62,7 +62,7 @@ public sealed class SearchAuditLogQueryHandlerTests : UnitTestBase
     {
         var criteria = new AuditLogSearchCriteria(TableName: "AiGovernance", Operation: "INSERT");
         _repository.SearchAsync(criteria, Arg.Any<CancellationToken>())
-            .Returns(new AuditLogSearchResultDto([], 1, 50, 0));
+            .Returns(new AuditLogSearchResult([], 1, 50, 0));
 
         await Sut().Handle(new SearchAuditLogQuery(criteria), CancellationToken.None);
 

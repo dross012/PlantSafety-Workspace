@@ -7,17 +7,19 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for IDomainRule and BusinessRuleValidator base mechanics.
 // ============================================================================
+using PlantSafety.SharedKernel.Validation;
+
 namespace PlantSafety.Tests.Domain.Common;
 
 public sealed class DomainRuleTests : UnitTestBase
 {
-    private sealed class AlwaysPassRule : IDomainRule
+    private sealed class AlwaysPassRule : IBusinessRule
     {
         public bool IsBroken() => false;
         public string Message => "This rule never breaks";
     }
 
-    private sealed class AlwaysFailRule : IDomainRule
+    private sealed class AlwaysFailRule : IBusinessRule
     {
         public bool IsBroken() => true;
         public string Message => "This rule always breaks";
@@ -35,7 +37,7 @@ public sealed class DomainRuleTests : UnitTestBase
     public void CheckRule_WithBrokenRule_ShouldThrow() =>
         FluentActions.Invoking(() => BusinessRuleValidator.Check(
                 new AlwaysFailRule(), TestCorrelationId, TestCausationId))
-                     .Should().Throw<BusinessRuleViolationException>();
+                     .Should().Throw<BusinessRuleValidationException>();
 
     [Fact]
     public void CheckRule_WithPassingRule_ShouldNotThrow() =>

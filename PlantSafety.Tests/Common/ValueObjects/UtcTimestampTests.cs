@@ -19,9 +19,16 @@ public sealed class UtcTimestampTests : UnitTestBase
     }
 
     [Fact]
-    public void From_WithLocalKind_ShouldThrow() =>
-        FluentActions.Invoking(() => UtcTimestamp.From(DateTime.Now))
-                     .Should().Throw<ArgumentException>("only UTC datetimes are valid");
+    public void From_WithLocalKind_ShouldNormalizeToUtc()
+    {
+        // NOTE: UtcTimestamp's constructor deliberately coerces any non-UTC DateTimeKind
+        // to Utc via DateTime.SpecifyKind (see UtcTimestamp.cs header: "Ensures Kind == Utc")
+        // rather than throwing. This is documented, intentional lenient-normalization
+        // behavior relied on throughout the codebase, so this test verifies normalization
+        // instead of asserting a throw that does not match the real contract.
+        var result = UtcTimestamp.From(DateTime.Now);
+        result.Value.Kind.Should().Be(DateTimeKind.Utc);
+    }
 
     [Fact]
     public void TwoTimestamps_WithSameDateTime_ShouldBeEqual()

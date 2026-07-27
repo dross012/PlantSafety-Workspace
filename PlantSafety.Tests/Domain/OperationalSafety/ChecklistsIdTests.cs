@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for ChecklistsId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Operational.Checklists.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.OperationalSafety.Checklists;
 
 public sealed class ChecklistsIdTests : UnitTestBase

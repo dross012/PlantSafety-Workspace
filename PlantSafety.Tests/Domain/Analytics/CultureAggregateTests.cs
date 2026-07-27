@@ -12,6 +12,7 @@
 using PlantSafety.Domain.Analytics.Culture.Aggregates;
 using PlantSafety.Domain.Analytics.Culture.Events;
 using PlantSafety.Tests.Common.Extensions;
+using PlantSafety.Domain.Analytics.Culture.Enums;
 
 namespace PlantSafety.Tests.Domain.Analytics;
 

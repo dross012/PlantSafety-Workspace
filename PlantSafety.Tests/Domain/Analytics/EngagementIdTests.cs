@@ -7,6 +7,8 @@
 //  SchemaVersion:  2026.1
 //  Description:    Unit tests for EngagementId StrongId value object.
 // ============================================================================
+using PlantSafety.Domain.Analytics.Engagement.ValueObjects.Ids;
+
 namespace PlantSafety.Tests.Analytics.Engagement;
 
 public sealed class EngagementIdTests : UnitTestBase

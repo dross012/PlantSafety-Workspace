@@ -13,8 +13,10 @@
 //                  the pre-fix behaviour (no SESSION_CONTEXT set) is denied by RLS.
 //                  Deterministic, parallel-safe, additive-only.
 // ============================================================================
+using Microsoft.Extensions.Options;
 using PlantSafety.IntegrationTests.Common.TestExtensions;
 using PlantSafety.IntegrationTests.Common.TestFixtures;
+using PlantSafety.Infrastructure.Common.Exceptions;
 using PlantSafety.Infrastructure.Persistence.ConnectionFactory;
 using PlantSafety.Infrastructure.Persistence.Dapper;
 using PlantSafety.Infrastructure.Persistence.Dapper.Commands;
@@ -122,6 +124,67 @@ public sealed class TenantSessionContextRlsTests(IntegrationTestWebAppFactory fa
             BEGIN
                 SET NOCOUNT ON;
                 SELECT WidgetId, TenantId, Name FROM [RlsTest].[Widgets];
+            END');
+            """);
+
+        // Mirrors the real AccidentDapperRepository.GetByIdAsync shape exactly: a
+        // GetById-style procedure whose only parameter is the aggregate's own id, with
+        // no @TenantId parameter at all -- because DapperQueryExecutor derives
+        // SESSION_CONTEXT('TenantId') from parameters.GetTenantId(), a call built this
+        // way can never populate SESSION_CONTEXT, regardless of which tenant actually
+        // owns the row being requested.
+        await conn.ExecuteAsync("""
+            IF OBJECT_ID('RlsTest.usp_GetWidgetById', 'P') IS NOT NULL
+                DROP PROCEDURE [RlsTest].[usp_GetWidgetById];
+            """);
+
+        await conn.ExecuteAsync("""
+            EXEC('CREATE PROCEDURE [RlsTest].[usp_GetWidgetById]
+                @WidgetId UNIQUEIDENTIFIER
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+                SELECT WidgetId, TenantId, Name FROM [RlsTest].[Widgets] WHERE WidgetId = @WidgetId;
+            END');
+            """);
+
+        // Mirrors the FIXED AccidentDapperRepository.GetByIdAsync/usp_Accident_GetById shape:
+        // TenantId is now a required parameter, and the WHERE clause enforces it directly
+        // (app-layer defense-in-depth) in addition to whatever RLS does.
+        await conn.ExecuteAsync("""
+            IF OBJECT_ID('RlsTest.usp_GetWidgetByIdScoped', 'P') IS NOT NULL
+                DROP PROCEDURE [RlsTest].[usp_GetWidgetByIdScoped];
+            """);
+
+        await conn.ExecuteAsync("""
+            EXEC('CREATE PROCEDURE [RlsTest].[usp_GetWidgetByIdScoped]
+                @WidgetId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+                SELECT WidgetId, TenantId, Name FROM [RlsTest].[Widgets]
+                WHERE WidgetId = @WidgetId AND TenantId = @TenantId;
+            END');
+            """);
+
+        // Mirrors the FIXED usp_Accident_Update shape: TenantId is a required parameter and
+        // both the existence check and the UPDATE itself are scoped by it.
+        await conn.ExecuteAsync("""
+            IF OBJECT_ID('RlsTest.usp_UpdateWidgetNameScoped', 'P') IS NOT NULL
+                DROP PROCEDURE [RlsTest].[usp_UpdateWidgetNameScoped];
+            """);
+
+        await conn.ExecuteAsync("""
+            EXEC('CREATE PROCEDURE [RlsTest].[usp_UpdateWidgetNameScoped]
+                @WidgetId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Name NVARCHAR(200)
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+                UPDATE [RlsTest].[Widgets] SET Name = @Name
+                WHERE WidgetId = @WidgetId AND TenantId = @TenantId;
             END');
             """);
 
@@ -335,6 +398,289 @@ public sealed class TenantSessionContextRlsTests(IntegrationTestWebAppFactory fa
             "SELECT COUNT(1) FROM [RlsTest].[Widgets] WHERE WidgetId = @widgetId",
             new { widgetId });
         visibleToTenantB.Should().Be(1, "Tenant B's own session context must see the row it inserted");
+    }
+
+    /// <summary>
+    /// Reproduces the exact real-world gap found in the Lifecycle Coverage Audit:
+    /// <c>AccidentDapperRepository.GetByIdAsync</c> (and ~46 other GetById-style
+    /// repositories) builds its <see cref="StoredProcedureBuilder"/> parameters from the
+    /// aggregate id alone -- no <c>TenantId</c> parameter at all. Because
+    /// <see cref="DapperQueryExecutor"/> derives what it feeds
+    /// <see cref="TenantSessionContextExtensions.SetTenantSessionContextAsync"/> via
+    /// <c>parameters.GetTenantId()</c>, a call shaped this way can never populate
+    /// SESSION_CONTEXT('TenantId') -- not for an attacker's tenant, and not even for the
+    /// row's own legitimate owning tenant. Given the predicate's deny-by-default
+    /// behaviour (proved by <see cref="WithoutSessionContext_RlsDeniesAllRows_ProvingTheGapWasReal"/>),
+    /// the practical production consequence of this specific call shape is a silent
+    /// "record not found" outage under RLS, not a cross-tenant leak: this test proves
+    /// that even the tenant that legitimately owns the row cannot retrieve it through
+    /// this shape once RLS is enabled.
+    /// </summary>
+    [Fact]
+    public async Task GetByIdShape_NoTenantIdParameter_ReturnsNoRows_EvenForTheOwningTenant()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var commandExecutor = scope.ServiceProvider.GetRequiredService<DapperCommandExecutor>();
+        var queryExecutor = scope.ServiceProvider.GetRequiredService<DapperQueryExecutor>();
+        var connectionFactory = scope.ServiceProvider.GetRequiredService<ISqlConnectionFactory>();
+
+        // Seed a widget that genuinely belongs to Tenant A, via the correct (TenantId-carrying)
+        // insert shape -- so we know the row exists and who legitimately owns it.
+        var widgetId = Guid.NewGuid();
+        using (var conn = connectionFactory.CreateConnection())
+        using (var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted))
+        {
+            var insert = new StoredProcedureBuilder()
+                .AddGuid("TenantId", TenantA)
+                .AddGuid("WidgetId", widgetId)
+                .AddString("Name", "GetById-Shape Widget")
+                .Build();
+
+            await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_InsertWidget]", insert, tx, commandTimeout: 30);
+            tx.Commit();
+        }
+
+        // Reproduce the real gap: query by id alone, exactly as AccidentDapperRepository.GetByIdAsync
+        // does (StoredProcedureBuilder().AddGuid("AccidentId", id.Value).Build(), no TenantId).
+        var getByIdParameters = new StoredProcedureBuilder()
+            .AddGuid("WidgetId", widgetId)
+            .Build();
+
+        var row = await queryExecutor.QuerySingleOrDefaultAsync<WidgetRow>(
+            "[RlsTest].[usp_GetWidgetById]",
+            getByIdParameters);
+
+        row.Should().BeNull(
+            "the GetById-style call never supplies TenantId, so SESSION_CONTEXT is never populated and " +
+            "the deny-by-default RLS predicate hides the row even from its own legitimate owning tenant");
+    }
+
+    /// <summary>
+    /// Proves the FIXED shape: a GetById-style call that does carry TenantId returns the row
+    /// for its own legitimate tenant. Companion/positive case to
+    /// <see cref="GetByIdShape_NoTenantIdParameter_ReturnsNoRows_EvenForTheOwningTenant"/>.
+    /// </summary>
+    [Fact]
+    public async Task GetByIdShape_WithTenantId_ReturnsCorrectRow()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var commandExecutor = scope.ServiceProvider.GetRequiredService<DapperCommandExecutor>();
+        var queryExecutor = scope.ServiceProvider.GetRequiredService<DapperQueryExecutor>();
+        var connectionFactory = scope.ServiceProvider.GetRequiredService<ISqlConnectionFactory>();
+
+        var widgetId = Guid.NewGuid();
+        using (var conn = connectionFactory.CreateConnection())
+        using (var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted))
+        {
+            var insert = new StoredProcedureBuilder()
+                .AddGuid("TenantId", TenantA)
+                .AddGuid("WidgetId", widgetId)
+                .AddString("Name", "Scoped GetById Widget")
+                .Build();
+            await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_InsertWidget]", insert, tx, commandTimeout: 30);
+            tx.Commit();
+        }
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("WidgetId", widgetId)
+            .AddGuid("TenantId", TenantA)
+            .Build();
+
+        var row = await queryExecutor.QuerySingleOrDefaultAsync<WidgetRow>(
+            "[RlsTest].[usp_GetWidgetByIdScoped]", parameters);
+
+        row.Should().NotBeNull("the fixed shape carries TenantId, so SESSION_CONTEXT is populated and the WHERE clause matches the owning tenant");
+        row!.TenantId.Should().Be(TenantA);
+    }
+
+    /// <summary>
+    /// Proves the FIXED update shape: a caller supplying its own correct TenantId can update its
+    /// own row. Mirrors the fixed <c>usp_Accident_Update</c>/<c>AccidentDapperRepository.UpdateAsync</c>.
+    /// </summary>
+    [Fact]
+    public async Task UpdateByIdShape_WithTenantId_UpdatesOnlyOwnTenant()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var commandExecutor = scope.ServiceProvider.GetRequiredService<DapperCommandExecutor>();
+        var connectionFactory = scope.ServiceProvider.GetRequiredService<ISqlConnectionFactory>();
+
+        var widgetId = Guid.NewGuid();
+        using (var conn = connectionFactory.CreateConnection())
+        using (var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted))
+        {
+            var insert = new StoredProcedureBuilder()
+                .AddGuid("TenantId", TenantA)
+                .AddGuid("WidgetId", widgetId)
+                .AddString("Name", "Before Update")
+                .Build();
+            await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_InsertWidget]", insert, tx, commandTimeout: 30);
+            tx.Commit();
+        }
+
+        using (var conn = connectionFactory.CreateConnection())
+        using (var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted))
+        {
+            var update = new StoredProcedureBuilder()
+                .AddGuid("WidgetId", widgetId)
+                .AddGuid("TenantId", TenantA)
+                .AddString("Name", "After Update")
+                .Build();
+            var rowsAffected = await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_UpdateWidgetNameScoped]", update, tx, commandTimeout: 30);
+            tx.Commit();
+
+            rowsAffected.Should().Be(1, "the owning tenant's correctly-scoped update should affect exactly its own row");
+        }
+
+        await using var verifyConn = new SqlConnection(ConnectionString);
+        await verifyConn.OpenAsync();
+        await verifyConn.SetTenantSessionContextAsync(TenantA);
+        var name = await verifyConn.ExecuteScalarAsync<string>(
+            "SELECT Name FROM [RlsTest].[Widgets] WHERE WidgetId = @widgetId", new { widgetId });
+        name.Should().Be("After Update");
+    }
+
+    /// <summary>
+    /// Proves a cross-tenant update is blocked at the app layer (the WHERE clause itself), not
+    /// merely by RLS: a caller claiming Tenant B's identity cannot update Tenant A's row, even
+    /// though the WidgetId is valid and known.
+    /// </summary>
+    [Fact]
+    public async Task UpdateByIdShape_CrossTenant_ThrowsOrBlocks()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var commandExecutor = scope.ServiceProvider.GetRequiredService<DapperCommandExecutor>();
+        var connectionFactory = scope.ServiceProvider.GetRequiredService<ISqlConnectionFactory>();
+
+        var widgetId = Guid.NewGuid();
+        using (var conn = connectionFactory.CreateConnection())
+        using (var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted))
+        {
+            var insert = new StoredProcedureBuilder()
+                .AddGuid("TenantId", TenantA)
+                .AddGuid("WidgetId", widgetId)
+                .AddString("Name", "Tenant A Owns This")
+                .Build();
+            await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_InsertWidget]", insert, tx, commandTimeout: 30);
+            tx.Commit();
+        }
+
+        using (var conn = connectionFactory.CreateConnection())
+        using (var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted))
+        {
+            // Tenant B attempts to update Tenant A's WidgetId by guessing/reusing the id.
+            var crossTenantUpdate = new StoredProcedureBuilder()
+                .AddGuid("WidgetId", widgetId)
+                .AddGuid("TenantId", TenantB)
+                .AddString("Name", "Hijacked By Tenant B")
+                .Build();
+            var rowsAffected = await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_UpdateWidgetNameScoped]", crossTenantUpdate, tx, commandTimeout: 30);
+            tx.Commit();
+
+            rowsAffected.Should().Be(0, "the WHERE clause requires TenantId = @TenantId, so Tenant B's claim never matches Tenant A's row");
+        }
+
+        await using var verifyConn = new SqlConnection(ConnectionString);
+        await verifyConn.OpenAsync();
+        await verifyConn.SetTenantSessionContextAsync(TenantA);
+        var name = await verifyConn.ExecuteScalarAsync<string>(
+            "SELECT Name FROM [RlsTest].[Widgets] WHERE WidgetId = @widgetId", new { widgetId });
+        name.Should().Be("Tenant A Owns This", "Tenant B's cross-tenant update attempt must not have changed the row");
+    }
+
+    /// <summary>
+    /// Proves the create/insert shape (already correct in production today, per the Lifecycle
+    /// Coverage Audit) continues to scope SESSION_CONTEXT correctly -- named explicitly to match
+    /// the requested flag/RLS test matrix alongside the GetById/Update cases above.
+    /// </summary>
+    [Fact]
+    public async Task CreateShape_WithTenantId_SetsCorrectTenantContext()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var commandExecutor = scope.ServiceProvider.GetRequiredService<DapperCommandExecutor>();
+        var connectionFactory = scope.ServiceProvider.GetRequiredService<ISqlConnectionFactory>();
+
+        var widgetId = Guid.NewGuid();
+        using var conn = connectionFactory.CreateConnection();
+        using var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted);
+
+        var insert = new StoredProcedureBuilder()
+            .AddGuid("TenantId", TenantB)
+            .AddGuid("WidgetId", widgetId)
+            .AddString("Name", "Create Shape Widget")
+            .Build();
+
+        await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_InsertWidget]", insert, tx, commandTimeout: 30);
+        tx.Commit();
+
+        await using var verifyConn = new SqlConnection(ConnectionString);
+        await verifyConn.OpenAsync();
+        await verifyConn.SetTenantSessionContextAsync(TenantB);
+        var count = await verifyConn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM [RlsTest].[Widgets] WHERE WidgetId = @widgetId", new { widgetId });
+        count.Should().Be(1, "the create shape already carries TenantId today, so SESSION_CONTEXT is set correctly and the row is visible under Tenant B's own context");
+    }
+
+    /// <summary>
+    /// Proves the <see cref="TenantContextPropagationOptions.EnableTenantContextPropagation"/>
+    /// rollout switch itself (Phase 2 of the staged remediation): with the flag ON, a call built
+    /// the OLD (broken) way -- no TenantId parameter -- must throw
+    /// <see cref="TenantContextRequiredException"/> immediately, rather than silently returning
+    /// zero rows. This is the "hard verification gate" the flag exists to provide.
+    /// </summary>
+    [Fact]
+    public async Task FeatureFlag_WhenEnabled_ThrowsForCallWithoutTenantId()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var connectionFactory = scope.ServiceProvider.GetRequiredService<ISqlConnectionFactory>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<DapperQueryExecutor>>();
+
+        var enforcingExecutor = new DapperQueryExecutor(
+            connectionFactory,
+            logger,
+            Options.Create(new TenantContextPropagationOptions { EnableTenantContextPropagation = true }));
+
+        var parameters = new StoredProcedureBuilder().AddGuid("WidgetId", Guid.NewGuid()).Build();
+
+        var act = async () => await enforcingExecutor.QuerySingleOrDefaultAsync<WidgetRow>(
+            "[RlsTest].[usp_GetWidgetById]", parameters);
+
+        await act.Should().ThrowAsync<TenantContextRequiredException>(
+            "enforcement is ON and this call carries no TenantId parameter -- exactly the unmigrated shape the flag exists to catch");
+    }
+
+    /// <summary>
+    /// Companion negative case: with the flag OFF (the default, and every DI-resolved
+    /// <see cref="DapperQueryExecutor"/> used elsewhere in this file), the identical
+    /// no-TenantId call must NOT throw -- it preserves today's production behavior exactly
+    /// (silent no-op on SESSION_CONTEXT, deny-by-default RLS still applies once RLS is deployed).
+    /// </summary>
+    [Fact]
+    public async Task FeatureFlag_WhenDisabled_PreservesCurrentBehavior_DoesNotThrow()
+    {
+        await EnsureRlsFixtureAsync();
+
+        using var scope = Factory.Services.CreateScope();
+        var queryExecutor = scope.ServiceProvider.GetRequiredService<DapperQueryExecutor>();
+
+        var parameters = new StoredProcedureBuilder().AddGuid("WidgetId", Guid.NewGuid()).Build();
+
+        var act = async () => await queryExecutor.QuerySingleOrDefaultAsync<WidgetRow>(
+            "[RlsTest].[usp_GetWidgetById]", parameters);
+
+        await act.Should().NotThrowAsync(
+            "the default DI-resolved executor has enforcement OFF, matching production today exactly");
     }
 
     private sealed record WidgetRow(Guid WidgetId, Guid TenantId, string Name);
