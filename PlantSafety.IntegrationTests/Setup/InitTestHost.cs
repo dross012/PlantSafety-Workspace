@@ -43,6 +43,7 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
         await TestDatabaseFactory.ApplyIncidentManagementSchemaAsync(ConnectionString);
         await TestDatabaseFactory.ApplyRiskManagementSchemaAsync(ConnectionString);
         await TestDatabaseFactory.ApplyAccidentManagementSchemaAsync(ConnectionString);
+        await TestDatabaseFactory.ApplyComplianceSchemaAsync(ConnectionString);
         await TestDataSeeder.SeedAsync(ConnectionString);
     }
 

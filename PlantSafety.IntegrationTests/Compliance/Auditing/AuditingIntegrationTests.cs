@@ -32,9 +32,9 @@ public sealed class AuditingIntegrationTests(IntegrationTestWebAppFactory factor
         await using var conn = new SqlConnection(ConnectionString);
         await conn.ExecuteAsync(
             @"INSERT INTO [System].[OutboxMessages]
-                (MessageId, EventType, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
+                (MessageId, EventType, SchemaVersion, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
               VALUES
-                (NEWID(), @EventType, @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
+                (NEWID(), @EventType, N'1.0', @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
             new
             {
                 EventType     = "Compliance.AuditingCreated",
@@ -57,16 +57,16 @@ public sealed class AuditingIntegrationTests(IntegrationTestWebAppFactory factor
 
         await conn.ExecuteAsync(
             @"INSERT INTO [System].[OutboxMessages]
-                (MessageId, EventType, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
+                (MessageId, EventType, SchemaVersion, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
               VALUES
-                (NEWID(), 'Compliance.AuditingCorrelation', @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
+                (NEWID(), 'Compliance.AuditingCorrelation', N'1.0', @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
             new { TenantId, ActorId, CorrelationId = correlationId, Now = FixedUtcNow });
 
-        var storedCorrelationId = await conn.ExecuteScalarAsync<Guid>(
+        var storedCorrelationId = await conn.ExecuteScalarAsync<string>(
             "SELECT TOP 1 CorrelationId FROM [System].[OutboxMessages] WHERE CorrelationId = @CorrelationId",
             new { CorrelationId = correlationId });
 
-        storedCorrelationId.Should().Be(correlationId, "CorrelationId must propagate from command to outbox");
+        Guid.Parse(storedCorrelationId!).Should().Be(correlationId, "CorrelationId must propagate from command to outbox");
     }
 
     [Fact]

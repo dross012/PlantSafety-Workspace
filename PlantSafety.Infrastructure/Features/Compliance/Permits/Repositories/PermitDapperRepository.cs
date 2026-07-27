@@ -9,6 +9,7 @@
 //  Description:    Dapper repository for the Permit aggregate. All DB access via stored procedures.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Features.Compliance.Handlers.Permits;
 
 namespace PlantSafety.Infrastructure.Features.Compliance.Permits.Repositories;
@@ -80,7 +81,13 @@ public sealed class PermitDapperRepository(
             .AddString("ETag", eTag, 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[Compliance].[usp_Permit_Approve]", parameters, tx, cancellationToken: cancellationToken);
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[Compliance].[usp_Permit_Approve]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"Permit {permitId} was modified by another process or the ETag is stale.", correlationId);
+        }
+
         tx.Commit();
     }
 

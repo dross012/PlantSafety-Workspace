@@ -9,6 +9,7 @@
 //  Description:    Dapper repository for the ManagementOfChange aggregate. All DB access via stored procedures.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Features.Compliance.Handlers.ManagementOfChange;
 
 namespace PlantSafety.Infrastructure.Features.Compliance.ManagementOfChange.Repositories;
@@ -82,7 +83,13 @@ public sealed class MocDapperRepository(
             .AddString("ETag", eTag, 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[Compliance].[usp_Moc_Approve]", parameters, tx, cancellationToken: cancellationToken);
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[Compliance].[usp_Moc_Approve]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"MOC {mocId} was modified by another process or the ETag is stale.", correlationId);
+        }
+
         tx.Commit();
     }
 
