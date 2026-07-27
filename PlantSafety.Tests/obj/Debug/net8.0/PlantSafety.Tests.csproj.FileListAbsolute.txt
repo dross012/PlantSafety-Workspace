@@ -228,3 +228,12 @@ C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Polly.Core.
 C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.Authorization.Abstractions.dll
 C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.Authorization.Abstractions.pdb
 C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.Authorization.Abstractions.xml
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.DomainEvents.Abstractions.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.EventBus.Abstractions.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.EventBus.Infrastructure.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.DomainEvents.Abstractions.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.DomainEvents.Abstractions.xml
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.EventBus.Abstractions.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.EventBus.Abstractions.xml
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.EventBus.Infrastructure.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.Tests\bin\Debug\net8.0\Shared.EventBus.Infrastructure.xml

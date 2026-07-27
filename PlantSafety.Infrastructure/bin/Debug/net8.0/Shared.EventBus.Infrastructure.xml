@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Shared.EventBus.Infrastructure</name>
+    </assembly>
+    <members>
+        <member name="T:Shared.EventBus.Infrastructure.DependencyInjection.ServiceCollectionExtensions">
+            <summary>Registration extensions for Shared.EventBus.Infrastructure.</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.DependencyInjection.ServiceCollectionExtensions.AddSharedEventBus(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)">
+            <summary>
+            Registers the SQL-queue-backed event bus: <see cref="T:Shared.EventBus.Abstractions.Contracts.IEventPublisher"/> (SqlEventPublisher),
+            <see cref="T:Shared.EventBus.Infrastructure.Dispatch.IEventSubscriberFactory"/> (SqlEventSubscriberFactory), and the shared
+            <see cref="T:Shared.EventBus.Infrastructure.Dispatch.EventHandlerRegistry"/>. Binds <see cref="T:Shared.EventBus.Infrastructure.Options.EventBusOptions"/> from the
+            "EventBus" configuration section.
+            </summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.DependencyInjection.ServiceCollectionExtensions.AddInMemoryEventBus(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Shared.EventBus.Infrastructure.Options.EventBusOptions})">
+            <summary>
+            Registers the in-memory event bus (tests / local dev without SQL Server). Registers
+            <see cref="T:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus"/> itself (concrete type, for test inspection of
+            PublishedEvents/DeadLetters) as well as <see cref="T:Shared.EventBus.Abstractions.Contracts.IEventPublisher"/>.
+            </summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.DependencyInjection.ServiceCollectionExtensions.AddEventHandler``2(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)">
+            <summary>
+            Registers <typeparamref name="THandler"/> (scoped) as the handler for
+            <typeparamref name="TPayload"/> within <paramref name="consumerGroup"/>, and records
+            its descriptor in the shared <see cref="T:Shared.EventBus.Infrastructure.Dispatch.EventHandlerRegistry"/> so subscribers can
+            dispatch to it purely from the envelope's PayloadType string.
+            </summary>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.Dispatch.EventHandlerDescriptor">
+            <summary>Describes one registered <see cref="T:Shared.EventBus.Abstractions.Handlers.IEventHandler`1"/>.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Dispatch.EventHandlerDescriptor.ConsumerGroup">
+            <summary>The consumer group (module) this handler belongs to.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Dispatch.EventHandlerDescriptor.PayloadTypeName">
+            <summary>The simple CLR type name of the payload this handler accepts (matches <see cref="P:Shared.EventBus.Abstractions.Contracts.EventEnvelope.PayloadType"/>).</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Dispatch.EventHandlerDescriptor.Invoke">
+            <summary>Invokes the handler, resolving it fresh from the given scoped service provider (handlers may have scoped dependencies).</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Dispatch.EventHandlerDescriptor.For``2(System.String)">
+            <summary>
+            Builds a descriptor for <typeparamref name="THandler"/> handling <typeparamref name="TPayload"/>.
+            <paramref name="consumerGroup"/> must equal the value <typeparamref name="THandler"/>.ConsumerGroup
+            returns at runtime -- passed explicitly here (rather than instantiated eagerly) so
+            registration never needs to construct a handler outside its proper DI scope.
+            </summary>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.Dispatch.EventHandlerRegistry">
+            <summary>Holds all registered <see cref="T:Shared.EventBus.Infrastructure.Dispatch.EventHandlerDescriptor"/>s, queryable by consumer group.</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Dispatch.EventHandlerRegistry.Register(Shared.EventBus.Infrastructure.Dispatch.EventHandlerDescriptor)">
+            <summary>Registers a descriptor. Called once per handler type at startup.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Dispatch.EventHandlerRegistry.ConsumerGroups">
+            <summary>All distinct consumer group names with at least one registered handler.</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Dispatch.EventHandlerRegistry.Find(System.String,System.String)">
+            <summary>Finds the descriptor (if any) for the given consumer group + payload type name.</summary>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.Dispatch.IEventSubscriberFactory">
+            <summary>Creates <see cref="T:Shared.EventBus.Abstractions.Handlers.IEventSubscriber"/> instances bound to a specific consumer group.</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Dispatch.IEventSubscriberFactory.Create(System.String)">
+            <summary>Creates (or returns a cached) subscriber for the given consumer group.</summary>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.Dispatch.SqlEventSubscriber">
+            <summary>SQL-queue-backed <see cref="T:Shared.EventBus.Abstractions.Handlers.IEventSubscriber"/> for one consumer group.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Dispatch.SqlEventSubscriber.ConsumerGroup">
+            <inheritdoc/>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Dispatch.SqlEventSubscriber.ProcessDueEventsAsync(System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.Dispatch.SqlEventSubscriberFactory">
+            <inheritdoc cref="T:Shared.EventBus.Infrastructure.Dispatch.IEventSubscriberFactory"/>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Dispatch.SqlEventSubscriberFactory.Create(System.String)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.Exceptions.EventBusException">
+            <summary>Thrown when publishing or dispatching an event fails at the infrastructure level.</summary>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.InMemory.InMemoryDeadLetter">
+            <summary>Represents one dead-lettered event captured by <see cref="T:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus"/>.</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.InMemory.InMemoryDeadLetter.#ctor(System.String,Shared.EventBus.Abstractions.Contracts.EventEnvelope,System.Int32,System.String,System.Boolean)">
+            <summary>Represents one dead-lettered event captured by <see cref="T:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus"/>.</summary>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus">
+            <summary>
+            In-memory, single-process implementation of <see cref="T:Shared.EventBus.Abstractions.Contracts.IEventPublisher"/> and a
+            per-consumer-group <see cref="T:Shared.EventBus.Abstractions.Handlers.IEventSubscriber"/> factory, for tests and local dev.
+            </summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus.PublishedEvents">
+            <summary>All envelopes published so far, in publish order. Test/inspection convenience.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus.DeadLetters">
+            <summary>All dead-lettered envelopes captured across all consumer groups.</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus.PublishAsync(Shared.EventBus.Abstractions.Contracts.EventEnvelope,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus.PublishAsync``1(``0,System.String,System.Guid,System.Guid,System.DateTime,System.String,System.String,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.InMemory.InMemoryEventBus.CreateSubscriber(System.String)">
+            <summary>Creates an in-memory subscriber for the given consumer group.</summary>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.Options.EventBusOptions">
+            <summary>Configuration for the SQL-backed Shared.EventBus transport.</summary>
+        </member>
+        <member name="F:Shared.EventBus.Infrastructure.Options.EventBusOptions.SectionName">
+            <summary>Configuration section name (matches the "Shared:X" convention used by Shared.AuditLogging/Shared.SafetyData).</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Options.EventBusOptions.ConnectionString">
+            <summary>Connection string to the database hosting dbo.EventQueue and related tables.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Options.EventBusOptions.MaxDeliveryAttempts">
+            <summary>Maximum delivery attempts (including the first) before an event is moved to the dead-letter queue.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Options.EventBusOptions.BackoffBaseDelay">
+            <summary>Base delay for exponential backoff between retry attempts.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Options.EventBusOptions.BackoffMaxDelay">
+            <summary>Upper bound applied to the computed exponential backoff delay.</summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Options.EventBusOptions.PoisonMessageRepeatThreshold">
+            <summary>
+            Number of consecutive attempts that all fail with the same exception type/message
+            before the message is flagged <c>IsPoisonMessage = true</c> when dead-lettered
+            (in addition to the ordinary max-attempts dead-letter path).
+            </summary>
+        </member>
+        <member name="P:Shared.EventBus.Infrastructure.Options.EventBusOptions.CommandTimeoutSeconds">
+            <summary>Command timeout, in seconds, applied to queue/dispatch stored-procedure calls.</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Options.EventBusOptions.ComputeBackoff(System.Int32)">
+            <summary>Computes the exponential backoff delay for the given (1-based) attempt number, bounded by <see cref="P:Shared.EventBus.Infrastructure.Options.EventBusOptions.BackoffMaxDelay"/>.</summary>
+        </member>
+        <member name="T:Shared.EventBus.Infrastructure.Persistence.SqlEventPublisher">
+            <summary><see cref="T:Shared.EventBus.Abstractions.Contracts.IEventPublisher"/> that durably enqueues envelopes into dbo.EventQueue.</summary>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Persistence.SqlEventPublisher.PublishAsync(Shared.EventBus.Abstractions.Contracts.EventEnvelope,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Shared.EventBus.Infrastructure.Persistence.SqlEventPublisher.PublishAsync``1(``0,System.String,System.Guid,System.Guid,System.DateTime,System.String,System.String,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+    </members>
+</doc>

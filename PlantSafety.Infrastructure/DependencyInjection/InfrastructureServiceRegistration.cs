@@ -90,6 +90,7 @@ using PlantSafety.Application.Operations.Monitoring.Repositories;
 using PlantSafety.Infrastructure.Operations.Monitoring.Options;
 using PlantSafety.Infrastructure.Operations.Monitoring.Persistence;
 using Shared.AuditLogging.Infrastructure.DependencyInjection;
+using Shared.EventBus.Infrastructure.DependencyInjection;
 using PlantSafety.Application.Operations.Archival.Repositories;
 using PlantSafety.Infrastructure.Operations.Archival.Options;
 using PlantSafety.Infrastructure.Operations.Archival.Persistence;
@@ -168,6 +169,15 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<DapperQueryExecutor>();
         services.AddScoped<IOutboxWriter, OutboxWriter>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Shared.EventBus: cross-module event bus (separate from the intra-module Outbox ->
+        // MassTransit/RabbitMq pipeline registered above, and separate from Shared.AuditLogging).
+        // Binds Shared.EventBus.Infrastructure's SQL-queue-backed IEventPublisher/
+        // IEventSubscriberFactory from the "EventBus" configuration section, then registers
+        // PlantSafety's own relay that maps the curated set of real domain events (see
+        // Messaging\CrossModule\CrossModuleDomainEventMapper.cs) onto that bus.
+        services.AddSharedEventBus(configuration);
+        services.AddScoped<Messaging.CrossModule.ICrossModuleEventRelay, Messaging.CrossModule.CrossModuleEventRelay>();
 
         // Application-layer transactional Unit of Work (consumed by TransactionBehavior<,> for
         // EVERY ICommand). Registered here with the FULLY QUALIFIED interface name -- deliberately

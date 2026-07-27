@@ -1463,6 +1463,51 @@
         "runtime": {
           "bin/placeholder/Shared.AuditLogging.Infrastructure.dll": {}
         }
+      },
+      "Shared.DomainEvents.Abstractions/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/Shared.DomainEvents.Abstractions.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Shared.DomainEvents.Abstractions.dll": {}
+        }
+      },
+      "Shared.EventBus.Abstractions/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Shared.DomainEvents.Abstractions": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Shared.EventBus.Abstractions.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Shared.EventBus.Abstractions.dll": {}
+        }
+      },
+      "Shared.EventBus.Infrastructure/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Dapper": "2.1.79",
+          "Microsoft.Data.SqlClient": "7.0.1",
+          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
+          "Microsoft.Extensions.Hosting.Abstractions": "8.0.1",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.2",
+          "Microsoft.Extensions.Options": "8.0.2",
+          "Microsoft.Extensions.Options.ConfigurationExtensions": "8.0.0",
+          "Shared.DomainEvents.Abstractions": "1.0.0",
+          "Shared.EventBus.Abstractions": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Shared.EventBus.Infrastructure.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Shared.EventBus.Infrastructure.dll": {}
+        }
       }
     }
   },
@@ -3584,6 +3629,21 @@
       "type": "project",
       "path": "../../Shared/AuditLogging/Shared.AuditLogging.Infrastructure/Shared.AuditLogging.Infrastructure.csproj",
       "msbuildProject": "../../Shared/AuditLogging/Shared.AuditLogging.Infrastructure/Shared.AuditLogging.Infrastructure.csproj"
+    },
+    "Shared.DomainEvents.Abstractions/1.0.0": {
+      "type": "project",
+      "path": "../../Shared/EventBus/Shared.DomainEvents.Abstractions/Shared.DomainEvents.Abstractions.csproj",
+      "msbuildProject": "../../Shared/EventBus/Shared.DomainEvents.Abstractions/Shared.DomainEvents.Abstractions.csproj"
+    },
+    "Shared.EventBus.Abstractions/1.0.0": {
+      "type": "project",
+      "path": "../../Shared/EventBus/Shared.EventBus.Abstractions/Shared.EventBus.Abstractions.csproj",
+      "msbuildProject": "../../Shared/EventBus/Shared.EventBus.Abstractions/Shared.EventBus.Abstractions.csproj"
+    },
+    "Shared.EventBus.Infrastructure/1.0.0": {
+      "type": "project",
+      "path": "../../Shared/EventBus/Shared.EventBus.Infrastructure/Shared.EventBus.Infrastructure.csproj",
+      "msbuildProject": "../../Shared/EventBus/Shared.EventBus.Infrastructure/Shared.EventBus.Infrastructure.csproj"
     }
   },
   "projectFileDependencyGroups": {
@@ -3602,6 +3662,8 @@
       "Polly >= 8.5.0",
       "Serilog >= 4.3.0",
       "Shared.AuditLogging.Infrastructure >= 1.0.0",
+      "Shared.DomainEvents.Abstractions >= 1.0.0",
+      "Shared.EventBus.Infrastructure >= 1.0.0",
       "StackExchange.Redis >= 2.13.1"
     ]
   },
@@ -3651,6 +3713,12 @@
             },
             "C:\\Users\\dross\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Infrastructure\\Shared.AuditLogging.Infrastructure.csproj": {
               "projectPath": "C:\\Users\\dross\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Infrastructure\\Shared.AuditLogging.Infrastructure.csproj"
+            },
+            "C:\\Users\\dross\\source\\Shared\\EventBus\\Shared.DomainEvents.Abstractions\\Shared.DomainEvents.Abstractions.csproj": {
+              "projectPath": "C:\\Users\\dross\\source\\Shared\\EventBus\\Shared.DomainEvents.Abstractions\\Shared.DomainEvents.Abstractions.csproj"
+            },
+            "C:\\Users\\dross\\source\\Shared\\EventBus\\Shared.EventBus.Infrastructure\\Shared.EventBus.Infrastructure.csproj": {
+              "projectPath": "C:\\Users\\dross\\source\\Shared\\EventBus\\Shared.EventBus.Infrastructure\\Shared.EventBus.Infrastructure.csproj"
             }
           }
         }

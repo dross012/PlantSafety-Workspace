@@ -201,6 +201,12 @@
          2026-07-26 so Reporting can also consume it; see
          Shared\AuditLogging\docs\README.md. -->
     <ProjectReference Include="..\..\Shared\AuditLogging\Shared.AuditLogging.Infrastructure\Shared.AuditLogging.Infrastructure.csproj" />
+    <!-- Shared.EventBus.Infrastructure: cross-module SQL-queue-backed event bus (separate
+         from Shared.AuditLogging and from this project's own intra-module Outbox ->
+         MassTransit/RabbitMq pipeline). See Messaging\CrossModule\ and
+         Shared\EventBus\docs\README.md. -->
+    <ProjectReference Include="..\..\Shared\EventBus\Shared.EventBus.Infrastructure\Shared.EventBus.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\EventBus\Shared.DomainEvents.Abstractions\Shared.DomainEvents.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
