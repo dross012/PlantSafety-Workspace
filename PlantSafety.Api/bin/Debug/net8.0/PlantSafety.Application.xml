@@ -22451,7 +22451,7 @@
         <member name="T:PlantSafety.Application.Features.Compliance.Handlers.Permits.ApprovePermitCommandHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Features.Compliance.Commands.Permits.Approve.ApprovePermitCommand"/>. Transitions the permit to Active status.</summary>
         </member>
-        <member name="M:PlantSafety.Application.Features.Compliance.Handlers.Permits.ApprovePermitCommandHandler.#ctor(PlantSafety.Application.Features.Compliance.Handlers.Permits.IPermitRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Features.Compliance.Handlers.Permits.ApprovePermitCommandHandler})">
+        <member name="M:PlantSafety.Application.Features.Compliance.Handlers.Permits.ApprovePermitCommandHandler.#ctor(PlantSafety.Application.Features.Compliance.Handlers.Permits.IPermitRepository,PlantSafety.Application.Abstractions.Caching.ICacheService,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Features.Compliance.Handlers.Permits.ApprovePermitCommandHandler})">
             <summary>Initialises dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Features.Compliance.Handlers.Permits.ApprovePermitCommandHandler.Handle(PlantSafety.Application.Features.Compliance.Commands.Permits.Approve.ApprovePermitCommand,System.Threading.CancellationToken)">

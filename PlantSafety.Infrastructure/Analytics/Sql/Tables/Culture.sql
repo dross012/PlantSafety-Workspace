@@ -15,6 +15,14 @@
 --                  though CultureRepository referenced them by name -- CreateCultureCommand could
 --                  never have succeeded against a real database until now.
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-27 -- added RowVersion (native ROWVERSION), following the
+--                  SafetyEvents.Incident/ContinuousImprovement.CorrectiveAction/ProcessManagement.
+--                  Process precedent: the canonical concurrency mechanism for new modules per
+--                  docs/architecture/sql-error-handling-modernization-plan.md Sec.2. No update
+--                  path exists yet for Culture (ICultureRepository is Create/Read-only today), so
+--                  nothing currently enforces it in a WHERE clause -- it is added now so the
+--                  column exists correctly-shaped from day one rather than being retrofitted once
+--                  an UpdateAsync is eventually added.
 -- ============================================================================
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Culture' AND schema_id = SCHEMA_ID('Analytics'))
@@ -30,7 +38,8 @@ BEGIN
         ParticipationRate   DECIMAL(5,2)     NOT NULL,
         TopRiskTheme        NVARCHAR(200)    NOT NULL,
         CreatedAtUtc        DATETIME2(3)     NOT NULL,
-        CreatedBy           UNIQUEIDENTIFIER NOT NULL
+        CreatedBy           UNIQUEIDENTIFIER NOT NULL,
+        RowVersion          ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Culture_TenantId] ON [Analytics].[Culture] (TenantId);
