@@ -2650,6 +2650,7 @@
           "Serilog.Enrichers.Thread": "4.0.0",
           "Serilog.Sinks.Console": "6.1.1",
           "Serilog.Sinks.File": "7.0.0",
+          "Shared.Authorization.Abstractions": "1.0.0",
           "StackExchange.Redis": "2.13.1",
           "Swashbuckle.AspNetCore": "10.1.7",
           "Swashbuckle.AspNetCore.Annotations": "10.1.7"
@@ -2779,6 +2780,17 @@
         },
         "compile": {
           "Shared.AuditLogging.Infrastructure.dll": {}
+        }
+      },
+      "Shared.Authorization.Abstractions/1.0.0": {
+        "runtime": {
+          "Shared.Authorization.Abstractions.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        },
+        "compile": {
+          "Shared.Authorization.Abstractions.dll": {}
         }
       },
       "Microsoft.AspNetCore.Antiforgery/8.0.0.0": {
@@ -5651,6 +5663,11 @@
       "sha512": ""
     },
     "Shared.AuditLogging.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Shared.Authorization.Abstractions/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

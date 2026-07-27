@@ -535,3 +535,6 @@ C:\Users\dross\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\
 C:\Users\dross\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\Shared.AuditLogging.Infrastructure.xml
 C:\Users\dross\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\Polly.dll
 C:\Users\dross\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\Polly.Core.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\Shared.Authorization.Abstractions.dll
+C:\Users\dross\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\Shared.Authorization.Abstractions.pdb
+C:\Users\dross\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\Shared.Authorization.Abstractions.xml

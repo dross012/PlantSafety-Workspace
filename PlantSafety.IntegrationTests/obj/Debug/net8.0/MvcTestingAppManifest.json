@@ -5,5 +5,6 @@
   "PlantSafety.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Infrastructure",
   "PlantSafety.SharedKernel, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel",
   "Shared.AuditLogging.Abstractions, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Abstractions",
-  "Shared.AuditLogging.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Infrastructure"
+  "Shared.AuditLogging.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Infrastructure",
+  "Shared.Authorization.Abstractions, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Users\\dross\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions"
 }

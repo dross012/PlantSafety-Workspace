@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Shared.Authorization.Abstractions</name>
+    </assembly>
+    <members>
+        <member name="T:Shared.Authorization.Abstractions.Policies.SafetyTierPolicies">
+            <summary>
+            Canonical tier-based authorization policy names, registered by
+            PlantSafety.Api.Extensions.AuthorizationPolicyExtensions.AddPlantSafetyPolicies
+            against the matching <see cref="T:Shared.Authorization.Abstractions.Roles.SafetyRoles"/> role sets.
+            </summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Policies.SafetyTierPolicies.Read">
+            <summary>Requires <see cref="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.ViewerAndAbove"/>. Use on GET endpoints.</summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Policies.SafetyTierPolicies.Write">
+            <summary>Requires <see cref="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.EditorAndAbove"/>. Use on standard create/update endpoints.</summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Policies.SafetyTierPolicies.Approve">
+            <summary>Requires <see cref="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.ApproverAndAbove"/>. Use on approve/close/escalate/dispatch/resolve endpoints.</summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Policies.SafetyTierPolicies.Admin">
+            <summary>Requires <see cref="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.AdminOnly"/>. Use on destructive/admin/backup/restore endpoints.</summary>
+        </member>
+        <member name="T:Shared.Authorization.Abstractions.Roles.SafetyRoles">
+            <summary>
+            Canonical role-claim string constants for the Safety domain (PlantSafety and its
+            Reporting sibling). All [Authorize(Roles = ...)] / RequireRole(...) usages across
+            PlantSafety.Api and Reporting.Api should reference these constants instead of
+            inline string literals, to prevent role-name drift across modules.
+            </summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.Viewer">
+            <summary>Read-only access to Safety-domain data. Lowest tier.</summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.Editor">
+            <summary>Create/update access to Safety-domain records (standard write operations).</summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.Approver">
+            <summary>
+            Elevated write access for state-transition operations that carry safety or
+            regulatory weight: approve, close, escalate, dispatch, resolve, reject, cancel.
+            </summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.PlatformAdmin">
+            <summary>
+            Full administrative override. Canonical spelling of the role previously
+            inconsistently written "Platform.Admin" (AuthorizationPolicyExtensions.cs)
+            vs "PlatformAdministrator" (ServiceCollectionExtensions.cs). This constant's
+            value ("Platform.Admin") was chosen because it is the spelling already used by
+            the majority (~140) of per-module policy registrations; the minority usage
+            ("PlatformAdministrator") has been updated to match.
+            </summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.ViewerAndAbove">
+            <summary>Viewer and every tier above it. Use for read (GET) endpoints.</summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.EditorAndAbove">
+            <summary>Editor and every tier above it. Use for standard create/update (POST/PUT) endpoints.</summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.ApproverAndAbove">
+            <summary>Approver and every tier above it. Use for approve/close/escalate/dispatch/resolve endpoints.</summary>
+        </member>
+        <member name="F:Shared.Authorization.Abstractions.Roles.SafetyRoles.AdminOnly">
+            <summary>PlatformAdmin only. Use for destructive (delete), platform-management, and backup/restore endpoints.</summary>
+        </member>
+    </members>
+</doc>
