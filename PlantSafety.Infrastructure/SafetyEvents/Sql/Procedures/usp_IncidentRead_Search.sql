@@ -51,7 +51,7 @@ BEGIN
             ClosedAtUtc,
             LastModifiedByActorId,
             LastModifiedAtUtc,
-            CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag,
+            CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag,
             CreatedAtUtc,
             CreatedBy
         FROM [SafetyEvents].[Incident]

@@ -44,7 +44,7 @@ BEGIN
         WHERE IncidentId = @IncidentId
           AND TenantId = @TenantId
           AND IsDeleted = 0
-          AND CONVERT(NVARCHAR(34), RowVersion, 1) = @ETag;
+          AND CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag;
 
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)

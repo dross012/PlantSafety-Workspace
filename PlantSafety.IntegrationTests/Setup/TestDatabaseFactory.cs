@@ -278,7 +278,7 @@ public static class TestDatabaseFactory
                     WHERE IncidentId = @IncidentId
                       AND TenantId = @TenantId
                       AND IsDeleted = 0
-                      AND CONVERT(NVARCHAR(34), RowVersion, 1) = @ETag;
+                      AND CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag;
 
                     BEGIN TRY
                         INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -326,7 +326,7 @@ public static class TestDatabaseFactory
                     WHERE IncidentId = @IncidentId
                       AND TenantId = @TenantId
                       AND IsDeleted = 0
-                      AND CONVERT(NVARCHAR(34), RowVersion, 1) = @ETag;
+                      AND CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag;
 
                     BEGIN TRY
                         INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -362,7 +362,7 @@ public static class TestDatabaseFactory
                 SELECT
                     IncidentId, TenantId, SiteId, Title, Description, IncidentOccurredAtUtc, ReportedAtUtc,
                     Severity, Status, Location, ReportedByWorkerId, AssignedInvestigatorId, ClosedAtUtc,
-                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag
+                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
                 FROM [SafetyEvents].[Incident]
                 WHERE IncidentId = @IncidentId AND TenantId = @TenantId AND IsDeleted = 0;
             END;");
@@ -387,7 +387,7 @@ public static class TestDatabaseFactory
                 SELECT
                     IncidentId, TenantId, SiteId, Title, Description, IncidentOccurredAtUtc, ReportedAtUtc,
                     Severity, Status, Location, ReportedByWorkerId, AssignedInvestigatorId, ClosedAtUtc,
-                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag
+                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
                 FROM [SafetyEvents].[Incident]
                 WHERE TenantId = @TenantId
                   AND IsDeleted = 0
@@ -425,7 +425,7 @@ public static class TestDatabaseFactory
                 SELECT
                     IncidentId, TenantId, SiteId, Title, Description, IncidentOccurredAtUtc, ReportedAtUtc,
                     Severity, Status, Location, ReportedByWorkerId, AssignedInvestigatorId, ClosedAtUtc,
-                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), RowVersion, 1) AS ETag
+                    LastModifiedByActorId, LastModifiedAtUtc, CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
                 FROM [SafetyEvents].[Incident]
                 WHERE TenantId = @TenantId
                   AND IsDeleted = 0
