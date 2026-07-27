@@ -122,22 +122,6 @@ public static class ServiceCollectionExtensions
             options.AddPolicy("RequireAuthenticatedUser", policy =>
                 policy.RequireAuthenticatedUser());
 
-            // Cross-module read access for dashboards.
-            // NOTE: "PlatformAdministrator" (this policy's admin-override role) was
-            // previously a distinct string literal from "Platform.Admin" used by
-            // every other module policy (see AuthorizationPolicyExtensions.cs) —
-            // the same role, two spellings. Canonicalised to
-            // Shared.Authorization.Abstractions.Roles.SafetyRoles.PlatformAdmin
-            // ("Platform.Admin") to remove that drift. The remaining named roles
-            // (PlantManager, SafetyOfficer, etc.) are legitimate distinct
-            // organisational identities, not tier duplicates, and are left as-is.
-            options.AddPolicy("RequireDashboardRead", policy =>
-                policy.RequireAuthenticatedUser()
-                      .RequireRole(
-                          SafetyRoles.PlatformAdmin, "PlantManager", "SafetyOfficer",
-                          "EnvironmentalEngineer", "Supervisor", "ComplianceAuditor",
-                          "DataScientist", "EsgReportingOfficer", "ReadOnlyAuditor"));
-
             // Registers the four canonical Safety.Tier.* policies plus every
             // per-module *AuthorizationPolicies policy name discovered via
             // reflection. Previously declared but never invoked — see

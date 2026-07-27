@@ -28,12 +28,12 @@ namespace PlantSafety.Tests.Api.Authorization;
 public sealed class AuthorizationPolicyRegistrationTests
 {
     /// <summary>
-    /// Base policies registered directly in ServiceCollectionExtensions.AddPlantSafetyAuthorization
+    /// Base policy registered directly in ServiceCollectionExtensions.AddPlantSafetyAuthorization
     /// rather than via the auto-discovering AddPlantSafetyPolicies() — verified separately
     /// because that method also configures JWT Bearer authentication (external Authority),
     /// which is out of scope for a policy-registration unit test.
     /// </summary>
-    private static readonly string[] BaseAuthPolicies = ["RequireAuthenticatedUser", "RequireDashboardRead"];
+    private static readonly string[] BaseAuthPolicies = ["RequireAuthenticatedUser"];
 
     [Fact]
     public async Task EveryControllerReferencedPolicy_IsRegisteredByAddPlantSafetyPolicies()

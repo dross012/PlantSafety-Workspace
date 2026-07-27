@@ -248,12 +248,11 @@ introduced elsewhere in either repo).
 
 ## 7. Known follow-ups (flagged for manual review, not fixed here)
 
-- `RequireDashboardRead` (`ServiceCollectionExtensions.cs`) is registered
-  but referenced by no controller — likely dead code from an earlier
-  dashboard design. Left in place (canonicalized to `SafetyRoles.PlatformAdmin`
-  rather than removed) since removing unreferenced policy registrations was
-  outside this pass's reviewable change surface; flagged for a follow-up
-  cleanup pass.
+- `RequireDashboardRead` was confirmed dead: no controller referenced it
+  (`DashboardsV1Controller`/`WidgetsV1Controller` use the canonical
+  `SafetyTierPolicies.Read/Write/Approve` instead) and has been removed
+  from `ServiceCollectionExtensions.cs`, along with the corresponding
+  registration in the test harnesses that mirrored it.
 - The `RequireRole(...)` policy builder pattern is explicitly documented in
   `AuthorizationPolicyExtensions.cs` as a placeholder for a future
   claim/permission-based model backed by the Roles bounded context — that

@@ -53,13 +53,10 @@ public sealed class ControllerAuthorizationTierTests
         var services = new ServiceCollection();
         services.AddAuthorization(options =>
         {
-            // Mirrors ServiceCollectionExtensions.AddPlantSafetyAuthorization's two
-            // hand-registered base policies (kept out of AddPlantSafetyPolicies()
+            // Mirrors ServiceCollectionExtensions.AddPlantSafetyAuthorization's
+            // hand-registered base policy (kept out of AddPlantSafetyPolicies()
             // because that method's job is auto-discovery, not base policies).
             options.AddPolicy("RequireAuthenticatedUser", p => p.RequireAuthenticatedUser());
-            options.AddPolicy("RequireDashboardRead", p => p.RequireAuthenticatedUser().RequireRole(
-                SafetyRoles.PlatformAdmin, "PlantManager", "SafetyOfficer", "EnvironmentalEngineer",
-                "Supervisor", "ComplianceAuditor", "DataScientist", "EsgReportingOfficer", "ReadOnlyAuditor"));
             options.AddPlantSafetyPolicies();
         });
         var provider = services.BuildServiceProvider();

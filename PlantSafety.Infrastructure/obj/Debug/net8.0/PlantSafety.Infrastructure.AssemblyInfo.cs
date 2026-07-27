@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PlantSafety.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+593ec48251e7de02a577f5b3aee25a41ea3f5139")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e6cda36356a7367ada18b40bc66be4beb4b3c0fe")]
 [assembly: System.Reflection.AssemblyProductAttribute("PlantSafety.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PlantSafety.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
