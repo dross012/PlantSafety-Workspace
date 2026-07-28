@@ -9,6 +9,12 @@
 --  Description:    Child table backing the Accident.CorrectiveActions collection (CorrectiveAction
 --                  entity, CAPA). TenantId is denormalized from the parent Accident for
 --                  Row-Level-Security discovery/enforcement. Additive-only evolution.
+--  UPDATED:        2026-07-28 (Migration Commander Phase 2, AccidentManagement) -- added a native
+--                  RowVersion ROWVERSION NOT NULL column. This table had no concurrency column at
+--                  all before this pass. Matches the canonical Phase 1/2 pattern (RowVersion
+--                  exposed to callers as ETag via CONVERT(NVARCHAR(34), CAST(RowVersion AS
+--                  BINARY(8)), 1) in usp_CorrectiveAction_GetByAccidentId). Idempotent via
+--                  COL_LENGTH guard; safe to re-run against a database that already has the column.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -35,5 +41,12 @@ BEGIN
     );
 
     CREATE NONCLUSTERED INDEX IX_CorrectiveAction_AccidentId ON [AccidentManagement].[CorrectiveAction] (AccidentId, IsDeleted);
+END
+GO
+
+-- Additive: native ROWVERSION concurrency column. Idempotent.
+IF COL_LENGTH('[AccidentManagement].[CorrectiveAction]', 'RowVersion') IS NULL
+BEGIN
+    ALTER TABLE [AccidentManagement].[CorrectiveAction] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

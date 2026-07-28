@@ -10,6 +10,8 @@
 --                  IAccidentRepository.ListAsync, whose AccidentSpecification predicate is
 --                  applied in-memory over the candidate set returned here.
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-28 -- added ETag, projected from the new RowVersion column the same way
+--                  as usp_Accident_GetById.sql.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -23,7 +25,8 @@ BEGIN
         OccurredAtUtc, Category, SiteSecuredAndTriaged, InvestigatorId, InvestigatorAssignedAtUtc,
         RootCause, RootCauseNotes, RootCauseRecordedAtUtc, RegulatoryFilingRequired, RegulatoryAgency,
         RegulatoryReferenceNumber, RegulatoryFiledAtUtc, ClosedAtUtc, OwnerId, ReviewRequired,
-        CreatedAtUtc, CreatedBy
+        CreatedAtUtc, CreatedBy,
+        CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
     FROM [AccidentManagement].[Accident]
     WHERE IsDeleted = 0;
 END

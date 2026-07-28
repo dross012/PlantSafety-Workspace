@@ -8,6 +8,13 @@
 --  SchemaVersion:  2026.1
 --  Description:    Updates all mutable fields of an Accident aggregate root row. Backs
 --                  IAccidentRepository.UpdateAsync. Additive-only evolution.
+--  UPDATED:        2026-07-28 -- returns the post-update row's ETag (CONVERT(NVARCHAR(34),
+--                  CAST(RowVersion AS BINARY(8)), 1)) via a trailing SELECT so callers have an
+--                  up-to-date ETag immediately after update without a separate round-trip. Schema-
+--                  only: no @ETag input parameter or conflict-rejection logic is introduced here --
+--                  IAccidentRepository.UpdateAsync has no ETag concept to enforce (see
+--                  AccidentDapperRepository.AccidentRow.ETag remarks); the pre-existing
+--                  IF NOT EXISTS/THROW 50004 existence check above is unchanged.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -63,6 +70,10 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+        FROM [AccidentManagement].[Accident]
+        WHERE AccidentId = @AccidentId AND TenantId = @TenantId;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'AccidentId=', @AccidentId, N'; User=', SYSTEM_USER);

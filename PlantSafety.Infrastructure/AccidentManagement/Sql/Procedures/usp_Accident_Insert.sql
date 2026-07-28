@@ -9,6 +9,12 @@
 --  Description:    Inserts a new Accident aggregate root row. Backs IAccidentRepository.AddAsync.
 --                  TRY/CATCH with AuditDB/ErrorDB logging per the canonical write-procedure
 --                  template. Additive-only evolution.
+--  UPDATED:        2026-07-28 -- returns the freshly-inserted row's ETag (CONVERT(NVARCHAR(34),
+--                  CAST(RowVersion AS BINARY(8)), 1)) via a trailing SELECT so callers have an
+--                  up-to-date ETag immediately after insert without a separate round-trip. Schema-
+--                  only: no @ETag input parameter or conflict-rejection logic is introduced here --
+--                  IAccidentRepository.AddAsync has no ETag concept to enforce (see
+--                  AccidentDapperRepository.AccidentRow.ETag remarks).
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -66,6 +72,10 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+        FROM [AccidentManagement].[Accident]
+        WHERE AccidentId = @AccidentId;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'AccidentId=', @AccidentId, N'; User=', SYSTEM_USER);

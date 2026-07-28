@@ -24,7 +24,7 @@ BEGIN
     CREATE TABLE [System].[OutboxMessages] (
         MessageId       UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_OutboxMessages PRIMARY KEY,
         EventType       NVARCHAR(200)    NOT NULL,
-        SchemaVersion   NVARCHAR(50)     NOT NULL,
+        SchemaVersion   NVARCHAR(50)     NOT NULL CONSTRAINT DF_OutboxMessages_SchemaVersion DEFAULT ('2026.1'),
         TenantId        NVARCHAR(100)    NOT NULL,
         ActorId         NVARCHAR(100)    NOT NULL,
         CorrelationId   NVARCHAR(100)    NOT NULL,

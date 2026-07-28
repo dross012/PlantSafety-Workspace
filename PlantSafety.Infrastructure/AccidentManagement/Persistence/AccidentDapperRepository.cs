@@ -279,6 +279,16 @@ public sealed class AccidentDapperRepository(
         public required bool ReviewRequired { get; init; }
         public required DateTime CreatedAtUtc { get; init; }
         public required Guid CreatedBy { get; init; }
+
+        /// <summary>
+        /// Optimistic-concurrency token, projected from the row's native RowVersion column
+        /// (<c>CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1)</c>). Not yet consumed by
+        /// any write path -- the <see cref="Accident"/> aggregate has no ETag concept and
+        /// usp_Accident_Update does not take an @ETag parameter -- present so a future
+        /// optimistic-concurrency pass has it available without another read-model change,
+        /// matching the schema-only precedent set by Analytics.Culture's CultureReadModel.ETag.
+        /// </summary>
+        public string? ETag { get; init; }
     }
 
     /// <summary>Flat read-model row shape returned by <c>usp_CorrectiveAction_GetByAccidentId</c>.</summary>
@@ -297,5 +307,8 @@ public sealed class AccidentDapperRepository(
         public DateTime? VerifiedAtUtc { get; init; }
         public Guid? VerifiedBy { get; init; }
         public required DateTime CreatedAtUtc { get; init; }
+
+        /// <summary>See <see cref="AccidentRow.ETag"/> remarks -- not yet consumed by any write path.</summary>
+        public string? ETag { get; init; }
     }
 }

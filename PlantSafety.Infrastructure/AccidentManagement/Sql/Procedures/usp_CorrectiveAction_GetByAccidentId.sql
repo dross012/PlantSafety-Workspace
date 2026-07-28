@@ -8,6 +8,8 @@
 --  SchemaVersion:  2026.1
 --  Description:    Returns all CorrectiveAction child rows for a given AccidentId.
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-28 -- added ETag, projected from the new RowVersion column the same way
+--                  as usp_Accident_GetById.sql.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -20,7 +22,8 @@ SET NOCOUNT ON;
 BEGIN
     SELECT
         CorrectiveActionId, AccidentId, Category, Description, ResponsiblePersonId, DueAtUtc, Status,
-        VerificationSteps, CompletionEvidence, CompletedAtUtc, VerifiedAtUtc, VerifiedBy, CreatedAtUtc
+        VerificationSteps, CompletionEvidence, CompletedAtUtc, VerifiedAtUtc, VerifiedBy, CreatedAtUtc,
+        CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
     FROM [AccidentManagement].[CorrectiveAction]
     -- App-layer tenant scoping (defense-in-depth alongside RLS, per F1 in
     -- docs\lifecycle\security\rls-audit.md).

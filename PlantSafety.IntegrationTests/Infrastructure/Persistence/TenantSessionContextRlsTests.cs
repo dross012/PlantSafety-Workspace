@@ -68,6 +68,23 @@ public sealed class TenantSessionContextRlsTests(IntegrationTestWebAppFactory fa
             END;
             """);
 
+        // TRUNCATE bypasses row-level security predicates entirely (RLS only applies to
+        // SELECT/UPDATE/DELETE/INSERT, not TRUNCATE), so this reliably resets state between
+        // tests regardless of which tenant's SESSION_CONTEXT (if any) is set on this connection.
+        // Without this, rows from every previous test in the class accumulate in the shared
+        // Testcontainers database, breaking exact-count/ContainSingle assertions in later tests.
+        await conn.ExecuteAsync("TRUNCATE TABLE [RlsTest].[Widgets];");
+
+        // Drop the dependent security policy BEFORE the function it references -- this fixture
+        // runs once per test in the class (idempotent setup) against the same shared
+        // Testcontainers database, so from the second test onward the policy created below
+        // already exists and DROP FUNCTION fails with "is being referenced by object
+        // 'RlsTestWidgetsPolicy'" unless the policy is dropped first.
+        await conn.ExecuteAsync("""
+            IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = 'RlsTestWidgetsPolicy')
+                DROP SECURITY POLICY [Security].[RlsTestWidgetsPolicy];
+            """);
+
         // Mirrors the real Security.fn_TenantAccessPredicate(@TenantId) signature/behaviour.
         await conn.ExecuteAsync("""
             IF OBJECT_ID('Security.fn_TenantAccessPredicate_RlsTest', 'IF') IS NOT NULL
@@ -185,6 +202,7 @@ public sealed class TenantSessionContextRlsTests(IntegrationTestWebAppFactory fa
                 SET NOCOUNT ON;
                 UPDATE [RlsTest].[Widgets] SET Name = @Name
                 WHERE WidgetId = @WidgetId AND TenantId = @TenantId;
+                SELECT @@ROWCOUNT;
             END');
             """);
 
@@ -531,7 +549,7 @@ public sealed class TenantSessionContextRlsTests(IntegrationTestWebAppFactory fa
                 .AddGuid("TenantId", TenantA)
                 .AddString("Name", "After Update")
                 .Build();
-            var rowsAffected = await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_UpdateWidgetNameScoped]", update, tx, commandTimeout: 30);
+            var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[RlsTest].[usp_UpdateWidgetNameScoped]", update, tx, commandTimeout: 30);
             tx.Commit();
 
             rowsAffected.Should().Be(1, "the owning tenant's correctly-scoped update should affect exactly its own row");
@@ -581,7 +599,7 @@ public sealed class TenantSessionContextRlsTests(IntegrationTestWebAppFactory fa
                 .AddGuid("TenantId", TenantB)
                 .AddString("Name", "Hijacked By Tenant B")
                 .Build();
-            var rowsAffected = await commandExecutor.ExecuteAsync(conn, "[RlsTest].[usp_UpdateWidgetNameScoped]", crossTenantUpdate, tx, commandTimeout: 30);
+            var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[RlsTest].[usp_UpdateWidgetNameScoped]", crossTenantUpdate, tx, commandTimeout: 30);
             tx.Commit();
 
             rowsAffected.Should().Be(0, "the WHERE clause requires TenantId = @TenantId, so Tenant B's claim never matches Tenant A's row");

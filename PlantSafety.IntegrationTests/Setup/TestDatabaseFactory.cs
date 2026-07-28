@@ -901,6 +901,14 @@ public static class TestDatabaseFactory
                 CREATE NONCLUSTERED INDEX IX_Accident_TenantId_Site ON [AccidentManagement].[Accident] (TenantId, SiteId, IsDeleted);
             END;");
 
+        // Additive: native ROWVERSION concurrency column, alongside the pre-existing (vestigial,
+        // never read/written outside NEWID() churn) ConcurrencyToken UNIQUEIDENTIFIER column.
+        await conn.ExecuteAsync(@"
+            IF COL_LENGTH('[AccidentManagement].[Accident]', 'RowVersion') IS NULL
+            BEGIN
+                ALTER TABLE [AccidentManagement].[Accident] ADD RowVersion ROWVERSION NOT NULL;
+            END;");
+
         await conn.ExecuteAsync(@"
             IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CorrectiveAction' AND schema_id = SCHEMA_ID('AccidentManagement'))
             BEGIN
@@ -924,6 +932,13 @@ public static class TestDatabaseFactory
                 );
 
                 CREATE NONCLUSTERED INDEX IX_CorrectiveAction_AccidentId ON [AccidentManagement].[CorrectiveAction] (AccidentId, IsDeleted);
+            END;");
+
+        // Additive: native ROWVERSION concurrency column (no prior concurrency column existed).
+        await conn.ExecuteAsync(@"
+            IF COL_LENGTH('[AccidentManagement].[CorrectiveAction]', 'RowVersion') IS NULL
+            BEGIN
+                ALTER TABLE [AccidentManagement].[CorrectiveAction] ADD RowVersion ROWVERSION NOT NULL;
             END;");
 
         await conn.ExecuteAsync(@"
@@ -980,8 +995,18 @@ public static class TestDatabaseFactory
                     END TRY
                     BEGIN CATCH
                     END CATCH;
+
+                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [AccidentManagement].[Accident]
+                    WHERE AccidentId = @AccidentId;
                 END TRY
                 BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'AccidentId=', @AccidentId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
                     THROW;
                 END CATCH
             END;");
@@ -1035,8 +1060,18 @@ public static class TestDatabaseFactory
                     END TRY
                     BEGIN CATCH
                     END CATCH;
+
+                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [AccidentManagement].[Accident]
+                    WHERE AccidentId = @AccidentId AND TenantId = @TenantId;
                 END TRY
                 BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'AccidentId=', @AccidentId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
                     THROW;
                 END CATCH
             END;");
@@ -1053,7 +1088,8 @@ public static class TestDatabaseFactory
                     OccurredAtUtc, Category, SiteSecuredAndTriaged, InvestigatorId, InvestigatorAssignedAtUtc,
                     RootCause, RootCauseNotes, RootCauseRecordedAtUtc, RegulatoryFilingRequired, RegulatoryAgency,
                     RegulatoryReferenceNumber, RegulatoryFiledAtUtc, ClosedAtUtc, OwnerId, ReviewRequired,
-                    CreatedAtUtc, CreatedBy
+                    CreatedAtUtc, CreatedBy,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
                 FROM [AccidentManagement].[Accident]
                 WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0;
             END;");
@@ -1068,7 +1104,8 @@ public static class TestDatabaseFactory
                     OccurredAtUtc, Category, SiteSecuredAndTriaged, InvestigatorId, InvestigatorAssignedAtUtc,
                     RootCause, RootCauseNotes, RootCauseRecordedAtUtc, RegulatoryFilingRequired, RegulatoryAgency,
                     RegulatoryReferenceNumber, RegulatoryFiledAtUtc, ClosedAtUtc, OwnerId, ReviewRequired,
-                    CreatedAtUtc, CreatedBy
+                    CreatedAtUtc, CreatedBy,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
                 FROM [AccidentManagement].[Accident]
                 WHERE IsDeleted = 0;
             END;");
@@ -1129,8 +1166,18 @@ public static class TestDatabaseFactory
                     END TRY
                     BEGIN CATCH
                     END CATCH;
+
+                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [AccidentManagement].[CorrectiveAction]
+                    WHERE CorrectiveActionId = @CorrectiveActionId;
                 END TRY
                 BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CorrectiveActionId=', @CorrectiveActionId, N'; AccidentId=', @AccidentId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
                     THROW;
                 END CATCH
             END;");
@@ -1144,7 +1191,8 @@ public static class TestDatabaseFactory
             BEGIN
                 SELECT
                     CorrectiveActionId, AccidentId, Category, Description, ResponsiblePersonId, DueAtUtc, Status,
-                    VerificationSteps, CompletionEvidence, CompletedAtUtc, VerifiedAtUtc, VerifiedBy, CreatedAtUtc
+                    VerificationSteps, CompletionEvidence, CompletedAtUtc, VerifiedAtUtc, VerifiedBy, CreatedAtUtc,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
                 FROM [AccidentManagement].[CorrectiveAction]
                 WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0
                 ORDER BY CreatedAtUtc ASC;

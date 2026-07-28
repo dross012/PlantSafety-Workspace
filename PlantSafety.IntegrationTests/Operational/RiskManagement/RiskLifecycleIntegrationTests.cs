@@ -96,7 +96,8 @@ public sealed class RiskLifecycleIntegrationTests(IntegrationTestWebAppFactory f
             var applyControlResult = await sender.Send(new ApplyRiskControlMeasureCommand(
                 CommandId: Guid.NewGuid(), CorrelationId: CorrelationId, CausationId: Guid.NewGuid(), RequestedAtUtc: FixedUtcNow,
                 TenantId: TenantId, RiskId: riskId, HierarchyLevel: "EngineeringControls",
-                Description: "Installed fixed machine guard over pinch point.", Justification: null,
+                Description: "Installed fixed machine guard over pinch point.",
+                Justification: "Elimination/substitution not feasible: pinch point is intrinsic to the machine's cutting operation; engineering guard is the highest control level available.",
                 ResponsiblePersonId: responsiblePersonId), CancellationToken.None);
 
             applyControlResult.IsSuccess.Should().BeTrue();

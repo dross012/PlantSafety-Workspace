@@ -10,6 +10,22 @@
 --                  (TenantId NOT NULL uniqueidentifier) so the platform-wide Row-Level-Security
 --                  discovery in 90-row-level-security.sql picks it up automatically.
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-28 (Migration Commander Phase 2, AccidentManagement) -- added a native
+--                  RowVersion ROWVERSION NOT NULL column, additive alongside the pre-existing
+--                  ConcurrencyToken UNIQUEIDENTIFIER DEFAULT (NEWID()) column. Investigation of
+--                  AccidentDapperRepository (both AddAsync/UpdateAsync parameter binding and the
+--                  private AccidentRow read-model) confirms ConcurrencyToken is never read back,
+--                  never bound as a stored-procedure parameter, and never compared in a WHERE
+--                  clause anywhere in the codebase -- it is written (NEWID() on insert, NEWID() on
+--                  every update in usp_Accident_Update) but functionally vestigial/dead as an
+--                  optimistic-concurrency mechanism today. Per additive-only convention it is left
+--                  in place untouched (removing a column is out of scope for this pass and would
+--                  require a validated deletion-discipline gate); RowVersion is the new
+--                  canonical, ROWVERSION-typed concurrency column matching every other Phase 1/2
+--                  module (SafetyEvents.Incident, Analytics.Culture, ProcessManagement.Process,
+--                  etc.), exposed to callers as ETag via CONVERT(NVARCHAR(34), CAST(RowVersion AS
+--                  BINARY(8)), 1) in usp_Accident_GetById/GetAllActive. Idempotent via COL_LENGTH
+--                  guard; safe to re-run against a database that already has the column.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -55,5 +71,13 @@ BEGIN
 
     CREATE NONCLUSTERED INDEX IX_Accident_TenantId_Category ON [AccidentManagement].[Accident] (TenantId, Category, IsDeleted);
     CREATE NONCLUSTERED INDEX IX_Accident_TenantId_Site ON [AccidentManagement].[Accident] (TenantId, SiteId, IsDeleted);
+END
+GO
+
+-- Additive: native ROWVERSION concurrency column, alongside the pre-existing (vestigial)
+-- ConcurrencyToken UNIQUEIDENTIFIER column -- see header comment. Idempotent.
+IF COL_LENGTH('[AccidentManagement].[Accident]', 'RowVersion') IS NULL
+BEGIN
+    ALTER TABLE [AccidentManagement].[Accident] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

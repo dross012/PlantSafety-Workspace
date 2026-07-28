@@ -51,14 +51,26 @@ public sealed class IntegrationEventEnvelopeTests(IntegrationTestWebAppFactory f
     [Fact]
     public async Task OutboxMessage_SchemaVersion_ShouldMatchCanonicalVersion()
     {
+        // [System].[OutboxMessages] is a single shared table across the whole test run (per
+        // IntegrationTestCollection), and dozens of other integration test classes deliberately
+        // seed synthetic rows with a placeholder SchemaVersion ('1.0') unrelated to the real
+        // domain event envelope. An unfiltered "TOP 1" over that table is nondeterministic and
+        // picks up whichever row happens to be first, so this test must be scoped to a row it
+        // owns rather than an arbitrary one from the shared table.
+        var correlationId = Guid.NewGuid();
         await using var conn = new SqlConnection(ConnectionString);
-        var schemaVersion = await conn.ExecuteScalarAsync<string>(
-            "SELECT TOP 1 SchemaVersion FROM [System].[OutboxMessages]");
+        await conn.ExecuteAsync(
+            @"INSERT INTO [System].[OutboxMessages]
+                (MessageId, EventType, TenantId, ActorId, CorrelationId, OccurredAt, Payload)
+              VALUES
+                (NEWID(), 'Events.SchemaVersionCanonicalTest', @TenantId, @ActorId, @CorrelationId, @Now, '{}')",
+            new { TenantId, ActorId, CorrelationId = correlationId, Now = FixedUtcNow });
 
-        if (schemaVersion is not null)
-        {
-            schemaVersion.Should().Be(TestSchemaVersion.Current,
-                "all outbox messages must use the canonical schema version 2026.1");
-        }
+        var schemaVersion = await conn.ExecuteScalarAsync<string>(
+            "SELECT SchemaVersion FROM [System].[OutboxMessages] WHERE CorrelationId = @CorrelationId",
+            new { CorrelationId = correlationId });
+
+        schemaVersion.Should().Be(TestSchemaVersion.Current,
+            "an outbox message inserted without an explicit SchemaVersion must fall back to the canonical default schema version");
     }
 }

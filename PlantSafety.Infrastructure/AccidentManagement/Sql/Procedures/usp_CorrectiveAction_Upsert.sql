@@ -12,6 +12,10 @@
 --                  Accident.CorrectiveActions collection, since CAPA items are never removed
 --                  once created -- only their lifecycle status/evidence changes.
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-28 -- returns the post-upsert row's ETag (CONVERT(NVARCHAR(34),
+--                  CAST(RowVersion AS BINARY(8)), 1)) via a trailing SELECT so callers have an
+--                  up-to-date ETag immediately after insert/update without a separate round-trip.
+--                  Schema-only: no @ETag input parameter or conflict-rejection logic is introduced.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -71,6 +75,10 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+        FROM [AccidentManagement].[CorrectiveAction]
+        WHERE CorrectiveActionId = @CorrectiveActionId;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CorrectiveActionId=', @CorrectiveActionId, N'; AccidentId=', @AccidentId, N'; User=', SYSTEM_USER);

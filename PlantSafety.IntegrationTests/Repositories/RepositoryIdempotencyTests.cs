@@ -51,6 +51,7 @@ public sealed class RepositoryIdempotencyTests(IntegrationTestWebAppFactory fact
     {
         var eventId = Guid.NewGuid();
         await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
         using var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted);
 
         try
