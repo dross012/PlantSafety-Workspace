@@ -621,6 +621,12 @@ public static class TestDatabaseFactory
             END;");
 
         await conn.ExecuteAsync(@"
+            IF COL_LENGTH('[RiskMgmt].[Risk]', 'RowVersion') IS NULL
+            BEGIN
+                ALTER TABLE [RiskMgmt].[Risk] ADD RowVersion ROWVERSION NOT NULL;
+            END;");
+
+        await conn.ExecuteAsync(@"
             IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ControlMeasure' AND schema_id = SCHEMA_ID('RiskMgmt'))
             BEGIN
                 CREATE TABLE [RiskMgmt].[ControlMeasure]
@@ -637,6 +643,12 @@ public static class TestDatabaseFactory
                 );
 
                 CREATE NONCLUSTERED INDEX IX_ControlMeasure_RiskId ON [RiskMgmt].[ControlMeasure] (RiskId, IsDeleted);
+            END;");
+
+        await conn.ExecuteAsync(@"
+            IF COL_LENGTH('[RiskMgmt].[ControlMeasure]', 'RowVersion') IS NULL
+            BEGIN
+                ALTER TABLE [RiskMgmt].[ControlMeasure] ADD RowVersion ROWVERSION NOT NULL;
             END;");
 
         await conn.ExecuteAsync(@"
@@ -691,10 +703,18 @@ public static class TestDatabaseFactory
                     END TRY
                     BEGIN CATCH
                     END CATCH;
+
+                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [RiskMgmt].[Risk]
+                    WHERE RiskId = @RiskId;
                 END TRY
                 BEGIN CATCH
                     DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'RiskId=', @RiskId, N'; User=', SYSTEM_USER);
                     DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
                     THROW;
                 END CATCH
             END;");
@@ -751,8 +771,18 @@ public static class TestDatabaseFactory
                     END TRY
                     BEGIN CATCH
                     END CATCH;
+
+                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [RiskMgmt].[Risk]
+                    WHERE RiskId = @RiskId;
                 END TRY
                 BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'RiskId=', @RiskId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
                     THROW;
                 END CATCH
             END;");
@@ -822,8 +852,18 @@ public static class TestDatabaseFactory
                     END TRY
                     BEGIN CATCH
                     END CATCH;
+
+                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [RiskMgmt].[ControlMeasure]
+                    WHERE ControlMeasureId = @ControlMeasureId;
                 END TRY
                 BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'ControlMeasureId=', @ControlMeasureId, N'; RiskId=', @RiskId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
                     THROW;
                 END CATCH
             END;");
@@ -7130,5 +7170,2107 @@ ORDER BY [ScheduledAtUtc] DESC;
 
     }
 
+    /// <summary>
+    /// Creates the <c>[Financials].[Financials]</c> read-model table + <c>usp_Financials_GetRecords</c>
+    /// (mirroring PlantSafety.Infrastructure\Financials\Sql\Tables\Financials.sql and
+    /// \Procedures\usp_Financials_GetRecords.sql verbatim) and the live ROI write path --
+    /// <c>[Financials].[Roi]</c> + <c>usp_Roi_Create/GetByFiscalYear/List</c> (mirroring
+    /// PlantSafety.Infrastructure\Features\Financials\ROI\Sql\Tables\Roi.sql and
+    /// \Procedures\usp_Roi_*.sql verbatim) -- against the Testcontainers database. Per
+    /// <see cref="ApplyIncidentManagementSchemaAsync"/>'s remarks, the
+    /// <c>[PlantSafety.AuditDB]</c>/<c>[PlantSafety.ErrorDB]</c> three-part prefixes are stripped
+    /// down to <c>dbo.AuditLog</c>/<c>dbo.ErrorLog</c> here, matching the single-database
+    /// Testcontainers topology. Deliberately does NOT create the dead legacy
+    /// <c>[Financials].[usp_Financial_GetById]</c>/RoiCalculation.sql tree (PlantSafety.Infrastructure\
+    /// Financials\Persistence\FinancialsRepository.cs/FinancialsService.cs are registered as concrete
+    /// classes in InfrastructureServiceRegistration but consumed by no Application-layer handler --
+    /// flagged for separate cleanup, out of scope here).
+    /// </summary>
+    public static async Task ApplyFinancialsSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
 
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Financials')
+                EXEC('CREATE SCHEMA [Financials]');");
+
+        // Table: Financials.sql
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Financials' AND schema_id = SCHEMA_ID('Financials'))
+            BEGIN
+                CREATE TABLE [Financials].[Financials] (
+                    RecordId       UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId       UNIQUEIDENTIFIER NOT NULL,
+                    SiteId         UNIQUEIDENTIFIER NULL,
+                    Category       NVARCHAR(50)     NOT NULL,
+                    Amount         DECIMAL(18,2)    NOT NULL,
+                    Status         NVARCHAR(50)     NOT NULL,
+                    RecordedAtUtc  DATETIME2(3)     NOT NULL,
+                    RecordedBy     UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted      BIT              NOT NULL CONSTRAINT DF_Financials_IsDeleted DEFAULT (0),
+                    CreatedAtUtc   DATETIME2(3)     NOT NULL CONSTRAINT DF_Financials_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy      UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc  DATETIME2(3)     NULL,
+                    ModifiedBy     UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_Financials_TenantId_SiteId] ON [Financials].[Financials] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_Financials_RecordedAtUtc] ON [Financials].[Financials] (RecordedAtUtc);
+            END;");
+
+        // Procedure: usp_Financials_GetRecords.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Financials].[usp_Financials_GetRecords]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    RecordId,
+                    TenantId,
+                    SiteId,
+                    Category,
+                    Amount,
+                    Status,
+                    RecordedAtUtc,
+                    RecordedBy
+                FROM [Financials].[Financials]
+                WHERE TenantId = @TenantId
+                  AND IsDeleted = 0
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND RecordedAtUtc >= @FromUtc
+                  AND RecordedAtUtc <= @ToUtc
+                ORDER BY RecordedAtUtc DESC;
+            END;");
+
+        // Table: Features\Financials\ROI\Sql\Tables\Roi.sql
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Roi' AND schema_id = SCHEMA_ID('Financials'))
+            BEGIN
+                CREATE TABLE [Financials].[Roi] (
+                    RoiCalculationId       UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId               UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                 UNIQUEIDENTIFIER NULL,
+                    FiscalYear             INT              NOT NULL,
+                    TotalInvestment        DECIMAL(18,2)    NOT NULL,
+                    EstimatedAvoidedCosts  DECIMAL(18,2)    NOT NULL,
+                    NetBenefit             DECIMAL(18,2)    NOT NULL,
+                    RoiPercentage          DECIMAL(9,4)     NOT NULL,
+                    CurrencyCode           CHAR(3)          NOT NULL,
+                    CalculatedAtUtc        DATETIMEOFFSET(3) NOT NULL,
+                    IsDeleted              BIT              NOT NULL CONSTRAINT DF_Financials_Roi_IsDeleted DEFAULT (0),
+                    CorrelationId          UNIQUEIDENTIFIER NULL,
+                    CreatedAtUtc           DATETIME2(3)     NOT NULL CONSTRAINT DF_Financials_Roi_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy              UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc          DATETIME2(3)     NULL,
+                    ModifiedBy             UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_Financials_Roi_TenantId_SiteId] ON [Financials].[Roi] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_Financials_Roi_FiscalYear] ON [Financials].[Roi] (TenantId, FiscalYear);
+            END;");
+
+        await conn.ExecuteAsync(@"
+            IF COL_LENGTH('[Financials].[Roi]', 'RowVersion') IS NULL
+            BEGIN
+                ALTER TABLE [Financials].[Roi] ADD RowVersion ROWVERSION NOT NULL;
+            END;");
+
+        // Procedure: usp_Roi_Create.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Financials].[usp_Roi_Create]
+                @TenantId               UNIQUEIDENTIFIER,
+                @CorrelationId          UNIQUEIDENTIFIER,
+                @ActorId                UNIQUEIDENTIFIER,
+                @NowUtc                 DATETIME2(3),
+                @RoiCalculationId       UNIQUEIDENTIFIER,
+                @SiteId                 UNIQUEIDENTIFIER = NULL,
+                @FiscalYear             INT,
+                @TotalInvestment        DECIMAL(18,2),
+                @EstimatedAvoidedCosts  DECIMAL(18,2),
+                @NetBenefit             DECIMAL(18,2),
+                @RoiPercentage          DECIMAL(18,2),
+                @CurrencyCode           NVARCHAR(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [Financials].[Roi]
+                        (RoiCalculationId, TenantId, SiteId, FiscalYear, TotalInvestment, EstimatedAvoidedCosts, NetBenefit,
+                         RoiPercentage, CurrencyCode, CalculatedAtUtc, IsDeleted, CorrelationId, CreatedAtUtc, CreatedBy)
+                    VALUES
+                        (@RoiCalculationId, @TenantId, @SiteId, @FiscalYear, @TotalInvestment, @EstimatedAvoidedCosts, @NetBenefit,
+                         @RoiPercentage, @CurrencyCode, SYSDATETIMEOFFSET(), 0, @CorrelationId, @NowUtc, @ActorId);
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'Roi', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'RoiCalculationId=', @RoiCalculationId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [Financials].[Roi]
+                    WHERE RoiCalculationId = @RoiCalculationId;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; RoiCalculationId=', @RoiCalculationId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END;");
+
+        // Procedure: usp_Roi_GetByFiscalYear.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Financials].[usp_Roi_GetByFiscalYear]
+                @TenantId   UNIQUEIDENTIFIER,
+                @SiteId     UNIQUEIDENTIFIER = NULL,
+                @FiscalYear INT
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT TOP (1)
+                    RoiCalculationId,
+                    TenantId,
+                    SiteId,
+                    FiscalYear,
+                    TotalInvestment,
+                    EstimatedAvoidedCosts,
+                    NetBenefit,
+                    RoiPercentage,
+                    CurrencyCode,
+                    CalculatedAtUtc,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                FROM [Financials].[Roi]
+                WHERE TenantId = @TenantId
+                  AND IsDeleted = 0
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND FiscalYear = @FiscalYear
+                ORDER BY CalculatedAtUtc DESC;
+            END;");
+
+        // Procedure: usp_Roi_List.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Financials].[usp_Roi_List]
+                @TenantId      UNIQUEIDENTIFIER,
+                @SiteId        UNIQUEIDENTIFIER = NULL,
+                @OrderBy       NVARCHAR(100) = N'CalculatedAtUtc',
+                @SortDirection NVARCHAR(4)   = N'DESC',
+                @PageNumber    INT,
+                @PageSize      INT
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+                IF @Offset < 0 SET @Offset = 0;
+
+                SELECT
+                    RoiCalculationId,
+                    TenantId,
+                    SiteId,
+                    FiscalYear,
+                    TotalInvestment,
+                    EstimatedAvoidedCosts,
+                    NetBenefit,
+                    RoiPercentage,
+                    CurrencyCode,
+                    CalculatedAtUtc,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag,
+                    COUNT(*) OVER () AS TotalCount
+                FROM [Financials].[Roi]
+                WHERE TenantId = @TenantId
+                  AND IsDeleted = 0
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                ORDER BY
+                    CASE WHEN @OrderBy = N'FiscalYear' AND @SortDirection = N'ASC' THEN FiscalYear END ASC,
+                    CASE WHEN @OrderBy = N'FiscalYear' AND @SortDirection = N'DESC' THEN FiscalYear END DESC,
+                    CASE WHEN @OrderBy = N'RoiPercentage' AND @SortDirection = N'ASC' THEN RoiPercentage END ASC,
+                    CASE WHEN @OrderBy = N'RoiPercentage' AND @SortDirection = N'DESC' THEN RoiPercentage END DESC,
+                    CASE WHEN (@OrderBy NOT IN (N'FiscalYear', N'RoiPercentage') OR @OrderBy IS NULL) AND @SortDirection = N'ASC' THEN CalculatedAtUtc END ASC,
+                    CASE WHEN (@OrderBy NOT IN (N'FiscalYear', N'RoiPercentage') OR @OrderBy IS NULL) AND @SortDirection <> N'ASC' THEN CalculatedAtUtc END DESC
+                OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+            END;");
+    }
+
+    /// <summary>
+    /// Creates the <c>[PlanningProjects].[PlanningProjects]</c> read-model table +
+    /// <c>usp_PlanningProjects_GetProjects</c> (mirroring PlantSafety.Infrastructure\PlanningProjects\
+    /// Sql\Tables\PlanningProjects.sql and \Procedures\usp_PlanningProjects_GetProjects.sql verbatim)
+    /// and the live SafetyProject write path -- <c>[PlanningProjects].[Project]</c> +
+    /// usp_Project_Create/GetById (mirroring PlantSafety.Infrastructure\Features\PlanningProjects\
+    /// Projects\Sql\Tables\Project.sql and \Procedures\usp_Project_*.sql verbatim) -- against the
+    /// Testcontainers database. Per <see cref="ApplyIncidentManagementSchemaAsync"/>'s remarks, the
+    /// <c>[PlantSafety.AuditDB]</c>/<c>[PlantSafety.ErrorDB]</c> three-part prefixes are stripped
+    /// down to <c>dbo.AuditLog</c>/<c>dbo.ErrorLog</c> here, matching the single-database
+    /// Testcontainers topology. Deliberately does NOT create the dead legacy
+    /// <c>PlanningProjects\Sql\Tables\Projects.sql</c> / <c>\Procedures\usp_Project_Insert.sql</c>
+    /// tree (both are unimplemented "TODO" template stubs, never bound to any repository -- flagged
+    /// separately, out of scope here) nor the concrete
+    /// <c>PlantSafety.Infrastructure\PlanningProjects\Persistence\PlanningProjectsRepository.cs</c> /
+    /// <c>Services\PlanningProjectsService.cs</c> classes (registered directly in
+    /// InfrastructureServiceRegistration but consumed by no Application-layer handler -- likewise
+    /// flagged separately).
+    /// </summary>
+    public static async Task ApplyPlanningProjectsSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        // Schema
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'PlanningProjects')
+                EXEC('CREATE SCHEMA [PlanningProjects]');");
+
+        // Table: PlanningProjects.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PlanningProjects' AND schema_id = SCHEMA_ID('PlanningProjects'))
+            BEGIN
+                CREATE TABLE [PlanningProjects].[PlanningProjects] (
+                    ProjectId             UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId              UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                UNIQUEIDENTIFIER NULL,
+                    Name                  NVARCHAR(200)    NOT NULL,
+                    Status                NVARCHAR(50)     NOT NULL,
+                    TargetCompletionUtc   DATETIME2(3)     NOT NULL,
+                    OwnerId               UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted             BIT              NOT NULL CONSTRAINT DF_PlanningProjects_IsDeleted DEFAULT (0),
+                    CreatedAtUtc          DATETIME2(3)     NOT NULL CONSTRAINT DF_PlanningProjects_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy             UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc         DATETIME2(3)     NULL,
+                    ModifiedBy            UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_PlanningProjects_TenantId_SiteId] ON [PlanningProjects].[PlanningProjects] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_PlanningProjects_TargetCompletionUtc] ON [PlanningProjects].[PlanningProjects] (TargetCompletionUtc);
+            END");
+
+        // Procedure: usp_PlanningProjects_GetProjects.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [PlanningProjects].[usp_PlanningProjects_GetProjects]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    ProjectId,
+                    TenantId,
+                    SiteId,
+                    Name,
+                    Status,
+                    TargetCompletionUtc,
+                    OwnerId
+                FROM [PlanningProjects].[PlanningProjects]
+                WHERE TenantId = @TenantId
+                  AND IsDeleted = 0
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND TargetCompletionUtc >= @FromUtc
+                  AND TargetCompletionUtc <= @ToUtc
+                ORDER BY TargetCompletionUtc DESC;
+            END;");
+
+        // Table: Features\PlanningProjects\Projects\Sql\Tables\Project.sql
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Project' AND schema_id = SCHEMA_ID('PlanningProjects'))
+            BEGIN
+                CREATE TABLE [PlanningProjects].[Project] (
+                    ProjectId            UNIQUEIDENTIFIER  NOT NULL PRIMARY KEY,
+                    TenantId             UNIQUEIDENTIFIER  NOT NULL,
+                    SiteId               UNIQUEIDENTIFIER  NOT NULL,
+                    Name                 NVARCHAR(200)     NOT NULL,
+                    Description          NVARCHAR(4000)    NOT NULL,
+                    Status               NVARCHAR(30)      NOT NULL CONSTRAINT DF_Project_Status DEFAULT (N'Draft'),
+                    Priority             NVARCHAR(20)      NOT NULL,
+                    ProjectOwnerId       UNIQUEIDENTIFIER  NOT NULL,
+                    ProjectManagerId     UNIQUEIDENTIFIER  NULL,
+                    PlannedStartUtc      DATETIMEOFFSET(3) NOT NULL,
+                    PlannedEndUtc        DATETIMEOFFSET(3) NOT NULL,
+                    ActualStartUtc       DATETIMEOFFSET(3) NULL,
+                    ActualEndUtc         DATETIMEOFFSET(3) NULL,
+                    PlannedBudget        DECIMAL(18,2)     NULL,
+                    OpenMilestoneCount   INT               NOT NULL CONSTRAINT DF_Project_OpenMilestoneCount DEFAULT (0),
+                    LastModifiedAtUtc    DATETIMEOFFSET(3) NOT NULL,
+                    IsDeleted            BIT               NOT NULL CONSTRAINT DF_Project_IsDeleted DEFAULT (0),
+                    CorrelationId        UNIQUEIDENTIFIER  NULL,
+                    CreatedAtUtc         DATETIME2(3)      NOT NULL CONSTRAINT DF_Project_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy            UNIQUEIDENTIFIER  NULL,
+                    ModifiedAtUtc        DATETIME2(3)      NULL,
+                    ModifiedBy           UNIQUEIDENTIFIER  NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_Project_TenantId_SiteId] ON [PlanningProjects].[Project] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_Project_TenantId_Status] ON [PlanningProjects].[Project] (TenantId, Status);
+            END");
+
+        await conn.ExecuteAsync(@"
+            IF COL_LENGTH('[PlanningProjects].[Project]', 'RowVersion') IS NULL
+            BEGIN
+                ALTER TABLE [PlanningProjects].[Project] ADD RowVersion ROWVERSION NOT NULL;
+            END");
+
+        // Procedure: usp_Project_Create.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [PlanningProjects].[usp_Project_Create]
+                @TenantId          UNIQUEIDENTIFIER,
+                @CorrelationId     UNIQUEIDENTIFIER,
+                @ActorId           UNIQUEIDENTIFIER,
+                @NowUtc            DATETIME2(3),
+                @ProjectId         UNIQUEIDENTIFIER,
+                @SiteId            UNIQUEIDENTIFIER,
+                @Name              NVARCHAR(200),
+                @Description       NVARCHAR(4000),
+                @Priority          NVARCHAR(20),
+                @ProjectOwnerId    UNIQUEIDENTIFIER,
+                @ProjectManagerId  UNIQUEIDENTIFIER = NULL,
+                @PlannedStartUtc   DATETIME2(3),
+                @PlannedEndUtc     DATETIME2(3),
+                @PlannedBudget     DECIMAL(18,2) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [PlanningProjects].[Project]
+                        (ProjectId, TenantId, SiteId, Name, Description, Status, Priority, ProjectOwnerId, ProjectManagerId,
+                         PlannedStartUtc, PlannedEndUtc, ActualStartUtc, ActualEndUtc, PlannedBudget, OpenMilestoneCount,
+                         LastModifiedAtUtc, IsDeleted, CorrelationId, CreatedAtUtc, CreatedBy)
+                    VALUES
+                        (@ProjectId, @TenantId, @SiteId, @Name, @Description, N'Draft', @Priority, @ProjectOwnerId, @ProjectManagerId,
+                         @PlannedStartUtc, @PlannedEndUtc, NULL, NULL, @PlannedBudget, 0,
+                         @NowUtc, 0, @CorrelationId, @NowUtc, @ActorId);
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'Project', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'ProjectId=', @ProjectId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [PlanningProjects].[Project]
+                    WHERE ProjectId = @ProjectId;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; ProjectId=', @ProjectId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END;");
+
+        // Procedure: usp_Project_GetById.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [PlanningProjects].[usp_Project_GetById]
+                @TenantId  UNIQUEIDENTIFIER,
+                @ProjectId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    ProjectId,
+                    TenantId,
+                    SiteId,
+                    Name,
+                    Description,
+                    Status,
+                    Priority,
+                    ProjectOwnerId,
+                    ProjectManagerId,
+                    PlannedStartUtc,
+                    PlannedEndUtc,
+                    ActualStartUtc,
+                    ActualEndUtc,
+                    PlannedBudget,
+                    OpenMilestoneCount,
+                    LastModifiedAtUtc,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                FROM [PlanningProjects].[Project]
+                WHERE ProjectId = @ProjectId
+                  AND TenantId = @TenantId
+                  AND IsDeleted = 0;
+            END;");
+    }
+
+    /// <summary>
+    /// Creates the <c>[ContinuousImprovement]</c> schema's four tables + six stored procedures
+    /// against the Testcontainers database, mirroring the real
+    /// <c>PlantSafety.Infrastructure\ContinuousImprovement\Sql\Tables\{CAPA,RCA,CorrectiveAction}.sql</c>
+    /// and <c>\Procedures\usp_{CAPA_GetActions,RCA_GetRcaRecords,
+    /// ContinuousImprovementExportItems_List,CorrectiveAction_Create,CorrectiveAction_GetById,
+    /// CorrectiveAction_List}.sql</c> verbatim.
+    ///
+    /// Three distinctly-scoped tables/procedures live in this one schema -- do not conflate them:
+    ///   1. <c>[ContinuousImprovement].[CAPA]</c> / <c>usp_CAPA_GetActions</c> -- read-only,
+    ///      backs <c>ICAPARepository.GetActionsAsync</c> / <c>CAPADapperRepository</c>. No C# write
+    ///      path exists for this table.
+    ///   2. <c>[ContinuousImprovement].[RCA]</c> / <c>usp_RCA_GetRcaRecords</c> -- read-only,
+    ///      backs <c>IRCARepository.GetRcaRecordsAsync</c> / <c>RCADapperRepository</c>. No C# write
+    ///      path exists for this table either.
+    ///   3. <c>[ContinuousImprovement].[CorrectiveAction]</c> / <c>usp_CorrectiveAction_Create/
+    ///      GetById/List</c> -- the ONLY real write path in this module, backing
+    ///      <c>ICorrectiveActionRepository</c> / <c>CorrectiveActionDapperRepository</c>
+    ///      (PlantSafety.Infrastructure.Features.ContinuousImprovement.CAPA.Repositories, wired via
+    ///      AddFeaturesLegacyRepositories()). This table is DISTINCT from both
+    ///      <c>[ContinuousImprovement].[CAPA]</c> above and from
+    ///      <c>[AccidentManagement].[CorrectiveAction]</c> (an unrelated child entity of Accident,
+    ///      already modernized in Phase 2 -- see <see cref="ApplyAccidentManagementSchemaAsync"/>).
+    ///      Confirmed already fully canonical as of this pass's SQL audit: RowVersion ROWVERSION
+    ///      column present and genuinely live (not vestigial), ETag projected via
+    ///      CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) in both GetById and List,
+    ///      usp_CorrectiveAction_Create already has TRY/CATCH + AuditLog INSERT (best-effort, own
+    ///      nested TRY/CATCH) + CATCH-block ErrorLog INSERT + THROW. No SQL changes were required;
+    ///      this method only makes the pre-existing real schema testable. Per
+    ///      <see cref="ApplyIncidentManagementSchemaAsync"/>'s remarks, the
+    ///      <c>[PlantSafety.AuditDB]</c>/<c>[PlantSafety.ErrorDB]</c> three-part prefixes are
+    ///      stripped down to <c>dbo.AuditLog</c>/<c>dbo.ErrorLog</c> here, matching the
+    ///      single-database Testcontainers topology.
+    ///
+    /// Export (<c>usp_ContinuousImprovementExportItems_List</c>) is a read-only UNION ALL over CAPA
+    /// and RCA, backing <c>IExportContinuousImprovementRepository.GenerateExportAsync</c> /
+    /// <c>ExportContinuousImprovementDapperRepository</c> (uploads via IBlobStorageService to
+    /// Azurite -- no additional schema needed beyond CAPA/RCA).
+    /// </summary>
+    public static async Task ApplyContinuousImprovementSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        // Schema
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'ContinuousImprovement')
+                EXEC('CREATE SCHEMA [ContinuousImprovement]');");
+
+        // Table: ContinuousImprovement\Sql\Tables\CAPA.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CAPA' AND schema_id = SCHEMA_ID('ContinuousImprovement'))
+            BEGIN
+                CREATE TABLE [ContinuousImprovement].[CAPA] (
+                    CapaId        UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId      UNIQUEIDENTIFIER NOT NULL,
+                    SiteId        UNIQUEIDENTIFIER NULL,
+                    ActionType    NVARCHAR(20)     NOT NULL,
+                    Title         NVARCHAR(200)    NOT NULL,
+                    Status        NVARCHAR(50)     NOT NULL,
+                    DueDateUtc    DATETIME2(3)     NOT NULL,
+                    AssignedTo    UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted     BIT              NOT NULL CONSTRAINT DF_CAPA_IsDeleted DEFAULT (0),
+                    CreatedAtUtc  DATETIME2(3)     NOT NULL CONSTRAINT DF_CAPA_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy     UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc DATETIME2(3)     NULL,
+                    ModifiedBy    UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_CAPA_TenantId_SiteId] ON [ContinuousImprovement].[CAPA] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_CAPA_DueDateUtc] ON [ContinuousImprovement].[CAPA] (DueDateUtc);
+            END");
+
+        // Procedure: usp_CAPA_GetActions.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CAPA_GetActions]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    CapaId,
+                    TenantId,
+                    SiteId,
+                    ActionType,
+                    Title,
+                    Status,
+                    DueDateUtc,
+                    AssignedTo
+                FROM [ContinuousImprovement].[CAPA]
+                WHERE TenantId = @TenantId
+                  AND IsDeleted = 0
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND DueDateUtc >= @FromUtc
+                  AND DueDateUtc <= @ToUtc
+                ORDER BY DueDateUtc DESC;
+            END");
+
+        // Table: ContinuousImprovement\Sql\Tables\RCA.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'RCA' AND schema_id = SCHEMA_ID('ContinuousImprovement'))
+            BEGIN
+                CREATE TABLE [ContinuousImprovement].[RCA] (
+                    RcaId             UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId          UNIQUEIDENTIFIER NOT NULL,
+                    SiteId            UNIQUEIDENTIFIER NULL,
+                    ProblemStatement  NVARCHAR(MAX)    NOT NULL,
+                    Methodology       NVARCHAR(50)     NOT NULL,
+                    Status            NVARCHAR(50)     NOT NULL,
+                    InitiatedAtUtc    DATETIME2(3)     NOT NULL,
+                    OwnerUserId       UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted         BIT              NOT NULL CONSTRAINT DF_RCA_IsDeleted DEFAULT (0),
+                    CreatedAtUtc      DATETIME2(3)     NOT NULL CONSTRAINT DF_RCA_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy         UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc     DATETIME2(3)     NULL,
+                    ModifiedBy        UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_RCA_TenantId_SiteId] ON [ContinuousImprovement].[RCA] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_RCA_InitiatedAtUtc] ON [ContinuousImprovement].[RCA] (InitiatedAtUtc);
+            END");
+
+        // Procedure: usp_RCA_GetRcaRecords.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_RCA_GetRcaRecords]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    RcaId,
+                    TenantId,
+                    SiteId,
+                    ProblemStatement,
+                    Methodology,
+                    Status,
+                    InitiatedAtUtc,
+                    OwnerUserId
+                FROM [ContinuousImprovement].[RCA]
+                WHERE TenantId = @TenantId
+                  AND IsDeleted = 0
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND InitiatedAtUtc >= @FromUtc
+                  AND InitiatedAtUtc <= @ToUtc
+                ORDER BY InitiatedAtUtc DESC;
+            END");
+
+        // Procedure: usp_ContinuousImprovementExportItems_List.sql (read-only UNION ALL of CAPA + RCA)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_ContinuousImprovementExportItems_List]
+                @TenantId    UNIQUEIDENTIFIER,
+                @SiteId      UNIQUEIDENTIFIER = NULL,
+                @FromUtc     DATETIME2(3) = NULL,
+                @ToUtc       DATETIME2(3),
+                @Status      NVARCHAR(50) = NULL,
+                @MaxRecords  INT
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT TOP (@MaxRecords) *
+                FROM (
+                    SELECT
+                        CapaId       AS Id,
+                        'CAPA'       AS ResourceType,
+                        CapaId       AS ResourceId,
+                        Title        AS Title,
+                        Status       AS Status,
+                        DueDateUtc   AS EffectiveAtUtc,
+                        AssignedTo   AS OwnerId,
+                        SiteId,
+                        TenantId
+                    FROM [ContinuousImprovement].[CAPA]
+                    WHERE TenantId = @TenantId
+                      AND IsDeleted = 0
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND (@FromUtc IS NULL OR DueDateUtc >= @FromUtc)
+                      AND DueDateUtc <= @ToUtc
+                      AND (@Status IS NULL OR Status = @Status)
+
+                    UNION ALL
+
+                    SELECT
+                        RcaId                                   AS Id,
+                        'RCA'                                    AS ResourceType,
+                        RcaId                                    AS ResourceId,
+                        LEFT(ProblemStatement, 200)               AS Title,
+                        Status                                    AS Status,
+                        InitiatedAtUtc                            AS EffectiveAtUtc,
+                        OwnerUserId                               AS OwnerId,
+                        SiteId,
+                        TenantId
+                    FROM [ContinuousImprovement].[RCA]
+                    WHERE TenantId = @TenantId
+                      AND IsDeleted = 0
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND (@FromUtc IS NULL OR InitiatedAtUtc >= @FromUtc)
+                      AND InitiatedAtUtc <= @ToUtc
+                      AND (@Status IS NULL OR Status = @Status)
+                ) AS Combined
+                ORDER BY EffectiveAtUtc DESC;
+            END");
+
+        // Table: Features\ContinuousImprovement\CAPA\Sql\Tables\CorrectiveAction.sql -- the ONLY real
+        // write path in this module (see method-level remarks above). Already includes RowVersion.
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CorrectiveAction' AND schema_id = SCHEMA_ID('ContinuousImprovement'))
+            BEGIN
+                CREATE TABLE [ContinuousImprovement].[CorrectiveAction] (
+                    CaId                   UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId               UNIQUEIDENTIFIER NOT NULL,
+                    SourceEventId          UNIQUEIDENTIFIER NOT NULL,
+                    SourceEventType        NVARCHAR(100)    NOT NULL,
+                    Title                  NVARCHAR(200)    NOT NULL,
+                    Description            NVARCHAR(4000)   NOT NULL,
+                    ActionType             NVARCHAR(50)     NOT NULL,
+                    Priority               NVARCHAR(50)     NOT NULL,
+                    AssignedToWorkerId     UNIQUEIDENTIFIER NOT NULL,
+                    DueAtUtc               DATETIME2(3)     NOT NULL,
+                    Status                 NVARCHAR(50)     NOT NULL CONSTRAINT DF_CorrectiveAction_Status DEFAULT (N'Open'),
+                    CompletedAtUtc         DATETIME2(3)     NULL,
+                    IsDeleted              BIT              NOT NULL CONSTRAINT DF_CorrectiveAction_IsDeleted DEFAULT (0),
+                    DeletedAtUtc           DATETIME2(3)     NULL,
+                    DeletionReason         NVARCHAR(400)    NULL,
+                    LastModifiedByActorId  UNIQUEIDENTIFIER NULL,
+                    LastModifiedAtUtc      DATETIME2(3)     NOT NULL CONSTRAINT DF_CorrectiveAction_LastModifiedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedAtUtc           DATETIME2(3)     NOT NULL CONSTRAINT DF_CorrectiveAction_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy              UNIQUEIDENTIFIER NULL,
+                    RowVersion             ROWVERSION       NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_CorrectiveAction_TenantId_SourceEventId] ON [ContinuousImprovement].[CorrectiveAction] (TenantId, SourceEventId);
+                CREATE NONCLUSTERED INDEX [IX_CorrectiveAction_TenantId_Status_DueAtUtc] ON [ContinuousImprovement].[CorrectiveAction] (TenantId, Status, DueAtUtc);
+            END");
+
+        // Procedure: usp_CorrectiveAction_Create.sql (TRY/CATCH + AuditLog + ErrorLog, already canonical)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CorrectiveAction_Create]
+                @TenantId           UNIQUEIDENTIFIER,
+                @CorrelationId      UNIQUEIDENTIFIER,
+                @ActorId            UNIQUEIDENTIFIER,
+                @NowUtc             DATETIME2(3),
+                @CaId               UNIQUEIDENTIFIER,
+                @SourceEventId      UNIQUEIDENTIFIER,
+                @SourceEventType    NVARCHAR(100),
+                @Title              NVARCHAR(200),
+                @Description        NVARCHAR(4000),
+                @ActionType         NVARCHAR(50),
+                @Priority           NVARCHAR(50),
+                @AssignedToWorkerId UNIQUEIDENTIFIER,
+                @DueAtUtc           DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [ContinuousImprovement].[CorrectiveAction]
+                    (
+                        CaId, TenantId, SourceEventId, SourceEventType, Title, Description, ActionType,
+                        Priority, AssignedToWorkerId, DueAtUtc, Status, CompletedAtUtc,
+                        IsDeleted, DeletedAtUtc, DeletionReason,
+                        LastModifiedByActorId, LastModifiedAtUtc, CreatedAtUtc, CreatedBy
+                    )
+                    VALUES
+                    (
+                        @CaId, @TenantId, @SourceEventId, @SourceEventType, @Title, @Description, @ActionType,
+                        @Priority, @AssignedToWorkerId, @DueAtUtc, N'Open', NULL,
+                        0, NULL, NULL,
+                        @ActorId, @NowUtc, @NowUtc, @ActorId
+                    );
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'CorrectiveAction', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    BEGIN TRY
+                        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Procedure: usp_CorrectiveAction_GetById.sql (ETag projected from ROWVERSION)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CorrectiveAction_GetById]
+            (
+                @TenantId UNIQUEIDENTIFIER,
+                @CaId     UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                BEGIN TRY
+                    SELECT
+                        CaId,
+                        TenantId,
+                        SourceEventId,
+                        SourceEventType,
+                        Title,
+                        Description,
+                        ActionType,
+                        Priority,
+                        AssignedToWorkerId,
+                        DueAtUtc,
+                        Status,
+                        CompletedAtUtc,
+                        LastModifiedAtUtc,
+                        CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                    FROM [ContinuousImprovement].[CorrectiveAction]
+                    WHERE CaId = @CaId
+                      AND TenantId = @TenantId
+                      AND IsDeleted = 0;
+
+                    RETURN 0;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @ErrorNumber INT = ERROR_NUMBER();
+                    THROW;
+                    RETURN @ErrorNumber;
+                END CATCH;
+            END");
+
+        // Procedure: usp_CorrectiveAction_List.sql (ETag projected from ROWVERSION, windowed TotalCount)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CorrectiveAction_List]
+            (
+                @TenantId       UNIQUEIDENTIFIER,
+                @SourceEventId  UNIQUEIDENTIFIER = NULL,
+                @ActionType     NVARCHAR(50)     = NULL,
+                @Priority       NVARCHAR(50)     = NULL,
+                @Status         NVARCHAR(50)     = NULL,
+                @OrderBy        NVARCHAR(100)    = 'DueAtUtc',
+                @SortDirection  NVARCHAR(4)      = 'ASC',
+                @PageNumber     INT              = 1,
+                @PageSize       INT              = 25
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                BEGIN TRY
+                    SELECT
+                        CaId,
+                        TenantId,
+                        SourceEventId,
+                        SourceEventType,
+                        Title,
+                        Description,
+                        ActionType,
+                        Priority,
+                        AssignedToWorkerId,
+                        DueAtUtc,
+                        Status,
+                        CompletedAtUtc,
+                        LastModifiedAtUtc,
+                        CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag,
+                        COUNT(*) OVER() AS TotalCount
+                    FROM [ContinuousImprovement].[CorrectiveAction]
+                    WHERE TenantId = @TenantId
+                      AND IsDeleted = 0
+                      AND (@SourceEventId IS NULL OR SourceEventId = @SourceEventId)
+                      AND (@ActionType IS NULL OR ActionType = @ActionType)
+                      AND (@Priority IS NULL OR Priority = @Priority)
+                      AND (@Status IS NULL OR Status = @Status)
+                    ORDER BY
+                        CASE WHEN @OrderBy = 'DueAtUtc' AND @SortDirection = 'ASC'  THEN DueAtUtc END ASC,
+                        CASE WHEN @OrderBy = 'DueAtUtc' AND @SortDirection = 'DESC' THEN DueAtUtc END DESC,
+                        CASE WHEN @OrderBy = 'Priority' AND @SortDirection = 'ASC'  THEN Priority END ASC,
+                        CASE WHEN @OrderBy = 'Priority' AND @SortDirection = 'DESC' THEN Priority END DESC,
+                        CASE WHEN @OrderBy = 'Status'   AND @SortDirection = 'ASC'  THEN Status END ASC,
+                        CASE WHEN @OrderBy = 'Status'   AND @SortDirection = 'DESC' THEN Status END DESC,
+                        CASE WHEN @OrderBy = 'Title'    AND @SortDirection = 'ASC'  THEN Title END ASC,
+                        CASE WHEN @OrderBy = 'Title'    AND @SortDirection = 'DESC' THEN Title END DESC,
+                        DueAtUtc ASC
+                    OFFSET (@PageNumber - 1) * @PageSize ROWS
+                    FETCH NEXT @PageSize ROWS ONLY;
+
+                    RETURN 0;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @ErrorNumber INT = ERROR_NUMBER();
+                    THROW;
+                    RETURN @ErrorNumber;
+                END CATCH;
+            END");
+    }
+
+    /// <summary>
+    /// Creates the <c>[Intelligence]</c> schema's four read-model tables + four read-only stored
+    /// procedures, mirroring <c>PlantSafety.Infrastructure\Intelligence\Sql\Tables\{AITraining,
+    /// AllInvestigations,DataLake,PredictiveSafety}.sql</c> and
+    /// <c>PlantSafety.Infrastructure\Intelligence\Sql\Procedures\usp_{AITraining_GetTrainingJobs,
+    /// AllInvestigations_GetInvestigations,DataLake_GetDataLakeRecords,
+    /// PredictiveSafety_GetPredictions}.sql</c> byte-for-byte (aside from the
+    /// <c>[PlantSafety.ErrorDB].dbo.ErrorLog</c> -&gt; <c>dbo.ErrorLog</c> three-part-prefix
+    /// stripping applied uniformly to every embedded copy in this file -- see
+    /// ApplyRiskManagementSchemaAsync's remarks for why).
+    /// <para>
+    /// All four tables/procedures are genuinely read-only: there is no INSERT/UPDATE/DELETE path
+    /// anywhere in this module (confirmed by direct inspection of every procedure body), so there
+    /// is no ROWVERSION/ETag concept to add here. As a deliberate, explicit exception to this
+    /// codebase's normal convention (read-only Get/List procs are intentionally TRY-free
+    /// everywhere else in the program), all four read procedures below are wrapped in
+    /// BEGIN TRY/BEGIN CATCH with a canonical ErrorLog insert on CATCH, then THROW to re-raise.
+    /// No AuditLog insert (reads do not carry an audit requirement for this module).
+    /// </para>
+    /// </summary>
+    public static async Task ApplyIntelligenceSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        // Schema
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Intelligence')
+                EXEC('CREATE SCHEMA [Intelligence]');");
+
+        // Table: Intelligence\Sql\Tables\AITraining.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AITraining' AND schema_id = SCHEMA_ID('Intelligence'))
+            BEGIN
+                CREATE TABLE [Intelligence].[AITraining] (
+                    TrainingJobId    UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId         UNIQUEIDENTIFIER NOT NULL,
+                    SiteId           UNIQUEIDENTIFIER NULL,
+                    ModelName        NVARCHAR(200)    NOT NULL,
+                    ModelVersion     NVARCHAR(50)     NOT NULL,
+                    DatasetReference NVARCHAR(400)    NULL,
+                    Status           NVARCHAR(50)     NOT NULL,
+                    StartedAtUtc     DATETIME2(3)     NOT NULL,
+                    InitiatedBy      UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted        BIT              NOT NULL CONSTRAINT DF_AITraining_IsDeleted DEFAULT (0),
+                    CreatedAtUtc     DATETIME2(3)     NOT NULL CONSTRAINT DF_AITraining_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy        UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc    DATETIME2(3)     NULL,
+                    ModifiedBy       UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_AITraining_TenantId_SiteId] ON [Intelligence].[AITraining] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_AITraining_StartedAtUtc] ON [Intelligence].[AITraining] (StartedAtUtc);
+            END");
+
+        // Procedure: usp_AITraining_GetTrainingJobs.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Intelligence].[usp_AITraining_GetTrainingJobs]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        TrainingJobId,
+                        TenantId,
+                        SiteId,
+                        ModelName,
+                        ModelVersion,
+                        DatasetReference,
+                        Status,
+                        StartedAtUtc,
+                        InitiatedBy
+                    FROM [Intelligence].[AITraining]
+                    WHERE TenantId = @TenantId
+                      AND IsDeleted = 0
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND StartedAtUtc >= @FromUtc
+                      AND StartedAtUtc <= @ToUtc
+                    ORDER BY StartedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Intelligence\Sql\Tables\AllInvestigations.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AllInvestigations' AND schema_id = SCHEMA_ID('Intelligence'))
+            BEGIN
+                CREATE TABLE [Intelligence].[AllInvestigations] (
+                    InvestigationId    UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId           UNIQUEIDENTIFIER NOT NULL,
+                    SiteId             UNIQUEIDENTIFIER NULL,
+                    IncidentReference  NVARCHAR(100)    NOT NULL,
+                    AiConfidenceScore  FLOAT            NOT NULL,
+                    Summary            NVARCHAR(MAX)    NULL,
+                    Status             NVARCHAR(50)     NOT NULL,
+                    OpenedAtUtc        DATETIME2(3)     NOT NULL,
+                    AssignedTo         UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted          BIT              NOT NULL CONSTRAINT DF_AllInvestigations_IsDeleted DEFAULT (0),
+                    CreatedAtUtc       DATETIME2(3)     NOT NULL CONSTRAINT DF_AllInvestigations_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy          UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc      DATETIME2(3)     NULL,
+                    ModifiedBy         UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_AllInvestigations_TenantId_SiteId] ON [Intelligence].[AllInvestigations] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_AllInvestigations_OpenedAtUtc] ON [Intelligence].[AllInvestigations] (OpenedAtUtc);
+            END");
+
+        // Procedure: usp_AllInvestigations_GetInvestigations.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Intelligence].[usp_AllInvestigations_GetInvestigations]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        InvestigationId,
+                        TenantId,
+                        SiteId,
+                        IncidentReference,
+                        AiConfidenceScore,
+                        Summary,
+                        Status,
+                        OpenedAtUtc,
+                        AssignedTo
+                    FROM [Intelligence].[AllInvestigations]
+                    WHERE TenantId = @TenantId
+                      AND IsDeleted = 0
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND OpenedAtUtc >= @FromUtc
+                      AND OpenedAtUtc <= @ToUtc
+                    ORDER BY OpenedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Intelligence\Sql\Tables\DataLake.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DataLake' AND schema_id = SCHEMA_ID('Intelligence'))
+            BEGIN
+                CREATE TABLE [Intelligence].[DataLake] (
+                    DataLakeRecordId UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId         UNIQUEIDENTIFIER NOT NULL,
+                    SiteId           UNIQUEIDENTIFIER NULL,
+                    DatasetName      NVARCHAR(200)    NOT NULL,
+                    Zone             NVARCHAR(50)     NOT NULL,
+                    RecordCount      BIGINT           NULL,
+                    Status           NVARCHAR(50)     NOT NULL,
+                    ProcessedAtUtc   DATETIME2(3)     NOT NULL,
+                    ProcessedBy      UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted        BIT              NOT NULL CONSTRAINT DF_DataLake_IsDeleted DEFAULT (0),
+                    CreatedAtUtc     DATETIME2(3)     NOT NULL CONSTRAINT DF_DataLake_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy        UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc    DATETIME2(3)     NULL,
+                    ModifiedBy       UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_DataLake_TenantId_SiteId] ON [Intelligence].[DataLake] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_DataLake_ProcessedAtUtc] ON [Intelligence].[DataLake] (ProcessedAtUtc);
+            END");
+
+        // Procedure: usp_DataLake_GetDataLakeRecords.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Intelligence].[usp_DataLake_GetDataLakeRecords]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        DataLakeRecordId,
+                        TenantId,
+                        SiteId,
+                        DatasetName,
+                        Zone,
+                        RecordCount,
+                        Status,
+                        ProcessedAtUtc,
+                        ProcessedBy
+                    FROM [Intelligence].[DataLake]
+                    WHERE TenantId = @TenantId
+                      AND IsDeleted = 0
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND ProcessedAtUtc >= @FromUtc
+                      AND ProcessedAtUtc <= @ToUtc
+                    ORDER BY ProcessedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Intelligence\Sql\Tables\PredictiveSafety.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PredictiveSafety' AND schema_id = SCHEMA_ID('Intelligence'))
+            BEGIN
+                CREATE TABLE [Intelligence].[PredictiveSafety] (
+                    PredictionId       UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId           UNIQUEIDENTIFIER NOT NULL,
+                    SiteId             UNIQUEIDENTIFIER NULL,
+                    RiskCategory       NVARCHAR(100)    NOT NULL,
+                    PredictedRiskScore FLOAT            NOT NULL,
+                    ModelVersion       NVARCHAR(50)     NULL,
+                    Status             NVARCHAR(50)     NOT NULL,
+                    PredictedAtUtc     DATETIME2(3)     NOT NULL,
+                    GeneratedBy        UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted          BIT              NOT NULL CONSTRAINT DF_PredictiveSafety_IsDeleted DEFAULT (0),
+                    CreatedAtUtc       DATETIME2(3)     NOT NULL CONSTRAINT DF_PredictiveSafety_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy          UNIQUEIDENTIFIER NULL,
+                    ModifiedAtUtc      DATETIME2(3)     NULL,
+                    ModifiedBy         UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_PredictiveSafety_TenantId_SiteId] ON [Intelligence].[PredictiveSafety] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_PredictiveSafety_PredictedAtUtc] ON [Intelligence].[PredictiveSafety] (PredictedAtUtc);
+            END");
+
+        // Procedure: usp_PredictiveSafety_GetPredictions.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Intelligence].[usp_PredictiveSafety_GetPredictions]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        PredictionId,
+                        TenantId,
+                        SiteId,
+                        RiskCategory,
+                        PredictedRiskScore,
+                        ModelVersion,
+                        Status,
+                        PredictedAtUtc,
+                        GeneratedBy
+                    FROM [Intelligence].[PredictiveSafety]
+                    WHERE TenantId = @TenantId
+                      AND IsDeleted = 0
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND PredictedAtUtc >= @FromUtc
+                      AND PredictedAtUtc <= @ToUtc
+                    ORDER BY PredictedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+    }
+
+    /// <summary>
+    /// Creates the <c>[Integrations]</c> schema's 14 tables + 14 stored procedures, mirroring
+    /// <c>PlantSafety.Infrastructure\Integrations\Sql\Tables\*.sql</c> and
+    /// <c>PlantSafety.Infrastructure\Integrations\Sql\Procedures\*.sql</c> byte-for-byte
+    /// (module-relative -- no <c>USE [PlantSafety.CoreDB]</c> / cross-database
+    /// AuditLog/ErrorLog prefixes, matching every other Apply*SchemaAsync method in this class).
+    /// 13 of the 14 tables/procedures (Analytics, Analyzers, Auditing, Documents, Email, Export,
+    /// Import, IoT, Notifications.Email, Notifications.Internal, Notifications.Texting,
+    /// Reporting, Texting) are genuinely read-only -- their Get/List procedures are wrapped in
+    /// BEGIN TRY/BEGIN CATCH with a canonical ErrorLog insert + THROW (the same deliberate,
+    /// explicit exception to the normal read-proc convention applied to Intelligence's four
+    /// read-only procedures above), but deliberately carry no AuditLog and no ROWVERSION/ETag.
+    /// The 14th, [Integrations].[InboundWebhookEvents] / usp_InboundWebhookEvents_RecordEvent, is
+    /// the module's one genuine write path (idempotent check-and-insert keyed by
+    /// (TenantId, EventId)) and is modernized to the full write-procedure canonical template:
+    /// RowVersion/ETag, TRY/CATCH, best-effort AuditLog on success, and ErrorLog + THROW on
+    /// failure.
+    /// </summary>
+    public static async Task ApplyIntegrationsSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        // Schema
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Integrations')
+                EXEC('CREATE SCHEMA [Integrations]');");
+
+        // Table: Integrations\Sql\Tables\AnalyticsItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AnalyticsItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[AnalyticsItems] (
+                    RecordId      UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId      UNIQUEIDENTIFIER NOT NULL,
+                    SiteId        UNIQUEIDENTIFIER NULL,
+                    SourceSystem  NVARCHAR(200)    NOT NULL,
+                    MetricName    NVARCHAR(200)    NOT NULL,
+                    MetricValue   DECIMAL(18,4)    NOT NULL,
+                    Status        NVARCHAR(50)     NOT NULL,
+                    IngestedAtUtc DATETIME2(3)     NOT NULL,
+                    IngestedBy    UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted     BIT              NOT NULL CONSTRAINT DF_AnalyticsItems_IsDeleted DEFAULT (0),
+                    CreatedUtc    DATETIME2(3)     NOT NULL CONSTRAINT DF_AnalyticsItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy     UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc    DATETIME2(3)     NULL,
+                    UpdatedBy     UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_AnalyticsItems_TenantId_SiteId] ON [Integrations].[AnalyticsItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_AnalyticsItems_IngestedAtUtc] ON [Integrations].[AnalyticsItems] (IngestedAtUtc);
+            END");
+
+        // Procedure: usp_Analytics_GetRecords.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Analytics_GetRecords]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        RecordId,
+                        TenantId,
+                        SiteId,
+                        SourceSystem,
+                        MetricName,
+                        MetricValue,
+                        Status,
+                        IngestedAtUtc,
+                        IngestedBy
+                    FROM [Integrations].[AnalyticsItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND IngestedAtUtc >= @FromUtc
+                      AND IngestedAtUtc <= @ToUtc
+                    ORDER BY IngestedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\AnalyzersItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AnalyzersItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[AnalyzersItems] (
+                    RunId          UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId       UNIQUEIDENTIFIER NOT NULL,
+                    SiteId         UNIQUEIDENTIFIER NULL,
+                    AnalyzerName   NVARCHAR(200)    NOT NULL,
+                    TargetSystem   NVARCHAR(200)    NOT NULL,
+                    FindingsCount  INT              NOT NULL,
+                    Status         NVARCHAR(50)     NOT NULL,
+                    RunAtUtc       DATETIME2(3)     NOT NULL,
+                    TriggeredBy    UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted      BIT              NOT NULL CONSTRAINT DF_AnalyzersItems_IsDeleted DEFAULT (0),
+                    CreatedUtc     DATETIME2(3)     NOT NULL CONSTRAINT DF_AnalyzersItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy      UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc     DATETIME2(3)     NULL,
+                    UpdatedBy      UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_AnalyzersItems_TenantId_SiteId] ON [Integrations].[AnalyzersItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_AnalyzersItems_RunAtUtc] ON [Integrations].[AnalyzersItems] (RunAtUtc);
+            END");
+
+        // Procedure: usp_Analyzers_GetRuns.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Analyzers_GetRuns]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        RunId,
+                        TenantId,
+                        SiteId,
+                        AnalyzerName,
+                        TargetSystem,
+                        FindingsCount,
+                        Status,
+                        RunAtUtc,
+                        TriggeredBy
+                    FROM [Integrations].[AnalyzersItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND RunAtUtc >= @FromUtc
+                      AND RunAtUtc <= @ToUtc
+                    ORDER BY RunAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\AuditingItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AuditingItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[AuditingItems] (
+                    LogId           UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId        UNIQUEIDENTIFIER NOT NULL,
+                    SiteId          UNIQUEIDENTIFIER NULL,
+                    ExternalSystem  NVARCHAR(200)    NOT NULL,
+                    Direction       NVARCHAR(20)     NOT NULL,
+                    Endpoint        NVARCHAR(400)    NOT NULL,
+                    Status          NVARCHAR(50)     NOT NULL,
+                    OccurredAtUtc   DATETIME2(3)     NOT NULL,
+                    InitiatedBy     UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted       BIT              NOT NULL CONSTRAINT DF_AuditingItems_IsDeleted DEFAULT (0),
+                    CreatedUtc      DATETIME2(3)     NOT NULL CONSTRAINT DF_AuditingItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy       UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc      DATETIME2(3)     NULL,
+                    UpdatedBy       UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_AuditingItems_TenantId_SiteId] ON [Integrations].[AuditingItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_AuditingItems_OccurredAtUtc] ON [Integrations].[AuditingItems] (OccurredAtUtc);
+            END");
+
+        // Procedure: usp_Auditing_GetLogs.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Auditing_GetLogs]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        LogId,
+                        TenantId,
+                        SiteId,
+                        ExternalSystem,
+                        Direction,
+                        Endpoint,
+                        Status,
+                        OccurredAtUtc,
+                        InitiatedBy
+                    FROM [Integrations].[AuditingItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND OccurredAtUtc >= @FromUtc
+                      AND OccurredAtUtc <= @ToUtc
+                    ORDER BY OccurredAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\DocumentsItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DocumentsItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[DocumentsItems] (
+                    DocumentId    UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId      UNIQUEIDENTIFIER NOT NULL,
+                    SiteId        UNIQUEIDENTIFIER NULL,
+                    SourceSystem  NVARCHAR(200)    NOT NULL,
+                    FileName      NVARCHAR(400)    NOT NULL,
+                    DocumentType  NVARCHAR(100)    NOT NULL,
+                    Status        NVARCHAR(50)     NOT NULL,
+                    SyncedAtUtc   DATETIME2(3)     NOT NULL,
+                    SyncedBy      UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted     BIT              NOT NULL CONSTRAINT DF_DocumentsItems_IsDeleted DEFAULT (0),
+                    CreatedUtc    DATETIME2(3)     NOT NULL CONSTRAINT DF_DocumentsItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy     UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc    DATETIME2(3)     NULL,
+                    UpdatedBy     UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_DocumentsItems_TenantId_SiteId] ON [Integrations].[DocumentsItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_DocumentsItems_SyncedAtUtc] ON [Integrations].[DocumentsItems] (SyncedAtUtc);
+            END");
+
+        // Procedure: usp_Documents_GetDocuments.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Documents_GetDocuments]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        DocumentId,
+                        TenantId,
+                        SiteId,
+                        SourceSystem,
+                        FileName,
+                        DocumentType,
+                        Status,
+                        SyncedAtUtc,
+                        SyncedBy
+                    FROM [Integrations].[DocumentsItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND SyncedAtUtc >= @FromUtc
+                      AND SyncedAtUtc <= @ToUtc
+                    ORDER BY SyncedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\EmailItems.sql (read-only, root-level Integrations.Email)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'EmailItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[EmailItems] (
+                    EmailId       UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId      UNIQUEIDENTIFIER NOT NULL,
+                    SiteId        UNIQUEIDENTIFIER NULL,
+                    Recipient     NVARCHAR(320)    NOT NULL,
+                    Subject       NVARCHAR(400)    NOT NULL,
+                    Provider      NVARCHAR(100)    NOT NULL,
+                    Status        NVARCHAR(50)     NOT NULL,
+                    SentAtUtc     DATETIME2(3)     NOT NULL,
+                    SentBy        UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted     BIT              NOT NULL CONSTRAINT DF_EmailItems_IsDeleted DEFAULT (0),
+                    CreatedUtc    DATETIME2(3)     NOT NULL CONSTRAINT DF_EmailItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy     UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc    DATETIME2(3)     NULL,
+                    UpdatedBy     UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_EmailItems_TenantId_SiteId] ON [Integrations].[EmailItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_EmailItems_SentAtUtc] ON [Integrations].[EmailItems] (SentAtUtc);
+            END");
+
+        // Procedure: usp_Email_GetEmails.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Email_GetEmails]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        EmailId,
+                        TenantId,
+                        SiteId,
+                        Recipient,
+                        Subject,
+                        Provider,
+                        Status,
+                        SentAtUtc,
+                        SentBy
+                    FROM [Integrations].[EmailItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND SentAtUtc >= @FromUtc
+                      AND SentAtUtc <= @ToUtc
+                    ORDER BY SentAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\ExportItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ExportItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[ExportItems] (
+                    ExportRunId    UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId       UNIQUEIDENTIFIER NOT NULL,
+                    SiteId         UNIQUEIDENTIFIER NULL,
+                    TargetSystem   NVARCHAR(200)    NOT NULL,
+                    ExportType     NVARCHAR(100)    NOT NULL,
+                    RecordCount    INT              NOT NULL,
+                    Status         NVARCHAR(50)     NOT NULL,
+                    CompletedAtUtc DATETIME2(3)     NOT NULL,
+                    InitiatedBy    UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted      BIT              NOT NULL CONSTRAINT DF_ExportItems_IsDeleted DEFAULT (0),
+                    CreatedUtc     DATETIME2(3)     NOT NULL CONSTRAINT DF_ExportItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy      UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc     DATETIME2(3)     NULL,
+                    UpdatedBy      UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_ExportItems_TenantId_SiteId] ON [Integrations].[ExportItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_ExportItems_CompletedAtUtc] ON [Integrations].[ExportItems] (CompletedAtUtc);
+            END");
+
+        // Procedure: usp_Export_GetExportRuns.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Export_GetExportRuns]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        ExportRunId,
+                        TenantId,
+                        SiteId,
+                        TargetSystem,
+                        ExportType,
+                        RecordCount,
+                        Status,
+                        CompletedAtUtc,
+                        InitiatedBy
+                    FROM [Integrations].[ExportItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND CompletedAtUtc >= @FromUtc
+                      AND CompletedAtUtc <= @ToUtc
+                    ORDER BY CompletedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\ImportItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ImportItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[ImportItems] (
+                    ImportRunId      UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId         UNIQUEIDENTIFIER NOT NULL,
+                    SiteId           UNIQUEIDENTIFIER NULL,
+                    SourceSystem     NVARCHAR(200)    NOT NULL,
+                    ImportType       NVARCHAR(100)    NOT NULL,
+                    RecordsProcessed INT              NOT NULL,
+                    RecordsFailed    INT              NOT NULL,
+                    Status           NVARCHAR(50)     NOT NULL,
+                    CompletedAtUtc   DATETIME2(3)     NOT NULL,
+                    InitiatedBy      UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted        BIT              NOT NULL CONSTRAINT DF_ImportItems_IsDeleted DEFAULT (0),
+                    CreatedUtc       DATETIME2(3)     NOT NULL CONSTRAINT DF_ImportItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy        UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc       DATETIME2(3)     NULL,
+                    UpdatedBy        UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_ImportItems_TenantId_SiteId] ON [Integrations].[ImportItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_ImportItems_CompletedAtUtc] ON [Integrations].[ImportItems] (CompletedAtUtc);
+            END");
+
+        // Procedure: usp_Import_GetImportRuns.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Import_GetImportRuns]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        ImportRunId,
+                        TenantId,
+                        SiteId,
+                        SourceSystem,
+                        ImportType,
+                        RecordsProcessed,
+                        RecordsFailed,
+                        Status,
+                        CompletedAtUtc,
+                        InitiatedBy
+                    FROM [Integrations].[ImportItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND CompletedAtUtc >= @FromUtc
+                      AND CompletedAtUtc <= @ToUtc
+                    ORDER BY CompletedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\IoTItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'IoTItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[IoTItems] (
+                    ReadingId      UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId       UNIQUEIDENTIFIER NOT NULL,
+                    SiteId         UNIQUEIDENTIFIER NULL,
+                    DeviceId       UNIQUEIDENTIFIER NOT NULL,
+                    SensorType     NVARCHAR(100)    NOT NULL,
+                    ReadingValue   FLOAT            NOT NULL,
+                    Status         NVARCHAR(50)     NOT NULL,
+                    RecordedAtUtc  DATETIME2(3)     NOT NULL,
+                    IngestedBy     UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted      BIT              NOT NULL CONSTRAINT DF_IoTItems_IsDeleted DEFAULT (0),
+                    CreatedUtc     DATETIME2(3)     NOT NULL CONSTRAINT DF_IoTItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy      UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc     DATETIME2(3)     NULL,
+                    UpdatedBy      UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_IoTItems_TenantId_SiteId] ON [Integrations].[IoTItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_IoTItems_RecordedAtUtc] ON [Integrations].[IoTItems] (RecordedAtUtc);
+                CREATE NONCLUSTERED INDEX [IX_IoTItems_DeviceId] ON [Integrations].[IoTItems] (DeviceId);
+            END");
+
+        // Procedure: usp_IoT_GetIoTReadings.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_IoT_GetIoTReadings]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        ReadingId,
+                        TenantId,
+                        SiteId,
+                        DeviceId,
+                        SensorType,
+                        ReadingValue,
+                        Status,
+                        RecordedAtUtc,
+                        IngestedBy
+                    FROM [Integrations].[IoTItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND RecordedAtUtc >= @FromUtc
+                      AND RecordedAtUtc <= @ToUtc
+                    ORDER BY RecordedAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\NotificationsEmailItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'NotificationsEmailItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[NotificationsEmailItems] (
+                    EmailDeliveryId   UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId          UNIQUEIDENTIFIER NOT NULL,
+                    SiteId            UNIQUEIDENTIFIER NULL,
+                    RecipientAddress  NVARCHAR(320)    NOT NULL,
+                    Subject           NVARCHAR(400)    NOT NULL,
+                    TemplateName      NVARCHAR(200)    NULL,
+                    Status            NVARCHAR(50)     NOT NULL,
+                    SentAtUtc         DATETIME2(3)     NOT NULL,
+                    SentBy            UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted         BIT              NOT NULL CONSTRAINT DF_NotificationsEmailItems_IsDeleted DEFAULT (0),
+                    CreatedUtc        DATETIME2(3)     NOT NULL CONSTRAINT DF_NotificationsEmailItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy         UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc        DATETIME2(3)     NULL,
+                    UpdatedBy         UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_NotificationsEmailItems_TenantId_SiteId] ON [Integrations].[NotificationsEmailItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_NotificationsEmailItems_SentAtUtc] ON [Integrations].[NotificationsEmailItems] (SentAtUtc);
+            END");
+
+        // Procedure: usp_NotificationsEmail_GetEmailDeliveries.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_NotificationsEmail_GetEmailDeliveries]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        EmailDeliveryId,
+                        TenantId,
+                        SiteId,
+                        RecipientAddress,
+                        Subject,
+                        TemplateName,
+                        Status,
+                        SentAtUtc,
+                        SentBy
+                    FROM [Integrations].[NotificationsEmailItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND SentAtUtc >= @FromUtc
+                      AND SentAtUtc <= @ToUtc
+                    ORDER BY SentAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\NotificationsInternalItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'NotificationsInternalItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[NotificationsInternalItems] (
+                    NotificationId   UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId         UNIQUEIDENTIFIER NOT NULL,
+                    SiteId           UNIQUEIDENTIFIER NULL,
+                    RecipientUserId  UNIQUEIDENTIFIER NOT NULL,
+                    Message          NVARCHAR(MAX)    NOT NULL,
+                    Category         NVARCHAR(100)    NULL,
+                    Status           NVARCHAR(50)     NOT NULL,
+                    DeliveredAtUtc   DATETIME2(3)     NOT NULL,
+                    TriggeredBy      UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted        BIT              NOT NULL CONSTRAINT DF_NotificationsInternalItems_IsDeleted DEFAULT (0),
+                    CreatedUtc       DATETIME2(3)     NOT NULL CONSTRAINT DF_NotificationsInternalItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy        UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc       DATETIME2(3)     NULL,
+                    UpdatedBy        UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_NotificationsInternalItems_TenantId_SiteId] ON [Integrations].[NotificationsInternalItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_NotificationsInternalItems_DeliveredAtUtc] ON [Integrations].[NotificationsInternalItems] (DeliveredAtUtc);
+                CREATE NONCLUSTERED INDEX [IX_NotificationsInternalItems_RecipientUserId] ON [Integrations].[NotificationsInternalItems] (RecipientUserId);
+            END");
+
+        // Procedure: usp_NotificationsInternal_GetInternalNotifications.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_NotificationsInternal_GetInternalNotifications]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        NotificationId,
+                        TenantId,
+                        SiteId,
+                        RecipientUserId,
+                        Message,
+                        Category,
+                        Status,
+                        DeliveredAtUtc,
+                        TriggeredBy
+                    FROM [Integrations].[NotificationsInternalItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND DeliveredAtUtc >= @FromUtc
+                      AND DeliveredAtUtc <= @ToUtc
+                    ORDER BY DeliveredAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\NotificationsTextingItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'NotificationsTextingItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[NotificationsTextingItems] (
+                    SmsDeliveryId          UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId               UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                 UNIQUEIDENTIFIER NULL,
+                    RecipientPhoneNumber   NVARCHAR(30)     NOT NULL,
+                    MessageBody            NVARCHAR(1000)   NOT NULL,
+                    TriggerEvent           NVARCHAR(200)    NULL,
+                    Status                 NVARCHAR(50)     NOT NULL,
+                    SentAtUtc              DATETIME2(3)     NOT NULL,
+                    SentBy                 UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted              BIT              NOT NULL CONSTRAINT DF_NotificationsTextingItems_IsDeleted DEFAULT (0),
+                    CreatedUtc             DATETIME2(3)     NOT NULL CONSTRAINT DF_NotificationsTextingItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy              UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc             DATETIME2(3)     NULL,
+                    UpdatedBy              UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_NotificationsTextingItems_TenantId_SiteId] ON [Integrations].[NotificationsTextingItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_NotificationsTextingItems_SentAtUtc] ON [Integrations].[NotificationsTextingItems] (SentAtUtc);
+            END");
+
+        // Procedure: usp_NotificationsTexting_GetTextingDeliveries.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_NotificationsTexting_GetTextingDeliveries]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        SmsDeliveryId,
+                        TenantId,
+                        SiteId,
+                        RecipientPhoneNumber,
+                        MessageBody,
+                        TriggerEvent,
+                        Status,
+                        SentAtUtc,
+                        SentBy
+                    FROM [Integrations].[NotificationsTextingItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND SentAtUtc >= @FromUtc
+                      AND SentAtUtc <= @ToUtc
+                    ORDER BY SentAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\ReportingItems.sql (read-only)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ReportingItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[ReportingItems] (
+                    DeliveryId       UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId         UNIQUEIDENTIFIER NOT NULL,
+                    SiteId           UNIQUEIDENTIFIER NULL,
+                    ReportName       NVARCHAR(300)    NOT NULL,
+                    RecipientSystem  NVARCHAR(200)    NOT NULL,
+                    DeliveryChannel  NVARCHAR(50)     NOT NULL,
+                    Status           NVARCHAR(50)     NOT NULL,
+                    DeliveredAtUtc   DATETIME2(3)     NOT NULL,
+                    InitiatedBy      UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted        BIT              NOT NULL CONSTRAINT DF_ReportingItems_IsDeleted DEFAULT (0),
+                    CreatedUtc       DATETIME2(3)     NOT NULL CONSTRAINT DF_ReportingItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy        UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc       DATETIME2(3)     NULL,
+                    UpdatedBy        UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_ReportingItems_TenantId_SiteId] ON [Integrations].[ReportingItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_ReportingItems_DeliveredAtUtc] ON [Integrations].[ReportingItems] (DeliveredAtUtc);
+            END");
+
+        // Procedure: usp_Reporting_GetReportDeliveries.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Reporting_GetReportDeliveries]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        DeliveryId,
+                        TenantId,
+                        SiteId,
+                        ReportName,
+                        RecipientSystem,
+                        DeliveryChannel,
+                        Status,
+                        DeliveredAtUtc,
+                        InitiatedBy
+                    FROM [Integrations].[ReportingItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND DeliveredAtUtc >= @FromUtc
+                      AND DeliveredAtUtc <= @ToUtc
+                    ORDER BY DeliveredAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\TextingItems.sql (read-only, root-level Integrations.Texting)
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TextingItems' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[TextingItems] (
+                    MessageId             UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    TenantId              UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                UNIQUEIDENTIFIER NULL,
+                    RecipientPhoneNumber  NVARCHAR(30)     NOT NULL,
+                    MessageTemplate       NVARCHAR(200)    NOT NULL,
+                    GatewayProvider       NVARCHAR(100)    NOT NULL,
+                    Status                NVARCHAR(50)     NOT NULL,
+                    SentAtUtc             DATETIME2(3)     NOT NULL,
+                    InitiatedBy           UNIQUEIDENTIFIER NOT NULL,
+                    IsDeleted             BIT              NOT NULL CONSTRAINT DF_TextingItems_IsDeleted DEFAULT (0),
+                    CreatedUtc            DATETIME2(3)     NOT NULL CONSTRAINT DF_TextingItems_CreatedUtc DEFAULT (SYSUTCDATETIME()),
+                    CreatedBy             UNIQUEIDENTIFIER NULL,
+                    UpdatedUtc            DATETIME2(3)     NULL,
+                    UpdatedBy             UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_TextingItems_TenantId_SiteId] ON [Integrations].[TextingItems] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX [IX_TextingItems_SentAtUtc] ON [Integrations].[TextingItems] (SentAtUtc);
+            END");
+
+        // Procedure: usp_Texting_GetTextMessages.sql
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_Texting_GetTextMessages]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    SELECT
+                        MessageId,
+                        TenantId,
+                        SiteId,
+                        RecipientPhoneNumber,
+                        MessageTemplate,
+                        GatewayProvider,
+                        Status,
+                        SentAtUtc,
+                        InitiatedBy
+                    FROM [Integrations].[TextingItems]
+                    WHERE TenantId = @TenantId
+                      AND (@SiteId IS NULL OR SiteId = @SiteId)
+                      AND IsDeleted = 0
+                      AND SentAtUtc >= @FromUtc
+                      AND SentAtUtc <= @ToUtc
+                    ORDER BY SentAtUtc DESC;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; SiteId=', @SiteId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Table: Integrations\Sql\Tables\InboundWebhookEvents.sql -- the ONLY real write path in
+        // this module (idempotent check-and-insert keyed by (TenantId, EventId)). Includes RowVersion.
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'InboundWebhookEvents' AND schema_id = SCHEMA_ID('Integrations'))
+            BEGIN
+                CREATE TABLE [Integrations].[InboundWebhookEvents] (
+                    Id            UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_InboundWebhookEvents_Id DEFAULT (NEWID()) PRIMARY KEY,
+                    TenantId      UNIQUEIDENTIFIER NOT NULL,
+                    SiteId        UNIQUEIDENTIFIER NULL,
+                    EventId       NVARCHAR(200)    NOT NULL,
+                    EventType     NVARCHAR(200)    NOT NULL,
+                    Source        NVARCHAR(200)    NOT NULL,
+                    OccurredAtUtc DATETIMEOFFSET(3) NOT NULL,
+                    RawPayload    NVARCHAR(MAX)    NOT NULL,
+                    ReceivedAtUtc DATETIME2(3)     NOT NULL CONSTRAINT DF_InboundWebhookEvents_ReceivedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    IsDeleted     BIT              NOT NULL CONSTRAINT DF_InboundWebhookEvents_IsDeleted DEFAULT (0),
+                    RowVersion    ROWVERSION       NOT NULL
+                );
+
+                CREATE UNIQUE NONCLUSTERED INDEX [UX_InboundWebhookEvents_TenantId_EventId]
+                    ON [Integrations].[InboundWebhookEvents] (TenantId, EventId);
+
+                CREATE NONCLUSTERED INDEX [IX_InboundWebhookEvents_ReceivedAtUtc] ON [Integrations].[InboundWebhookEvents] (ReceivedAtUtc);
+            END");
+
+        // Procedure: usp_InboundWebhookEvents_RecordEvent.sql (TRY/CATCH + AuditLog + ErrorLog,
+        // ETag projected from RowVersion -- the module's one canonical write procedure)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [Integrations].[usp_InboundWebhookEvents_RecordEvent]
+                @TenantId      UNIQUEIDENTIFIER,
+                @SiteId        UNIQUEIDENTIFIER = NULL,
+                @EventId       NVARCHAR(200),
+                @EventType     NVARCHAR(200),
+                @Source        NVARCHAR(200),
+                @OccurredAtUtc DATETIMEOFFSET(3),
+                @RawPayload    NVARCHAR(MAX),
+                @Accepted      BIT OUTPUT,
+                @ETag          NVARCHAR(34) OUTPUT
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+
+                    DECLARE @IsNewInsert BIT = 0;
+
+                    IF EXISTS (
+                        SELECT 1
+                        FROM [Integrations].[InboundWebhookEvents] WITH (UPDLOCK, HOLDLOCK)
+                        WHERE TenantId = @TenantId AND EventId = @EventId
+                    )
+                    BEGIN
+                        SET @Accepted = 1;
+                    END
+                    ELSE
+                    BEGIN
+                        INSERT INTO [Integrations].[InboundWebhookEvents]
+                            (TenantId, SiteId, EventId, EventType, Source, OccurredAtUtc, RawPayload, IsDeleted)
+                        VALUES
+                            (@TenantId, @SiteId, @EventId, @EventType, @Source, @OccurredAtUtc, @RawPayload, 0);
+
+                        SET @Accepted = 1;
+                        SET @IsNewInsert = 1;
+                    END
+
+                    SELECT @ETag = CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1)
+                    FROM [Integrations].[InboundWebhookEvents]
+                    WHERE TenantId = @TenantId AND EventId = @EventId;
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (
+                            N'InboundWebhookEvents', DB_NAME(),
+                            CASE WHEN @IsNewInsert = 1 THEN N'INSERT' ELSE N'IDEMPOTENT_ACCEPT' END,
+                            SYSTEM_USER, SYSUTCDATETIME(), 0,
+                            CONCAT(N'TenantId=', @TenantId, N'; EventId=', @EventId, N'; EventType=', @EventType),
+                            0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+                DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; EventId=', @EventId, N'; User=', SYSTEM_USER);
+                DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                BEGIN TRY
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+                END TRY
+                BEGIN CATCH
+                END CATCH;
+
+                THROW;
+            END CATCH");
+    }
 }

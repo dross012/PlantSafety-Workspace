@@ -10,6 +10,13 @@
 --                  IRiskRepository.UpdateAsync. HazardDomainCategory is intentionally not
 --                  updated here -- it is an immutable Infrastructure-layer classification tag
 --                  assigned once at creation. Additive-only evolution.
+--  UPDATED:        2026-07-28 -- returns the post-update row's ETag (CONVERT(NVARCHAR(34),
+--                  CAST(RowVersion AS BINARY(8)), 1)) via a trailing SELECT so callers have an
+--                  up-to-date ETag immediately after update without a separate round-trip. Schema-
+--                  only: no @ETag input parameter or conflict-rejection logic is introduced here --
+--                  IRiskRepository.UpdateAsync has no ETag concept to enforce (see
+--                  RiskDapperRepository.RiskRow.ETag remarks); the pre-existing IF NOT EXISTS/THROW
+--                  50004 existence check above is unchanged.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -65,6 +72,10 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+        FROM [RiskMgmt].[Risk]
+        WHERE RiskId = @RiskId;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'RiskId=', @RiskId, N'; User=', SYSTEM_USER);

@@ -10,6 +10,8 @@
 --                  IRoiRepository.ListAsync. Returns TotalCount as a windowed
 --                  column on every row (per RoiDapperRepository.RoiListRow
 --                  shape). Additive-only evolution.
+--  UPDATED:        2026-07-28 -- added ETag, projected from the RowVersion column:
+--                  CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1).
 -- ============================================================================
 
 CREATE OR ALTER PROCEDURE [Financials].[usp_Roi_List]
@@ -36,6 +38,7 @@ BEGIN
         RoiPercentage,
         CurrencyCode,
         CalculatedAtUtc,
+        CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag,
         COUNT(*) OVER () AS TotalCount
     FROM [Financials].[Roi]
     WHERE TenantId = @TenantId

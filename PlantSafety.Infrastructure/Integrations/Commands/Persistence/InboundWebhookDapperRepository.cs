@@ -13,6 +13,9 @@
 //                  because this call requires a BIT OUTPUT parameter, which neither shared helper
 //                  currently supports.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-28 -- maps the new @ETag NVARCHAR(34) OUTPUT parameter (projected from
+//                  [Integrations].[InboundWebhookEvents].RowVersion) into ProcessInboundWebhookResult.
+//                  ETag mapping only -- no new conflict-rejection logic introduced.
 // ============================================================================
 using PlantSafety.Application.Integrations.Commands;
 
@@ -56,6 +59,7 @@ public sealed class InboundWebhookDapperRepository(
         parameters.Add("OccurredAtUtc", occurredAt, DbType.DateTimeOffset);
         parameters.Add("RawPayload", rawPayload, DbType.String, size: -1);
         parameters.Add("Accepted", dbType: DbType.Boolean, direction: ParameterDirection.Output);
+        parameters.Add("ETag", dbType: DbType.String, direction: ParameterDirection.Output, size: 34);
 
         try
         {
@@ -72,7 +76,8 @@ public sealed class InboundWebhookDapperRepository(
         }
 
         var accepted = parameters.Get<bool?>("Accepted") ?? false;
+        var eTag = parameters.Get<string?>("ETag");
 
-        return new ProcessInboundWebhookResult(eventId, accepted);
+        return new ProcessInboundWebhookResult(eventId, accepted, eTag);
     }
 }

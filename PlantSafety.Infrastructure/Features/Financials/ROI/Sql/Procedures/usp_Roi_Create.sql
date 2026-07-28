@@ -8,6 +8,14 @@
 --  SchemaVersion:  2026.1
 --  Description:    Creates a SafetyROI calculation record. Backs
 --                  IRoiRepository.CreateAsync. Additive-only evolution.
+--  UPDATED:        2026-07-28 -- brought up to the canonical write-procedure template: added the
+--                  nested BEGIN TRY/CATCH AuditLog INSERT (defensive, silently no-ops if
+--                  [PlantSafety.AuditDB] is unreachable) and a trailing SELECT returning the
+--                  freshly-inserted row's ETag (CONVERT(NVARCHAR(34), CAST(RowVersion AS
+--                  BINARY(8)), 1)), matching usp_Risk_Insert/usp_Accident_Insert. Schema-only: no
+--                  @ETag input parameter or conflict-rejection logic is introduced here --
+--                  IRoiRepository.CreateAsync has no ETag concept to enforce (see
+--                  RoiDapperRepository.RoiReadModel.ETag remarks).
 -- ============================================================================
 
 CREATE OR ALTER PROCEDURE [Financials].[usp_Roi_Create]
@@ -33,6 +41,17 @@ BEGIN
         VALUES
             (@RoiCalculationId, @TenantId, @SiteId, @FiscalYear, @TotalInvestment, @EstimatedAvoidedCosts, @NetBenefit,
              @RoiPercentage, @CurrencyCode, SYSDATETIMEOFFSET(), 0, @CorrelationId, @NowUtc, @ActorId);
+
+        BEGIN TRY
+            INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+            VALUES (N'Roi', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'RoiCalculationId=', @RoiCalculationId), 0, OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+        END CATCH;
+
+        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+        FROM [Financials].[Roi]
+        WHERE RoiCalculationId = @RoiCalculationId;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; RoiCalculationId=', @RoiCalculationId, N'; User=', SYSTEM_USER);

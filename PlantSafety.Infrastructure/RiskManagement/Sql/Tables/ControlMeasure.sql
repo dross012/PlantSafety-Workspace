@@ -9,6 +9,12 @@
 --  Description:    Child table backing the Risk.ControlMeasures collection (ControlMeasure
 --                  entity, Hierarchy of Controls). TenantId is denormalized from the parent Risk
 --                  for Row-Level-Security discovery/enforcement. Additive-only evolution.
+--  UPDATED:        2026-07-28 (Migration Commander Phase 3, RiskManagement) -- added a native
+--                  RowVersion ROWVERSION NOT NULL column, matching Risk.sql's RowVersion addition,
+--                  exposed to callers as ETag via CONVERT(NVARCHAR(34), CAST(RowVersion AS
+--                  BINARY(8)), 1) in usp_ControlMeasure_GetByRiskId. ControlMeasure has no
+--                  pre-existing ConcurrencyToken column, so this is a pure addition. Idempotent via
+--                  COL_LENGTH guard; safe to re-run against a database that already has the column.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -29,5 +35,12 @@ BEGIN
     );
 
     CREATE NONCLUSTERED INDEX IX_ControlMeasure_RiskId ON [RiskMgmt].[ControlMeasure] (RiskId, IsDeleted);
+END
+GO
+
+-- Additive: native ROWVERSION concurrency column -- see header comment. Idempotent.
+IF COL_LENGTH('[RiskMgmt].[ControlMeasure]', 'RowVersion') IS NULL
+BEGIN
+    ALTER TABLE [RiskMgmt].[ControlMeasure] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

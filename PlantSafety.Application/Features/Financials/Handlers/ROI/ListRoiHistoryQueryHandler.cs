@@ -52,6 +52,7 @@ public sealed class ListRoiHistoryQueryHandler : IQueryHandler<ListRoiHistoryQue
             RoiPercentage = m.RoiPercentage,
             CurrencyCode = m.CurrencyCode,
             CalculatedAtUtc = m.CalculatedAtUtc,
+            ETag = m.ETag,
         }).ToList();
 
         return new PaginatedResult<SafetyROIDto>(items, total, pageNumber, pageSize);

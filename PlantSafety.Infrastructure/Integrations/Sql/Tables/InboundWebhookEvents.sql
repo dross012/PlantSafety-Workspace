@@ -13,6 +13,12 @@
 --                  effects, matching this solution's established idempotent-consumer
 --                  convention.
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-28 -- added RowVersion ROWVERSION NOT NULL (additive, schema-only)
+--                  so usp_InboundWebhookEvents_RecordEvent can project a stable ETag for this,
+--                  the one genuine write path in the Integrations module. Matches the
+--                  RowVersion/ETag precedent set by ContinuousImprovement.CorrectiveAction and
+--                  RiskManagement.Risk. No conflict-rejection logic is introduced here -- the
+--                  idempotent check-and-insert semantics of the owning procedure are unchanged.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -35,7 +41,8 @@ BEGIN
         OccurredAtUtc DATETIMEOFFSET(3) NOT NULL,
         RawPayload    NVARCHAR(MAX)    NOT NULL,
         ReceivedAtUtc DATETIME2(3)     NOT NULL CONSTRAINT DF_InboundWebhookEvents_ReceivedAtUtc DEFAULT (SYSUTCDATETIME()),
-        IsDeleted     BIT              NOT NULL CONSTRAINT DF_InboundWebhookEvents_IsDeleted DEFAULT (0)
+        IsDeleted     BIT              NOT NULL CONSTRAINT DF_InboundWebhookEvents_IsDeleted DEFAULT (0),
+        RowVersion    ROWVERSION       NOT NULL
     );
 
     -- One-row-per-(tenant,eventId) uniqueness enforces idempotent recording: a second insert
@@ -45,5 +52,11 @@ BEGIN
         ON [Integrations].[InboundWebhookEvents] (TenantId, EventId);
 
     CREATE NONCLUSTERED INDEX [IX_InboundWebhookEvents_ReceivedAtUtc] ON [Integrations].[InboundWebhookEvents] (ReceivedAtUtc);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Integrations].[InboundWebhookEvents]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Integrations].[InboundWebhookEvents] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

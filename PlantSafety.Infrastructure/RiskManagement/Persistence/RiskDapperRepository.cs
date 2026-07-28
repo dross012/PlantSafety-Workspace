@@ -304,6 +304,16 @@ public sealed class RiskDapperRepository(
         public required int RiskVersion { get; init; }
         public required DateTime CreatedAtUtc { get; init; }
         public required Guid CreatedBy { get; init; }
+
+        /// <summary>
+        /// Optimistic-concurrency token, projected from the row's native RowVersion column
+        /// (<c>CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1)</c>). Not yet consumed by
+        /// any write path -- the <see cref="Risk"/> aggregate has no ETag concept and
+        /// usp_Risk_Update does not take an @ETag parameter -- present so a future
+        /// optimistic-concurrency pass has it available without another read-model change,
+        /// matching the schema-only precedent set by AccidentManagement's AccidentRow.ETag.
+        /// </summary>
+        public string? ETag { get; init; }
     }
 
     /// <summary>Flat read-model row shape returned by <c>usp_ControlMeasure_GetByRiskId</c>.</summary>
@@ -316,5 +326,8 @@ public sealed class RiskDapperRepository(
         public string? Justification { get; init; }
         public required Guid ResponsiblePersonId { get; init; }
         public required DateTime ImplementedAtUtc { get; init; }
+
+        /// <summary>See <see cref="RiskRow.ETag"/> remarks -- not yet consumed by any write path.</summary>
+        public string? ETag { get; init; }
     }
 }

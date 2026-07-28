@@ -40,4 +40,12 @@ public sealed record SafetyROIDto
 
     /// <summary>UTC timestamp when this ROI was calculated.</summary>
     public required DateTimeOffset CalculatedAtUtc { get; init; }
+
+    /// <summary>
+    /// Optimistic-concurrency token, projected from the row's native RowVersion column (see
+    /// <c>IRoiRepository</c>'s <c>RoiReadModel.ETag</c> remarks). Not yet consumed by any write
+    /// path -- CalculateRoiCommand has no ETag concept -- present so a future
+    /// optimistic-concurrency pass has it available without another DTO change.
+    /// </summary>
+    public string? ETag { get; init; }
 }

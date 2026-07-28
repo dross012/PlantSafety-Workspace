@@ -8,6 +8,8 @@
 --  SchemaVersion:  2026.1
 --  Description:    Read-only stored procedure backing
 --                  IRoiRepository.GetByFiscalYearAsync. Additive-only evolution.
+--  UPDATED:        2026-07-28 -- added ETag, projected from the RowVersion column:
+--                  CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1).
 -- ============================================================================
 
 CREATE OR ALTER PROCEDURE [Financials].[usp_Roi_GetByFiscalYear]
@@ -27,7 +29,8 @@ BEGIN
         NetBenefit,
         RoiPercentage,
         CurrencyCode,
-        CalculatedAtUtc
+        CalculatedAtUtc,
+        CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
     FROM [Financials].[Roi]
     WHERE TenantId = @TenantId
       AND IsDeleted = 0

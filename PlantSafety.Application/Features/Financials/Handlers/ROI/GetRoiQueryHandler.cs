@@ -46,6 +46,7 @@ public sealed class GetRoiQueryHandler : IQueryHandler<GetRoiQuery, SafetyROIDto
             RoiPercentage = model.RoiPercentage,
             CurrencyCode = model.CurrencyCode,
             CalculatedAtUtc = model.CalculatedAtUtc,
+            ETag = model.ETag,
         };
     }
 }

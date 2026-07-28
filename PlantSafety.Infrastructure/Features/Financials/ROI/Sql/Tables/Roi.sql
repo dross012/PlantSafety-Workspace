@@ -9,6 +9,12 @@
 --  Description:    Table DDL for SafetyROI calculation history, backing
 --                  IRoiRepository (usp_Roi_Create/GetByFiscalYear/List).
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-28 -- added a RowVersion ROWVERSION NOT NULL column, additive
+--                  alongside the pre-existing CorrelationId-based provenance columns (no existing
+--                  concurrency column found on this table, so nothing is replaced), exposed to
+--                  callers as ETag via CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) in
+--                  usp_Roi_Create/GetByFiscalYear/List, matching the RiskManagement/
+--                  AccidentManagement precedent.
 -- ============================================================================
 
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Financials')
@@ -40,5 +46,11 @@ BEGIN
 
     CREATE NONCLUSTERED INDEX [IX_Financials_Roi_TenantId_SiteId] ON [Financials].[Roi] (TenantId, SiteId);
     CREATE NONCLUSTERED INDEX [IX_Financials_Roi_FiscalYear] ON [Financials].[Roi] (TenantId, FiscalYear);
+END
+GO
+
+IF COL_LENGTH('[Financials].[Roi]', 'RowVersion') IS NULL
+BEGIN
+    ALTER TABLE [Financials].[Roi] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

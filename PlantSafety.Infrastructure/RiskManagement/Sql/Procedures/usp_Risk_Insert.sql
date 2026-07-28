@@ -14,6 +14,12 @@
 --                  severity banding), so this is stored purely to back the 11 category
 --                  Application-layer read-model repositories. TRY/CATCH with AuditDB/ErrorDB
 --                  logging per the canonical write-procedure template. Additive-only evolution.
+--  UPDATED:        2026-07-28 -- returns the freshly-inserted row's ETag (CONVERT(NVARCHAR(34),
+--                  CAST(RowVersion AS BINARY(8)), 1)) via a trailing SELECT so callers have an
+--                  up-to-date ETag immediately after insert without a separate round-trip. Schema-
+--                  only: no @ETag input parameter or conflict-rejection logic is introduced here --
+--                  IRiskRepository.AddAsync has no ETag concept to enforce (see
+--                  RiskDapperRepository.RiskRow.ETag remarks).
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -69,6 +75,10 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+        FROM [RiskMgmt].[Risk]
+        WHERE RiskId = @RiskId;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'RiskId=', @RiskId, N'; User=', SYSTEM_USER);

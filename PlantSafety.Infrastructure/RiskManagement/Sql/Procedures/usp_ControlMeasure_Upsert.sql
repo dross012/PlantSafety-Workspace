@@ -12,6 +12,10 @@
 --                  once applied (no lifecycle mutation methods on the entity), so this is
 --                  effectively insert-only in practice but implemented as an upsert for safety.
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-28 -- returns the post-upsert row's ETag (CONVERT(NVARCHAR(34),
+--                  CAST(RowVersion AS BINARY(8)), 1)) via a trailing SELECT so callers have an
+--                  up-to-date ETag immediately after insert/update without a separate round-trip.
+--                  Schema-only: no @ETag input parameter or conflict-rejection logic is introduced.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -51,6 +55,10 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+        FROM [RiskMgmt].[ControlMeasure]
+        WHERE ControlMeasureId = @ControlMeasureId;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'ControlMeasureId=', @ControlMeasureId, N'; RiskId=', @RiskId, N'; User=', SYSTEM_USER);

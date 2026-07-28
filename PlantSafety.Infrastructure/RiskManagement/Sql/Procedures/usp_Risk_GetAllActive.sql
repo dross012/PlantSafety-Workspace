@@ -9,6 +9,8 @@
 --  Description:    Returns all non-deleted Risk aggregate root rows. Backs
 --                  IRiskRepository.ListAsync, whose RiskSpecification predicate is applied
 --                  in-memory over the candidate set returned here. Additive-only evolution.
+--  UPDATED:        2026-07-28 -- added ETag, projected from the RowVersion column the same way as
+--                  usp_Risk_GetById.sql: CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1).
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -21,7 +23,8 @@ BEGIN
         RiskId, TenantId, SiteId, Status, RiskTitle, Category, Location, HazardSource, OwnerId,
         CurrentSeverity, CurrentLikelihood, Priority, DocumentedAtUtc, ResidualSeverity, ResidualLikelihood,
         LastValidatedAtUtc, ReviewCadence, LastReviewedAtUtc, NextReviewDueUtc, ReviewRequired, ReviewCount,
-        RiskVersion, CreatedAtUtc, CreatedBy
+        RiskVersion, CreatedAtUtc, CreatedBy,
+        CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
     FROM [RiskMgmt].[Risk]
     WHERE IsDeleted = 0;
 END

@@ -60,4 +60,14 @@ public sealed record RoiReadModel
     public required string CurrencyCode { get; init; }
     /// <summary>UTC timestamp when calculated.</summary>
     public required DateTimeOffset CalculatedAtUtc { get; init; }
+
+    /// <summary>
+    /// Optimistic-concurrency token, projected from the row's native RowVersion column
+    /// (<c>CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1)</c>). Not yet consumed by any
+    /// write path -- IRoiRepository.CreateAsync has no ETag concept and takes no @ETag parameter --
+    /// present so a future optimistic-concurrency pass has it available without another read-model
+    /// change, matching the schema-only precedent set by RiskManagement's RiskRow.ETag /
+    /// AccidentManagement's AccidentRow.ETag.
+    /// </summary>
+    public string? ETag { get; init; }
 }

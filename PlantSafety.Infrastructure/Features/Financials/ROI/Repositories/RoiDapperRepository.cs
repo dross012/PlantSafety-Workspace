@@ -8,6 +8,9 @@
 //  SchemaVersion:  2026.1
 //  Description:    Dapper repository for the SafetyROI read/write model. All DB access via stored
 //                  procedures in the [Financials] schema. Additive-only evolution.
+//  UPDATED:        2026-07-28 -- maps the ETag column now projected by usp_Roi_GetByFiscalYear/
+//                  usp_Roi_List onto RoiReadModel.ETag. Schema-only: no conflict-rejection logic
+//                  is introduced here (see RoiReadModel.ETag remarks).
 // ============================================================================
 using PlantSafety.Application.Features.Financials.Handlers.ROI;
 
@@ -70,8 +73,28 @@ public sealed class RoiDapperRepository(
             .AddInt("FiscalYear", fiscalYear)
             .Build();
 
-        return await queryExecutor.QuerySingleOrDefaultAsync<RoiReadModel>(
+        var row = await queryExecutor.QuerySingleOrDefaultAsync<RoiRow>(
             "[Financials].[usp_Roi_GetByFiscalYear]", parameters, cancellationToken);
+
+        if (row is null)
+        {
+            return null;
+        }
+
+        return new RoiReadModel
+        {
+            RoiCalculationId = row.RoiCalculationId,
+            TenantId = row.TenantId,
+            SiteId = row.SiteId,
+            FiscalYear = row.FiscalYear,
+            TotalInvestment = row.TotalInvestment,
+            EstimatedAvoidedCosts = row.EstimatedAvoidedCosts,
+            NetBenefit = row.NetBenefit,
+            RoiPercentage = row.RoiPercentage,
+            CurrencyCode = row.CurrencyCode,
+            CalculatedAtUtc = row.CalculatedAtUtc,
+            ETag = row.ETag,
+        };
     }
 
     /// <inheritdoc/>
@@ -110,10 +133,29 @@ public sealed class RoiDapperRepository(
             RoiPercentage = r.RoiPercentage,
             CurrencyCode = r.CurrencyCode,
             CalculatedAtUtc = r.CalculatedAtUtc,
+            ETag = r.ETag,
         }).ToList();
 
         var totalCount = rows.Count > 0 ? rows[0].TotalCount : 0;
         return (items, totalCount);
+    }
+
+    /// <summary>Raw row shape returned by <c>[Financials].[usp_Roi_GetByFiscalYear]</c>.</summary>
+    private sealed record RoiRow
+    {
+        public required Guid RoiCalculationId { get; init; }
+        public required Guid TenantId { get; init; }
+        public Guid? SiteId { get; init; }
+        public required int FiscalYear { get; init; }
+        public required decimal TotalInvestment { get; init; }
+        public required decimal EstimatedAvoidedCosts { get; init; }
+        public required decimal NetBenefit { get; init; }
+        public required decimal RoiPercentage { get; init; }
+        public required string CurrencyCode { get; init; }
+        public required DateTimeOffset CalculatedAtUtc { get; init; }
+
+        /// <summary>See <see cref="IRoiRepository"/>'s <c>RoiReadModel.ETag</c> remarks -- not yet consumed by any write path.</summary>
+        public string? ETag { get; init; }
     }
 
     /// <summary>Raw row shape returned by <c>[Financials].[usp_Roi_List]</c>, including the windowed total row count.</summary>
@@ -129,6 +171,9 @@ public sealed class RoiDapperRepository(
         public required decimal RoiPercentage { get; init; }
         public required string CurrencyCode { get; init; }
         public required DateTimeOffset CalculatedAtUtc { get; init; }
+
+        /// <summary>See <see cref="IRoiRepository"/>'s <c>RoiReadModel.ETag</c> remarks -- not yet consumed by any write path.</summary>
+        public string? ETag { get; init; }
         public required int TotalCount { get; init; }
     }
 }
