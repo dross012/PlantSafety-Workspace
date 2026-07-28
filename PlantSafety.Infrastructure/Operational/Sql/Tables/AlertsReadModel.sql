@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Operational.Alerts
 --  Layer:          Infrastructure - SQL Scripts
@@ -21,11 +21,18 @@ BEGIN
         [Severity]                NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [TriggeredAtUtc]  DATETIME2(3)        NOT NULL,
-        [AcknowledgedBy]  UNIQUEIDENTIFIER    NULL
+        [AcknowledgedBy]  UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_AlertsReadModel_TenantId_TriggeredAtUtc]
         ON [Operational].[AlertsReadModel] ([TenantId], [TriggeredAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[AlertsReadModel]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Operational].[AlertsReadModel] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

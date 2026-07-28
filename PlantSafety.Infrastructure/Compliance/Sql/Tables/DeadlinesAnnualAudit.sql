@@ -20,11 +20,18 @@ BEGIN
         [AuditScope]              NVARCHAR(300)       NOT NULL,
         [DueAtUtc]                DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL
+        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_DeadlinesAnnualAudit_TenantId_DueAtUtc]
         ON [Compliance].[DeadlinesAnnualAudit] ([TenantId], [DueAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[DeadlinesAnnualAudit]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[DeadlinesAnnualAudit] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

@@ -251,6 +251,151 @@ public sealed class IncidentLifecycleIntegrationTests(IntegrationTestWebAppFacto
         }
     }
 
+    [Fact]
+    public async Task GetIncident_WithoutIntermediateUpdate_ShouldKeepStableETag()
+    {
+        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        try
+        {
+            var createCommand = new CreateIncidentCommand
+            {
+                CommandId = Guid.NewGuid(),
+                CorrelationId = CorrelationId,
+                CausationId = null,
+                RequestedAtUtc = FixedUtcNow,
+                ApiVersionToken = "v1",
+                TenantId = TenantId,
+                ActorId = ActorId,
+                SiteId = Guid.NewGuid(),
+                Title = "Slip hazard reported near loading dock",
+                Description = "Wet floor without signage near Bay 1.",
+                IncidentOccurredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10),
+                Severity = "Minor",
+                Location = "Bay 1",
+                ReportedByWorkerId = Guid.NewGuid(),
+            };
+
+            var incidentId = await sender.Send(createCommand, CancellationToken.None);
+
+            var firstRead = await sender.Send(BuildGetByIdQuery(incidentId), CancellationToken.None);
+            var secondRead = await sender.Send(BuildGetByIdQuery(incidentId), CancellationToken.None);
+
+            firstRead.Should().NotBeNull();
+            secondRead.Should().NotBeNull();
+            secondRead!.ETag.Should().Be(firstRead!.ETag,
+                "reading the same unmodified row twice must not advance the ROWVERSION-backed ETag");
+        }
+        finally
+        {
+            scope.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task IncidentCreateAndUpdate_ShouldWriteAuditLogRows()
+    {
+        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        try
+        {
+            var createCommand = new CreateIncidentCommand
+            {
+                CommandId = Guid.NewGuid(),
+                CorrelationId = CorrelationId,
+                CausationId = null,
+                RequestedAtUtc = FixedUtcNow,
+                ApiVersionToken = "v1",
+                TenantId = TenantId,
+                ActorId = ActorId,
+                SiteId = Guid.NewGuid(),
+                Title = "Exposed wiring in electrical room",
+                Description = "Junction box left open after maintenance.",
+                IncidentOccurredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
+                Severity = "Serious",
+                Location = "Electrical Room 2",
+                ReportedByWorkerId = Guid.NewGuid(),
+            };
+
+            var incidentId = await sender.Send(createCommand, CancellationToken.None);
+
+            var getAfterCreate = await sender.Send(BuildGetByIdQuery(incidentId), CancellationToken.None);
+            await sender.Send(new UpdateIncidentCommand
+            {
+                CommandId = Guid.NewGuid(),
+                CorrelationId = CorrelationId,
+                CausationId = null,
+                RequestedAtUtc = FixedUtcNow,
+                ApiVersionToken = "v1",
+                TenantId = TenantId,
+                ActorId = ActorId,
+                ETag = getAfterCreate!.ETag,
+                IncidentId = incidentId,
+                Severity = "Critical",
+            }, CancellationToken.None);
+
+            await using var conn = new SqlConnection(ConnectionString);
+            var auditRowCount = await conn.ExecuteScalarAsync<int>(
+                @"SELECT COUNT(1) FROM dbo.AuditLog
+                  WHERE TableName = @TableName
+                    AND Operation IN ('INSERT', 'UPDATE')
+                    AND ErrorContext LIKE @IncidentIdPattern",
+                new { TableName = "Incident", IncidentIdPattern = $"%{incidentId}%" });
+
+            auditRowCount.Should().BeGreaterThanOrEqualTo(2,
+                "usp_Incident_Create and usp_Incident_Update must each write a best-effort AuditLog row for this IncidentId");
+        }
+        finally
+        {
+            scope.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task IncidentCreate_WithDuplicateIncidentId_ShouldWriteErrorLogRowAndRethrow()
+    {
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        var incidentId = Guid.NewGuid();
+        var parameters = new
+        {
+            TenantId,
+            CorrelationId,
+            ActorId,
+            NowUtc = FixedUtcNow,
+            IncidentId = incidentId,
+            SiteId = Guid.NewGuid(),
+            Title = "Duplicate-key ErrorLog probe incident",
+            Description = "Used only to force a PK violation and assert ErrorLog writes.",
+            IncidentOccurredAtUtc = FixedUtcNow,
+            Severity = "Minor",
+            Location = "N/A",
+            ReportedByWorkerId = Guid.NewGuid(),
+            AssignedInvestigatorId = (Guid?)null,
+        };
+
+        // First insert succeeds.
+        await conn.ExecuteAsync("[SafetyEvents].[usp_Incident_Create]", parameters, commandType: CommandType.StoredProcedure);
+
+        // Second insert with the same IncidentId must violate PK_Incident, hit the CATCH block,
+        // write an ErrorLog row, and rethrow via THROW rather than swallowing the failure.
+        var act = async () => await conn.ExecuteAsync(
+            "[SafetyEvents].[usp_Incident_Create]", parameters, commandType: CommandType.StoredProcedure);
+
+        await act.Should().ThrowAsync<SqlException>(
+            "usp_Incident_Create's THROW must rethrow the primary-key violation rather than swallowing it");
+
+        // ERROR_PROCEDURE() returns the schema-qualified name ("SafetyEvents.usp_Incident_Create"),
+        // not the bare procedure name -- match with LIKE '%usp_Incident_Create' rather than '='.
+        var errorRowCount = await conn.ExecuteScalarAsync<int>(
+            @"SELECT COUNT(1) FROM dbo.ErrorLog
+              WHERE ErrorProcedure LIKE '%usp_Incident_Create'
+                AND ErrorContext LIKE @IncidentIdPattern",
+            new { IncidentIdPattern = $"%{incidentId}%" });
+
+        errorRowCount.Should().BeGreaterThanOrEqualTo(1,
+            "the CATCH block must write an ErrorLog row for the failed duplicate-key insert, never fail silently");
+    }
+
     private GetIncidentByIdQuery BuildGetByIdQuery(Guid incidentId) => new()
     {
         TraceId = Guid.NewGuid().ToString(),

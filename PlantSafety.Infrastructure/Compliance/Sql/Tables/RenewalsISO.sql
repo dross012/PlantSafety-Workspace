@@ -20,11 +20,18 @@ BEGIN
         [CertificationStandard]   NVARCHAR(300)       NOT NULL,
         [ExpiresAtUtc]            DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL
+        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_RenewalsISO_TenantId_ExpiresAtUtc]
         ON [Compliance].[RenewalsISO] ([TenantId], [ExpiresAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[RenewalsISO]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[RenewalsISO] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

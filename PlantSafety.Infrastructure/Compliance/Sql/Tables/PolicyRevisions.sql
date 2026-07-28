@@ -21,11 +21,18 @@ BEGIN
         [RevisionNumber]          NVARCHAR(50)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [RevisedAtUtc]            DATETIME2(3)        NOT NULL,
-        [RevisedBy]               UNIQUEIDENTIFIER    NOT NULL
+        [RevisedBy]               UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyRevisions_TenantId_RevisedAtUtc]
         ON [Compliance].[PolicyRevisions] ([TenantId], [RevisedAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[PolicyRevisions]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[PolicyRevisions] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

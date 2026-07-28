@@ -22,11 +22,18 @@ BEGIN
         [NextRunAtUtc]      DATETIME2(3)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [CreatedAtUtc]      DATETIME2(3)        NOT NULL,
-        [CreatedBy]         UNIQUEIDENTIFIER    NOT NULL
+        [CreatedBy]         UNIQUEIDENTIFIER    NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Schedules_TenantId_NextRunAtUtc]
         ON [Analytics].[Schedules] ([TenantId], [NextRunAtUtc])
         INCLUDE ([SiteId], [Status], [ScheduleName]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Schedules]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Analytics].[Schedules] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

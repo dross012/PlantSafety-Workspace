@@ -20,11 +20,18 @@ BEGIN
         [TrainingProgram]         NVARCHAR(300)       NOT NULL,
         [ExpiresAtUtc]            DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL
+        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_RenewalsTraining_TenantId_ExpiresAtUtc]
         ON [Compliance].[RenewalsTraining] ([TenantId], [ExpiresAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[RenewalsTraining]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[RenewalsTraining] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

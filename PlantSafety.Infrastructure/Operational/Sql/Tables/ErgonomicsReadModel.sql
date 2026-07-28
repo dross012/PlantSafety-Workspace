@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Operational.Ergonomics
 --  Layer:          Infrastructure - SQL Scripts
@@ -21,11 +21,18 @@ BEGIN
         [RiskLevel]               NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [AssessedAtUtc]   DATETIME2(3)        NOT NULL,
-        [AssessedBy]      UNIQUEIDENTIFIER    NULL
+        [AssessedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ErgonomicsReadModel_TenantId_AssessedAtUtc]
         ON [Operational].[ErgonomicsReadModel] ([TenantId], [AssessedAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[ErgonomicsReadModel]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Operational].[ErgonomicsReadModel] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

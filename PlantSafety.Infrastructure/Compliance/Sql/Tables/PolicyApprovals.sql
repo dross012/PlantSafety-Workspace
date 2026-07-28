@@ -23,11 +23,18 @@ BEGIN
         PolicyTitle    NVARCHAR(300)    NOT NULL,
         Status         NVARCHAR(50)     NOT NULL,
         DecisionAtUtc  DATETIME2(3)     NOT NULL,
-        ApproverId     UNIQUEIDENTIFIER NOT NULL
+        ApproverId     UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyApprovals_TenantId_SiteId] ON [Compliance].[PolicyApprovals] (TenantId, SiteId);
     CREATE NONCLUSTERED INDEX [IX_PolicyApprovals_DecisionAtUtc] ON [Compliance].[PolicyApprovals] (DecisionAtUtc);
     CREATE NONCLUSTERED INDEX [IX_PolicyApprovals_PolicyId] ON [Compliance].[PolicyApprovals] (PolicyId);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[PolicyApprovals]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[PolicyApprovals] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

@@ -1,4 +1,4 @@
--- ============================================================================
+﻿-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Compliance.ComplianceExportItems
 --  Layer:          Infrastructure - SQL Scripts
@@ -28,11 +28,18 @@ BEGIN
         [Title]             NVARCHAR(300)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]    DATETIME2(3)        NOT NULL,
-        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ComplianceExportItems_TenantId_EffectiveAtUtc]
         ON [Compliance].[ComplianceExportItems] ([TenantId], [EffectiveAtUtc])
         INCLUDE ([SiteId], [Status], [ResourceType]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[ComplianceExportItems]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[ComplianceExportItems] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

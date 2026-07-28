@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Operational.Inspections
 --  Layer:          Infrastructure - SQL Scripts
@@ -21,11 +21,18 @@ BEGIN
         [Outcome]                 NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [InspectedAtUtc]  DATETIME2(3)        NOT NULL,
-        [InspectedBy]     UNIQUEIDENTIFIER    NULL
+        [InspectedBy]     UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InspectionsReadModel_TenantId_InspectedAtUtc]
         ON [Operational].[InspectionsReadModel] ([TenantId], [InspectedAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[InspectionsReadModel]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Operational].[InspectionsReadModel] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

@@ -177,6 +177,120 @@ public sealed class PermitLifecycleIntegrationTests(IntegrationTestWebAppFactory
         }
     }
 
+    [Fact]
+    public async Task CreatePermit_ForcedDuplicatePrimaryKey_ShouldThrowAndPopulateErrorLog()
+    {
+        // Forces a genuine SQL-level failure (primary key violation) by calling
+        // [Compliance].[usp_Permit_Create] directly, twice, with the same @PermitId. Confirms the
+        // modernized procedure's THROW still re-raises the exception and that the CATCH block's
+        // ErrorLog insert fires.
+        var permitId = Guid.NewGuid();
+
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        async Task ExecuteCreateAsync()
+        {
+            await using var cmd = new SqlCommand("[Compliance].[usp_Permit_Create]", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@TenantId", TenantId);
+            cmd.Parameters.AddWithValue("@CorrelationId", CorrelationId);
+            cmd.Parameters.AddWithValue("@ActorId", ActorId);
+            cmd.Parameters.AddWithValue("@NowUtc", FixedUtcNow);
+            cmd.Parameters.AddWithValue("@PermitId", permitId);
+            cmd.Parameters.AddWithValue("@SiteId", Guid.NewGuid());
+            cmd.Parameters.AddWithValue("@PermitType", "HotWork");
+            cmd.Parameters.AddWithValue("@WorkDescription", "Forced duplicate-key failure test.");
+            cmd.Parameters.AddWithValue("@WorkLocation", "Unit 1");
+            cmd.Parameters.AddWithValue("@WorkLeadId", Guid.NewGuid());
+            cmd.Parameters.AddWithValue("@ValidFromUtc", DateTimeOffset.UtcNow.AddHours(1));
+            cmd.Parameters.AddWithValue("@ValidToUtc", DateTimeOffset.UtcNow.AddHours(2));
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        await ExecuteCreateAsync();
+
+        var act = ExecuteCreateAsync;
+
+        await act.Should().ThrowAsync<SqlException>(
+            "a second usp_Permit_Create call with a duplicate @PermitId must violate PK_Permit and THROW must re-raise it");
+
+        var errorLogCount = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.ErrorLog WHERE ErrorProcedure LIKE @ErrorProcedurePattern AND ErrorContext LIKE @Pattern",
+            new { ErrorProcedurePattern = "%" + "usp_Permit_Create", Pattern = $"%PermitId={permitId}%" });
+
+        errorLogCount.Should().BeGreaterThan(0,
+            "usp_Permit_Create's CATCH block must have logged the forced duplicate-key failure to ErrorLog before re-throwing");
+    }
+
+    [Fact]
+    public async Task ApprovePermit_ForcedNotNullViolation_ShouldThrowAndPopulateErrorLog()
+    {
+        // Forces a genuine SQL-level failure (NOT NULL constraint violation on LastModifiedAtUtc)
+        // by calling [Compliance].[usp_Permit_Approve] directly with @NowUtc = NULL against a
+        // Permit row that genuinely exists and whose ETag genuinely matches (so the UPDATE
+        // actually reaches the NOT NULL column, rather than matching zero rows on a
+        // stale/incorrect ETag).
+        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        Guid permitId;
+        try
+        {
+            permitId = await sender.Send(new CreatePermitCommand
+            {
+                CommandId = Guid.NewGuid(),
+                CorrelationId = CorrelationId,
+                CausationId = null,
+                RequestedAtUtc = FixedUtcNow,
+                ApiVersionToken = "v1",
+                TenantId = TenantId,
+                ActorId = ActorId,
+                SiteId = Guid.NewGuid(),
+                PermitType = "ColdWork",
+                WorkDescription = "Forced NOT NULL failure test.",
+                WorkLocation = "Unit 2",
+                WorkLeadId = Guid.NewGuid(),
+                ValidFromUtc = DateTimeOffset.UtcNow.AddHours(1),
+                ValidToUtc = DateTimeOffset.UtcNow.AddHours(4),
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            scope.Dispose();
+        }
+
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        var eTag = await conn.ExecuteScalarAsync<string>(
+            "SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) FROM [Compliance].[Permit] WHERE PermitId = @PermitId",
+            new { PermitId = permitId });
+
+        await using (var cmd = new SqlCommand("[Compliance].[usp_Permit_Approve]", conn))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@TenantId", TenantId);
+            cmd.Parameters.AddWithValue("@CorrelationId", CorrelationId);
+            cmd.Parameters.AddWithValue("@ActorId", ActorId);
+            cmd.Parameters.AddWithValue("@NowUtc", DBNull.Value);
+            cmd.Parameters.AddWithValue("@PermitId", permitId);
+            cmd.Parameters.AddWithValue("@ApprovalNotes", DBNull.Value);
+            cmd.Parameters.AddWithValue("@ETag", eTag!);
+
+            var act = async () => await cmd.ExecuteScalarAsync();
+
+            await act.Should().ThrowAsync<SqlException>(
+                "a NULL @NowUtc must violate Permit.LastModifiedAtUtc's NOT NULL constraint and THROW must re-raise it");
+        }
+
+        var errorLogCount = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.ErrorLog WHERE ErrorProcedure LIKE @ErrorProcedurePattern AND ErrorContext LIKE @Pattern",
+            new { ErrorProcedurePattern = "%" + "usp_Permit_Approve", Pattern = $"%PermitId={permitId}%" });
+
+        errorLogCount.Should().BeGreaterThan(0,
+            "usp_Permit_Approve's CATCH block must have logged the forced failure to ErrorLog before re-throwing");
+    }
+
     private GetPermitByIdQuery BuildGetByIdQuery(Guid permitId) => new()
     {
         TraceId = Guid.NewGuid().ToString(),

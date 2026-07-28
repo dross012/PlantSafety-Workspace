@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Operational.Webinars
 --  Layer:          Infrastructure - SQL Scripts
@@ -20,12 +20,18 @@ BEGIN
         [Title]                   NVARCHAR(400)       NOT NULL,
         [HostId]                  UNIQUEIDENTIFIER    NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
-        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL
-
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_WebinarsReadModel_TenantId_ScheduledAtUtc]
         ON [Operational].[WebinarsReadModel] ([TenantId], [ScheduledAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[WebinarsReadModel]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Operational].[WebinarsReadModel] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

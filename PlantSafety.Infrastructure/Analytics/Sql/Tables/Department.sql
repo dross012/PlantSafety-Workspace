@@ -21,11 +21,18 @@ BEGIN
         [ScoreValue]        DECIMAL(18,4)       NOT NULL,
         [RankPercentile]    DECIMAL(18,4)       NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Department_TenantId_ScoredAtUtc]
         ON [Analytics].[Department] ([TenantId], [ScoredAtUtc])
         INCLUDE ([SiteId], [Status], [DepartmentName]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Department]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Analytics].[Department] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

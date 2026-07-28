@@ -20,11 +20,18 @@ BEGIN
         [InspectionScope]         NVARCHAR(300)       NOT NULL,
         [ScheduledAtUtc]          DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [Inspector]               UNIQUEIDENTIFIER    NOT NULL
+        [Inspector]               UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InspectionsOSHA_TenantId_ScheduledAtUtc]
         ON [Compliance].[InspectionsOSHA] ([TenantId], [ScheduledAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[InspectionsOSHA]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[InspectionsOSHA] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

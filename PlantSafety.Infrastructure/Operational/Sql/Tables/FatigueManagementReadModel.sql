@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Operational.FatigueManagement
 --  Layer:          Infrastructure - SQL Scripts
@@ -21,11 +21,18 @@ BEGIN
         [FatigueRiskLevel]        NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [RecordedAtUtc]   DATETIME2(3)        NOT NULL,
-        [RecordedBy]      UNIQUEIDENTIFIER    NULL
+        [RecordedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_FatigueManagementReadModel_TenantId_RecordedAtUtc]
         ON [Operational].[FatigueManagementReadModel] ([TenantId], [RecordedAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[FatigueManagementReadModel]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Operational].[FatigueManagementReadModel] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

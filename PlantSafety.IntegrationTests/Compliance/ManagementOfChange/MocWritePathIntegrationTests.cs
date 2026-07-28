@@ -158,4 +158,119 @@ public sealed class MocWritePathIntegrationTests(IntegrationTestWebAppFactory fa
             scope.Dispose();
         }
     }
+
+    [Fact]
+    public async Task CreateMoc_ForcedDuplicatePrimaryKey_ShouldThrowAndPopulateErrorLog()
+    {
+        // Forces a genuine SQL-level failure (primary key violation) by calling
+        // [Compliance].[usp_Moc_Create] directly, twice, with the same @MocId. Confirms the
+        // modernized procedure's THROW still re-raises the exception and that the CATCH block's
+        // ErrorLog insert fires.
+        var mocId = Guid.NewGuid();
+
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        async Task ExecuteCreateAsync()
+        {
+            await using var cmd = new SqlCommand("[Compliance].[usp_Moc_Create]", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@TenantId", TenantId);
+            cmd.Parameters.AddWithValue("@CorrelationId", CorrelationId);
+            cmd.Parameters.AddWithValue("@ActorId", ActorId);
+            cmd.Parameters.AddWithValue("@NowUtc", FixedUtcNow);
+            cmd.Parameters.AddWithValue("@MocId", mocId);
+            cmd.Parameters.AddWithValue("@SiteId", Guid.NewGuid());
+            cmd.Parameters.AddWithValue("@Title", "Forced duplicate-key failure test");
+            cmd.Parameters.AddWithValue("@Description", "Second insert with the same MocId must violate the primary key.");
+            cmd.Parameters.AddWithValue("@ChangeType", "Temporary");
+            cmd.Parameters.AddWithValue("@RiskLevel", "Low");
+            cmd.Parameters.AddWithValue("@InitiatorId", Guid.NewGuid());
+            cmd.Parameters.AddWithValue("@ProposedStartUtc", DateTimeOffset.UtcNow.AddDays(1));
+            cmd.Parameters.AddWithValue("@ProposedEndUtc", DBNull.Value);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        await ExecuteCreateAsync();
+
+        var act = ExecuteCreateAsync;
+
+        await act.Should().ThrowAsync<SqlException>(
+            "a second usp_Moc_Create call with a duplicate @MocId must violate PK_Moc and THROW must re-raise it");
+
+        var errorLogCount = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.ErrorLog WHERE ErrorProcedure LIKE @ErrorProcedurePattern AND ErrorContext LIKE @Pattern",
+            new { ErrorProcedurePattern = "%" + "usp_Moc_Create", Pattern = $"%MocId={mocId}%" });
+
+        errorLogCount.Should().BeGreaterThan(0,
+            "usp_Moc_Create's CATCH block must have logged the forced duplicate-key failure to ErrorLog before re-throwing");
+    }
+
+    [Fact]
+    public async Task ApproveMoc_ForcedNotNullViolation_ShouldThrowAndPopulateErrorLog()
+    {
+        // Forces a genuine SQL-level failure (NOT NULL constraint violation on LastModifiedAtUtc)
+        // by calling [Compliance].[usp_Moc_Approve] directly with @NowUtc = NULL against a Moc row
+        // that genuinely exists and whose ETag genuinely matches (so the UPDATE actually reaches
+        // the NOT NULL column, rather than matching zero rows on a stale/incorrect ETag).
+        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        Guid mocId;
+        try
+        {
+            mocId = await sender.Send(new CreateMocCommand
+            {
+                CommandId = Guid.NewGuid(),
+                CorrelationId = CorrelationId,
+                CausationId = null,
+                RequestedAtUtc = FixedUtcNow,
+                ApiVersionToken = "v1",
+                TenantId = TenantId,
+                ActorId = ActorId,
+                SiteId = Guid.NewGuid(),
+                Title = "Forced NOT NULL failure test",
+                Description = "Approve call with a NULL @NowUtc must violate LastModifiedAtUtc's NOT NULL constraint.",
+                ChangeType = "Temporary",
+                RiskLevel = "Low",
+                InitiatorId = Guid.NewGuid(),
+                ProposedStartUtc = DateTimeOffset.UtcNow.AddDays(1),
+                ProposedEndUtc = DateTimeOffset.UtcNow.AddDays(2),
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            scope.Dispose();
+        }
+
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        var eTag = await conn.ExecuteScalarAsync<string>(
+            "SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) FROM [Compliance].[Moc] WHERE MocId = @MocId",
+            new { MocId = mocId });
+
+        await using (var cmd = new SqlCommand("[Compliance].[usp_Moc_Approve]", conn))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@TenantId", TenantId);
+            cmd.Parameters.AddWithValue("@CorrelationId", CorrelationId);
+            cmd.Parameters.AddWithValue("@ActorId", ActorId);
+            cmd.Parameters.AddWithValue("@NowUtc", DBNull.Value);
+            cmd.Parameters.AddWithValue("@MocId", mocId);
+            cmd.Parameters.AddWithValue("@ApprovalNotes", DBNull.Value);
+            cmd.Parameters.AddWithValue("@ETag", eTag!);
+
+            var act = async () => await cmd.ExecuteScalarAsync();
+
+            await act.Should().ThrowAsync<SqlException>(
+                "a NULL @NowUtc must violate Moc.LastModifiedAtUtc's NOT NULL constraint and THROW must re-raise it");
+        }
+
+        var errorLogCount = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.ErrorLog WHERE ErrorProcedure LIKE @ErrorProcedurePattern AND ErrorContext LIKE @Pattern",
+            new { ErrorProcedurePattern = "%" + "usp_Moc_Approve", Pattern = $"%MocId={mocId}%" });
+
+        errorLogCount.Should().BeGreaterThan(0,
+            "usp_Moc_Approve's CATCH block must have logged the forced failure to ErrorLog before re-throwing");
+    }
 }

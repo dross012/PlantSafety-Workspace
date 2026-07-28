@@ -26,11 +26,18 @@ BEGIN
         [Label]              NVARCHAR(300)       NOT NULL,
         [Value]              DECIMAL(18,4)       NOT NULL,
         [Trend]              NVARCHAR(50)        NULL,
-        [RecordedAtUtc]      DATETIME2(3)        NOT NULL
+        [RecordedAtUtc]      DATETIME2(3)        NOT NULL,
+        [RowVersion]         ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_EngagementDataPoints_TenantId_RecordedAtUtc]
         ON [Analytics].[EngagementDataPoints] ([TenantId], [RecordedAtUtc])
         INCLUDE ([SiteId], [Label]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[EngagementDataPoints]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Analytics].[EngagementDataPoints] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

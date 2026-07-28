@@ -21,11 +21,18 @@ BEGIN
         [MaintenanceTask]         NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresMaintenance_TenantId_EffectiveAtUtc]
         ON [Compliance].[ProceduresMaintenance] ([TenantId], [EffectiveAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[ProceduresMaintenance]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[ProceduresMaintenance] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

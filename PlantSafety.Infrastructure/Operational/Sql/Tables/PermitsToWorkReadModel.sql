@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Operational.PermitsToWork
 --  Layer:          Infrastructure - SQL Scripts
@@ -21,11 +21,18 @@ BEGIN
         [WorkDescription]         NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [IssuedAtUtc]     DATETIME2(3)        NOT NULL,
-        [IssuedBy]        UNIQUEIDENTIFIER    NULL
+        [IssuedBy]        UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitsToWorkReadModel_TenantId_IssuedAtUtc]
         ON [Operational].[PermitsToWorkReadModel] ([TenantId], [IssuedAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[PermitsToWorkReadModel]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Operational].[PermitsToWorkReadModel] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

@@ -25,9 +25,16 @@ BEGIN
         AssignedToUserId UNIQUEIDENTIFIER NULL,
         Notes            NVARCHAR(MAX)    NULL,
         UpdatedAtUtc     DATETIME2(3)     NOT NULL,
-        UpdatedBy        UNIQUEIDENTIFIER NULL
+        UpdatedBy        UNIQUEIDENTIFIER NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ComplianceResources_TenantId_SiteId] ON [Compliance].[ComplianceResources] (TenantId, SiteId);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[ComplianceResources]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[ComplianceResources] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

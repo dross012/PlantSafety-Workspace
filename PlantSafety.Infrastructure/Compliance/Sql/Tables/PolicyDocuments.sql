@@ -21,11 +21,18 @@ BEGIN
         [DocumentType]            NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [PublishedAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyDocuments_TenantId_PublishedAtUtc]
         ON [Compliance].[PolicyDocuments] ([TenantId], [PublishedAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[PolicyDocuments]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[PolicyDocuments] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

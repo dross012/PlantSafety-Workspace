@@ -21,11 +21,18 @@ BEGIN
         [IndexScore]        DECIMAL(18,4)       NOT NULL,
         [TrendDirection]    NVARCHAR(50)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL
+        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CultureIndex_TenantId_CalculatedAtUtc]
         ON [Analytics].[CultureIndex] ([TenantId], [CalculatedAtUtc])
         INCLUDE ([SiteId], [Status], [CultureDimension]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[CultureIndex]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Analytics].[CultureIndex] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

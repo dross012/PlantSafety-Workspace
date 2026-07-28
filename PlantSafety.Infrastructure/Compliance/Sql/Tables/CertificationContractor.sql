@@ -24,10 +24,17 @@ BEGIN
         Status            NVARCHAR(50)     NOT NULL,
         IssuedAtUtc       DATETIME2(3)     NOT NULL,
         ExpiresAtUtc      DATETIME2(3)     NOT NULL,
-        VerifiedBy        UNIQUEIDENTIFIER NOT NULL
+        VerifiedBy        UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationContractor_TenantId_SiteId] ON [Compliance].[CertificationContractor] (TenantId, SiteId);
     CREATE NONCLUSTERED INDEX [IX_CertificationContractor_IssuedAtUtc] ON [Compliance].[CertificationContractor] (IssuedAtUtc);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[CertificationContractor]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[CertificationContractor] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

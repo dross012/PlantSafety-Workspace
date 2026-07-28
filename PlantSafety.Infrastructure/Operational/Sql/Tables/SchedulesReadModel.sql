@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Operational.Schedules
 --  Layer:          Infrastructure - SQL Scripts
@@ -21,11 +21,18 @@ BEGIN
         [ScheduleType]            NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
-        [AssignedBy]      UNIQUEIDENTIFIER    NULL
+        [AssignedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_SchedulesReadModel_TenantId_ScheduledAtUtc]
         ON [Operational].[SchedulesReadModel] ([TenantId], [ScheduledAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[SchedulesReadModel]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Operational].[SchedulesReadModel] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

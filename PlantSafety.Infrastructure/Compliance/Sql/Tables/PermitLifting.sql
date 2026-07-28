@@ -22,10 +22,17 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        ApprovedBy      UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitLifting_TenantId_SiteId] ON [Compliance].[PermitLifting] (TenantId, SiteId);
     CREATE NONCLUSTERED INDEX [IX_PermitLifting_IssuedAtUtc] ON [Compliance].[PermitLifting] (IssuedAtUtc);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[PermitLifting]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[PermitLifting] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

@@ -20,11 +20,18 @@ BEGIN
         [EquipmentCategory]       NVARCHAR(300)       NOT NULL,
         [ScheduledAtUtc]          DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [Inspector]               UNIQUEIDENTIFIER    NOT NULL
+        [Inspector]               UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InspectionsEquipment_TenantId_ScheduledAtUtc]
         ON [Compliance].[InspectionsEquipment] ([TenantId], [ScheduledAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[InspectionsEquipment]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[InspectionsEquipment] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

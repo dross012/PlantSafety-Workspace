@@ -23,11 +23,18 @@ BEGIN
         ApproverName    NVARCHAR(200)    NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         DecidedAtUtc    DATETIME2(3)     NOT NULL,
-        ApprovedBy      UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_MOCApprovals_TenantId_SiteId] ON [Compliance].[MOCApprovals] (TenantId, SiteId);
     CREATE NONCLUSTERED INDEX [IX_MOCApprovals_DecidedAtUtc] ON [Compliance].[MOCApprovals] (DecidedAtUtc);
     CREATE NONCLUSTERED INDEX [IX_MOCApprovals_ChangeRequestId] ON [Compliance].[MOCApprovals] (ChangeRequestId);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[MOCApprovals]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[MOCApprovals] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

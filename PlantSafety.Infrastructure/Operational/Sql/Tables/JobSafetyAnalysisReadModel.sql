@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Operational.JobSafetyAnalysis
 --  Layer:          Infrastructure - SQL Scripts
@@ -21,11 +21,18 @@ BEGIN
         [RiskLevel]               NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [AnalyzedAtUtc]   DATETIME2(3)        NOT NULL,
-        [AnalyzedBy]      UNIQUEIDENTIFIER    NULL
+        [AnalyzedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_JobSafetyAnalysisReadModel_TenantId_AnalyzedAtUtc]
         ON [Operational].[JobSafetyAnalysisReadModel] ([TenantId], [AnalyzedAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[JobSafetyAnalysisReadModel]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Operational].[JobSafetyAnalysisReadModel] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

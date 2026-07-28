@@ -77,6 +77,51 @@ public sealed class BulkUpdateOperationalIntegrationTests(IntegrationTestWebAppF
     }
 
     [Fact]
+    public async Task BulkUpdateOperational_ForcedNotNullViolation_ShouldThrowAndPopulateErrorLog()
+    {
+        // Forces a genuine SQL-level failure (NOT NULL constraint violation on UpdatedAtUtc) by
+        // calling [Operational].[usp_OperationalResources_BulkUpdate] directly with @NowUtc = NULL
+        // against a resource row that genuinely exists (so the UPDATE actually reaches the
+        // NOT NULL column, rather than matching zero rows). Confirms the modernized procedure's
+        // THROW still re-raises the exception and that the CATCH block's ErrorLog insert fires.
+        var resourceId = Guid.NewGuid();
+
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        await conn.ExecuteAsync(
+            @"INSERT INTO [Operational].[OperationalResources]
+                (Id, TenantId, SiteId, ResourceType, Status, UpdatedAtUtc)
+              VALUES
+                (@Id, @TenantId, NULL, N'Inspection', N'Open', @Now)",
+            new { Id = resourceId, TenantId, Now = FixedUtcNow });
+
+        await using (var cmd = new SqlCommand("[Operational].[usp_OperationalResources_BulkUpdate]", conn))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@TenantId", TenantId);
+            cmd.Parameters.AddWithValue("@SiteId", DBNull.Value);
+            cmd.Parameters.AddWithValue("@ResourceId", resourceId);
+            cmd.Parameters.AddWithValue("@Operation", "Close");
+            cmd.Parameters.AddWithValue("@AssignedToUserId", DBNull.Value);
+            cmd.Parameters.AddWithValue("@Notes", DBNull.Value);
+            cmd.Parameters.AddWithValue("@NowUtc", DBNull.Value);
+
+            var act = async () => await cmd.ExecuteScalarAsync();
+
+            await act.Should().ThrowAsync<SqlException>(
+                "a NULL @NowUtc must violate OperationalResources.UpdatedAtUtc's NOT NULL constraint and THROW must re-raise it");
+        }
+
+        var errorLogCount = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.ErrorLog WHERE ErrorProcedure LIKE @ErrorProcedurePattern AND ErrorContext LIKE @Pattern",
+            new { ErrorProcedurePattern = "%" + "usp_OperationalResources_BulkUpdate", Pattern = $"%ResourceId={resourceId}%" });
+
+        errorLogCount.Should().BeGreaterThan(0,
+            "usp_OperationalResources_BulkUpdate's CATCH block must have logged the forced failure to ErrorLog before re-throwing");
+    }
+
+    [Fact]
     public async Task BulkUpdateOperational_UnknownResource_ShouldReportNotFound()
     {
         var (scope, sender) = Factory.Services.GetScopedService<ISender>();

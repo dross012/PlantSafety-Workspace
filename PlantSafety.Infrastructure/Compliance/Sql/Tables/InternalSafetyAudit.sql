@@ -20,10 +20,17 @@ BEGIN
         Scope           NVARCHAR(200)    NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         ConductedAtUtc  DATETIME2(3)     NOT NULL,
-        ConductedBy     UNIQUEIDENTIFIER NOT NULL
+        ConductedBy     UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InternalSafetyAudit_TenantId_SiteId] ON [Compliance].[InternalSafetyAudit] (TenantId, SiteId);
     CREATE NONCLUSTERED INDEX [IX_InternalSafetyAudit_ConductedAtUtc] ON [Compliance].[InternalSafetyAudit] (ConductedAtUtc);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[InternalSafetyAudit]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[InternalSafetyAudit] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

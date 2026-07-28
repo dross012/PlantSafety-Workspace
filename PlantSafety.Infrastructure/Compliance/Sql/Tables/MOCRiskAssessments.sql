@@ -23,11 +23,18 @@ BEGIN
         RiskLevel        NVARCHAR(50)     NOT NULL,
         Status           NVARCHAR(50)     NOT NULL,
         AssessedAtUtc    DATETIME2(3)     NOT NULL,
-        AssessedBy       UNIQUEIDENTIFIER NOT NULL
+        AssessedBy       UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_MOCRiskAssessments_TenantId_SiteId] ON [Compliance].[MOCRiskAssessments] (TenantId, SiteId);
     CREATE NONCLUSTERED INDEX [IX_MOCRiskAssessments_AssessedAtUtc] ON [Compliance].[MOCRiskAssessments] (AssessedAtUtc);
     CREATE NONCLUSTERED INDEX [IX_MOCRiskAssessments_ChangeRequestId] ON [Compliance].[MOCRiskAssessments] (ChangeRequestId);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[MOCRiskAssessments]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[MOCRiskAssessments] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

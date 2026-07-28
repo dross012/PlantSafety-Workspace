@@ -33,7 +33,7 @@ public static class TestDatabaseFactory
                 CREATE TABLE [System].[OutboxMessages] (
                     MessageId       UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_OutboxMessages PRIMARY KEY,
                     EventType       NVARCHAR(200)    NOT NULL,
-                    SchemaVersion   NVARCHAR(50)     NOT NULL,
+                    SchemaVersion   NVARCHAR(50)     NOT NULL CONSTRAINT DF_OutboxMessages_SchemaVersion DEFAULT ('2026.1'),
                     TenantId        NVARCHAR(100)    NOT NULL,
                     ActorId         NVARCHAR(100)    NOT NULL,
                     CorrelationId   NVARCHAR(100)    NOT NULL,
@@ -100,6 +100,18 @@ public static class TestDatabaseFactory
     /// Shared\AuditLogging\sql\Phase1-StoredProcedures\01-usp-search-auditlog.sql, minus the
     /// <c>USE [PlantSafety.AuditDB]</c> statements (the Testcontainers instance exposes a single
     /// database, not the real multi-database AuditDB topology).
+    /// UPDATED 2026-07-27 (Claude Code migration-commander-agent, IncidentManagement Phase 1
+    /// modernization): also creates a minimal <c>dbo.ErrorLog</c> table (column set matches every
+    /// module's canonical `INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog(...)` CATCH-block shape --
+    /// ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate,
+    /// ErrorContext, ErrorParameters, SourceDatabase, Module). Every write procedure's embedded copy
+    /// in this file (e.g. usp_Incident_Create/Update/SoftDelete below) already wraps its ErrorLog
+    /// INSERT in a nested TRY/CATCH that silently no-ops if the table is missing -- adding the real
+    /// table here is purely additive (turns a documented no-op into a real, assertable row) and does
+    /// not change any existing procedure's behavior or any existing test's pass/fail outcome; it only
+    /// makes "ErrorLog row exists on failure" integration assertions possible, which the
+    /// SQL-modernization Phase 1 checklist (docs\architecture\sql-modernization-phase1-execution-
+    /// checklists.md, Section 4.4) flags as the one validation step no existing test suite covers.
     /// </summary>
     public static async Task ApplySharedAuditLoggingSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
     {
@@ -122,6 +134,25 @@ public static class TestDatabaseFactory
                     Module          nvarchar(128)   NOT NULL,
                     BeforeSnapshot  nvarchar(max)   NULL,
                     AfterSnapshot   nvarchar(max)   NULL
+                );
+            END;");
+
+        await conn.ExecuteAsync(@"
+            IF OBJECT_ID(N'dbo.ErrorLog', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.ErrorLog
+                (
+                    ErrorNumber     int             NOT NULL,
+                    ErrorSeverity   int             NULL,
+                    ErrorState      int             NULL,
+                    ErrorProcedure  nvarchar(128)   NULL,
+                    ErrorLine       int             NULL,
+                    ErrorMessage    nvarchar(max)   NOT NULL,
+                    ErrorDate       datetime2       NOT NULL,
+                    ErrorContext    nvarchar(400)   NULL,
+                    ErrorParameters nvarchar(max)   NULL,
+                    SourceDatabase  nvarchar(128)   NOT NULL,
+                    Module          nvarchar(128)   NOT NULL
                 );
             END;");
 
@@ -189,9 +220,10 @@ public static class TestDatabaseFactory
     /// at all is a bind-time error SQL Server raises before the TRY block ever executes, so it is
     /// NOT swallowed. The <c>[PlantSafety.AuditDB]</c> / <c>[PlantSafety.ErrorDB]</c> three-part
     /// prefixes are therefore stripped down to <c>dbo.AuditLog</c> / <c>dbo.ErrorLog</c> below,
-    /// matching the single-database Testcontainers topology (dbo.AuditLog is created by
-    /// <see cref="ApplySharedAuditLoggingSchemaAsync"/>; dbo.ErrorLog is intentionally left
-    /// uncreated so its INSERT still no-ops via the now-catchable "missing table" error).
+    /// matching the single-database Testcontainers topology (both dbo.AuditLog and, as of the
+    /// 2026-07-27 IncidentManagement Phase 1 modernization pass, dbo.ErrorLog are created by
+    /// <see cref="ApplySharedAuditLoggingSchemaAsync"/>, so both writes are real, assertable rows
+    /// rather than no-ops in this test topology).
     /// </summary>
     public static async Task ApplyIncidentManagementSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
     {
@@ -1141,7 +1173,8 @@ BEGIN
         Severity        NVARCHAR(50)     NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         IdentifiedAtUtc DATETIME2(3)     NOT NULL,
-        IdentifiedBy    UNIQUEIDENTIFIER NOT NULL
+        IdentifiedBy    UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_AuditFindings_TenantId_SiteId] ON [Compliance].[AuditFindings] (TenantId, SiteId);
@@ -1163,7 +1196,8 @@ BEGIN
         Reason          NVARCHAR(500)    NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         TriggeredAtUtc  DATETIME2(3)     NOT NULL,
-        TriggeredBy     UNIQUEIDENTIFIER NOT NULL
+        TriggeredBy     UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CAPATriggers_TenantId_SiteId] ON [Compliance].[CAPATriggers] (TenantId, SiteId);
@@ -1185,7 +1219,8 @@ BEGIN
         Status            NVARCHAR(50)     NOT NULL,
         IssuedAtUtc       DATETIME2(3)     NOT NULL,
         ExpiresAtUtc      DATETIME2(3)     NOT NULL,
-        VerifiedBy        UNIQUEIDENTIFIER NOT NULL
+        VerifiedBy        UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationContractor_TenantId_SiteId] ON [Compliance].[CertificationContractor] (TenantId, SiteId);
@@ -1206,7 +1241,8 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        VerifiedBy      UNIQUEIDENTIFIER NOT NULL
+        VerifiedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationDOT_TenantId_SiteId] ON [Compliance].[CertificationDOT] (TenantId, SiteId);
@@ -1227,7 +1263,8 @@ BEGIN
         Status           NVARCHAR(50)     NOT NULL,
         IssuedAtUtc      DATETIME2(3)     NOT NULL,
         ExpiresAtUtc     DATETIME2(3)     NOT NULL,
-        VerifiedBy       UNIQUEIDENTIFIER NOT NULL
+        VerifiedBy       UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationEPA_TenantId_SiteId] ON [Compliance].[CertificationEPA] (TenantId, SiteId);
@@ -1248,7 +1285,8 @@ BEGIN
         Status           NVARCHAR(50)     NOT NULL,
         IssuedAtUtc      DATETIME2(3)     NOT NULL,
         ExpiresAtUtc     DATETIME2(3)     NOT NULL,
-        VerifiedBy       UNIQUEIDENTIFIER NOT NULL
+        VerifiedBy       UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationIndustrySpecific_TenantId_SiteId] ON [Compliance].[CertificationIndustrySpecific] (TenantId, SiteId);
@@ -1269,7 +1307,8 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        VerifiedBy      UNIQUEIDENTIFIER NOT NULL
+        VerifiedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationISO14001_TenantId_SiteId] ON [Compliance].[CertificationISO14001] (TenantId, SiteId);
@@ -1290,7 +1329,8 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        VerifiedBy      UNIQUEIDENTIFIER NOT NULL
+        VerifiedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationISO45001_TenantId_SiteId] ON [Compliance].[CertificationISO45001] (TenantId, SiteId);
@@ -1311,7 +1351,8 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        VerifiedBy      UNIQUEIDENTIFIER NOT NULL
+        VerifiedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationOSHACertifications_TenantId_SiteId] ON [Compliance].[CertificationOSHACertifications] (TenantId, SiteId);
@@ -1332,7 +1373,8 @@ BEGIN
         Status           NVARCHAR(50)     NOT NULL,
         CompletedAtUtc   DATETIME2(3)     NOT NULL,
         ExpiresAtUtc     DATETIME2(3)     NOT NULL,
-        InstructorId     UNIQUEIDENTIFIER NOT NULL
+        InstructorId     UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CertificationTraining_TenantId_SiteId] ON [Compliance].[CertificationTraining] (TenantId, SiteId);
@@ -1351,7 +1393,8 @@ BEGIN
         AuditType       NVARCHAR(100)    NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         ConductedAtUtc  DATETIME2(3)     NOT NULL,
-        ConductedBy     UNIQUEIDENTIFIER NOT NULL
+        ConductedBy     UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ComplianceAudit_TenantId_SiteId] ON [Compliance].[ComplianceAudit] (TenantId, SiteId);
@@ -1372,7 +1415,8 @@ BEGIN
         [Title]             NVARCHAR(300)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]    DATETIME2(3)        NOT NULL,
-        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ComplianceExportItems_TenantId_EffectiveAtUtc]
@@ -1394,7 +1438,8 @@ BEGIN
         AssignedToUserId UNIQUEIDENTIFIER NULL,
         Notes            NVARCHAR(MAX)    NULL,
         UpdatedAtUtc     DATETIME2(3)     NOT NULL,
-        UpdatedBy        UNIQUEIDENTIFIER NULL
+        UpdatedBy        UNIQUEIDENTIFIER NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ComplianceResources_TenantId_SiteId] ON [Compliance].[ComplianceResources] (TenantId, SiteId);
@@ -1412,7 +1457,8 @@ BEGIN
         [AuditScope]              NVARCHAR(300)       NOT NULL,
         [DueAtUtc]                DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL
+        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_DeadlinesAnnualAudit_TenantId_DueAtUtc]
@@ -1432,7 +1478,8 @@ BEGIN
         [EPARegulation]           NVARCHAR(300)       NOT NULL,
         [DueAtUtc]                DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL
+        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_DeadlinesEPA_TenantId_DueAtUtc]
@@ -1452,7 +1499,8 @@ BEGIN
         [InspectionScope]         NVARCHAR(300)       NOT NULL,
         [ScheduledAtUtc]          DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [Inspector]               UNIQUEIDENTIFIER    NOT NULL
+        [Inspector]               UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InspectionsDOT_TenantId_ScheduledAtUtc]
@@ -1472,7 +1520,8 @@ BEGIN
         [SampleType]              NVARCHAR(300)       NOT NULL,
         [ScheduledAtUtc]          DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [Inspector]               UNIQUEIDENTIFIER    NOT NULL
+        [Inspector]               UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InspectionsEnvironmentalSampling_TenantId_ScheduledAtUtc]
@@ -1492,7 +1541,8 @@ BEGIN
         [EquipmentCategory]       NVARCHAR(300)       NOT NULL,
         [ScheduledAtUtc]          DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [Inspector]               UNIQUEIDENTIFIER    NOT NULL
+        [Inspector]               UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InspectionsEquipment_TenantId_ScheduledAtUtc]
@@ -1512,7 +1562,8 @@ BEGIN
         [InspectionScope]         NVARCHAR(300)       NOT NULL,
         [ScheduledAtUtc]          DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [Inspector]               UNIQUEIDENTIFIER    NOT NULL
+        [Inspector]               UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InspectionsOSHA_TenantId_ScheduledAtUtc]
@@ -1532,7 +1583,8 @@ BEGIN
         Scope           NVARCHAR(200)    NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         ConductedAtUtc  DATETIME2(3)     NOT NULL,
-        ConductedBy     UNIQUEIDENTIFIER NOT NULL
+        ConductedBy     UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InternalSafetyAudit_TenantId_SiteId] ON [Compliance].[InternalSafetyAudit] (TenantId, SiteId);
@@ -1583,7 +1635,8 @@ BEGIN
         ApproverName    NVARCHAR(200)    NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         DecidedAtUtc    DATETIME2(3)     NOT NULL,
-        ApprovedBy      UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_MOCApprovals_TenantId_SiteId] ON [Compliance].[MOCApprovals] (TenantId, SiteId);
@@ -1604,7 +1657,8 @@ BEGIN
         RiskLevel        NVARCHAR(50)     NOT NULL,
         Status           NVARCHAR(50)     NOT NULL,
         AssessedAtUtc    DATETIME2(3)     NOT NULL,
-        AssessedBy       UNIQUEIDENTIFIER NOT NULL
+        AssessedBy       UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_MOCRiskAssessments_TenantId_SiteId] ON [Compliance].[MOCRiskAssessments] (TenantId, SiteId);
@@ -1625,7 +1679,8 @@ BEGIN
         CurrentStage  NVARCHAR(100)    NOT NULL,
         Status        NVARCHAR(50)     NOT NULL,
         InitiatedAtUtc DATETIME2(3)    NOT NULL,
-        InitiatedBy   UNIQUEIDENTIFIER NOT NULL
+        InitiatedBy   UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_MOCWorkflows_TenantId_SiteId] ON [Compliance].[MOCWorkflows] (TenantId, SiteId);
@@ -1645,7 +1700,8 @@ BEGIN
         RegulatoryBody  NVARCHAR(200)    NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         DueAtUtc        DATETIME2(3)     NOT NULL,
-        OwnerId         UNIQUEIDENTIFIER NOT NULL
+        OwnerId         UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Obligations_TenantId_SiteId] ON [Compliance].[Obligations] (TenantId, SiteId);
@@ -1698,7 +1754,8 @@ BEGIN
         Status        NVARCHAR(50)     NOT NULL,
         IssuedAtUtc   DATETIME2(3)     NOT NULL,
         ExpiresAtUtc  DATETIME2(3)     NOT NULL,
-        ApprovedBy    UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy    UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitChemicalHandling_TenantId_SiteId] ON [Compliance].[PermitChemicalHandling] (TenantId, SiteId);
@@ -1719,7 +1776,8 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        ApprovedBy      UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitColdWork_TenantId_SiteId] ON [Compliance].[PermitColdWork] (TenantId, SiteId);
@@ -1740,7 +1798,8 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        ApprovedBy      UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitConfinedSpace_TenantId_SiteId] ON [Compliance].[PermitConfinedSpace] (TenantId, SiteId);
@@ -1761,7 +1820,8 @@ BEGIN
         Status               NVARCHAR(50)     NOT NULL,
         IssuedAtUtc          DATETIME2(3)     NOT NULL,
         ExpiresAtUtc         DATETIME2(3)     NOT NULL,
-        ApprovedBy           UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy           UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitElectrical_TenantId_SiteId] ON [Compliance].[PermitElectrical] (TenantId, SiteId);
@@ -1782,7 +1842,8 @@ BEGIN
         Status            NVARCHAR(50)     NOT NULL,
         IssuedAtUtc       DATETIME2(3)     NOT NULL,
         ExpiresAtUtc      DATETIME2(3)     NOT NULL,
-        ApprovedBy        UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy        UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitExcavation_TenantId_SiteId] ON [Compliance].[PermitExcavation] (TenantId, SiteId);
@@ -1803,7 +1864,8 @@ BEGIN
         Status            NVARCHAR(50)     NOT NULL,
         IssuedAtUtc       DATETIME2(3)     NOT NULL,
         ExpiresAtUtc      DATETIME2(3)     NOT NULL,
-        ApprovedBy        UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy        UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitHotTap_TenantId_SiteId] ON [Compliance].[PermitHotTap] (TenantId, SiteId);
@@ -1824,7 +1886,8 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        ApprovedBy      UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitHotWork_TenantId_SiteId] ON [Compliance].[PermitHotWork] (TenantId, SiteId);
@@ -1845,7 +1908,8 @@ BEGIN
         Status          NVARCHAR(50)     NOT NULL,
         IssuedAtUtc     DATETIME2(3)     NOT NULL,
         ExpiresAtUtc    DATETIME2(3)     NOT NULL,
-        ApprovedBy      UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy      UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitLifting_TenantId_SiteId] ON [Compliance].[PermitLifting] (TenantId, SiteId);
@@ -1866,7 +1930,8 @@ BEGIN
         Status           NVARCHAR(50)     NOT NULL,
         IssuedAtUtc      DATETIME2(3)     NOT NULL,
         ExpiresAtUtc     DATETIME2(3)     NOT NULL,
-        ApprovedBy       UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy       UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitLineBreak_TenantId_SiteId] ON [Compliance].[PermitLineBreak] (TenantId, SiteId);
@@ -1887,7 +1952,8 @@ BEGIN
         Status              NVARCHAR(50)     NOT NULL,
         IssuedAtUtc         DATETIME2(3)     NOT NULL,
         ExpiresAtUtc        DATETIME2(3)     NOT NULL,
-        ApprovedBy          UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy          UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitLockoutTagout_TenantId_SiteId] ON [Compliance].[PermitLockoutTagout] (TenantId, SiteId);
@@ -1908,7 +1974,8 @@ BEGIN
         Status           NVARCHAR(50)     NOT NULL,
         IssuedAtUtc      DATETIME2(3)     NOT NULL,
         ExpiresAtUtc     DATETIME2(3)     NOT NULL,
-        ApprovedBy       UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy       UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitPressureTesting_TenantId_SiteId] ON [Compliance].[PermitPressureTesting] (TenantId, SiteId);
@@ -1929,7 +1996,8 @@ BEGIN
         Status               NVARCHAR(50)     NOT NULL,
         IssuedAtUtc          DATETIME2(3)     NOT NULL,
         ExpiresAtUtc         DATETIME2(3)     NOT NULL,
-        ApprovedBy           UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy           UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitRadiography_TenantId_SiteId] ON [Compliance].[PermitRadiography] (TenantId, SiteId);
@@ -1950,7 +2018,8 @@ BEGIN
         Status              NVARCHAR(50)     NOT NULL,
         IssuedAtUtc         DATETIME2(3)     NOT NULL,
         ExpiresAtUtc        DATETIME2(3)     NOT NULL,
-        ApprovedBy          UNIQUEIDENTIFIER NOT NULL
+        ApprovedBy          UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitWorkatHeight_TenantId_SiteId] ON [Compliance].[PermitWorkatHeight] (TenantId, SiteId);
@@ -1970,7 +2039,8 @@ BEGIN
         PolicyTitle    NVARCHAR(300)    NOT NULL,
         Status         NVARCHAR(50)     NOT NULL,
         DecisionAtUtc  DATETIME2(3)     NOT NULL,
-        ApproverId     UNIQUEIDENTIFIER NOT NULL
+        ApproverId     UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyApprovals_TenantId_SiteId] ON [Compliance].[PolicyApprovals] (TenantId, SiteId);
@@ -1991,7 +2061,8 @@ BEGIN
         [HazardClass]             NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyChemicalHandling_TenantId_EffectiveAtUtc]
@@ -2012,7 +2083,8 @@ BEGIN
         [ApplicableTrade]         NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyContractor_TenantId_EffectiveAtUtc]
@@ -2033,7 +2105,8 @@ BEGIN
         [DocumentType]            NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [PublishedAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyDocuments_TenantId_PublishedAtUtc]
@@ -2054,7 +2127,8 @@ BEGIN
         [ResponseProcedureRef]    NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyEmergency_TenantId_EffectiveAtUtc]
@@ -2075,7 +2149,8 @@ BEGIN
         [RegulatoryReference]     NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyEnvironmental_TenantId_EffectiveAtUtc]
@@ -2096,7 +2171,8 @@ BEGIN
         [MaintenanceRequirement]  NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyEquipment_TenantId_EffectiveAtUtc]
@@ -2117,7 +2193,8 @@ BEGIN
         [ApplicableRole]          NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyHR_TenantId_EffectiveAtUtc]
@@ -2138,7 +2215,8 @@ BEGIN
         [RequiredEquipment]       NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyPPE_TenantId_EffectiveAtUtc]
@@ -2159,7 +2237,8 @@ BEGIN
         [RevisionNumber]          NVARCHAR(50)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [RevisedAtUtc]            DATETIME2(3)        NOT NULL,
-        [RevisedBy]               UNIQUEIDENTIFIER    NOT NULL
+        [RevisedBy]               UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyRevisions_TenantId_RevisedAtUtc]
@@ -2180,7 +2259,8 @@ BEGIN
         [Category]                NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicySafetyPolicies_TenantId_EffectiveAtUtc]
@@ -2201,7 +2281,8 @@ BEGIN
         [EmergencyScenario]       NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresEmergencyProcedure_TenantId_EffectiveAtUtc]
@@ -2222,7 +2303,8 @@ BEGIN
         [HandlingStep]            NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresHazMatProcedures_TenantId_EffectiveAtUtc]
@@ -2243,7 +2325,8 @@ BEGIN
         [ResponseStep]            NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresIncidentResponse_TenantId_EffectiveAtUtc]
@@ -2264,7 +2347,8 @@ BEGIN
         [Frequency]               NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresInspection_TenantId_EffectiveAtUtc]
@@ -2285,7 +2369,8 @@ BEGIN
         [LockoutStep]             NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresLockoutTagoutProcedure_TenantId_EffectiveAtUtc]
@@ -2306,7 +2391,8 @@ BEGIN
         [MaintenanceTask]         NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresMaintenance_TenantId_EffectiveAtUtc]
@@ -2327,7 +2413,8 @@ BEGIN
         [HazardCategory]          NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresSafety_TenantId_EffectiveAtUtc]
@@ -2348,7 +2435,8 @@ BEGIN
         [ProcessArea]             NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresSOPs_TenantId_EffectiveAtUtc]
@@ -2369,7 +2457,8 @@ BEGIN
         [WorkArea]                NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ProceduresWorkInstructions_TenantId_EffectiveAtUtc]
@@ -2390,7 +2479,8 @@ BEGIN
         [Jurisdiction]            NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_RegulatoryRequirements_TenantId_EffectiveAtUtc]
@@ -2410,7 +2500,8 @@ BEGIN
         [CredentialType]          NVARCHAR(300)       NOT NULL,
         [ExpiresAtUtc]            DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL
+        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_RenewalsDOT_TenantId_ExpiresAtUtc]
@@ -2430,7 +2521,8 @@ BEGIN
         [CertificationStandard]   NVARCHAR(300)       NOT NULL,
         [ExpiresAtUtc]            DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL
+        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_RenewalsISO_TenantId_ExpiresAtUtc]
@@ -2450,7 +2542,8 @@ BEGIN
         [TrainingProgram]         NVARCHAR(300)       NOT NULL,
         [ExpiresAtUtc]            DATETIME2(3)        NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
-        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL
+        [ResponsibleParty]        UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_RenewalsTraining_TenantId_ExpiresAtUtc]
@@ -2471,7 +2564,8 @@ BEGIN
         [Category]                NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [LastUpdatedAtUtc]        DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Tracking_TenantId_LastUpdatedAtUtc]
@@ -2865,10 +2959,28 @@ BEGIN TRY
 
     COMMIT TRANSACTION;
 
+    BEGIN TRY
+        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+        VALUES (N'ComplianceResources', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'ResourceId=', @ResourceId, N'; TenantId=', @TenantId, N'; Operation=', @Operation), 0, OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     SELECT @RowsAffected;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'ResourceId=', @ResourceId, N'; TenantId=', @TenantId, N'; Operation=', @Operation, N'; User=', SYSTEM_USER);
+    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+    BEGIN TRY
+        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     THROW;
 END CATCH;
 ");
@@ -3081,10 +3193,28 @@ BEGIN TRY
 
     COMMIT TRANSACTION;
 
+    BEGIN TRY
+        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+        VALUES (N'Moc', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'MocId=', @MocId, N'; TenantId=', @TenantId, N'; CorrelationId=', @CorrelationId, N'; ActorId=', @ActorId), 0, OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     SELECT @RowsAffected;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'MocId=', @MocId, N'; TenantId=', @TenantId, N'; CorrelationId=', @CorrelationId, N'; ActorId=', @ActorId, N'; User=', SYSTEM_USER);
+    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+    BEGIN TRY
+        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     THROW;
 END CATCH;
 ");
@@ -3122,9 +3252,27 @@ BEGIN TRY
         );
 
     COMMIT TRANSACTION;
+
+    BEGIN TRY
+        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+        VALUES (N'Moc', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'MocId=', @MocId, N'; TenantId=', @TenantId, N'; CorrelationId=', @CorrelationId, N'; ActorId=', @ActorId), 0, OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'MocId=', @MocId, N'; TenantId=', @TenantId, N'; CorrelationId=', @CorrelationId, N'; ActorId=', @ActorId, N'; User=', SYSTEM_USER);
+    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+    BEGIN TRY
+        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     THROW;
 END CATCH;
 ");
@@ -3289,10 +3437,28 @@ BEGIN TRY
 
     COMMIT TRANSACTION;
 
+    BEGIN TRY
+        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+        VALUES (N'Permit', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'PermitId=', @PermitId, N'; TenantId=', @TenantId, N'; CorrelationId=', @CorrelationId, N'; ActorId=', @ActorId), 0, OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     SELECT @RowsAffected;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PermitId=', @PermitId, N'; TenantId=', @TenantId, N'; CorrelationId=', @CorrelationId, N'; ActorId=', @ActorId, N'; User=', SYSTEM_USER);
+    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+    BEGIN TRY
+        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     THROW;
 END CATCH;
 ");
@@ -3331,9 +3497,27 @@ BEGIN TRY
         );
 
     COMMIT TRANSACTION;
+
+    BEGIN TRY
+        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+        VALUES (N'Permit', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'PermitId=', @PermitId, N'; TenantId=', @TenantId, N'; CorrelationId=', @CorrelationId, N'; ActorId=', @ActorId), 0, OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PermitId=', @PermitId, N'; TenantId=', @TenantId, N'; CorrelationId=', @CorrelationId, N'; ActorId=', @ActorId, N'; User=', SYSTEM_USER);
+    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+    BEGIN TRY
+        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     THROW;
 END CATCH;
 ");
@@ -4445,7 +4629,8 @@ BEGIN
         [Title]             NVARCHAR(300)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]    DATETIME2(3)        NOT NULL,
-        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_AnalyticsExportItems_TenantId_EffectiveAtUtc]
@@ -4467,7 +4652,8 @@ BEGIN
         [ObservationType]   NVARCHAR(50)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [ObservedAtUtc]     DATETIME2(3)        NOT NULL,
-        [ObservedBy]        UNIQUEIDENTIFIER    NOT NULL
+        [ObservedBy]        UNIQUEIDENTIFIER    NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Behavior_TenantId_ObservedAtUtc]
@@ -4488,7 +4674,8 @@ BEGIN
         [FailureProbability] DECIMAL(18,4)       NOT NULL,
         [RiskLevel]          NVARCHAR(50)        NOT NULL,
         [Status]             NVARCHAR(50)        NOT NULL,
-        [PredictedAtUtc]     DATETIME2(3)        NOT NULL
+        [PredictedAtUtc]     DATETIME2(3)        NOT NULL,
+        [RowVersion]         ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ComplianceFailure_TenantId_PredictedAtUtc]
@@ -4532,7 +4719,8 @@ BEGIN
         [IndexScore]        DECIMAL(18,4)       NOT NULL,
         [TrendDirection]    NVARCHAR(50)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL
+        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CultureIndex_TenantId_CalculatedAtUtc]
@@ -4553,7 +4741,8 @@ BEGIN
         [MetricValue]       DECIMAL(18,4)       NOT NULL,
         [TrendDirection]    NVARCHAR(50)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL
+        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_DashboardTrendAnalysis_TenantId_CalculatedAtUtc]
@@ -4574,7 +4763,8 @@ BEGIN
         [ScoreValue]        DECIMAL(18,4)       NOT NULL,
         [RankPercentile]    DECIMAL(18,4)       NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Department_TenantId_ScoredAtUtc]
@@ -4594,7 +4784,8 @@ BEGIN
         [Label]              NVARCHAR(300)       NOT NULL,
         [Value]              DECIMAL(18,4)       NOT NULL,
         [Trend]              NVARCHAR(50)        NULL,
-        [RecordedAtUtc]      DATETIME2(3)        NOT NULL
+        [RecordedAtUtc]      DATETIME2(3)        NOT NULL,
+        [RowVersion]         ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_EngagementDataPoints_TenantId_RecordedAtUtc]
@@ -4615,7 +4806,8 @@ BEGIN
         [EngagementScore]   DECIMAL(18,4)       NOT NULL,
         [ScoreCategory]     NVARCHAR(100)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_EngagementScoring_TenantId_ScoredAtUtc]
@@ -4636,7 +4828,8 @@ BEGIN
         [MetricValue]       DECIMAL(18,4)       NOT NULL,
         [TargetValue]       DECIMAL(18,4)       NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [SnapshotAtUtc]     DATETIME2(3)        NOT NULL
+        [SnapshotAtUtc]     DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Executive_TenantId_SnapshotAtUtc]
@@ -4657,7 +4850,8 @@ BEGIN
         [FatigueRiskScore]   DECIMAL(18,4)       NOT NULL,
         [RiskLevel]          NVARCHAR(50)        NOT NULL,
         [Status]             NVARCHAR(50)        NOT NULL,
-        [AssessedAtUtc]      DATETIME2(3)        NOT NULL
+        [AssessedAtUtc]      DATETIME2(3)        NOT NULL,
+        [RowVersion]         ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_FatigueRiskModeling_TenantId_AssessedAtUtc]
@@ -4678,7 +4872,8 @@ BEGIN
         [PredictedProbability] DECIMAL(18,4)       NOT NULL,
         [RiskLevel]            NVARCHAR(50)        NOT NULL,
         [Status]               NVARCHAR(50)        NOT NULL,
-        [PredictedAtUtc]       DATETIME2(3)        NOT NULL
+        [PredictedAtUtc]       DATETIME2(3)        NOT NULL,
+        [RowVersion]           ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_IncidentPrediction_TenantId_PredictedAtUtc]
@@ -4699,7 +4894,8 @@ BEGIN
         [KpiValue]          DECIMAL(18,4)       NOT NULL,
         [UnitOfMeasure]     NVARCHAR(50)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [SnapshotAtUtc]     DATETIME2(3)        NOT NULL
+        [SnapshotAtUtc]     DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_KPISnapshots_TenantId_SnapshotAtUtc]
@@ -4720,7 +4916,8 @@ BEGIN
         [Score]             DECIMAL(18,4)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [GeneratedAtUtc]    DATETIME2(3)        NOT NULL,
-        [GeneratedBy]       UNIQUEIDENTIFIER    NOT NULL
+        [GeneratedBy]       UNIQUEIDENTIFIER    NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PredictiveAnalytics_TenantId_GeneratedAtUtc]
@@ -4741,7 +4938,8 @@ BEGIN
         [WidgetValue]       NVARCHAR(400)       NOT NULL,
         [DisplayOrder]      INT                 NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [RefreshedAtUtc]    DATETIME2(3)        NOT NULL
+        [RefreshedAtUtc]    DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ReadModel_TenantId_RefreshedAtUtc]
@@ -4762,7 +4960,8 @@ BEGIN
         [ReportCategory]    NVARCHAR(100)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [GeneratedAtUtc]    DATETIME2(3)        NOT NULL,
-        [GeneratedBy]       UNIQUEIDENTIFIER    NOT NULL
+        [GeneratedBy]       UNIQUEIDENTIFIER    NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Reporting_TenantId_GeneratedAtUtc]
@@ -4783,7 +4982,8 @@ BEGIN
         [ForecastValue]        DECIMAL(18,4)       NOT NULL,
         [ForecastHorizonDays]  INT                 NOT NULL,
         [Status]               NVARCHAR(50)        NOT NULL,
-        [ForecastedAtUtc]      DATETIME2(3)        NOT NULL
+        [ForecastedAtUtc]      DATETIME2(3)        NOT NULL,
+        [RowVersion]           ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_RiskForecasting_TenantId_ForecastedAtUtc]
@@ -4805,7 +5005,8 @@ BEGIN
         [NextRunAtUtc]      DATETIME2(3)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [CreatedAtUtc]      DATETIME2(3)        NOT NULL,
-        [CreatedBy]         UNIQUEIDENTIFIER    NOT NULL
+        [CreatedBy]         UNIQUEIDENTIFIER    NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Schedules_TenantId_NextRunAtUtc]
@@ -4826,7 +5027,8 @@ BEGIN
         [ScoreValue]        DECIMAL(18,4)       NOT NULL,
         [MaxScore]          DECIMAL(18,4)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ScoreCardsCompliance_TenantId_ScoredAtUtc]
@@ -4847,7 +5049,8 @@ BEGIN
         [CompletionRate]    DECIMAL(18,4)       NOT NULL,
         [CoursesCompleted]  INT                 NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ScoreCardsTraining_TenantId_ScoredAtUtc]
@@ -4868,7 +5071,8 @@ BEGIN
         [ScoreValue]        DECIMAL(18,4)       NOT NULL,
         [TeamSize]          INT                 NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [ScoredAtUtc]       DATETIME2(3)        NOT NULL
+        [ScoredAtUtc]       DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Supervisor_TenantId_ScoredAtUtc]
@@ -4889,7 +5093,8 @@ BEGIN
         [MetricValue]       DECIMAL(18,4)       NOT NULL,
         [TrendDirection]    NVARCHAR(50)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL
+        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_TrendAnalysis_TenantId_CalculatedAtUtc]
@@ -4910,7 +5115,8 @@ BEGIN
         [PredictedValue]    DECIMAL(18,4)       NOT NULL,
         [ModelConfidence]   DECIMAL(18,4)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [GeneratedAtUtc]    DATETIME2(3)        NOT NULL
+        [GeneratedAtUtc]    DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_TrendModeling_TenantId_GeneratedAtUtc]
@@ -5604,7 +5810,8 @@ BEGIN
         [Severity]                NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [TriggeredAtUtc]  DATETIME2(3)        NOT NULL,
-        [AcknowledgedBy]  UNIQUEIDENTIFIER    NULL
+        [AcknowledgedBy]  UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_AlertsReadModel_TenantId_TriggeredAtUtc]
@@ -5625,7 +5832,8 @@ BEGIN
         [Category]                NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [CompletedAtUtc]  DATETIME2(3)        NOT NULL,
-        [CompletedBy]     UNIQUEIDENTIFIER    NULL
+        [CompletedBy]     UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ChecklistsReadModel_TenantId_CompletedAtUtc]
@@ -5645,8 +5853,8 @@ BEGIN
         [Title]                   NVARCHAR(400)       NOT NULL,
         [InstructorId]            UNIQUEIDENTIFIER    NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
-        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL
-
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ClassesReadModel_TenantId_ScheduledAtUtc]
@@ -5667,7 +5875,8 @@ BEGIN
         [CompetencyArea]          NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [AssessedAtUtc]   DATETIME2(3)        NOT NULL,
-        [AssessedBy]      UNIQUEIDENTIFIER    NULL
+        [AssessedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CompetencyManagementReadModel_TenantId_AssessedAtUtc]
@@ -5688,7 +5897,8 @@ BEGIN
         [ServiceType]             NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [OnboardedAtUtc]  DATETIME2(3)        NOT NULL,
-        [ApprovedBy]      UNIQUEIDENTIFIER    NULL
+        [ApprovedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ContractorReadModel_TenantId_OnboardedAtUtc]
@@ -5709,7 +5919,8 @@ BEGIN
         [Category]                NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [PublishedAtUtc]  DATETIME2(3)        NOT NULL,
-        [PublishedBy]     UNIQUEIDENTIFIER    NULL
+        [PublishedBy]     UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_CoursesReadModel_TenantId_PublishedAtUtc]
@@ -5730,7 +5941,8 @@ BEGIN
         [EquipmentName]           NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [InspectedAtUtc]  DATETIME2(3)        NOT NULL,
-        [InspectedBy]     UNIQUEIDENTIFIER    NULL
+        [InspectedBy]     UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_EquipmentSafetyReadModel_TenantId_InspectedAtUtc]
@@ -5751,7 +5963,8 @@ BEGIN
         [RiskLevel]               NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [AssessedAtUtc]   DATETIME2(3)        NOT NULL,
-        [AssessedBy]      UNIQUEIDENTIFIER    NULL
+        [AssessedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_ErgonomicsReadModel_TenantId_AssessedAtUtc]
@@ -5772,7 +5985,8 @@ BEGIN
         [FatigueRiskLevel]        NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [RecordedAtUtc]   DATETIME2(3)        NOT NULL,
-        [RecordedBy]      UNIQUEIDENTIFIER    NULL
+        [RecordedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_FatigueManagementReadModel_TenantId_RecordedAtUtc]
@@ -5793,7 +6007,8 @@ BEGIN
         [RiskLevel]               NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [AssessedAtUtc]   DATETIME2(3)        NOT NULL,
-        [AssessedBy]      UNIQUEIDENTIFIER    NULL
+        [AssessedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_HazardAssessmentsReadModel_TenantId_AssessedAtUtc]
@@ -5814,7 +6029,8 @@ BEGIN
         [HazardClass]             NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [RegisteredAtUtc] DATETIME2(3)        NOT NULL,
-        [RegisteredBy]    UNIQUEIDENTIFIER    NULL
+        [RegisteredBy]    UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_HazardousMaterialsReadModel_TenantId_RegisteredAtUtc]
@@ -5835,7 +6051,8 @@ BEGIN
         [ExposureLevel]           NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [SampledAtUtc]    DATETIME2(3)        NOT NULL,
-        [SampledBy]       UNIQUEIDENTIFIER    NULL
+        [SampledBy]       UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_IndustrialHygieneReadModel_TenantId_SampledAtUtc]
@@ -5856,7 +6073,8 @@ BEGIN
         [Outcome]                 NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [InspectedAtUtc]  DATETIME2(3)        NOT NULL,
-        [InspectedBy]     UNIQUEIDENTIFIER    NULL
+        [InspectedBy]     UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_InspectionsReadModel_TenantId_InspectedAtUtc]
@@ -5877,7 +6095,8 @@ BEGIN
         [RiskLevel]               NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [AnalyzedAtUtc]   DATETIME2(3)        NOT NULL,
-        [AnalyzedBy]      UNIQUEIDENTIFIER    NULL
+        [AnalyzedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_JobSafetyAnalysisReadModel_TenantId_AnalyzedAtUtc]
@@ -5898,7 +6117,8 @@ BEGIN
         [LockType]                NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [LockedAtUtc]     DATETIME2(3)        NOT NULL,
-        [LockedBy]        UNIQUEIDENTIFIER    NULL
+        [LockedBy]        UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_LockoutTagoutReadModel_TenantId_LockedAtUtc]
@@ -5920,7 +6140,8 @@ BEGIN
         [Title]             NVARCHAR(300)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]    DATETIME2(3)        NOT NULL,
-        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]           UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_OperationalExportItems_TenantId_EffectiveAtUtc]
@@ -5942,7 +6163,8 @@ BEGIN
         AssignedToUserId UNIQUEIDENTIFIER NULL,
         Notes            NVARCHAR(MAX)    NULL,
         UpdatedAtUtc     DATETIME2(3)     NOT NULL,
-        UpdatedBy        UNIQUEIDENTIFIER NULL
+        UpdatedBy        UNIQUEIDENTIFIER NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_OperationalResources_TenantId_SiteId] ON [Operational].[OperationalResources] (TenantId, SiteId);
@@ -5961,7 +6183,8 @@ BEGIN
         [WorkDescription]         NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [IssuedAtUtc]     DATETIME2(3)        NOT NULL,
-        [IssuedBy]        UNIQUEIDENTIFIER    NULL
+        [IssuedBy]        UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PermitsToWorkReadModel_TenantId_IssuedAtUtc]
@@ -5982,7 +6205,8 @@ BEGIN
         [PPEType]                 NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [IssuedAtUtc]     DATETIME2(3)        NOT NULL,
-        [IssuedBy]        UNIQUEIDENTIFIER    NULL
+        [IssuedBy]        UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PPEManagementReadModel_TenantId_IssuedAtUtc]
@@ -6003,7 +6227,8 @@ BEGIN
         [PredictedFailureType]    NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [PredictedAtUtc]  DATETIME2(3)        NOT NULL,
-        [ReviewedBy]      UNIQUEIDENTIFIER    NULL
+        [ReviewedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PredictiveMaintenanceReadModel_TenantId_PredictedAtUtc]
@@ -6024,7 +6249,8 @@ BEGIN
         [TaskDescription]         NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
-        [CompletedBy]     UNIQUEIDENTIFIER    NULL
+        [CompletedBy]     UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PreventiveMaintenanceReadModel_TenantId_ScheduledAtUtc]
@@ -6045,7 +6271,8 @@ BEGIN
         [RiskLevel]               NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [IdentifiedAtUtc] DATETIME2(3)        NOT NULL,
-        [IdentifiedBy]    UNIQUEIDENTIFIER    NULL
+        [IdentifiedBy]    UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_RiskManagementReadModel_TenantId_IdentifiedAtUtc]
@@ -6066,7 +6293,8 @@ BEGIN
         [ScheduleType]            NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
-        [AssignedBy]      UNIQUEIDENTIFIER    NULL
+        [AssignedBy]      UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_SchedulesReadModel_TenantId_ScheduledAtUtc]
@@ -6086,8 +6314,8 @@ BEGIN
         [Title]                   NVARCHAR(400)       NOT NULL,
         [PresenterId]             UNIQUEIDENTIFIER    NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
-        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL
-
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_SeminarsReadModel_TenantId_ScheduledAtUtc]
@@ -6108,7 +6336,8 @@ BEGIN
         [CourseName]              NVARCHAR(400)       NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
         [CompletedAtUtc]  DATETIME2(3)        NOT NULL,
-        [CertifiedBy]     UNIQUEIDENTIFIER    NULL
+        [CertifiedBy]     UNIQUEIDENTIFIER    NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_TrainingReadModel_TenantId_CompletedAtUtc]
@@ -6128,8 +6357,8 @@ BEGIN
         [Title]                   NVARCHAR(400)       NOT NULL,
         [HostId]                  UNIQUEIDENTIFIER    NOT NULL,
         [Status]                NVARCHAR(50)        NOT NULL,
-        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL
-
+        [ScheduledAtUtc]  DATETIME2(3)        NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_WebinarsReadModel_TenantId_ScheduledAtUtc]
@@ -6593,10 +6822,28 @@ BEGIN TRY
 
     COMMIT TRANSACTION;
 
+    BEGIN TRY
+        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+        VALUES (N'OperationalResources', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'ResourceId=', @ResourceId, N'; TenantId=', @TenantId, N'; Operation=', @Operation), 0, OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     SELECT @RowsAffected;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'ResourceId=', @ResourceId, N'; TenantId=', @TenantId, N'; Operation=', @Operation, N'; User=', SYSTEM_USER);
+    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+    BEGIN TRY
+        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     THROW;
 END CATCH;
 ");

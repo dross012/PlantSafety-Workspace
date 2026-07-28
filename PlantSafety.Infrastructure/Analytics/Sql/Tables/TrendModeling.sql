@@ -21,11 +21,18 @@ BEGIN
         [PredictedValue]    DECIMAL(18,4)       NOT NULL,
         [ModelConfidence]   DECIMAL(18,4)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [GeneratedAtUtc]    DATETIME2(3)        NOT NULL
+        [GeneratedAtUtc]    DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_TrendModeling_TenantId_GeneratedAtUtc]
         ON [Analytics].[TrendModeling] ([TenantId], [GeneratedAtUtc])
         INCLUDE ([SiteId], [Status], [MetricName]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[TrendModeling]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Analytics].[TrendModeling] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

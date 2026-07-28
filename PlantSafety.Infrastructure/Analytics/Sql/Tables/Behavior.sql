@@ -22,11 +22,18 @@ BEGIN
         [ObservationType]   NVARCHAR(50)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [ObservedAtUtc]     DATETIME2(3)        NOT NULL,
-        [ObservedBy]        UNIQUEIDENTIFIER    NOT NULL
+        [ObservedBy]        UNIQUEIDENTIFIER    NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Behavior_TenantId_ObservedAtUtc]
         ON [Analytics].[Behavior] ([TenantId], [ObservedAtUtc])
         INCLUDE ([SiteId], [Status], [BehaviorCategory]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Behavior]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Analytics].[Behavior] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

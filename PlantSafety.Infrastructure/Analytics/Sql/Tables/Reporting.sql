@@ -21,11 +21,18 @@ BEGIN
         [ReportCategory]    NVARCHAR(100)       NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
         [GeneratedAtUtc]    DATETIME2(3)        NOT NULL,
-        [GeneratedBy]       UNIQUEIDENTIFIER    NOT NULL
+        [GeneratedBy]       UNIQUEIDENTIFIER    NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_Reporting_TenantId_GeneratedAtUtc]
         ON [Analytics].[Reporting] ([TenantId], [GeneratedAtUtc])
         INCLUDE ([SiteId], [Status], [ReportCategory]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Reporting]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Analytics].[Reporting] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

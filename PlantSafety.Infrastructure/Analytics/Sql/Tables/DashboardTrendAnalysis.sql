@@ -25,11 +25,18 @@ BEGIN
         [MetricValue]       DECIMAL(18,4)       NOT NULL,
         [TrendDirection]    NVARCHAR(50)        NOT NULL,
         [Status]            NVARCHAR(50)        NOT NULL,
-        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL
+        [CalculatedAtUtc]   DATETIME2(3)        NOT NULL,
+        [RowVersion]        ROWVERSION          NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_DashboardTrendAnalysis_TenantId_CalculatedAtUtc]
         ON [Analytics].[DashboardTrendAnalysis] ([TenantId], [CalculatedAtUtc])
         INCLUDE ([SiteId], [Status], [MetricName]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[DashboardTrendAnalysis]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Analytics].[DashboardTrendAnalysis] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

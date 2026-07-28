@@ -47,6 +47,13 @@ BEGIN TRY
 
     COMMIT TRANSACTION;
 
+    BEGIN TRY
+        INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+        VALUES (N'ComplianceResources', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'ResourceId=', @ResourceId, N'; TenantId=', @TenantId, N'; Operation=', @Operation), 0, OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     -- SET NOCOUNT ON means SqlCommand.ExecuteNonQuery (DapperCommandExecutor.ExecuteAsync) always
     -- returns -1, not the true affected-row count -- ComplianceBulkDapperRepository.BulkUpdateAsync's
     -- "rowsAffected > 0" not-found check could therefore never distinguish a real update from a
@@ -56,6 +63,17 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'ResourceId=', @ResourceId, N'; TenantId=', @TenantId, N'; Operation=', @Operation, N'; User=', SYSTEM_USER);
+    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+    BEGIN TRY
+        INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+
     THROW;
 END CATCH;
 GO

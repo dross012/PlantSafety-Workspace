@@ -22,11 +22,18 @@ BEGIN
         Severity        NVARCHAR(50)     NOT NULL,
         Status          NVARCHAR(50)     NOT NULL,
         IdentifiedAtUtc DATETIME2(3)     NOT NULL,
-        IdentifiedBy    UNIQUEIDENTIFIER NOT NULL
+        IdentifiedBy    UNIQUEIDENTIFIER NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_AuditFindings_TenantId_SiteId] ON [Compliance].[AuditFindings] (TenantId, SiteId);
     CREATE NONCLUSTERED INDEX [IX_AuditFindings_IdentifiedAtUtc] ON [Compliance].[AuditFindings] (IdentifiedAtUtc);
     CREATE NONCLUSTERED INDEX [IX_AuditFindings_AuditingId] ON [Compliance].[AuditFindings] (AuditingId);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[AuditFindings]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[AuditFindings] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

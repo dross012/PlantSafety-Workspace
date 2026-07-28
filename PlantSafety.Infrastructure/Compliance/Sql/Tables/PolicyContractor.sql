@@ -21,11 +21,18 @@ BEGIN
         [ApplicableTrade]         NVARCHAR(300)       NOT NULL,
         [Status]                  NVARCHAR(50)        NOT NULL,
         [EffectiveAtUtc]          DATETIME2(3)        NOT NULL,
-        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL
+        [OwnerId]                 UNIQUEIDENTIFIER    NOT NULL,
+        RowVersion       ROWVERSION       NOT NULL
     );
 
     CREATE NONCLUSTERED INDEX [IX_PolicyContractor_TenantId_EffectiveAtUtc]
         ON [Compliance].[PolicyContractor] ([TenantId], [EffectiveAtUtc])
         INCLUDE ([SiteId]);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Compliance].[PolicyContractor]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [Compliance].[PolicyContractor] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO
