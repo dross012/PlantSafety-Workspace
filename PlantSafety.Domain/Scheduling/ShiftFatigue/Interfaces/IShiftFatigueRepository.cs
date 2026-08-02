@@ -8,14 +8,21 @@
 //  SchemaVersion:  2026.1
 //  Description:    Domain repository interface for the ShiftFatigue aggregate root.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: GetByIdAsync now takes a tenantId
+//                  parameter (tenant-scoped from the start, mirroring
+//                  IAccidentRepository.GetByIdAsync(AccidentId, Guid, CancellationToken)) and
+//                  UpdateAsync now takes an optimistic-concurrency ETag (mirroring
+//                  IPermitsRepository.UpdateAsync(Permits, string?, CancellationToken)). This
+//                  aggregate previously had no write path at all, so there is no pre-existing
+//                  2-arg call site to migrate.
 // ============================================================================
 namespace PlantSafety.Domain.Scheduling.ShiftFatigue.Interfaces;
 
 /// <summary>Domain repository interface for the <see cref="ShiftFatigue"/> aggregate root.</summary>
 public interface IShiftFatigueRepository
 {
-    /// <summary>Retrieves a ShiftFatigue aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue?> GetByIdAsync(ShiftFatigueId id, CancellationToken cancellationToken = default);
+    /// <summary>Retrieves a ShiftFatigue aggregate by its identity, scoped to the given tenant, or <see langword="null"/> if not found.</summary>
+    Task<PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue?> GetByIdAsync(ShiftFatigueId id, Guid tenantId, CancellationToken cancellationToken = default);
 
     /// <summary>Returns all ShiftFatigue aggregates matching the given specification.</summary>
     Task<IReadOnlyList<PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue>> ListAsync(ShiftFatigueSpecification specification, CancellationToken cancellationToken = default);
@@ -23,6 +30,14 @@ public interface IShiftFatigueRepository
     /// <summary>Persists a new ShiftFatigue aggregate.</summary>
     Task AddAsync(PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue aggregate, CancellationToken cancellationToken = default);
 
-    /// <summary>Persists changes to an existing ShiftFatigue aggregate.</summary>
-    Task UpdateAsync(PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue aggregate, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Persists changes to an existing ShiftFatigue aggregate, enforcing optimistic concurrency.
+    /// </summary>
+    /// <param name="aggregate">The mutated aggregate to persist.</param>
+    /// <param name="eTag">
+    /// The last-known concurrency token (from a prior read). A stale or mismatched value causes
+    /// the persistence layer to reject the write as a concurrency conflict (zero rows affected).
+    /// </param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    Task UpdateAsync(PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue aggregate, string? eTag, CancellationToken cancellationToken = default);
 }

@@ -37,4 +37,11 @@ public sealed record HazardIsolationSequencingItemDto
 
     /// <summary>UTC timestamp when the record was created.</summary>
     public required DateTime CreatedAtUtc { get; init; }
+
+    /// <summary>
+    /// Optimistic-concurrency token (native RowVersion projected as a hex string). Callers must
+    /// echo this value back on a subsequent mutating command's ETag field; a stale/mismatched
+    /// value results in a concurrency-conflict error.
+    /// </summary>
+    public string? ETag { get; init; }
 }

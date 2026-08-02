@@ -140,6 +140,12 @@ public sealed class AuditEngagementDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[Auditing].[usp_AuditEngagement_Update]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private static Domain.Auditing.AuditEngagement.Aggregates.AuditEngagement Hydrate(AuditEngagementRow row)

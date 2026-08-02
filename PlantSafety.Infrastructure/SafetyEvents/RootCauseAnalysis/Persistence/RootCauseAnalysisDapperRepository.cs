@@ -44,4 +44,18 @@ public sealed class RootCauseAnalysisDapperRepository(
         return await queryExecutor.QueryAsync<RootCauseAnalysisItemDto>(
             "[SafetyEvents].[usp_RootCauseAnalysis_GetRootCauseAnalyses]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<RootCauseAnalysisDetailDto?> GetByIdAsync(Guid rootCauseAnalysisId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById for RootCauseAnalysis {RootCauseAnalysisId} Tenant {TenantId}", rootCauseAnalysisId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("RootCauseAnalysisId", rootCauseAnalysisId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<RootCauseAnalysisDetailDto>(
+            "[SafetyEvents].[usp_RootCauseAnalysis_GetById]", parameters, cancellationToken);
+    }
 }

@@ -52,11 +52,15 @@ public sealed class RecordPermitClosureSignatureCommandHandler : IRequestHandler
                 correlationId: new CorrelationId(request.CorrelationId),
                 causationId: new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
 
             return Result<PermitWorkflowActionResult>.Success(new PermitWorkflowActionResult(
                 aggregate.PermitWorkflowId.Value,
                 aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

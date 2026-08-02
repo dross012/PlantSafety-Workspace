@@ -11,6 +11,8 @@
 // ============================================================================
 using PlantSafety.Application.SafetyEvents.CrisisManagement.Models;
 using PlantSafety.Application.SafetyEvents.CrisisManagement.Repositories;
+// CrisisManagementDetailDto lives in the same Models namespace as CrisisManagementItemDto
+// (imported above) -- no extra using required for the Phase 4 GetByIdAsync addition.
 
 namespace PlantSafety.Infrastructure.SafetyEvents.CrisisManagement.Persistence;
 
@@ -43,5 +45,19 @@ public sealed class CrisisManagementDapperRepository(
 
         return await queryExecutor.QueryAsync<CrisisManagementItemDto>(
             "[SafetyEvents].[usp_CrisisManagement_GetCrisisEvents]", parameters, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<CrisisManagementDetailDto?> GetByIdAsync(Guid crisisManagementId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById for CrisisManagement {CrisisManagementId} Tenant {TenantId}", crisisManagementId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("CrisisManagementId", crisisManagementId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<CrisisManagementDetailDto>(
+            "[SafetyEvents].[usp_CrisisManagement_GetById]", parameters, cancellationToken);
     }
 }

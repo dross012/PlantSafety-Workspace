@@ -6,6 +6,10 @@
 //   justification requirements, residual-risk acceptability) are enforced inside the Risk
 //   aggregate and its RiskScore value object.
 // SchemaVersion: 1
+// UPDATED: 2026-07-29 -- Two Phase 4 fixes: (1) GetByIdAsync now scoped by request.TenantId,
+//   closing a cross-tenant read/mutate gap (usp_Risk_GetById previously filtered by RiskId only);
+//   (2) NotFound ApplicationErrors now pass ErrorSeverity.NotFound explicitly -- the default
+//   severity is Error (->500), so a missing Risk previously returned 500, not 404.
 
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -37,16 +41,20 @@ public sealed class ScoreRiskCommandHandler : IRequestHandler<ScoreRiskCommand, 
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId));
+                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId, ErrorSeverity.NotFound));
 
             var scoredBy = UserId.FromGuid(request.ScoredBy);
             aggregate.ScoreRisk(request.Severity, request.Likelihood, UtcTimestamp.Now(), PerformedByActor.User(scoredBy),
                 new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<RiskStatusResult>.Success(new RiskStatusResult(aggregate.RiskId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -74,9 +82,9 @@ public sealed class PrioritizeRiskCommandHandler : IRequestHandler<PrioritizeRis
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId));
+                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId, ErrorSeverity.NotFound));
 
             var prioritizedBy = UserId.FromGuid(request.PrioritizedBy);
             var priority = !string.IsNullOrWhiteSpace(request.Priority) && RiskPriority.IsValid(request.Priority)
@@ -86,8 +94,12 @@ public sealed class PrioritizeRiskCommandHandler : IRequestHandler<PrioritizeRis
             aggregate.Prioritize(priority, UtcTimestamp.Now(), PerformedByActor.User(prioritizedBy),
                 new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<RiskStatusResult>.Success(new RiskStatusResult(aggregate.RiskId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -115,9 +127,9 @@ public sealed class ApplyRiskControlMeasureCommandHandler : IRequestHandler<Appl
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<ApplyRiskControlMeasureResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId));
+                return Result<ApplyRiskControlMeasureResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId, ErrorSeverity.NotFound));
 
             var responsiblePersonId = UserId.FromGuid(request.ResponsiblePersonId);
             var hierarchyLevel = ControlHierarchyLevel.IsValid(request.HierarchyLevel) ? ControlHierarchyLevel.From(request.HierarchyLevel) : ControlHierarchyLevel.Default;
@@ -125,8 +137,12 @@ public sealed class ApplyRiskControlMeasureCommandHandler : IRequestHandler<Appl
             var measure = aggregate.ApplyControlMeasure(hierarchyLevel, request.Description, request.Justification, responsiblePersonId,
                 UtcTimestamp.Now(), PerformedByActor.User(responsiblePersonId), new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<ApplyRiskControlMeasureResult>.Success(new ApplyRiskControlMeasureResult(aggregate.RiskId.Value, measure.ControlMeasureId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -154,17 +170,21 @@ public sealed class ValidateRiskEffectivenessCommandHandler : IRequestHandler<Va
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<ValidateRiskEffectivenessResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId));
+                return Result<ValidateRiskEffectivenessResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId, ErrorSeverity.NotFound));
 
             var validatedBy = UserId.FromGuid(request.ValidatedBy);
             var isAcceptable = aggregate.ValidateEffectiveness(request.ResidualSeverity, request.ResidualLikelihood, UtcTimestamp.Now(),
                 PerformedByActor.User(validatedBy), new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<ValidateRiskEffectivenessResult>.Success(new ValidateRiskEffectivenessResult(
                 aggregate.RiskId.Value, aggregate.Status.ToString(), isAcceptable, aggregate.ResidualScore?.Score ?? 0));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -192,16 +212,20 @@ public sealed class StartRiskReviewCycleCommandHandler : IRequestHandler<StartRi
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId));
+                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId, ErrorSeverity.NotFound));
 
             var startedBy = UserId.FromGuid(request.StartedBy);
             aggregate.StartReviewCycle(UtcTimestamp.Now(), PerformedByActor.User(startedBy),
                 new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<RiskStatusResult>.Success(new RiskStatusResult(aggregate.RiskId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -229,9 +253,9 @@ public sealed class CompleteRiskReviewCommandHandler : IRequestHandler<CompleteR
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId));
+                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId, ErrorSeverity.NotFound));
 
             var reviewedBy = UserId.FromGuid(request.ReviewedBy);
             var newCadence = !string.IsNullOrWhiteSpace(request.NewReviewCadence) && RiskReviewCadence.IsValid(request.NewReviewCadence)
@@ -241,8 +265,12 @@ public sealed class CompleteRiskReviewCommandHandler : IRequestHandler<CompleteR
             aggregate.CompleteReview(newCadence, UtcTimestamp.Now(), PerformedByActor.User(reviewedBy),
                 new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<RiskStatusResult>.Success(new RiskStatusResult(aggregate.RiskId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -270,16 +298,20 @@ public sealed class CloseRiskCommandHandler : IRequestHandler<CloseRiskCommand, 
     {
         try
         {
-            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(RiskId.FromGuid(request.RiskId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId));
+                return Result<RiskStatusResult>.Failure(new ApplicationError("RiskManagement.Risk.NotFound", "Risk not found.", request.RiskId, ErrorSeverity.NotFound));
 
             var closedBy = UserId.FromGuid(request.ClosedBy);
             aggregate.Close(closedBy, UtcTimestamp.Now(), PerformedByActor.User(closedBy),
                 new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<RiskStatusResult>.Success(new RiskStatusResult(aggregate.RiskId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

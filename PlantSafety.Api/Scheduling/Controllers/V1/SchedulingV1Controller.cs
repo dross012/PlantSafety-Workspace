@@ -26,9 +26,13 @@ using PlantSafety.Api.Scheduling.Contracts.Requests;
 using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Common.Results;
 using PlantSafety.Application.Scheduling.Commands;
+using PlantSafety.Application.Scheduling.EmergencyDrillPlanning.Commands;
 using PlantSafety.Application.Scheduling.EmergencyDrillPlanning.Queries;
+using PlantSafety.Application.Scheduling.HazardIsolationSequencing.Commands;
 using PlantSafety.Application.Scheduling.HazardIsolationSequencing.Queries;
+using PlantSafety.Application.Scheduling.PMScheduling.Models;
 using PlantSafety.Application.Scheduling.PMScheduling.Queries;
+using PlantSafety.Application.Scheduling.ShiftFatigue.Commands;
 using PlantSafety.Application.Scheduling.ShiftFatigue.Queries;
 using PlantSafety.Application.Scheduling.WorkOrderPriority.Queries;
 
@@ -107,7 +111,10 @@ public sealed class SchedulingV1Controller : ControllerBase
             TenantId: env.TenantId,
             PMSchedulingId: pmSchedulingId,
             CompletionNotes: request.CompletionNotes,
-            PerformedByUserId: env.ActorId);
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -135,9 +142,32 @@ public sealed class SchedulingV1Controller : ControllerBase
             TenantId: env.TenantId,
             PMSchedulingId: pmSchedulingId,
             PriorityCode: request.PriorityCode,
-            PerformedByUserId: env.ActorId);
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single PMScheduling read-model record by identity, including its current ETag.</summary>
+    [HttpGet("pm-scheduling/{pmSchedulingId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<PMSchedulingItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetPMSchedulingByIdAsync(
+        Guid pmSchedulingId,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetPMSchedulingByIdQuery(env.TenantId, pmSchedulingId);
+
+        var result = await _sender.Send(query, cancellationToken);
 
         return this.ToActionResult(result, env.CorrelationId);
     }
@@ -249,6 +279,184 @@ public sealed class SchedulingV1Controller : ControllerBase
     }
 
     // ── EmergencyDrillPlanning ───────────────────────────────────────────────
+    // Phase 4 full build-out (2026-07-30): added the write path (Schedule/Conduct/Complete/Close/
+    // Archive) and the by-id read, appended additively alongside the pre-existing date-range list
+    // endpoint below to minimize merge friction with sibling Scheduling sub-aggregate agents
+    // concurrently editing this same shared controller.
+
+    /// <summary>Schedules a new emergency drill.</summary>
+    [HttpPost("emergency-drill-planning")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<ScheduleEmergencyDrillPlanningResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ScheduleEmergencyDrillPlanningResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ScheduleEmergencyDrillPlanningAsync(
+        [FromBody] ScheduleEmergencyDrillPlanningRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ScheduleEmergencyDrillPlanningCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            RequestedAtUtc: env.RequestedAtUtc,
+            ApiVersionToken: env.ApiVersionToken,
+            TenantId: env.TenantId,
+            SiteId: request.SiteId,
+            DrillType: request.DrillType,
+            ShiftCode: request.ShiftCode,
+            ScheduledAtUtc: request.ScheduledAtUtc,
+            ParticipationCount: request.ParticipationCount,
+            ScheduledByUserId: env.ActorId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Records that a scheduled drill was conducted (Created -&gt; Active).</summary>
+    [HttpPost("emergency-drill-planning/{emergencyDrillPlanningId:guid}/conduct")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ConductEmergencyDrillPlanningAsync(
+        Guid emergencyDrillPlanningId,
+        [FromBody] ConductEmergencyDrillPlanningRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ConductEmergencyDrillPlanningCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            EmergencyDrillPlanningId: emergencyDrillPlanningId,
+            ConductedByUserId: env.ActorId,
+            ParticipationCount: request.ParticipationCount)
+        {
+            ETag = request.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Records the post-drill debrief/completion (Active -&gt; Completed).</summary>
+    [HttpPost("emergency-drill-planning/{emergencyDrillPlanningId:guid}/complete")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CompleteEmergencyDrillPlanningAsync(
+        Guid emergencyDrillPlanningId,
+        [FromBody] CompleteEmergencyDrillPlanningRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CompleteEmergencyDrillPlanningCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            EmergencyDrillPlanningId: emergencyDrillPlanningId,
+            PerformedByUserId: env.ActorId,
+            DebriefNotes: request?.DebriefNotes)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Closes a completed drill record (Completed -&gt; Closed).</summary>
+    [HttpPost("emergency-drill-planning/{emergencyDrillPlanningId:guid}/close")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CloseEmergencyDrillPlanningAsync(
+        Guid emergencyDrillPlanningId,
+        [FromBody] CloseEmergencyDrillPlanningRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CloseEmergencyDrillPlanningCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            EmergencyDrillPlanningId: emergencyDrillPlanningId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Archives a closed drill record for compliance retention (Closed -&gt; Archived).</summary>
+    [HttpPost("emergency-drill-planning/{emergencyDrillPlanningId:guid}/archive")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EmergencyDrillPlanningStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ArchiveEmergencyDrillPlanningAsync(
+        Guid emergencyDrillPlanningId,
+        [FromBody] ArchiveEmergencyDrillPlanningRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ArchiveEmergencyDrillPlanningCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            EmergencyDrillPlanningId: emergencyDrillPlanningId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single EmergencyDrillPlanning read-model record by identity, including its current ETag.</summary>
+    [HttpGet("emergency-drill-planning/{emergencyDrillPlanningId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<PlantSafety.Application.Scheduling.EmergencyDrillPlanning.Models.EmergencyDrillPlanningItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetEmergencyDrillPlanningByIdAsync(
+        Guid emergencyDrillPlanningId,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetEmergencyDrillPlanningByIdQuery(env.TenantId, emergencyDrillPlanningId);
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
 
     /// <summary>Returns EmergencyDrillPlanning read-model data for a tenant/site within a date range.</summary>
     [HttpGet("emergency-drill-planning")]
@@ -275,6 +483,213 @@ public sealed class SchedulingV1Controller : ControllerBase
     }
 
     // ── HazardIsolationSequencing ────────────────────────────────────────────
+    // Phase 4 full build-out (2026-07-30): added the write path (Schedule/Activate/FlagConflict/
+    // Complete/Close/Archive) and the by-id read, appended additively alongside the pre-existing
+    // date-range list endpoint below to minimize merge friction with sibling Scheduling
+    // sub-aggregate agents concurrently editing this same shared controller.
+
+    /// <summary>Schedules a new HazardIsolationSequencing record.</summary>
+    [HttpPost("hazard-isolation-sequencing")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<ScheduleHazardIsolationSequencingResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ScheduleHazardIsolationSequencingResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ScheduleHazardIsolationSequencingAsync(
+        [FromBody] ScheduleHazardIsolationSequencingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ScheduleHazardIsolationSequencingCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            RequestedAtUtc: env.RequestedAtUtc,
+            ApiVersionToken: env.ApiVersionToken,
+            TenantId: env.TenantId,
+            SiteId: request.SiteId,
+            HazardZone: request.HazardZone,
+            TaskType: request.TaskType,
+            WindowStartUtc: request.WindowStartUtc,
+            WindowEndUtc: request.WindowEndUtc,
+            RequesterUserId: env.ActorId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Activates an isolation window (Created -&gt; Active).</summary>
+    [HttpPost("hazard-isolation-sequencing/{hazardIsolationSequencingId:guid}/activate")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ActivateHazardIsolationSequencingAsync(
+        Guid hazardIsolationSequencingId,
+        [FromBody] ActivateHazardIsolationSequencingRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ActivateHazardIsolationSequencingCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            HazardIsolationSequencingId: hazardIsolationSequencingId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Flags an incompatible-task conflict within an active isolation window.</summary>
+    [HttpPost("hazard-isolation-sequencing/{hazardIsolationSequencingId:guid}/flag-conflict")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> FlagHazardIsolationSequencingConflictAsync(
+        Guid hazardIsolationSequencingId,
+        [FromBody] FlagHazardIsolationSequencingConflictRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new FlagHazardIsolationSequencingConflictCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            HazardIsolationSequencingId: hazardIsolationSequencingId,
+            PerformedByUserId: env.ActorId,
+            Reason: request.Reason)
+        {
+            ETag = request.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Completes an isolation window (Active -&gt; Completed).</summary>
+    [HttpPost("hazard-isolation-sequencing/{hazardIsolationSequencingId:guid}/complete")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CompleteHazardIsolationSequencingAsync(
+        Guid hazardIsolationSequencingId,
+        [FromBody] CompleteHazardIsolationSequencingRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CompleteHazardIsolationSequencingCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            HazardIsolationSequencingId: hazardIsolationSequencingId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Formally closes a completed isolation record (Completed -&gt; Closed).</summary>
+    [HttpPost("hazard-isolation-sequencing/{hazardIsolationSequencingId:guid}/close")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CloseHazardIsolationSequencingAsync(
+        Guid hazardIsolationSequencingId,
+        [FromBody] CloseHazardIsolationSequencingRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CloseHazardIsolationSequencingCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            HazardIsolationSequencingId: hazardIsolationSequencingId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Archives a closed isolation record for compliance retention (Closed -&gt; Archived).</summary>
+    [HttpPost("hazard-isolation-sequencing/{hazardIsolationSequencingId:guid}/archive")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<HazardIsolationSequencingStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ArchiveHazardIsolationSequencingAsync(
+        Guid hazardIsolationSequencingId,
+        [FromBody] ArchiveHazardIsolationSequencingRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ArchiveHazardIsolationSequencingCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            HazardIsolationSequencingId: hazardIsolationSequencingId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single HazardIsolationSequencing read-model record by identity, including its current ETag.</summary>
+    [HttpGet("hazard-isolation-sequencing/{hazardIsolationSequencingId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<PlantSafety.Application.Scheduling.HazardIsolationSequencing.Models.HazardIsolationSequencingItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetHazardIsolationSequencingByIdAsync(
+        Guid hazardIsolationSequencingId,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetHazardIsolationSequencingByIdQuery(env.TenantId, hazardIsolationSequencingId);
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
 
     /// <summary>Returns HazardIsolationSequencing read-model data for a tenant/site within a date range.</summary>
     [HttpGet("hazard-isolation-sequencing")]
@@ -301,6 +716,216 @@ public sealed class SchedulingV1Controller : ControllerBase
     }
 
     // ── ShiftFatigue ─────────────────────────────────────────────────────────
+    // Phase 4 full build-out (2026-07-30): added the write path (Record/Activate/ReassessRisk/
+    // Complete/Close/Archive) and the by-id read, appended additively alongside the pre-existing
+    // date-range list endpoint below to minimize merge friction with sibling Scheduling
+    // sub-aggregate agents concurrently editing this same shared controller.
+
+    /// <summary>Records a new ShiftFatigue assessment.</summary>
+    [HttpPost("shift-fatigue")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<RecordShiftFatigueResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RecordShiftFatigueResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> RecordShiftFatigueAsync(
+        [FromBody] RecordShiftFatigueRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new RecordShiftFatigueCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            RequestedAtUtc: env.RequestedAtUtc,
+            ApiVersionToken: env.ApiVersionToken,
+            TenantId: env.TenantId,
+            SiteId: request.SiteId,
+            EmployeeId: request.EmployeeId,
+            ShiftPattern: request.ShiftPattern,
+            ConsecutiveNightShifts: request.ConsecutiveNightShifts,
+            OvertimeHours: request.OvertimeHours,
+            FatigueRiskScore: request.FatigueRiskScore,
+            RequesterUserId: env.ActorId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Activates fatigue monitoring for an employee's shift record (Created -&gt; Active).</summary>
+    [HttpPost("shift-fatigue/{shiftFatigueId:guid}/activate")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ActivateShiftFatigueAsync(
+        Guid shiftFatigueId,
+        [FromBody] ActivateShiftFatigueRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ActivateShiftFatigueCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            ShiftFatigueId: shiftFatigueId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Reassesses the fatigue risk score during active monitoring.</summary>
+    [HttpPost("shift-fatigue/{shiftFatigueId:guid}/reassess-risk")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ReassessShiftFatigueRiskAsync(
+        Guid shiftFatigueId,
+        [FromBody] ReassessShiftFatigueRiskRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ReassessShiftFatigueRiskCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            ShiftFatigueId: shiftFatigueId,
+            PerformedByUserId: env.ActorId,
+            FatigueRiskScore: request.FatigueRiskScore,
+            ConsecutiveNightShifts: request.ConsecutiveNightShifts,
+            OvertimeHours: request.OvertimeHours)
+        {
+            ETag = request.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Completes the fatigue monitoring period (Active -&gt; Completed).</summary>
+    [HttpPost("shift-fatigue/{shiftFatigueId:guid}/complete")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CompleteShiftFatigueAsync(
+        Guid shiftFatigueId,
+        [FromBody] CompleteShiftFatigueRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CompleteShiftFatigueCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            ShiftFatigueId: shiftFatigueId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Formally closes a completed fatigue record (Completed -&gt; Closed).</summary>
+    [HttpPost("shift-fatigue/{shiftFatigueId:guid}/close")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CloseShiftFatigueAsync(
+        Guid shiftFatigueId,
+        [FromBody] CloseShiftFatigueRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CloseShiftFatigueCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            ShiftFatigueId: shiftFatigueId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Archives a closed fatigue record for compliance retention (Closed -&gt; Archived).</summary>
+    [HttpPost("shift-fatigue/{shiftFatigueId:guid}/archive")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ShiftFatigueStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ArchiveShiftFatigueAsync(
+        Guid shiftFatigueId,
+        [FromBody] ArchiveShiftFatigueRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ArchiveShiftFatigueCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            ShiftFatigueId: shiftFatigueId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single ShiftFatigue read-model record by identity, including its current ETag.</summary>
+    [HttpGet("shift-fatigue/{shiftFatigueId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<PlantSafety.Application.Scheduling.ShiftFatigue.Models.ShiftFatigueItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetShiftFatigueByIdAsync(
+        Guid shiftFatigueId,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetShiftFatigueByIdQuery(env.TenantId, shiftFatigueId);
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
 
     /// <summary>Returns ShiftFatigue read-model data for a tenant/site within a date range.</summary>
     [HttpGet("shift-fatigue")]

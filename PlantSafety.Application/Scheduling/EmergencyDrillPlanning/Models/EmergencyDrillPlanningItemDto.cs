@@ -2,6 +2,9 @@
 // CREATED: 2026-07-20
 // FILE DESCRIPTION: Read-model item DTO for a single EmergencyDrillPlanning record. Emergency response and drill planning: fire evacuation, chemical spill, severe weather, alarm testing, participation tracking.
 // SchemaVersion: 1
+// UPDATED: 2026-07-30 -- Phase 4 full build-out: added ETag (optimistic-concurrency token) to back
+//   GetEmergencyDrillPlanningByIdQuery / the lifecycle-transition commands' read-before-write flow,
+//   mirroring PlantSafety.Application.Compliance.Permits.Models.PermitsItemDto.ETag.
 
 namespace PlantSafety.Application.Scheduling.EmergencyDrillPlanning.Models;
 
@@ -34,4 +37,11 @@ public sealed record EmergencyDrillPlanningItemDto
 
     /// <summary>UTC timestamp when the record was created.</summary>
     public required DateTime CreatedAtUtc { get; init; }
+
+    /// <summary>
+    /// Optimistic-concurrency token (native RowVersion projected as a hex string). Callers must
+    /// echo this value back on a subsequent mutating command's ETag field; a stale/mismatched
+    /// value results in a concurrency-conflict error.
+    /// </summary>
+    public string? ETag { get; init; }
 }

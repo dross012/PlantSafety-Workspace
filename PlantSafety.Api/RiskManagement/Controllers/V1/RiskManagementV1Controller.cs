@@ -20,6 +20,8 @@ using PlantSafety.Api.Common;
 using PlantSafety.Api.Context;
 using PlantSafety.Api.RiskManagement.Contracts.Requests;
 using PlantSafety.Application.RiskManagement.Commands;
+using PlantSafety.Application.RiskManagement.Models;
+using PlantSafety.Application.RiskManagement.Queries;
 
 namespace PlantSafety.Api.RiskManagement.Controllers.V1;
 
@@ -90,9 +92,32 @@ public sealed class RiskManagementV1Controller : ControllerBase
 
         var command = new ScoreRiskCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, riskId, request.Severity, request.Likelihood, env.ActorId);
+            env.TenantId, riskId, request.Severity, request.Likelihood, env.ActorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single Risk's current read-model state, including its ETag for optimistic concurrency.</summary>
+    /// <response code="200">Risk retrieved successfully.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">No risk exists with the given identity for this tenant.</response>
+    [HttpGet("{riskId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<RiskItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<RiskItemDto>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetByIdAsync(Guid riskId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetRiskByIdQuery(env.TenantId, riskId);
+
+        var result = await _sender.Send(query, cancellationToken);
 
         return this.ToActionResult(result, env.CorrelationId);
     }
@@ -114,7 +139,8 @@ public sealed class RiskManagementV1Controller : ControllerBase
 
         var command = new PrioritizeRiskCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, riskId, request.Priority, env.ActorId);
+            env.TenantId, riskId, request.Priority, env.ActorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -138,7 +164,8 @@ public sealed class RiskManagementV1Controller : ControllerBase
 
         var command = new ApplyRiskControlMeasureCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, riskId, request.HierarchyLevel, request.Description, request.Justification, request.ResponsiblePersonId);
+            env.TenantId, riskId, request.HierarchyLevel, request.Description, request.Justification, request.ResponsiblePersonId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -162,7 +189,8 @@ public sealed class RiskManagementV1Controller : ControllerBase
 
         var command = new ValidateRiskEffectivenessCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, riskId, request.ResidualSeverity, request.ResidualLikelihood, env.ActorId);
+            env.TenantId, riskId, request.ResidualSeverity, request.ResidualLikelihood, env.ActorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -180,13 +208,14 @@ public sealed class RiskManagementV1Controller : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<RiskStatusResult>), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> StartReviewCycleAsync(Guid riskId, CancellationToken cancellationToken)
+    public async Task<IActionResult> StartReviewCycleAsync(Guid riskId, [FromBody] StartRiskReviewCycleRequest? request, CancellationToken cancellationToken)
     {
         var env = _envelopeFactory.NewCommandEnvelope();
 
         var command = new StartRiskReviewCycleCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, riskId, env.ActorId);
+            env.TenantId, riskId, env.ActorId)
+        { ETag = request?.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -210,7 +239,8 @@ public sealed class RiskManagementV1Controller : ControllerBase
 
         var command = new CompleteRiskReviewCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, riskId, request.NewReviewCadence, env.ActorId);
+            env.TenantId, riskId, request.NewReviewCadence, env.ActorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -228,13 +258,14 @@ public sealed class RiskManagementV1Controller : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<RiskStatusResult>), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> CloseAsync(Guid riskId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CloseAsync(Guid riskId, [FromBody] CloseRiskRequest? request, CancellationToken cancellationToken)
     {
         var env = _envelopeFactory.NewCommandEnvelope();
 
         var command = new CloseRiskCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, riskId, env.ActorId);
+            env.TenantId, riskId, env.ActorId)
+        { ETag = request?.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 

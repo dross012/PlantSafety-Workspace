@@ -52,6 +52,24 @@ global using PlantSafety.Domain.Operational.Alerts.Specifications;
 global using PlantSafety.Domain.Operational.Alerts.ValueObjects;
 global using PlantSafety.Domain.Operational.Alerts.ValueObjects.Ids;
 
+// ---- Operational.PredictiveMaintenance (Phase 4 full build-out, 2026-07-30) -
+global using PlantSafety.Domain.Operational.PredictiveMaintenance.Aggregates;
+global using PlantSafety.Domain.Operational.PredictiveMaintenance.Enums;
+global using PlantSafety.Domain.Operational.PredictiveMaintenance.Events;
+global using PlantSafety.Domain.Operational.PredictiveMaintenance.Exceptions;
+global using PlantSafety.Domain.Operational.PredictiveMaintenance.Interfaces;
+global using PlantSafety.Domain.Operational.PredictiveMaintenance.Rules;
+global using PlantSafety.Domain.Operational.PredictiveMaintenance.ValueObjects.Ids;
+
+// ---- Operational.PreventiveMaintenance (Phase 4 full build-out, 2026-07-30) -
+global using PlantSafety.Domain.Operational.PreventiveMaintenance.Aggregates;
+global using PlantSafety.Domain.Operational.PreventiveMaintenance.Enums;
+global using PlantSafety.Domain.Operational.PreventiveMaintenance.Events;
+global using PlantSafety.Domain.Operational.PreventiveMaintenance.Exceptions;
+global using PlantSafety.Domain.Operational.PreventiveMaintenance.Interfaces;
+global using PlantSafety.Domain.Operational.PreventiveMaintenance.Rules;
+global using PlantSafety.Domain.Operational.PreventiveMaintenance.ValueObjects.Ids;
+
 // ---- Analytics -------------------------------------------------------------
 global using PlantSafety.Domain.Analytics.Culture.Aggregates;
 global using PlantSafety.Domain.Analytics.Culture.DomainEvents;
@@ -384,6 +402,40 @@ global using PlantSafety.Domain.SafetyEvents.Observation.Snapshots;
 global using PlantSafety.Domain.SafetyEvents.Observation.Specifications;
 global using PlantSafety.Domain.SafetyEvents.Observation.ValueObjects;
 global using PlantSafety.Domain.SafetyEvents.Observation.ValueObjects.Ids;
+
+// ---- SafetyEvents.CrisisManagement / SafetyEvents.DrillsAndExercises (Phase 4 full
+// build-out, 2026-08-02) -------------------------------------------------------------
+global using PlantSafety.Domain.SafetyEvents.CrisisManagement.Aggregates;
+global using PlantSafety.Domain.SafetyEvents.CrisisManagement.Enums;
+global using PlantSafety.Domain.SafetyEvents.CrisisManagement.Events;
+global using PlantSafety.Domain.SafetyEvents.CrisisManagement.Exceptions;
+global using PlantSafety.Domain.SafetyEvents.CrisisManagement.Interfaces;
+global using PlantSafety.Domain.SafetyEvents.CrisisManagement.Rules;
+global using PlantSafety.Domain.SafetyEvents.CrisisManagement.ValueObjects.Ids;
+global using PlantSafety.Domain.SafetyEvents.DrillsAndExercises.Aggregates;
+global using PlantSafety.Domain.SafetyEvents.DrillsAndExercises.Enums;
+global using PlantSafety.Domain.SafetyEvents.DrillsAndExercises.Events;
+global using PlantSafety.Domain.SafetyEvents.DrillsAndExercises.Exceptions;
+global using PlantSafety.Domain.SafetyEvents.DrillsAndExercises.Interfaces;
+global using PlantSafety.Domain.SafetyEvents.DrillsAndExercises.Rules;
+global using PlantSafety.Domain.SafetyEvents.DrillsAndExercises.ValueObjects.Ids;
+
+// ---- SafetyEvents.NearMisses / SafetyEvents.RootCauseAnalysis (Phase 4 full build-out,
+// 2026-08-02) -------------------------------------------------------------------------
+global using PlantSafety.Domain.SafetyEvents.NearMisses.Aggregates;
+global using PlantSafety.Domain.SafetyEvents.NearMisses.Enums;
+global using PlantSafety.Domain.SafetyEvents.NearMisses.Events;
+global using PlantSafety.Domain.SafetyEvents.NearMisses.Exceptions;
+global using PlantSafety.Domain.SafetyEvents.NearMisses.Interfaces;
+global using PlantSafety.Domain.SafetyEvents.NearMisses.Rules;
+global using PlantSafety.Domain.SafetyEvents.NearMisses.ValueObjects.Ids;
+global using PlantSafety.Domain.SafetyEvents.RootCauseAnalysis.Aggregates;
+global using PlantSafety.Domain.SafetyEvents.RootCauseAnalysis.Enums;
+global using PlantSafety.Domain.SafetyEvents.RootCauseAnalysis.Events;
+global using PlantSafety.Domain.SafetyEvents.RootCauseAnalysis.Exceptions;
+global using PlantSafety.Domain.SafetyEvents.RootCauseAnalysis.Interfaces;
+global using PlantSafety.Domain.SafetyEvents.RootCauseAnalysis.Rules;
+global using PlantSafety.Domain.SafetyEvents.RootCauseAnalysis.ValueObjects.Ids;
 
 // ---- Slim modules ----------------------------------------------------------
 global using PlantSafety.Domain.AiGovernance.Aggregates;

@@ -174,6 +174,12 @@ public sealed class ChecklistCompletionDapperRepository(
         await UpsertItemResultsAsync(conn, tx, aggregate, cancellationToken);
 
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private async Task UpsertItemResultsAsync(

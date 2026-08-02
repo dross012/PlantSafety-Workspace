@@ -3,8 +3,12 @@
 // FILE DESCRIPTION: Command to record completion of a preventive maintenance task
 // ("PM compliance reporting").
 // SchemaVersion: 1
+// UPDATED: 2026-07-30 -- Implements IConcurrencyAwareCommand (Phase 4 Scheduling.PMScheduling
+//   concurrency remediation): callers should supply the ETag captured from a prior read; a stale
+//   value results in ConcurrencyConflictException. Mirrors RiskManagement's commands.
 
 using PlantSafety.Application.Abstractions.Messaging;
+using PlantSafety.Application.Behaviors.Concurrency;
 using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Scheduling.Commands;
@@ -17,7 +21,7 @@ public sealed record RecordPMSchedulingCompletionCommand(
     Guid TenantId,
     Guid PMSchedulingId,
     string? CompletionNotes,
-    Guid PerformedByUserId) : ICommand<Result<PMSchedulingActionResult>>
+    Guid PerformedByUserId) : ICommand<Result<PMSchedulingActionResult>>, IConcurrencyAwareCommand
 {
     /// <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
     public DateTime RequestedAtUtc { get; init; } = DateTime.UtcNow;
@@ -30,4 +34,7 @@ public sealed record RecordPMSchedulingCompletionCommand(
 
     /// <inheritdoc cref="ICommand{TResponse}.CausationId" />
     Guid? ICommand<Result<PMSchedulingActionResult>>.CausationId => CausationId;
+
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
 }

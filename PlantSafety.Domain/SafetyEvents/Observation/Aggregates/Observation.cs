@@ -122,6 +122,110 @@ public sealed partial class Observation
         return agg;
     }
 
+    // ---- Lifecycle: Activate / Complete ---------------------------------------
+
+    /// <summary>
+    /// Begins follow-up tracking for an observation requiring corrective action (Created -&gt;
+    /// Active). Valid only from <see cref="ObservationStatus.Created"/>.
+    /// </summary>
+    public void Activate(
+        UserId activatedBy,
+        UtcTimestamp activatedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ObservationLifecycleRules.CanActivate, ObservationStatus.Active);
+
+        Status = ObservationStatus.Active;
+
+        AddDomainEvent(new ObservationActivatedEvent(
+            EventId: new ObservationEventId(Uuid7.New()),
+            ObservationId: ObservationId,
+            ActivatedBy: activatedBy,
+            ActivatedAtUtc: activatedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records completion of the required follow-up/corrective action (Active -&gt; Completed).
+    /// Valid only from <see cref="ObservationStatus.Active"/>.
+    /// </summary>
+    public void Complete(
+        UserId completedBy,
+        string? resolutionNotes,
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ObservationLifecycleRules.CanComplete, ObservationStatus.Completed);
+
+        Status = ObservationStatus.Completed;
+
+        AddDomainEvent(new ObservationCompletedEvent(
+            EventId: new ObservationEventId(Uuid7.New()),
+            ObservationId: ObservationId,
+            CompletedBy: completedBy,
+            ResolutionNotes: string.IsNullOrWhiteSpace(resolutionNotes) ? null : resolutionNotes.Trim(),
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Close / Archive -------------------------------------------
+
+    /// <summary>
+    /// Closes a completed observation record (Completed -&gt; Closed). Valid only from
+    /// <see cref="ObservationStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ObservationLifecycleRules.CanClose, ObservationStatus.Closed);
+
+        Status = ObservationStatus.Closed;
+
+        AddDomainEvent(new ObservationClosedEvent(
+            EventId: new ObservationEventId(Uuid7.New()),
+            ObservationId: ObservationId,
+            ClosedBy: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed observation record for retention (Closed -&gt; Archived). Valid only from
+    /// <see cref="ObservationStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ObservationLifecycleRules.CanArchive, ObservationStatus.Archived);
+
+        Status = ObservationStatus.Archived;
+
+        AddDomainEvent(new ObservationArchivedEvent(
+            EventId: new ObservationEventId(Uuid7.New()),
+            ObservationId: ObservationId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IObservationDomainEvent evt) => _domainEvents.Add(evt);
@@ -136,5 +240,13 @@ public sealed partial class Observation
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Observation {ObservationId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<ObservationStatus, bool> guard, ObservationStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new ObservationInvalidStatusTransitionException(
+            ObservationId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

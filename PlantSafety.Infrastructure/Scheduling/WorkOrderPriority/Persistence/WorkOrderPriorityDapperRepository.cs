@@ -16,6 +16,7 @@
 //                  scoping parameter to push down to SQL.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.Scheduling.WorkOrderPriority.Aggregates;
 using PlantSafety.Domain.Scheduling.WorkOrderPriority.Enums;
 using PlantSafety.Domain.Scheduling.WorkOrderPriority.Events;
@@ -36,11 +37,11 @@ public sealed class WorkOrderPriorityDapperRepository(
     : IWorkOrderPriorityRepository
 {
     /// <inheritdoc/>
-    public async Task<PlantSafety.Domain.Scheduling.WorkOrderPriority.Aggregates.WorkOrderPriority?> GetByIdAsync(WorkOrderPriorityId id, CancellationToken cancellationToken = default)
+    public async Task<PlantSafety.Domain.Scheduling.WorkOrderPriority.Aggregates.WorkOrderPriority?> GetByIdAsync(WorkOrderPriorityId id, Guid tenantId, CancellationToken cancellationToken = default)
     {
-        logger.LogDebug("GetById for WorkOrderPriority {WorkOrderPriorityId}", id.Value);
+        logger.LogDebug("GetById for WorkOrderPriority {WorkOrderPriorityId} Tenant {TenantId}", id.Value, tenantId);
 
-        var parameters = new StoredProcedureBuilder().AddGuid("WorkOrderPriorityId", id.Value).Build();
+        var parameters = new StoredProcedureBuilder().AddGuid("WorkOrderPriorityId", id.Value).AddGuid("TenantId", tenantId).Build();
         var row = await queryExecutor.QuerySingleOrDefaultAsync<WorkOrderPriorityRow>(
             "[Scheduling].[usp_WorkOrderPriority_GetById]", parameters, cancellationToken);
 
@@ -106,7 +107,7 @@ public sealed class WorkOrderPriorityDapperRepository(
 }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.WorkOrderPriority.Aggregates.WorkOrderPriority aggregate, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.WorkOrderPriority.Aggregates.WorkOrderPriority aggregate, string? eTag, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Update WorkOrderPriority {WorkOrderPriorityId}", aggregate.WorkOrderPriorityId.Value);
 
@@ -115,6 +116,7 @@ public sealed class WorkOrderPriorityDapperRepository(
 
         var parameters = new StoredProcedureBuilder()
             .AddGuid("WorkOrderPriorityId", aggregate.WorkOrderPriorityId.Value)
+            .AddGuid("TenantId", aggregate.TenantId)
             .AddString("Status", aggregate.Status.ToString(), 50)
             .AddString("PriorityCode", aggregate.PriorityCode, 400)
             .AddString("HazardDescription", aggregate.HazardDescription, 400)
@@ -122,10 +124,26 @@ public sealed class WorkOrderPriorityDapperRepository(
             .AddDateTime("EscalatedAtUtc", aggregate.EscalatedAtUtc?.Value)
             .AddString("ResolutionNotes", aggregate.ResolutionNotes, 400)
             .AddGuid("UpdatedBy", aggregate.CreatedBy.Value)
+            .AddString("ETag", eTag, size: 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[Scheduling].[usp_WorkOrderPriority_Update]", parameters, tx, cancellationToken: cancellationToken);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable the
+        // @ETag concurrency check below. See usp_WorkOrderPriority_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[Scheduling].[usp_WorkOrderPriority_Update]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"WorkOrderPriority {aggregate.WorkOrderPriorityId.Value} was modified by another process or the ETag is stale.", Guid.Empty);
+        }
+
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <summary>Reconstructs a <see cref="WorkOrderPriority"/> aggregate from its flat read-model row.</summary>
@@ -165,5 +183,13 @@ public sealed class WorkOrderPriorityDapperRepository(
         public required Guid CreatedBy { get; init; }
         public DateTime? UpdatedAtUtc { get; init; }
         public Guid? UpdatedBy { get; init; }
+
+        /// <summary>
+        /// Optimistic-concurrency token, projected from the row's native RowVersion column. Not
+        /// consumed by aggregate hydration (the WorkOrderPriority aggregate has no ETag concept) --
+        /// present so Dapper's column-mapping of usp_WorkOrderPriority_GetById's ETag column does
+        /// not fail; mirrors RiskDapperRepository.RiskRow.ETag's identical precedent.
+        /// </summary>
+        public string? ETag { get; init; }
     }
 }

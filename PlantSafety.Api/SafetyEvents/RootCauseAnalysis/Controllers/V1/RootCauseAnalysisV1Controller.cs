@@ -21,11 +21,18 @@
 using PlantSafety.Api.SafetyEvents.RootCauseAnalysis.Contracts.Requests;
 using PlantSafety.Api.SafetyEvents.RootCauseAnalysis.Contracts.Responses;
 using PlantSafety.Api.SafetyEvents.RootCauseAnalysis.Authorization;
+using PlantSafety.Application.SafetyEvents.RootCauseAnalysis.Commands;
 using PlantSafety.Application.SafetyEvents.RootCauseAnalysis.Queries;
+
+using PlantSafety.Api.Common;
+using PlantSafety.Api.Context;
 
 namespace PlantSafety.Api.SafetyEvents.RootCauseAnalysis.Controllers.V1;
 
-/// <summary>V1 controller for RootCauseAnalysis read endpoints.</summary>
+/// <summary>
+/// V1 controller for the SafetyEvents.RootCauseAnalysis module's read endpoints (pre-existing)
+/// plus the Phase 4 full build-out's Create/lifecycle/by-id command and query endpoints.
+/// </summary>
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/safety-events/root-cause-analysis")]
@@ -34,10 +41,186 @@ namespace PlantSafety.Api.SafetyEvents.RootCauseAnalysis.Controllers.V1;
 public sealed class RootCauseAnalysisV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="RootCauseAnalysisV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public RootCauseAnalysisV1Controller(ISender sender) => _sender = sender;
+    /// <param name="envelopeFactory">Builds the canonical command/query envelope fields.</param>
+    public RootCauseAnalysisV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
+
+    /// <summary>Starts a new RootCauseAnalysis engagement.</summary>
+    [HttpPost]
+    [Authorize(Policy = RootCauseAnalysisAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CreateAsync(
+        [FromBody] CreateRootCauseAnalysisRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CreateRootCauseAnalysisCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            RequestedAtUtc: env.RequestedAtUtc,
+            ApiVersionToken: env.ApiVersionToken,
+            TenantId: env.TenantId,
+            SiteId: request.SiteId,
+            RelatedEventId: request.RelatedEventId,
+            Methodology: request.Methodology,
+            LeadAnalystUserId: env.ActorId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Submits a RootCauseAnalysis for review (InProgress -&gt; PendingReview).</summary>
+    [HttpPost("{rootCauseAnalysisId:guid}/submit-for-review")]
+    [Authorize(Policy = RootCauseAnalysisAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> SubmitForReviewAsync(
+        Guid rootCauseAnalysisId,
+        [FromBody] SubmitForReviewRootCauseAnalysisRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new SubmitForReviewRootCauseAnalysisCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            RootCauseAnalysisId: rootCauseAnalysisId,
+            SubmittedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Reviews and approves a RootCauseAnalysis (PendingReview -&gt; Completed).</summary>
+    [HttpPost("{rootCauseAnalysisId:guid}/approve")]
+    [Authorize(Policy = RootCauseAnalysisAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ApproveAsync(
+        Guid rootCauseAnalysisId,
+        [FromBody] ApproveRootCauseAnalysisRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ApproveRootCauseAnalysisCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            RootCauseAnalysisId: rootCauseAnalysisId,
+            ApprovedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Formally closes a completed RootCauseAnalysis (Completed -&gt; Closed).</summary>
+    [HttpPost("{rootCauseAnalysisId:guid}/close")]
+    [Authorize(Policy = RootCauseAnalysisAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CloseAsync(
+        Guid rootCauseAnalysisId,
+        [FromBody] CloseRootCauseAnalysisRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CloseRootCauseAnalysisCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            RootCauseAnalysisId: rootCauseAnalysisId,
+            ClosedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Archives a closed RootCauseAnalysis for compliance retention (Closed -&gt; Archived).</summary>
+    [HttpPost("{rootCauseAnalysisId:guid}/archive")]
+    [Authorize(Policy = RootCauseAnalysisAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RootCauseAnalysisStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ArchiveAsync(
+        Guid rootCauseAnalysisId,
+        [FromBody] ArchiveRootCauseAnalysisRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ArchiveRootCauseAnalysisCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            RootCauseAnalysisId: rootCauseAnalysisId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single RootCauseAnalysis read-model record by identity, including its current ETag.</summary>
+    [HttpGet("{rootCauseAnalysisId:guid}")]
+    [Authorize(Policy = RootCauseAnalysisAuthorizationPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<PlantSafety.Application.SafetyEvents.RootCauseAnalysis.Models.RootCauseAnalysisDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetByIdAsync(
+        Guid rootCauseAnalysisId,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetRootCauseAnalysisByIdQuery(env.TenantId, rootCauseAnalysisId);
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
 
     /// <summary>Returns RootCauseAnalysis data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>

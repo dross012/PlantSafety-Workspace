@@ -8,6 +8,11 @@
 //  SchemaVersion:  2026.1
 //  Description:    Dapper repository for the EmergencyDrillPlanning Application-layer read-model.
 //                  All DB access via stored procedures. Additive-only evolution.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: added GetByIdAsync, reusing
+//                  usp_EmergencyDrillPlanning_GetById (the same proc
+//                  EmergencyDrillPlanningDapperRepository.GetByIdAsync uses to hydrate the
+//                  write-side aggregate) rather than introducing a duplicate stored procedure.
+//                  Mirrors PermitsReadDapperRepository.cs.
 // ============================================================================
 using PlantSafety.Application.Scheduling.EmergencyDrillPlanning.Models;
 using PlantSafety.Application.Scheduling.EmergencyDrillPlanning.Repositories;
@@ -20,6 +25,20 @@ public sealed class EmergencyDrillPlanningReadDapperRepository(
     ILogger<EmergencyDrillPlanningReadDapperRepository> logger)
     : IEmergencyDrillPlanningRepository
 {
+    /// <inheritdoc/>
+    public async Task<EmergencyDrillPlanningItemDto?> GetByIdAsync(Guid emergencyDrillPlanningId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById read-model for EmergencyDrillPlanning {EmergencyDrillPlanningId} Tenant {TenantId}", emergencyDrillPlanningId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("EmergencyDrillPlanningId", emergencyDrillPlanningId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<EmergencyDrillPlanningItemDto>(
+            "[Scheduling].[usp_EmergencyDrillPlanning_GetById]", parameters, cancellationToken);
+    }
+
     /// <inheritdoc/>
     public async Task<IReadOnlyList<EmergencyDrillPlanningItemDto>> GetEmergencyDrillPlanningAsync(
         Guid tenantId,

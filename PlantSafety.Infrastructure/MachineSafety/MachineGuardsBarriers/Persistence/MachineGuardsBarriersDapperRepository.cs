@@ -149,6 +149,12 @@ public sealed class MachineGuardsBarriersDapperRepository(
 
         using var connection = connectionFactory.CreateConnection();
         await commandExecutor.ExecuteAsync(connection, $"[{Schema}].[usp_MachineGuardsBarriers_Update]", parameters, cancellationToken: cancellationToken);
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <inheritdoc cref="IReadRepo.GetMachineGuardsBarriersItemsAsync"/>

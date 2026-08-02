@@ -21,6 +21,20 @@ public sealed class ShiftFatigueReadDapperRepository(
     : IShiftFatigueRepository
 {
     /// <inheritdoc/>
+    public async Task<ShiftFatigueItemDto?> GetByIdAsync(Guid shiftFatigueId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById read-model for ShiftFatigue {ShiftFatigueId} Tenant {TenantId}", shiftFatigueId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("ShiftFatigueId", shiftFatigueId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<ShiftFatigueItemDto>(
+            "[Scheduling].[usp_ShiftFatigue_GetById]", parameters, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<ShiftFatigueItemDto>> GetShiftFatigueAsync(
         Guid tenantId,
         Guid? siteId,

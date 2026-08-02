@@ -29,6 +29,13 @@ public sealed record PreventiveMaintenanceItemDto
     /// <summary>UTC timestamp when this record was last actioned.</summary>
     public required DateTime ScheduledAtUtc { get; init; }
 
-    /// <summary>Identity of the user who last actioned this record.</summary>
-    public required Guid CompletedBy { get; init; }
+    /// <summary>
+    /// Identity of the user who completed the maintenance work, or null if the task has not yet
+    /// been completed (Scheduled/InProgress/Cancelled/Overdue). Widened from a non-nullable Guid
+    /// to Guid? as part of the Phase 4 PreventiveMaintenanceTask full build-out: the underlying
+    /// [Operational].[PreventiveMaintenanceReadModel].CompletedBy column was NOT NULL in the
+    /// original DDL but had no way to be populated for any status other than Completed, so it is
+    /// now nullable to match the real domain lifecycle (see PreventiveMaintenanceReadModel.sql).
+    /// </summary>
+    public Guid? CompletedBy { get; init; }
 }

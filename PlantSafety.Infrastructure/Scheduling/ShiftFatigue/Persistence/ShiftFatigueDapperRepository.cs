@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Scheduling.ShiftFatigue
 //  Layer:          Infrastructure
@@ -14,8 +14,16 @@
 //                  ListAsync evaluates the supplied specification in-memory over the
 //                  full active candidate set, since the interface carries no tenant/site
 //                  scoping parameter to push down to SQL.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: GetByIdAsync is now tenant-scoped and
+//                  UpdateAsync now takes an optimistic-concurrency ETag and enforces it via
+//                  ExecuteScalarAsync + @@ROWCOUNT (usp_ShiftFatigue_Update.sql), throwing
+//                  ConcurrencyConflictException on zero rows affected. Both AddAsync AND
+//                  UpdateAsync enqueue domain events to the outbox after their write (already
+//                  correct pre-existing behavior; verified, not changed). Mirrors
+//                  PermitsDapperRepository.cs.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates;
 using PlantSafety.Domain.Scheduling.ShiftFatigue.Enums;
 using PlantSafety.Domain.Scheduling.ShiftFatigue.Events;
@@ -36,11 +44,14 @@ public sealed class ShiftFatigueDapperRepository(
     : IShiftFatigueRepository
 {
     /// <inheritdoc/>
-    public async Task<PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue?> GetByIdAsync(ShiftFatigueId id, CancellationToken cancellationToken = default)
+    public async Task<PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue?> GetByIdAsync(ShiftFatigueId id, Guid tenantId, CancellationToken cancellationToken = default)
     {
-        logger.LogDebug("GetById for ShiftFatigue {ShiftFatigueId}", id.Value);
+        logger.LogDebug("GetById for ShiftFatigue {ShiftFatigueId} Tenant {TenantId}", id.Value, tenantId);
 
-        var parameters = new StoredProcedureBuilder().AddGuid("ShiftFatigueId", id.Value).Build();
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("ShiftFatigueId", id.Value)
+            .AddGuid("TenantId", tenantId)
+            .Build();
         var row = await queryExecutor.QuerySingleOrDefaultAsync<ShiftFatigueRow>(
             "[Scheduling].[usp_ShiftFatigue_GetById]", parameters, cancellationToken);
 
@@ -92,7 +103,7 @@ public sealed class ShiftFatigueDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[Scheduling].[usp_ShiftFatigue_Insert]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
-    
+
         // Outbox wiring (platform-wide domain-event fix): enqueue any domain events
         // raised by the aggregate during this write so TransactionalUnitOfWork.CommitAsync
         // (invoked by TransactionBehavior after the handler returns) can flush them to
@@ -103,10 +114,10 @@ public sealed class ShiftFatigueDapperRepository(
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
         }
         aggregate.ClearDomainEvents();
-}
+    }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue aggregate, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates.ShiftFatigue aggregate, string? eTag, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Update ShiftFatigue {ShiftFatigueId}", aggregate.ShiftFatigueId.Value);
 
@@ -115,6 +126,7 @@ public sealed class ShiftFatigueDapperRepository(
 
         var parameters = new StoredProcedureBuilder()
             .AddGuid("ShiftFatigueId", aggregate.ShiftFatigueId.Value)
+            .AddGuid("TenantId", aggregate.TenantId)
             .AddString("Status", aggregate.Status.ToString(), 50)
             .AddGuid("EmployeeId", aggregate.EmployeeId)
             .AddString("ShiftPattern", aggregate.ShiftPattern, 400)
@@ -122,10 +134,30 @@ public sealed class ShiftFatigueDapperRepository(
             .AddDecimal("OvertimeHours", aggregate.OvertimeHours)
             .AddDecimal("FatigueRiskScore", aggregate.FatigueRiskScore)
             .AddGuid("UpdatedBy", aggregate.CreatedBy.Value)
+            .AddString("ETag", eTag, size: 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[Scheduling].[usp_ShiftFatigue_Update]", parameters, tx, cancellationToken: cancellationToken);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable
+        // the @ETag concurrency check below. See usp_ShiftFatigue_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[Scheduling].[usp_ShiftFatigue_Update]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"ShiftFatigue {aggregate.ShiftFatigueId.Value} was modified by another process or the ETag is stale.",
+                Guid.Empty);
+        }
+
         tx.Commit();
+
+        // Outbox wiring (platform-wide domain-event fix): enqueue any domain events raised
+        // during this lifecycle transition. UpdateAsync must do this too, not just AddAsync --
+        // otherwise every post-creation transition would silently drop its domain event.
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <summary>Reconstructs a <see cref="ShiftFatigue"/> aggregate from its flat read-model row.</summary>
@@ -152,6 +184,14 @@ public sealed class ShiftFatigueDapperRepository(
     /// <summary>Flat read-model row shape returned by <c>usp_ShiftFatigue_GetById</c>/<c>usp_ShiftFatigue_GetAllActive</c>.</summary>
     private sealed record ShiftFatigueRow
     {
+        /// <summary>
+        /// Optimistic-concurrency token (native RowVersion projected as a hex string), populated by
+        /// <c>usp_ShiftFatigue_GetById</c>. Not consumed by aggregate hydration -- callers obtain
+        /// the ETag for a subsequent write from a prior single-record read (see the
+        /// Application-layer ShiftFatigueItemDto.ETag).
+        /// </summary>
+        public string? ETag { get; init; }
+
         public required Guid ShiftFatigueId { get; init; }
         public required Guid TenantId { get; init; }
         public Guid? SiteId { get; init; }

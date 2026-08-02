@@ -3,8 +3,11 @@
 // FILE DESCRIPTION: Command to issue an approved permit, making it active in the field
 // (PTW Workflow Step 4/5).
 // SchemaVersion: 1
+// UPDATED: 2026-07-29 -- Implements IConcurrencyAwareCommand (Gap 2 remediation): callers should
+//   supply the ETag captured from a prior read; a stale value results in ConcurrencyConflictException.
 
 using PlantSafety.Application.Abstractions.Messaging;
+using PlantSafety.Application.Behaviors.Concurrency;
 using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.PermitToWork.Commands;
@@ -18,7 +21,7 @@ public sealed record IssuePermitWorkflowCommand(
     Guid TenantId,
     Guid PermitWorkflowId,
     Guid IssuerUserId,
-    int? ValidityHours) : ICommand<Result<PermitWorkflowActionResult>>
+    int? ValidityHours) : ICommand<Result<PermitWorkflowActionResult>>, IConcurrencyAwareCommand
 {
     /// <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
     public DateTime RequestedAtUtc { get; init; } = DateTime.UtcNow;
@@ -31,4 +34,7 @@ public sealed record IssuePermitWorkflowCommand(
 
     /// <inheritdoc cref="ICommand{TResponse}.CausationId" />
     Guid? ICommand<Result<PermitWorkflowActionResult>>.CausationId => CausationId;
+
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
 }

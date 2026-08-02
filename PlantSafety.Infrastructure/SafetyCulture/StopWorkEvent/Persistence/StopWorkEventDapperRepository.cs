@@ -135,6 +135,12 @@ public sealed class StopWorkEventDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[SafetyCulture].[usp_StopWorkEvent_Update]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private static Domain.SafetyCulture.StopWorkEvent.Aggregates.StopWorkEvent Hydrate(StopWorkEventRow row)

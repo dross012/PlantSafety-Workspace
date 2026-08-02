@@ -16,6 +16,7 @@
 //                  scoping parameter to push down to SQL.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.Scheduling.PMScheduling.Aggregates;
 using PlantSafety.Domain.Scheduling.PMScheduling.Enums;
 using PlantSafety.Domain.Scheduling.PMScheduling.Events;
@@ -36,11 +37,11 @@ public sealed class PMSchedulingDapperRepository(
     : IPMSchedulingRepository
 {
     /// <inheritdoc/>
-    public async Task<PlantSafety.Domain.Scheduling.PMScheduling.Aggregates.PMScheduling?> GetByIdAsync(PMSchedulingId id, CancellationToken cancellationToken = default)
+    public async Task<PlantSafety.Domain.Scheduling.PMScheduling.Aggregates.PMScheduling?> GetByIdAsync(PMSchedulingId id, Guid tenantId, CancellationToken cancellationToken = default)
     {
-        logger.LogDebug("GetById for PMScheduling {PMSchedulingId}", id.Value);
+        logger.LogDebug("GetById for PMScheduling {PMSchedulingId} Tenant {TenantId}", id.Value, tenantId);
 
-        var parameters = new StoredProcedureBuilder().AddGuid("PMSchedulingId", id.Value).Build();
+        var parameters = new StoredProcedureBuilder().AddGuid("PMSchedulingId", id.Value).AddGuid("TenantId", tenantId).Build();
         var row = await queryExecutor.QuerySingleOrDefaultAsync<PMSchedulingRow>(
             "[Scheduling].[usp_PMScheduling_GetById]", parameters, cancellationToken);
 
@@ -108,7 +109,7 @@ public sealed class PMSchedulingDapperRepository(
 }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.PMScheduling.Aggregates.PMScheduling aggregate, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.PMScheduling.Aggregates.PMScheduling aggregate, string? eTag, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Update PMScheduling {PMSchedulingId}", aggregate.PMSchedulingId.Value);
 
@@ -117,6 +118,7 @@ public sealed class PMSchedulingDapperRepository(
 
         var parameters = new StoredProcedureBuilder()
             .AddGuid("PMSchedulingId", aggregate.PMSchedulingId.Value)
+            .AddGuid("TenantId", aggregate.TenantId)
             .AddString("Status", aggregate.Status.ToString(), 50)
             .AddGuid("EquipmentId", aggregate.EquipmentId)
             .AddString("EquipmentDescription", aggregate.EquipmentDescription, 400)
@@ -126,10 +128,26 @@ public sealed class PMSchedulingDapperRepository(
             .AddString("EscalationPriorityCode", aggregate.EscalationPriorityCode, 400)
             .AddString("CompletionNotes", aggregate.CompletionNotes, 400)
             .AddGuid("UpdatedBy", aggregate.CreatedBy.Value)
+            .AddString("ETag", eTag, size: 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[Scheduling].[usp_PMScheduling_Update]", parameters, tx, cancellationToken: cancellationToken);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable the
+        // @ETag concurrency check below. See usp_PMScheduling_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[Scheduling].[usp_PMScheduling_Update]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"PMScheduling {aggregate.PMSchedulingId.Value} was modified by another process or the ETag is stale.", Guid.Empty);
+        }
+
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <summary>Reconstructs a <see cref="PMScheduling"/> aggregate from its flat read-model row.</summary>
@@ -173,5 +191,13 @@ public sealed class PMSchedulingDapperRepository(
         public required Guid CreatedBy { get; init; }
         public DateTime? UpdatedAtUtc { get; init; }
         public Guid? UpdatedBy { get; init; }
+
+        /// <summary>
+        /// Optimistic-concurrency token, projected from the row's native RowVersion column. Not
+        /// consumed by aggregate hydration (the PMScheduling aggregate has no ETag concept) --
+        /// present so Dapper's column-mapping of usp_PMScheduling_GetById's ETag column does not
+        /// fail; mirrors RiskDapperRepository.RiskRow.ETag's identical precedent.
+        /// </summary>
+        public string? ETag { get; init; }
     }
 }

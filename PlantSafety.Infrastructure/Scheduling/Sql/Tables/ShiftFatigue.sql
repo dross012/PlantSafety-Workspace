@@ -43,3 +43,12 @@ BEGIN
     CREATE NONCLUSTERED INDEX IX_ShiftFatigue_CreatedAtUtc ON [Scheduling].[ShiftFatigue] (CreatedAtUtc);
 END
 GO
+
+-- Phase 4 full build-out (2026-07-30): native ROWVERSION concurrency column, mirroring
+-- [Compliance].[Permits]'s convention. Idempotent guard so this is safe to re-run against a
+-- table that was created before this column existed. The pre-existing ConcurrencyToken
+-- UNIQUEIDENTIFIER column is left in place (additive-only evolution) but is superseded by
+-- RowVersion for the @ETag concurrency check in usp_ShiftFatigue_Update.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Scheduling].[ShiftFatigue]') AND name = 'RowVersion')
+    ALTER TABLE [Scheduling].[ShiftFatigue] ADD RowVersion ROWVERSION NOT NULL;
+GO

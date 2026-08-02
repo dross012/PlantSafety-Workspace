@@ -21,6 +21,20 @@ public sealed class HazardIsolationSequencingReadDapperRepository(
     : IHazardIsolationSequencingRepository
 {
     /// <inheritdoc/>
+    public async Task<HazardIsolationSequencingItemDto?> GetByIdAsync(Guid hazardIsolationSequencingId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById read-model for HazardIsolationSequencing {HazardIsolationSequencingId} Tenant {TenantId}", hazardIsolationSequencingId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("HazardIsolationSequencingId", hazardIsolationSequencingId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<HazardIsolationSequencingItemDto>(
+            "[Scheduling].[usp_HazardIsolationSequencing_GetById]", parameters, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<HazardIsolationSequencingItemDto>> GetHazardIsolationSequencingAsync(
         Guid tenantId,
         Guid? siteId,

@@ -8,6 +8,12 @@
 --  SchemaVersion:  2026.1
 --  Description:    Overwrites the full mutable state of a PermitScheduling aggregate root row.
 --                  Backs IPermitSchedulingRepository.UpdateAsync. Additive-only evolution.
+--  UPDATED:        2026-07-29 -- Added @ETag optimistic-concurrency guard against the native
+--                  RowVersion column (Gap 2 remediation; mirrors usp_Incident_Update). @@ROWCOUNT
+--                  is captured into @RowsAffected immediately after the UPDATE and returned via
+--                  an explicit SELECT -- callers MUST invoke this proc via ExecuteScalarAsync
+--                  (not ExecuteNonQuery/ExecuteAsync), since SET NOCOUNT ON makes ExecuteNonQuery
+--                  always return -1, silently disabling concurrency enforcement.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -19,7 +25,8 @@ CREATE OR ALTER PROCEDURE [PermitToWork].[usp_PermitScheduling_Update]
     @ScheduledStartUtc DATETIME2(3) = NULL,
     @ScheduledEndUtc DATETIME2(3) = NULL,
     @ConflictDetected BIT,
-    @UpdatedBy UNIQUEIDENTIFIER = NULL
+    @UpdatedBy UNIQUEIDENTIFIER = NULL,
+    @ETag NVARCHAR(64) = NULL
 AS
 SET NOCOUNT ON;
 BEGIN
@@ -37,7 +44,10 @@ BEGIN
             UpdatedBy = @UpdatedBy,
             UpdatedAtUtc = SYSUTCDATETIME(),
             ConcurrencyToken = NEWID()
-        WHERE PermitSchedulingId = @PermitSchedulingId AND IsDeleted = 0;
+        WHERE PermitSchedulingId = @PermitSchedulingId AND IsDeleted = 0
+          AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
 
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -45,6 +55,8 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT @RowsAffected;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PermitSchedulingId=', @PermitSchedulingId, N'; User=', SYSTEM_USER);

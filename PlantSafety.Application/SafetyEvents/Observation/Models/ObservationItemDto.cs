@@ -1,5 +1,11 @@
 // AUTHOR: PlantSafety Platform Team
 // CREATED: 2026-06-17
+// UPDATED: 2026-08-02 -- Phase 4 full build-out: additively extended with the fields needed to
+//          back GetObservationByIdQuery (Location/Description/CorrectiveActionRequired/
+//          FollowUpDueAtUtc/UpdatedAtUtc/UpdatedBy/ETag), sourced from the new
+//          usp_ObservationItems_GetById proc. All new members are optional so the pre-existing
+//          GetObservationQuery list read (backed by usp_ObservationItems_GetObservations, which
+//          does not project these columns) continues to bind this same DTO unchanged.
 // FILE DESCRIPTION: Read-model item DTO for a single safety observation.
 // SchemaVersion: 1
 
@@ -31,4 +37,29 @@ public sealed record ObservationItemDto
 
     /// <summary>Identity of the user who made the observation.</summary>
     public required Guid ObservedBy { get; init; }
+
+    /// <summary>Physical location the observation was made at.</summary>
+    public string? Location { get; init; }
+
+    /// <summary>Narrative description of what was observed.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>Indicates whether corrective action is required as a result of this observation.</summary>
+    public bool? CorrectiveActionRequired { get; init; }
+
+    /// <summary>UTC timestamp any required follow-up is due.</summary>
+    public DateTime? FollowUpDueAtUtc { get; init; }
+
+    /// <summary>UTC timestamp the record was last updated.</summary>
+    public DateTime? UpdatedAtUtc { get; init; }
+
+    /// <summary>Identity of the user who last updated this record.</summary>
+    public Guid? UpdatedBy { get; init; }
+
+    /// <summary>
+    /// Optimistic-concurrency token (native RowVersion projected as a hex string). Callers must
+    /// echo this value back on a subsequent mutating command's ETag field; a stale/mismatched
+    /// value results in a concurrency-conflict error.
+    /// </summary>
+    public string? ETag { get; init; }
 }

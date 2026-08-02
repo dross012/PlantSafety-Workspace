@@ -15,7 +15,14 @@
 //                  full active candidate set, since the interface carries no tenant/site
 //                  scoping parameter to push down to SQL.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-29 -- UpdateAsync now takes an @ETag optimistic-concurrency token
+//                  (Gap 2 remediation) and invokes usp_PermitWorkflow_Update via
+//                  ExecuteScalarAsync (not ExecuteAsync) so the proc's rows-affected SELECT can
+//                  be read back; zero rows affected throws ConcurrencyConflictException. Mirrors
+//                  IncidentDapperRepository.UpdateAsync. PermitWorkflowRow gains an ETag field,
+//                  populated by usp_PermitWorkflow_GetById's RowVersion projection.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.PermitToWork.PermitWorkflow.Aggregates;
 using PlantSafety.Domain.PermitToWork.PermitWorkflow.Enums;
 using PlantSafety.Domain.PermitToWork.PermitWorkflow.Events;
@@ -119,7 +126,7 @@ public sealed class PermitWorkflowDapperRepository(
 }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(PlantSafety.Domain.PermitToWork.PermitWorkflow.Aggregates.PermitWorkflow aggregate, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(PlantSafety.Domain.PermitToWork.PermitWorkflow.Aggregates.PermitWorkflow aggregate, string? eTag, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Update PermitWorkflow {PermitWorkflowId}", aggregate.PermitWorkflowId.Value);
 
@@ -148,10 +155,31 @@ public sealed class PermitWorkflowDapperRepository(
             .AddDateTime("ArchivedAtUtc", aggregate.ArchivedAtUtc?.Value)
             .AddString("RejectedReason", aggregate.RejectedReason, 400)
             .AddGuid("UpdatedBy", aggregate.CreatedBy.Value)
+            .AddString("ETag", eTag, size: 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[PermitToWork].[usp_PermitWorkflow_Update]", parameters, tx, cancellationToken: cancellationToken);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable
+        // the @ETag concurrency check below. See usp_PermitWorkflow_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[PermitToWork].[usp_PermitWorkflow_Update]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"PermitWorkflow {aggregate.PermitWorkflowId.Value} was modified by another process or the ETag is stale.",
+                Guid.Empty);
+        }
+
         tx.Commit();
+
+        // Outbox wiring (platform-wide domain-event fix): enqueue any domain events raised
+        // during this lifecycle transition. Previously only AddAsync did this, so every
+        // post-creation transition (Approve, Issue, Reject, Archive, etc.) silently dropped
+        // its domain event. See AddAsync remarks for the outbox flush consistency gap.
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <summary>Reconstructs a <see cref="PermitWorkflow"/> aggregate from its flat read-model row.</summary>
@@ -191,6 +219,14 @@ public sealed class PermitWorkflowDapperRepository(
     /// <summary>Flat read-model row shape returned by <c>usp_PermitWorkflow_GetById</c>/<c>usp_PermitWorkflow_GetAllActive</c>.</summary>
     private sealed record PermitWorkflowRow
     {
+        /// <summary>
+        /// Optimistic-concurrency token (native RowVersion projected as a hex string), populated
+        /// by <c>usp_PermitWorkflow_GetById</c>. Not populated by <c>usp_PermitWorkflow_GetAllActive</c>
+        /// (list projection is unchanged); mutation callers obtain the ETag from a prior
+        /// single-record read or from the PermitWorkflow read-model (<c>PermitWorkflowItemDto.ETag</c>).
+        /// </summary>
+        public string? ETag { get; init; }
+
         public required Guid PermitWorkflowId { get; init; }
         public required Guid TenantId { get; init; }
         public Guid? SiteId { get; init; }

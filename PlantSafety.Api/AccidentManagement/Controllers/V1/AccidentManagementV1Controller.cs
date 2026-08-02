@@ -20,6 +20,8 @@ using PlantSafety.Api.AccidentManagement.Contracts.Requests;
 using PlantSafety.Api.Common;
 using PlantSafety.Api.Context;
 using PlantSafety.Application.AccidentManagement.Commands;
+using PlantSafety.Application.AccidentManagement.Models;
+using PlantSafety.Application.AccidentManagement.Queries;
 
 namespace PlantSafety.Api.AccidentManagement.Controllers.V1;
 
@@ -76,6 +78,28 @@ public sealed class AccidentManagementV1Controller : ControllerBase
         return this.ToActionResult(result, env.CorrelationId);
     }
 
+    /// <summary>Returns a single Accident's current read-model state, including its ETag for optimistic concurrency.</summary>
+    /// <response code="200">Accident retrieved successfully.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">No accident exists with the given identity for this tenant.</response>
+    [HttpGet("{accidentId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<AccidentItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<AccidentItemDto>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetByIdAsync(Guid accidentId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetAccidentByIdQuery(env.TenantId, accidentId);
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
     /// <summary>Assigns an investigator to a Reported accident.</summary>
     /// <response code="200">Investigator assigned successfully.</response>
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
@@ -93,7 +117,8 @@ public sealed class AccidentManagementV1Controller : ControllerBase
 
         var command = new AssignAccidentInvestigatorCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, accidentId, request.InvestigatorId);
+            env.TenantId, accidentId, request.InvestigatorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -117,7 +142,8 @@ public sealed class AccidentManagementV1Controller : ControllerBase
 
         var command = new RecordAccidentRootCauseCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, accidentId, request.RootCauseCategory, request.Notes, env.ActorId);
+            env.TenantId, accidentId, request.RootCauseCategory, request.Notes, env.ActorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -141,7 +167,8 @@ public sealed class AccidentManagementV1Controller : ControllerBase
 
         var command = new CreateAccidentCorrectiveActionCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, accidentId, request.Category, request.Description, request.ResponsiblePersonId, request.DueAtUtc, env.ActorId);
+            env.TenantId, accidentId, request.Category, request.Description, request.ResponsiblePersonId, request.DueAtUtc, env.ActorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -165,7 +192,8 @@ public sealed class AccidentManagementV1Controller : ControllerBase
 
         var command = new CompleteAccidentCorrectiveActionCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, accidentId, correctiveActionId, request.CompletionEvidence, env.ActorId);
+            env.TenantId, accidentId, correctiveActionId, request.CompletionEvidence, env.ActorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -189,7 +217,8 @@ public sealed class AccidentManagementV1Controller : ControllerBase
 
         var command = new FileAccidentRegulatoryReportCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, accidentId, request.RegulatoryAgency, request.ReferenceNumber, env.ActorId);
+            env.TenantId, accidentId, request.RegulatoryAgency, request.ReferenceNumber, env.ActorId)
+        { ETag = request.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -207,13 +236,14 @@ public sealed class AccidentManagementV1Controller : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<AccidentStatusResult>), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> CloseInvestigationAsync(Guid accidentId, CancellationToken cancellationToken)
+    public async Task<IActionResult> CloseInvestigationAsync(Guid accidentId, [FromBody] CloseAccidentInvestigationRequest? request, CancellationToken cancellationToken)
     {
         var env = _envelopeFactory.NewCommandEnvelope();
 
         var command = new CloseAccidentInvestigationCommand(
             env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.RequestedAtUtc,
-            env.TenantId, accidentId, env.ActorId);
+            env.TenantId, accidentId, env.ActorId)
+        { ETag = request?.ETag };
 
         var result = await _sender.Send(command, cancellationToken);
 

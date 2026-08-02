@@ -40,4 +40,18 @@ public sealed class PMSchedulingReadDapperRepository(
         return await queryExecutor.QueryAsync<PMSchedulingItemDto>(
             "[Scheduling].[usp_PMScheduling_GetRange]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<PMSchedulingItemDto?> GetByIdAsync(Guid pmSchedulingId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById read-model for PMScheduling {PMSchedulingId} Tenant {TenantId}", pmSchedulingId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("PMSchedulingId", pmSchedulingId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<PMSchedulingItemDto>(
+            "[Scheduling].[usp_PMScheduling_GetById]", parameters, cancellationToken);
+    }
 }

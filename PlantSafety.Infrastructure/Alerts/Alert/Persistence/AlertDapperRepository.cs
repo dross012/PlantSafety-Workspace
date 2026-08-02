@@ -210,6 +210,12 @@ public sealed class AlertDapperRepository(
         await commandExecutor.ExecuteAsync(conn, "[Alerts].[usp_Alert_UpdateState]", stateParameters, tx, cancellationToken: cancellationToken);
 
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     // ---- Rehydration ---------------------------------------------------------

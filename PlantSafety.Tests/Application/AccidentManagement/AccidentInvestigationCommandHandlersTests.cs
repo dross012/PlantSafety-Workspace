@@ -15,6 +15,7 @@
 //                  Isolated, deterministic, <50ms per test. No I/O, no network.
 // ============================================================================
 using PlantSafety.Application.AccidentManagement.Commands;
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.AccidentManagement.Enums;
 using PlantSafety.Domain.AccidentManagement.Interfaces;
 using AccidentAggregate = PlantSafety.Domain.AccidentManagement.Aggregates.Accident;
@@ -46,7 +47,7 @@ public sealed class AccidentInvestigationCommandHandlersTests : UnitTestBase
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be("UnderInvestigation");
-        await _repository.Received(1).UpdateAsync(accident, Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpdateAsync(accident, Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -63,6 +64,7 @@ public sealed class AccidentInvestigationCommandHandlersTests : UnitTestBase
 
         result.IsFailure.Should().BeTrue();
         result.Error.ErrorCode.Should().Be("AccidentManagement.Accident.NotFound");
+        result.Error.Severity.Should().Be(ErrorSeverity.NotFound, "a missing Accident should surface as 404, not 500");
     }
 
     // ---- RecordAccidentRootCauseCommandHandler ----------------------------------
@@ -98,6 +100,8 @@ public sealed class AccidentInvestigationCommandHandlersTests : UnitTestBase
         var result = await handler.Handle(cmd, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+        result.Error.ErrorCode.Should().Be("AccidentManagement.Accident.NotFound");
+        result.Error.Severity.Should().Be(ErrorSeverity.NotFound, "a missing Accident should surface as 404, not 500");
     }
 
     // ---- CreateAccidentCorrectiveActionCommandHandler ---------------------------
@@ -141,6 +145,8 @@ public sealed class AccidentInvestigationCommandHandlersTests : UnitTestBase
         var result = await handler.Handle(cmd, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+        result.Error.ErrorCode.Should().Be("AccidentManagement.Accident.NotFound");
+        result.Error.Severity.Should().Be(ErrorSeverity.NotFound, "a missing Accident should surface as 404, not 500");
     }
 
     // ---- CompleteAccidentCorrectiveActionCommandHandler -------------------------

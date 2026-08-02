@@ -8,6 +8,10 @@
 //  SchemaVersion:  2026.1
 //  Description:    Aggregate root for the ShiftFatigue bounded context (module: Scheduling).
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: added Activate/ReassessRisk/Complete/
+//                  Close/Archive lifecycle methods, wiring the pre-existing (previously unused)
+//                  ShiftFatigueLifecycleRules.Can* guards (plus a new CanReassessRisk guard).
+//                  Mirrors PlantSafety.Domain.Compliance.Permits.Aggregates.Permits's conventions.
 // ============================================================================
 namespace PlantSafety.Domain.Scheduling.ShiftFatigue.Aggregates;
 
@@ -105,6 +109,147 @@ public sealed partial class ShiftFatigue
         return agg;
     }
 
+    // ---- Lifecycle: Activate / ReassessRisk ----------------------------------
+
+    /// <summary>
+    /// Activates fatigue monitoring for this employee's shift record (Created -&gt; Active). Valid
+    /// only from <see cref="ShiftFatigueStatus.Created"/>.
+    /// </summary>
+    public void Activate(
+        UserId activatedBy,
+        UtcTimestamp activatedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ShiftFatigueLifecycleRules.CanActivate, ShiftFatigueStatus.Active);
+
+        Status = ShiftFatigueStatus.Active;
+
+        AddDomainEvent(new ShiftFatigueActivatedEvent(
+            EventId: new ShiftFatigueEventId(Uuid7.New()),
+            ShiftFatigueId: ShiftFatigueId,
+            ActivatedBy: activatedBy,
+            ActivatedAtUtc: activatedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Reassesses the fatigue risk score during active monitoring. Does not change lifecycle
+    /// status. Valid only while <see cref="ShiftFatigueStatus.Active"/>.
+    /// </summary>
+    public void ReassessRisk(
+        UserId reassessedBy,
+        decimal fatigueRiskScore,
+        int consecutiveNightShifts,
+        decimal overtimeHours,
+        UtcTimestamp reassessedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ShiftFatigueLifecycleRules.CanReassessRisk, ShiftFatigueStatus.Active);
+        if (fatigueRiskScore < 0)
+            throw new ArgumentOutOfRangeException(nameof(fatigueRiskScore), fatigueRiskScore, "FatigueRiskScore must be non-negative.");
+        if (consecutiveNightShifts < 0)
+            throw new ArgumentOutOfRangeException(nameof(consecutiveNightShifts), consecutiveNightShifts, "ConsecutiveNightShifts must be non-negative.");
+        if (overtimeHours < 0)
+            throw new ArgumentOutOfRangeException(nameof(overtimeHours), overtimeHours, "OvertimeHours must be non-negative.");
+
+        FatigueRiskScore = fatigueRiskScore;
+        ConsecutiveNightShifts = consecutiveNightShifts;
+        OvertimeHours = overtimeHours;
+
+        AddDomainEvent(new ShiftFatigueRiskReassessedEvent(
+            EventId: new ShiftFatigueEventId(Uuid7.New()),
+            ShiftFatigueId: ShiftFatigueId,
+            ReassessedBy: reassessedBy,
+            FatigueRiskScore: fatigueRiskScore,
+            ConsecutiveNightShifts: consecutiveNightShifts,
+            OvertimeHours: overtimeHours,
+            ReassessedAtUtc: reassessedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Complete / Close / Archive -------------------------------
+
+    /// <summary>
+    /// Completes the monitoring period (Active -&gt; Completed). Valid only from
+    /// <see cref="ShiftFatigueStatus.Active"/>.
+    /// </summary>
+    public void Complete(
+        UserId completedBy,
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ShiftFatigueLifecycleRules.CanComplete, ShiftFatigueStatus.Completed);
+
+        Status = ShiftFatigueStatus.Completed;
+
+        AddDomainEvent(new ShiftFatigueCompletedEvent(
+            EventId: new ShiftFatigueEventId(Uuid7.New()),
+            ShiftFatigueId: ShiftFatigueId,
+            CompletedBy: completedBy,
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Closes a completed fatigue record (Completed -&gt; Closed). Valid only from
+    /// <see cref="ShiftFatigueStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ShiftFatigueLifecycleRules.CanClose, ShiftFatigueStatus.Closed);
+
+        Status = ShiftFatigueStatus.Closed;
+
+        AddDomainEvent(new ShiftFatigueClosedEvent(
+            EventId: new ShiftFatigueEventId(Uuid7.New()),
+            ShiftFatigueId: ShiftFatigueId,
+            ClosedBy: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed fatigue record for compliance retention (Closed -&gt; Archived). Valid
+    /// only from <see cref="ShiftFatigueStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ShiftFatigueLifecycleRules.CanArchive, ShiftFatigueStatus.Archived);
+
+        Status = ShiftFatigueStatus.Archived;
+
+        AddDomainEvent(new ShiftFatigueArchivedEvent(
+            EventId: new ShiftFatigueEventId(Uuid7.New()),
+            ShiftFatigueId: ShiftFatigueId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IShiftFatigueDomainEvent evt) => _domainEvents.Add(evt);
@@ -119,5 +264,13 @@ public sealed partial class ShiftFatigue
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for ShiftFatigue {ShiftFatigueId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<ShiftFatigueStatus, bool> guard, ShiftFatigueStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new ShiftFatigueInvalidStatusTransitionException(
+            ShiftFatigueId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

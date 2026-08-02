@@ -81,7 +81,7 @@ public sealed class AccidentConcurrencyAndAuditIntegrationTests(IntegrationTestW
             // ---- A genuine UPDATE through the real repository/usp_Accident_Update must
             // advance the RowVersion, and therefore the projected ETag. ----
             accident.ConfirmSiteSecuredAndTriaged();
-            await repository.UpdateAsync(accident, CancellationToken.None);
+            await repository.UpdateAsync(accident, eTag: null, CancellationToken.None);
 
             var thirdEtag = await GetAccidentETagAsync(conn, accidentId);
             thirdEtag.Should().NotBe(firstEtag, "usp_Accident_Update modifying the row must advance the ROWVERSION-backed ETag");
@@ -136,7 +136,7 @@ public sealed class AccidentConcurrencyAndAuditIntegrationTests(IntegrationTestW
                 UtcTimestamp.From(DateTime.UtcNow.AddDays(7)),
                 UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
 
-            await repository.UpdateAsync(accident, CancellationToken.None);
+            await repository.UpdateAsync(accident, eTag: null, CancellationToken.None);
 
             await using var conn = new SqlConnection(ConnectionString);
             await conn.OpenAsync();
@@ -149,7 +149,7 @@ public sealed class AccidentConcurrencyAndAuditIntegrationTests(IntegrationTestW
             afterCreate!.CompleteCorrectiveAction(
                 correctiveAction.CorrectiveActionId, "Evidence for ETag probe.",
                 UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
-            await repository.UpdateAsync(afterCreate, CancellationToken.None);
+            await repository.UpdateAsync(afterCreate, eTag: null, CancellationToken.None);
 
             var secondEtag = await GetCorrectiveActionETagAsync(conn, correctiveAction.CorrectiveActionId.Value);
             secondEtag.Should().NotBe(firstEtag, "usp_CorrectiveAction_Upsert's UPDATE branch modifying the row must advance the ROWVERSION-backed ETag");
@@ -191,7 +191,7 @@ public sealed class AccidentConcurrencyAndAuditIntegrationTests(IntegrationTestW
             await repository.AddAsync(accident, CancellationToken.None);
 
             accident.ConfirmSiteSecuredAndTriaged();
-            await repository.UpdateAsync(accident, CancellationToken.None);
+            await repository.UpdateAsync(accident, eTag: null, CancellationToken.None);
 
             await using var conn = new SqlConnection(ConnectionString);
 

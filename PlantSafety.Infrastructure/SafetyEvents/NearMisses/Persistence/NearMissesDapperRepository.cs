@@ -44,4 +44,18 @@ public sealed class NearMissesDapperRepository(
         return await queryExecutor.QueryAsync<NearMissesItemDto>(
             "[SafetyEvents].[usp_NearMisses_GetNearMisses]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<NearMissesDetailDto?> GetByIdAsync(Guid nearMissesId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById for NearMisses {NearMissesId} Tenant {TenantId}", nearMissesId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("NearMissesId", nearMissesId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<NearMissesDetailDto>(
+            "[SafetyEvents].[usp_NearMisses_GetById]", parameters, cancellationToken);
+    }
 }

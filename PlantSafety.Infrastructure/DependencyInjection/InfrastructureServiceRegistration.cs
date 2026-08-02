@@ -119,6 +119,9 @@ using PlantSafety.Infrastructure.Alerts.DependencyInjection;
 using PlantSafety.Infrastructure.Dashboards.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.Permits.DependencyInjection;
+using PlantSafety.Infrastructure.Operational.PredictiveMaintenance.DependencyInjection;
+using PlantSafety.Infrastructure.Operational.PreventiveMaintenance.DependencyInjection;
 using PlantSafety.Infrastructure.Features.DependencyInjection;
 using PlantSafety.Infrastructure.Integrations.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.DependencyInjection;
@@ -400,6 +403,9 @@ public static class InfrastructureServiceRegistration
             .AddSchedulingInfrastructure()
             .AddPPEInfrastructure()
             .AddPermitToWorkInfrastructure()
+            .AddPermitsInfrastructure()
+            .AddPredictiveMaintenanceInfrastructure()
+            .AddPreventiveMaintenanceTaskInfrastructure()
             .AddObservabilityInfrastructure()
             .AddChecklistsInfrastructure()
             .AddAuditingInfrastructure()
@@ -417,6 +423,9 @@ public static class InfrastructureServiceRegistration
             .AddOperationalLegacyRepositories()
             .AddAnalyticsLegacyRepositories()
             .AddSafetyEventsLegacyRepositories()
+            .AddSafetyEventsWriteRepositories()
+            .AddSafetyEventsNearMissesRootCauseAnalysisInfrastructure()
+            .AddCrisisManagementDrillsAndExercisesInfrastructure()
             .AddIntegrationsInfrastructure()
             .AddCrossDomainRepositories()
             .AddFeaturesLegacyRepositories()

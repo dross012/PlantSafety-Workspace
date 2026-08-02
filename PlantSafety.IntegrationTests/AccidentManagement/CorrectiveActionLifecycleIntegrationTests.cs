@@ -106,7 +106,7 @@ public sealed class CorrectiveActionLifecycleIntegrationTests(IntegrationTestWeb
                 UtcTimestamp.From(DateTime.UtcNow.AddDays(14)),
                 UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
 
-            await repository.UpdateAsync(accident, CancellationToken.None);
+            await repository.UpdateAsync(accident, eTag: null, CancellationToken.None);
 
             // ---- GetById -- verify the CAPA child row persisted via the real upsert proc
             var afterCreate = await repository.GetByIdAsync(accident.AccidentId, TenantId, CancellationToken.None);
@@ -124,7 +124,7 @@ public sealed class CorrectiveActionLifecycleIntegrationTests(IntegrationTestWeb
                 "Signage installed 2026-07-27; audit checklist added to shift handover.",
                 UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
 
-            await repository.UpdateAsync(afterCreate, CancellationToken.None);
+            await repository.UpdateAsync(afterCreate, eTag: null, CancellationToken.None);
 
             var afterComplete = await repository.GetByIdAsync(accident.AccidentId, TenantId, CancellationToken.None);
             afterComplete.Should().NotBeNull();
@@ -134,7 +134,7 @@ public sealed class CorrectiveActionLifecycleIntegrationTests(IntegrationTestWeb
 
             // ---- VerifyEffective (Full Risk Management Process, Step 7) -----------
             completedAction.VerifyEffective(ownerId, "Follow-up walkthrough confirmed signage present and audit log up to date.", UtcTimestamp.Now());
-            await repository.UpdateAsync(afterComplete, CancellationToken.None);
+            await repository.UpdateAsync(afterComplete, eTag: null, CancellationToken.None);
 
             var afterVerify = await repository.GetByIdAsync(accident.AccidentId, TenantId, CancellationToken.None);
             afterVerify.Should().NotBeNull();
@@ -145,14 +145,14 @@ public sealed class CorrectiveActionLifecycleIntegrationTests(IntegrationTestWeb
             // ---- Close and archive the investigation itself (no regulatory filing
             // required for FirstAidOnly severity) -----------------------------------
             afterVerify.CloseInvestigation(ownerId, UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
-            await repository.UpdateAsync(afterVerify, CancellationToken.None);
+            await repository.UpdateAsync(afterVerify, eTag: null, CancellationToken.None);
 
             var afterClose = await repository.GetByIdAsync(accident.AccidentId, TenantId, CancellationToken.None);
             afterClose.Should().NotBeNull();
             afterClose!.Status.ToString().Should().Be("Closed");
 
             afterClose.Archive(UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
-            await repository.UpdateAsync(afterClose, CancellationToken.None);
+            await repository.UpdateAsync(afterClose, eTag: null, CancellationToken.None);
 
             var afterArchive = await repository.GetByIdAsync(accident.AccidentId, TenantId, CancellationToken.None);
             afterArchive.Should().NotBeNull();

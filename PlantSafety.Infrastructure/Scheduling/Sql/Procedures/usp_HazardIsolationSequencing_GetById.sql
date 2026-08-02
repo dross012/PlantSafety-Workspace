@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Scheduling
 --  Layer:          Infrastructure -- SQL Scripts
@@ -6,19 +6,40 @@
 --  Created:        2026-07-21
 --  Author:         PlantSafety Platform Team (Claude Code infrastructure-creation-agent)
 --  SchemaVersion:  2026.1
---  Description:    Returns a single HazardIsolationSequencing row by identity. Backs IHazardIsolationSequencingRepository.GetByIdAsync.
+--  Description:    Returns a single HazardIsolationSequencing row by identity, tenant-scoped from
+--                  Phase 4 full build-out (2026-07-30) onward. Backs
+--                  IHazardIsolationSequencingRepository.GetByIdAsync (aggregate hydration) and the
+--                  Application-layer GetHazardIsolationSequencingQuery read path. Projects
+--                  RowVersion as a string ETag (CONVERT(NVARCHAR(34), CAST(RowVersion AS
+--                  BINARY(8)), 1)) so callers can capture the current concurrency token for
+--                  read-before-write flows. Mirrors usp_Permits_GetById.sql.
 --                  Additive-only evolution.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
 
 CREATE OR ALTER PROCEDURE [Scheduling].[usp_HazardIsolationSequencing_GetById]
-    @HazardIsolationSequencingId UNIQUEIDENTIFIER
+    @HazardIsolationSequencingId UNIQUEIDENTIFIER,
+    @TenantId UNIQUEIDENTIFIER
 AS
 SET NOCOUNT ON;
 BEGIN
-    SELECT HazardIsolationSequencingId, TenantId, SiteId, Status, HazardZone, TaskType, WindowStartUtc, WindowEndUtc, ConflictDetected, CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy
-    FROM [Scheduling].[HazardIsolationSequencing]
-    WHERE HazardIsolationSequencingId = @HazardIsolationSequencingId AND IsDeleted = 0;
+    BEGIN TRY
+        SELECT
+            HazardIsolationSequencingId, TenantId, SiteId, Status, HazardZone, TaskType, WindowStartUtc, WindowEndUtc,
+            ConflictDetected, CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy,
+            CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+        FROM [Scheduling].[HazardIsolationSequencing]
+        WHERE HazardIsolationSequencingId = @HazardIsolationSequencingId AND TenantId = @TenantId AND IsDeleted = 0;
+    END TRY
+    BEGIN CATCH
+        DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'HazardIsolationSequencingId=', @HazardIsolationSequencingId, N'; TenantId=', @TenantId, N'; User=', SYSTEM_USER);
+        DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+        INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+        THROW;
+    END CATCH
 END
 GO

@@ -53,4 +53,18 @@ public sealed class ObservationItemsDapperRepository(
         return await queryExecutor.QueryAsync<ObservationItemDto>(
             "[SafetyEvents].[usp_ObservationItems_GetObservations]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<ObservationItemDto?> GetByIdAsync(Guid observationId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById for Observation {ObservationId} Tenant {TenantId}", observationId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("ObservationId", observationId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<ObservationItemDto>(
+            "[SafetyEvents].[usp_ObservationItems_GetById]", parameters, cancellationToken);
+    }
 }

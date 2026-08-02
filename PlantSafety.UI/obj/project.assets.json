@@ -62,17 +62,17 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\dross\\.nuget\\packages\\": {},
+    "D:\\NuGetPackages": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.UI\\PlantSafety.UI.csproj",
+      "projectUniqueName": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.UI\\PlantSafety.UI.csproj",
       "projectName": "PlantSafety.UI",
-      "projectPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.UI\\PlantSafety.UI.csproj",
-      "packagesPath": "C:\\Users\\dross\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.UI\\obj\\",
+      "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.UI\\PlantSafety.UI.csproj",
+      "packagesPath": "D:\\NuGetPackages",
+      "outputPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.UI\\obj\\",
       "projectStyle": "PackageReference",
       "crossTargeting": true,
       "fallbackFolders": [

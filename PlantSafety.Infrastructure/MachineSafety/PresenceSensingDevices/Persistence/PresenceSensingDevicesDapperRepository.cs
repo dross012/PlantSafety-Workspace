@@ -149,6 +149,12 @@ public sealed class PresenceSensingDevicesDapperRepository(
 
         using var connection = connectionFactory.CreateConnection();
         await commandExecutor.ExecuteAsync(connection, $"[{Schema}].[usp_PresenceSensingDevices_Update]", parameters, cancellationToken: cancellationToken);
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <inheritdoc cref="IReadRepo.GetPresenceSensingDevicesItemsAsync"/>

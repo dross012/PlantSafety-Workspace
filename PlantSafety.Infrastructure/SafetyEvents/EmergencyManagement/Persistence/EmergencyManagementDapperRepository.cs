@@ -48,4 +48,18 @@ public sealed class EmergencyManagementDapperRepository(
         return await queryExecutor.QueryAsync<EmergencyManagementItemDto>(
             "[SafetyEvents].[usp_EmergencyManagementItems_GetEmergencies]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<EmergencyManagementItemDto?> GetByIdAsync(Guid emergencyManagementId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById for EmergencyManagement {EmergencyManagementId} Tenant {TenantId}", emergencyManagementId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("EmergencyId", emergencyManagementId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<EmergencyManagementItemDto>(
+            "[SafetyEvents].[usp_EmergencyManagementItems_GetById]", parameters, cancellationToken);
+    }
 }

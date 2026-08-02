@@ -122,7 +122,7 @@ public sealed class RiskLifecycleIntegrationTests(IntegrationTestWebAppFactory f
 
             // ---- Verify persisted state via the real read path before archiving ---
             var repository = scope.ServiceProvider.GetRequiredService<IRiskRepository>();
-            var persistedAfterClose = await repository.GetByIdAsync(RiskId.FromGuid(riskId), CancellationToken.None);
+            var persistedAfterClose = await repository.GetByIdAsync(RiskId.FromGuid(riskId), TenantId, CancellationToken.None);
             persistedAfterClose.Should().NotBeNull();
             persistedAfterClose!.Status.ToString().Should().Be("Closed");
             persistedAfterClose.ControlMeasures.Should().ContainSingle(cm => cm.Description == "Installed fixed machine guard over pinch point.");
@@ -135,9 +135,9 @@ public sealed class RiskLifecycleIntegrationTests(IntegrationTestWebAppFactory f
                 new PlantSafety.SharedKernel.Identifiers.CorrelationId(CorrelationId),
                 new PlantSafety.SharedKernel.Identifiers.CausationId(Guid.NewGuid()));
 
-            await repository.UpdateAsync(persistedAfterClose, CancellationToken.None);
+            await repository.UpdateAsync(persistedAfterClose, eTag: null, CancellationToken.None);
 
-            var persistedAfterArchive = await repository.GetByIdAsync(RiskId.FromGuid(riskId), CancellationToken.None);
+            var persistedAfterArchive = await repository.GetByIdAsync(RiskId.FromGuid(riskId), TenantId, CancellationToken.None);
             persistedAfterArchive.Should().NotBeNull();
             persistedAfterArchive!.Status.ToString().Should().Be("Archived", "the real usp_Risk_Update must have persisted the Archived status");
         }

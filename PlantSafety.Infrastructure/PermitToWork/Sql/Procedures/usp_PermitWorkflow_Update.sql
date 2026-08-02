@@ -8,6 +8,15 @@
 --  SchemaVersion:  2026.1
 --  Description:    Overwrites the full mutable state of a PermitWorkflow aggregate root row.
 --                  Backs IPermitWorkflowRepository.UpdateAsync. Additive-only evolution.
+--  UPDATED:        2026-07-29 -- Added @ETag optimistic-concurrency guard against the native
+--                  RowVersion column (Gap 2 remediation; mirrors usp_Incident_Update). A
+--                  stale/wrong @ETag or a missing/deleted row both naturally produce zero rows
+--                  affected. @@ROWCOUNT is captured into @RowsAffected immediately after the
+--                  UPDATE (before the audit INSERT, which would otherwise reset @@ROWCOUNT) and
+--                  returned via an explicit SELECT -- callers MUST invoke this proc via
+--                  ExecuteScalarAsync (not ExecuteNonQuery/ExecuteAsync), since SET NOCOUNT ON
+--                  makes ExecuteNonQuery always return -1, which would silently disable
+--                  concurrency enforcement (see usp_Incident_Update's identical remark).
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -33,7 +42,8 @@ CREATE OR ALTER PROCEDURE [PermitToWork].[usp_PermitWorkflow_Update]
     @ClosedAtUtc DATETIME2(3) = NULL,
     @ArchivedAtUtc DATETIME2(3) = NULL,
     @RejectedReason NVARCHAR(400) = NULL,
-    @UpdatedBy UNIQUEIDENTIFIER = NULL
+    @UpdatedBy UNIQUEIDENTIFIER = NULL,
+    @ETag NVARCHAR(64) = NULL
 AS
 SET NOCOUNT ON;
 BEGIN
@@ -65,7 +75,10 @@ BEGIN
             UpdatedBy = @UpdatedBy,
             UpdatedAtUtc = SYSUTCDATETIME(),
             ConcurrencyToken = NEWID()
-        WHERE PermitWorkflowId = @PermitWorkflowId AND IsDeleted = 0;
+        WHERE PermitWorkflowId = @PermitWorkflowId AND IsDeleted = 0
+          AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
 
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -73,6 +86,8 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT @RowsAffected;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PermitWorkflowId=', @PermitWorkflowId, N'; User=', SYSTEM_USER);

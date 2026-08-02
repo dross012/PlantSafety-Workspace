@@ -15,7 +15,16 @@
 //                  full active candidate set, since the interface carries no tenant/site
 //                  scoping parameter to push down to SQL.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: GetByIdAsync is now tenant-scoped and
+//                  UpdateAsync enforces optimistic concurrency via @ETag, mirroring
+//                  PermitsDapperRepository.cs. UpdateAsync must be invoked via ExecuteScalarAsync
+//                  (not ExecuteNonQuery/ExecuteAsync) since usp_EmergencyDrillPlanning_Update's
+//                  SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently
+//                  disable the @ETag concurrency check. Both AddAsync and UpdateAsync already
+//                  enqueued domain events to the outbox prior to this pass -- confirmed, not
+//                  re-fixed.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.Scheduling.EmergencyDrillPlanning.Aggregates;
 using PlantSafety.Domain.Scheduling.EmergencyDrillPlanning.Enums;
 using PlantSafety.Domain.Scheduling.EmergencyDrillPlanning.Events;
@@ -36,11 +45,14 @@ public sealed class EmergencyDrillPlanningDapperRepository(
     : IEmergencyDrillPlanningRepository
 {
     /// <inheritdoc/>
-    public async Task<PlantSafety.Domain.Scheduling.EmergencyDrillPlanning.Aggregates.EmergencyDrillPlanning?> GetByIdAsync(EmergencyDrillPlanningId id, CancellationToken cancellationToken = default)
+    public async Task<PlantSafety.Domain.Scheduling.EmergencyDrillPlanning.Aggregates.EmergencyDrillPlanning?> GetByIdAsync(EmergencyDrillPlanningId id, Guid tenantId, CancellationToken cancellationToken = default)
     {
-        logger.LogDebug("GetById for EmergencyDrillPlanning {EmergencyDrillPlanningId}", id.Value);
+        logger.LogDebug("GetById for EmergencyDrillPlanning {EmergencyDrillPlanningId} Tenant {TenantId}", id.Value, tenantId);
 
-        var parameters = new StoredProcedureBuilder().AddGuid("EmergencyDrillPlanningId", id.Value).Build();
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("EmergencyDrillPlanningId", id.Value)
+            .AddGuid("TenantId", tenantId)
+            .Build();
         var row = await queryExecutor.QuerySingleOrDefaultAsync<EmergencyDrillPlanningRow>(
             "[Scheduling].[usp_EmergencyDrillPlanning_GetById]", parameters, cancellationToken);
 
@@ -105,7 +117,7 @@ public sealed class EmergencyDrillPlanningDapperRepository(
 }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.EmergencyDrillPlanning.Aggregates.EmergencyDrillPlanning aggregate, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.EmergencyDrillPlanning.Aggregates.EmergencyDrillPlanning aggregate, string? eTag, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Update EmergencyDrillPlanning {EmergencyDrillPlanningId}", aggregate.EmergencyDrillPlanningId.Value);
 
@@ -114,16 +126,34 @@ public sealed class EmergencyDrillPlanningDapperRepository(
 
         var parameters = new StoredProcedureBuilder()
             .AddGuid("EmergencyDrillPlanningId", aggregate.EmergencyDrillPlanningId.Value)
+            .AddGuid("TenantId", aggregate.TenantId)
             .AddString("Status", aggregate.Status.ToString(), 50)
             .AddString("DrillType", aggregate.DrillType, 400)
             .AddString("ShiftCode", aggregate.ShiftCode, 400)
             .AddDateTime("ScheduledAtUtc", aggregate.ScheduledAtUtc?.Value)
             .AddInt("ParticipationCount", aggregate.ParticipationCount)
             .AddGuid("UpdatedBy", aggregate.CreatedBy.Value)
+            .AddString("ETag", eTag, size: 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[Scheduling].[usp_EmergencyDrillPlanning_Update]", parameters, tx, cancellationToken: cancellationToken);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable
+        // the @ETag concurrency check below. See usp_EmergencyDrillPlanning_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[Scheduling].[usp_EmergencyDrillPlanning_Update]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"EmergencyDrillPlanning {aggregate.EmergencyDrillPlanningId.Value} was modified by another process or the ETag is stale.",
+                Guid.Empty);
+        }
+
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <summary>Reconstructs a <see cref="EmergencyDrillPlanning"/> aggregate from its flat read-model row.</summary>

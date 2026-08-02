@@ -8,6 +8,11 @@
 //  SchemaVersion:  2026.1
 //  Description:    Aggregate root for the HazardIsolationSequencing bounded context (module: Scheduling).
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: added Activate/FlagConflict/Complete/
+//                  Close/Archive lifecycle methods, wiring the pre-existing (previously unused)
+//                  HazardIsolationSequencingLifecycleRules.Can* guards (plus a new CanFlagConflict
+//                  guard). Mirrors PlantSafety.Domain.Compliance.Permits.Aggregates.Permits's
+//                  conventions.
 // ============================================================================
 namespace PlantSafety.Domain.Scheduling.HazardIsolationSequencing.Aggregates;
 
@@ -105,6 +110,137 @@ public sealed partial class HazardIsolationSequencing
         return agg;
     }
 
+    // ---- Lifecycle: Activate / FlagConflict ----------------------------------
+
+    /// <summary>
+    /// Activates the isolation window (Created -&gt; Active). Valid only from
+    /// <see cref="HazardIsolationSequencingStatus.Created"/>.
+    /// </summary>
+    public void Activate(
+        UserId activatedBy,
+        UtcTimestamp activatedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, HazardIsolationSequencingLifecycleRules.CanActivate, HazardIsolationSequencingStatus.Active);
+
+        Status = HazardIsolationSequencingStatus.Active;
+
+        AddDomainEvent(new HazardIsolationSequencingActivatedEvent(
+            EventId: new HazardIsolationSequencingEventId(Uuid7.New()),
+            HazardIsolationSequencingId: HazardIsolationSequencingId,
+            ActivatedBy: activatedBy,
+            ActivatedAtUtc: activatedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Flags an incompatible-task conflict within an active isolation window. Does not change
+    /// lifecycle status. Valid only while <see cref="HazardIsolationSequencingStatus.Active"/>.
+    /// </summary>
+    public void FlagConflict(
+        UserId flaggedBy,
+        string reason,
+        UtcTimestamp flaggedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, HazardIsolationSequencingLifecycleRules.CanFlagConflict, HazardIsolationSequencingStatus.Active);
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("A conflict reason must be supplied.", nameof(reason));
+
+        ConflictDetected = true;
+
+        AddDomainEvent(new HazardIsolationSequencingConflictFlaggedEvent(
+            EventId: new HazardIsolationSequencingEventId(Uuid7.New()),
+            HazardIsolationSequencingId: HazardIsolationSequencingId,
+            FlaggedBy: flaggedBy,
+            Reason: reason.Trim(),
+            FlaggedAtUtc: flaggedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Complete / Close / Archive -------------------------------
+
+    /// <summary>
+    /// Completes the isolation window (Active -&gt; Completed). Valid only from
+    /// <see cref="HazardIsolationSequencingStatus.Active"/>.
+    /// </summary>
+    public void Complete(
+        UserId completedBy,
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, HazardIsolationSequencingLifecycleRules.CanComplete, HazardIsolationSequencingStatus.Completed);
+
+        Status = HazardIsolationSequencingStatus.Completed;
+
+        AddDomainEvent(new HazardIsolationSequencingCompletedEvent(
+            EventId: new HazardIsolationSequencingEventId(Uuid7.New()),
+            HazardIsolationSequencingId: HazardIsolationSequencingId,
+            CompletedBy: completedBy,
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Closes a completed isolation record (Completed -&gt; Closed). Valid only from
+    /// <see cref="HazardIsolationSequencingStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, HazardIsolationSequencingLifecycleRules.CanClose, HazardIsolationSequencingStatus.Closed);
+
+        Status = HazardIsolationSequencingStatus.Closed;
+
+        AddDomainEvent(new HazardIsolationSequencingClosedEvent(
+            EventId: new HazardIsolationSequencingEventId(Uuid7.New()),
+            HazardIsolationSequencingId: HazardIsolationSequencingId,
+            ClosedBy: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed isolation record for compliance retention (Closed -&gt; Archived). Valid
+    /// only from <see cref="HazardIsolationSequencingStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, HazardIsolationSequencingLifecycleRules.CanArchive, HazardIsolationSequencingStatus.Archived);
+
+        Status = HazardIsolationSequencingStatus.Archived;
+
+        AddDomainEvent(new HazardIsolationSequencingArchivedEvent(
+            EventId: new HazardIsolationSequencingEventId(Uuid7.New()),
+            HazardIsolationSequencingId: HazardIsolationSequencingId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IHazardIsolationSequencingDomainEvent evt) => _domainEvents.Add(evt);
@@ -119,5 +255,13 @@ public sealed partial class HazardIsolationSequencing
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for HazardIsolationSequencing {HazardIsolationSequencingId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<HazardIsolationSequencingStatus, bool> guard, HazardIsolationSequencingStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new HazardIsolationSequencingInvalidStatusTransitionException(
+            HazardIsolationSequencingId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

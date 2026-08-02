@@ -134,6 +134,12 @@ public sealed class CultureAssessmentDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[SafetyCulture].[usp_CultureAssessment_Update]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private static Domain.SafetyCulture.CultureAssessment.Aggregates.CultureAssessment Hydrate(CultureAssessmentRow row)

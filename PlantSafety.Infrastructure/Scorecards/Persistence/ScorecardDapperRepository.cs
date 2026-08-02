@@ -157,6 +157,12 @@ public sealed class ScorecardDapperRepository(
         }
 
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private async Task<IReadOnlyList<KpiMeasurementRow>> GetKpiMeasurementRowsAsync(ScorecardId id, CancellationToken cancellationToken)

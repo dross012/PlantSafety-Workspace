@@ -88,7 +88,7 @@ public sealed class RiskConcurrencyAndAuditIntegrationTests(IntegrationTestWebAp
             // ---- A genuine UPDATE through the real repository/usp_Risk_Update must advance the
             // RowVersion, and therefore the projected ETag. ----
             risk.ScoreRisk(4, 3, UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
-            await repository.UpdateAsync(risk, CancellationToken.None);
+            await repository.UpdateAsync(risk, eTag: null, CancellationToken.None);
 
             var thirdEtag = await GetRiskETagAsync(conn, riskId);
             thirdEtag.Should().NotBe(firstEtag, "usp_Risk_Update modifying the row must advance the ROWVERSION-backed ETag");
@@ -137,7 +137,7 @@ public sealed class RiskConcurrencyAndAuditIntegrationTests(IntegrationTestWebAp
                 responsiblePersonId,
                 UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
 
-            await repository.UpdateAsync(risk, CancellationToken.None);
+            await repository.UpdateAsync(risk, eTag: null, CancellationToken.None);
 
             await using var conn = new SqlConnection(ConnectionString);
             await conn.OpenAsync();
@@ -204,7 +204,7 @@ public sealed class RiskConcurrencyAndAuditIntegrationTests(IntegrationTestWebAp
             await repository.AddAsync(risk, CancellationToken.None);
 
             risk.ScoreRisk(2, 2, UtcTimestamp.Now(), actor, correlationId, new CausationId(Guid.NewGuid()));
-            await repository.UpdateAsync(risk, CancellationToken.None);
+            await repository.UpdateAsync(risk, eTag: null, CancellationToken.None);
 
             await using var conn = new SqlConnection(ConnectionString);
 

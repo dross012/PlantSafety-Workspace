@@ -10,19 +10,34 @@
 --                  IRiskRepository.UpdateAsync. HazardDomainCategory is intentionally not
 --                  updated here -- it is an immutable Infrastructure-layer classification tag
 --                  assigned once at creation. Additive-only evolution.
---  UPDATED:        2026-07-28 -- returns the post-update row's ETag (CONVERT(NVARCHAR(34),
---                  CAST(RowVersion AS BINARY(8)), 1)) via a trailing SELECT so callers have an
---                  up-to-date ETag immediately after update without a separate round-trip. Schema-
---                  only: no @ETag input parameter or conflict-rejection logic is introduced here --
---                  IRiskRepository.UpdateAsync has no ETag concept to enforce (see
---                  RiskDapperRepository.RiskRow.ETag remarks); the pre-existing IF NOT EXISTS/THROW
---                  50004 existence check above is unchanged.
+--  UPDATED:        2026-07-29 -- Added @ETag optimistic-concurrency guard against the native
+--                  RowVersion column (Phase 4 RiskManagement concurrency remediation; mirrors
+--                  usp_PermitWorkflow_Update / usp_Incident_Update). @RowsAffected is captured via
+--                  @@ROWCOUNT immediately after the UPDATE (before the audit INSERT, which would
+--                  otherwise reset it) and returned via SELECT in place of the previous ETag-only
+--                  SELECT -- callers MUST invoke via ExecuteScalarAsync (not ExecuteNonQuery), since
+--                  SET NOCOUNT ON makes ExecuteNonQuery always return -1, silently disabling the
+--                  concurrency check. A stale/wrong @ETag or a missing/deleted row both naturally
+--                  produce zero rows affected. The pre-existing IF NOT EXISTS/THROW 50004 existence
+--                  check is unchanged and still fires first for a genuinely missing/deleted row.
+--  UPDATED:        2026-07-29 -- Added @TenantId (Phase 4 cross-tenant access remediation): the
+--                  UPDATE's WHERE clause now also requires TenantId = @TenantId, so a Risk loaded
+--                  and mutated in-process cannot be persisted against a different tenant's row even
+--                  in principle. The caller (RiskDapperRepository.UpdateAsync) binds this from the
+--                  aggregate's own TenantId, which is only ever set via a tenant-checked
+--                  GetByIdAsync -- mirrors IIncidentRepository.UpdateAsync's identical approach of
+--                  deriving TenantId from the aggregate rather than a separate repository
+--                  parameter. The pre-existing IF NOT EXISTS/THROW 50004 check is intentionally
+--                  left RiskId/IsDeleted-only (not tenant-scoped) so a genuinely-missing row still
+--                  raises the specific "not found" error rather than being folded into the
+--                  rows-affected-based concurrency-conflict path.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
 
 CREATE OR ALTER PROCEDURE [RiskMgmt].[usp_Risk_Update]
     @RiskId              UNIQUEIDENTIFIER,
+    @TenantId            UNIQUEIDENTIFIER,
     @Status              NVARCHAR(30),
     @Category            NVARCHAR(30),
     @CurrentSeverity     INT = NULL,
@@ -37,7 +52,8 @@ CREATE OR ALTER PROCEDURE [RiskMgmt].[usp_Risk_Update]
     @NextReviewDueUtc    DATETIME2(3) = NULL,
     @ReviewCount         INT,
     @RiskVersion         INT,
-    @UpdatedBy           UNIQUEIDENTIFIER = NULL
+    @UpdatedBy           UNIQUEIDENTIFIER = NULL,
+    @ETag                NVARCHAR(64) = NULL
 AS
 SET NOCOUNT ON;
 BEGIN
@@ -64,7 +80,10 @@ BEGIN
             UpdatedBy = @UpdatedBy,
             UpdatedAtUtc = SYSUTCDATETIME(),
             ConcurrencyToken = NEWID()
-        WHERE RiskId = @RiskId AND IsDeleted = 0;
+        WHERE RiskId = @RiskId AND TenantId = @TenantId AND IsDeleted = 0
+          AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
 
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -73,9 +92,7 @@ BEGIN
         BEGIN CATCH
         END CATCH;
 
-        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
-        FROM [RiskMgmt].[Risk]
-        WHERE RiskId = @RiskId;
+        SELECT @RowsAffected;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'RiskId=', @RiskId, N'; User=', SYSTEM_USER);

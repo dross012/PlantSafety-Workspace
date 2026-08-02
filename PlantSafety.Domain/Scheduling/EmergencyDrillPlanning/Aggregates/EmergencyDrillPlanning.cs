@@ -8,6 +8,10 @@
 //  SchemaVersion:  2026.1
 //  Description:    Aggregate root for the EmergencyDrillPlanning bounded context (module: Scheduling).
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: added Conduct/Complete/Close/Archive
+//                  lifecycle methods, wiring the pre-existing (previously unused)
+//                  EmergencyDrillPlanningLifecycleRules.Can* guards. Mirrors
+//                  PlantSafety.Domain.Compliance.Permits.Aggregates.Permits's conventions.
 // ============================================================================
 namespace PlantSafety.Domain.Scheduling.EmergencyDrillPlanning.Aggregates;
 
@@ -100,6 +104,115 @@ public sealed partial class EmergencyDrillPlanning
         return agg;
     }
 
+    // ---- Lifecycle: Conduct / Complete ---------------------------------------
+
+    /// <summary>
+    /// Records that a scheduled drill was conducted (Created -&gt; Active). Valid only from
+    /// <see cref="EmergencyDrillPlanningStatus.Created"/>.
+    /// </summary>
+    public void Conduct(
+        UserId conductedBy,
+        int participationCount,
+        UtcTimestamp conductedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyDrillPlanningLifecycleRules.CanActivate, EmergencyDrillPlanningStatus.Active);
+        if (participationCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(participationCount), participationCount, "ParticipationCount must be non-negative.");
+
+        ParticipationCount = participationCount;
+        Status = EmergencyDrillPlanningStatus.Active;
+
+        AddDomainEvent(new EmergencyDrillPlanningConductedEvent(
+            EventId: new EmergencyDrillPlanningEventId(Uuid7.New()),
+            EmergencyDrillPlanningId: EmergencyDrillPlanningId,
+            ConductedBy: conductedBy,
+            ParticipationCount: participationCount,
+            ConductedAtUtc: conductedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records the post-drill debrief/completion (Active -&gt; Completed). Valid only from
+    /// <see cref="EmergencyDrillPlanningStatus.Active"/>.
+    /// </summary>
+    public void Complete(
+        UserId completedBy,
+        string? debriefNotes,
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyDrillPlanningLifecycleRules.CanComplete, EmergencyDrillPlanningStatus.Completed);
+
+        Status = EmergencyDrillPlanningStatus.Completed;
+
+        AddDomainEvent(new EmergencyDrillPlanningCompletedEvent(
+            EventId: new EmergencyDrillPlanningEventId(Uuid7.New()),
+            EmergencyDrillPlanningId: EmergencyDrillPlanningId,
+            CompletedBy: completedBy,
+            DebriefNotes: string.IsNullOrWhiteSpace(debriefNotes) ? null : debriefNotes.Trim(),
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Close / Archive -------------------------------------------
+
+    /// <summary>
+    /// Closes a completed drill record (Completed -&gt; Closed). Valid only from
+    /// <see cref="EmergencyDrillPlanningStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyDrillPlanningLifecycleRules.CanClose, EmergencyDrillPlanningStatus.Closed);
+
+        Status = EmergencyDrillPlanningStatus.Closed;
+
+        AddDomainEvent(new EmergencyDrillPlanningClosedEvent(
+            EventId: new EmergencyDrillPlanningEventId(Uuid7.New()),
+            EmergencyDrillPlanningId: EmergencyDrillPlanningId,
+            ClosedBy: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed drill record for compliance retention (Closed -&gt; Archived). Valid only
+    /// from <see cref="EmergencyDrillPlanningStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyDrillPlanningLifecycleRules.CanArchive, EmergencyDrillPlanningStatus.Archived);
+
+        Status = EmergencyDrillPlanningStatus.Archived;
+
+        AddDomainEvent(new EmergencyDrillPlanningArchivedEvent(
+            EventId: new EmergencyDrillPlanningEventId(Uuid7.New()),
+            EmergencyDrillPlanningId: EmergencyDrillPlanningId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IEmergencyDrillPlanningDomainEvent evt) => _domainEvents.Add(evt);
@@ -114,5 +227,13 @@ public sealed partial class EmergencyDrillPlanning
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for EmergencyDrillPlanning {EmergencyDrillPlanningId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<EmergencyDrillPlanningStatus, bool> guard, EmergencyDrillPlanningStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new EmergencyDrillPlanningInvalidStatusTransitionException(
+            EmergencyDrillPlanningId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

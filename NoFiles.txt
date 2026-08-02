@@ -1,11 +1,15 @@
 ﻿
 PlantSafety
 ├── .claude
-├── bin
-│   └── Debug
-│       └── net8.0
+│   └── worktrees
+│       ├── agent-a12799b4a1a1d1e40
+│       └── agent-ad28b03fa15dbc7d5
 ├── build
 ├── docs
+│   ├── architecture
+│   ├── database
+│   ├── migration
+│   └── reference
 ├── Intelligence.Domain
 │   ├── AIInvestigations
 │   │   ├── Aggregates
@@ -57,7 +61,19 @@ PlantSafety
 ├── obj
 │   └── Debug
 │       └── net8.0
+├── PlantSafety.AcceptanceTests
+│   ├── Alerts
+│   ├── bin
+│   │   └── Debug
+│   └── obj
+│       └── Debug
 ├── PlantSafety.Api
+│   ├── AccidentManagement
+│   │   ├── Contracts
+│   │   └── Controllers
+│   ├── Alerts
+│   │   ├── Contracts
+│   │   └── Controllers
 │   ├── Analytics
 │   │   ├── Culture
 │   │   ├── Dashboard
@@ -70,9 +86,17 @@ PlantSafety
 │   │   ├── ScoreCards
 │   │   └── TrendAnalysis
 │   ├── Attributes
+│   ├── Auditing
+│   │   ├── Common
+│   │   ├── Contracts
+│   │   └── Controllers
 │   ├── bin
-│   │   ├── Debug
-│   │   └── Release
+│   │   └── Debug
+│   ├── Checklists
+│   │   ├── Common
+│   │   ├── Contracts
+│   │   └── Controllers
+│   ├── Common
 │   ├── Compliance
 │   │   ├── Auditing
 │   │   ├── Bulk
@@ -86,10 +110,14 @@ PlantSafety
 │   │   └── RegulatoryCalendar
 │   ├── Configuration
 │   ├── Constants
+│   ├── Context
 │   ├── ContinuousImprovement
 │   │   ├── CAPA
 │   │   ├── Exports
 │   │   └── RCA
+│   ├── ContractorSafety
+│   │   ├── Contracts
+│   │   └── Controllers
 │   ├── Controllers
 │   │   ├── V1
 │   │   └── V2
@@ -107,10 +135,31 @@ PlantSafety
 │   │   ├── Updates
 │   │   ├── Users
 │   │   └── WorkCenters
+│   ├── Dashboards
+│   │   ├── Contracts
+│   │   └── Controllers
+│   ├── EmployeeSafety
+│   │   ├── Contracts
+│   │   └── Controllers
 │   ├── Endpoints
 │   │   ├── V1
 │   │   └── V2
 │   ├── Extensions
+│   ├── Features
+│   │   ├── AiGovernance
+│   │   ├── Analytics
+│   │   ├── Compliance
+│   │   ├── ContinuousImprovement
+│   │   ├── DigitalTwin
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── Financials
+│   │   ├── Operational
+│   │   ├── PlanningProjects
+│   │   ├── ProcessManagement
+│   │   ├── SafetyEvents
+│   │   ├── Sustainability
+│   │   └── WorkerWellBeing
 │   ├── Filters
 │   ├── Financials
 │   │   ├── Authorization
@@ -135,13 +184,42 @@ PlantSafety
 │   │   ├── Mapping
 │   │   ├── Models
 │   │   └── Telemetry
+│   ├── Integrations
+│   │   ├── Adapters
+│   │   ├── Analytics
+│   │   ├── Analyzers
+│   │   ├── Auditing
+│   │   ├── BackgroundServices
+│   │   ├── DataPipelines
+│   │   ├── Documents
+│   │   ├── Email
+│   │   ├── ErrorHandling
+│   │   ├── Export
+│   │   ├── Generators
+│   │   ├── Import
+│   │   ├── IntegrationHub
+│   │   ├── IoT
+│   │   ├── Notifications
+│   │   ├── Reporting
+│   │   ├── Texting
+│   │   └── Webhooks
+│   ├── Intelligence
+│   │   ├── AITraining
+│   │   ├── AllInvestigations
+│   │   ├── DataLake
+│   │   └── PredictiveSafety
+│   ├── MachineSafety
+│   │   ├── Contracts
+│   │   └── Controllers
 │   ├── Middleware
 │   ├── Models
 │   │   ├── Bulk
 │   │   └── Exports
 │   ├── obj
-│   │   ├── Debug
-│   │   └── Release
+│   │   └── Debug
+│   ├── Observability
+│   │   ├── Contracts
+│   │   └── Controllers
 │   ├── OpenApi
 │   ├── Operational
 │   │   ├── Alerts
@@ -166,7 +244,18 @@ PlantSafety
 │   │   ├── RiskManagement
 │   │   ├── Schedules
 │   │   └── Training
+│   ├── Operations
+│   │   ├── Archival
+│   │   ├── AuditViewer
+│   │   ├── Backup
+│   │   ├── Configuration
+│   │   ├── Monitoring
+│   │   ├── SchemaGuard
+│   │   └── SystemHealth
 │   ├── OutputCache
+│   ├── PermitToWork
+│   │   ├── Contracts
+│   │   └── Controllers
 │   ├── PlanningProjects
 │   │   ├── Authorization
 │   │   ├── Contracts
@@ -179,6 +268,18 @@ PlantSafety
 │   │   ├── Models
 │   │   ├── Requests
 │   │   └── Telemetry
+│   ├── PPE
+│   │   ├── Contracts
+│   │   └── Controllers
+│   ├── Properties
+│   ├── Realtime
+│   ├── RiskManagement
+│   │   ├── Contracts
+│   │   └── Controllers
+│   ├── SafetyCulture
+│   │   ├── Common
+│   │   ├── Contracts
+│   │   └── Controllers
 │   ├── SafetyEvents
 │   │   ├── Bulk
 │   │   ├── CrisisManagement
@@ -189,6 +290,18 @@ PlantSafety
 │   │   ├── NearMisses
 │   │   ├── Observation
 │   │   └── RootCauseAnalysis
+│   ├── SafetyPolicies
+│   │   ├── Contracts
+│   │   └── Controllers
+│   ├── SafetyProcedures
+│   │   ├── Contracts
+│   │   └── Controllers
+│   ├── Scheduling
+│   │   ├── Contracts
+│   │   └── Controllers
+│   ├── Scorecards
+│   │   ├── Contracts
+│   │   └── Controllers
 │   └── Webhooks
 │       ├── Authorization
 │       ├── Models
@@ -203,14 +316,47 @@ PlantSafety
 │   │   ├── Localization
 │   │   ├── Logging
 │   │   ├── Messaging
+│   │   ├── Realtime
 │   │   ├── Security
 │   │   └── Validation
+│   ├── AccidentManagement
+│   │   ├── Commands
+│   │   ├── CorrectiveActionsCAPA
+│   │   ├── DependencyInjection
+│   │   ├── InvestigationRootCauseAnalysis
+│   │   ├── RegulatoryComplianceDocumentation
+│   │   ├── SiteSecuringAndTriage
+│   │   └── Validation
+│   ├── Alerts
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── Handlers
+│   │   ├── Models
+│   │   ├── Queries
+│   │   └── Repositories
 │   ├── Analytics
 │   │   ├── Abstractions
 │   │   ├── Constants
+│   │   ├── Culture
+│   │   ├── Dashboard
 │   │   ├── DependencyInjection
+│   │   ├── Handlers
+│   │   ├── Models
 │   │   ├── Permissions
 │   │   ├── Policies
+│   │   ├── Predictive
+│   │   ├── PredictiveAnalytics
+│   │   ├── Queries
+│   │   ├── Reporting
+│   │   ├── Repositories
+│   │   ├── Schedules
+│   │   ├── ScoreCards
+│   │   ├── TrendAnalysis
+│   │   └── Validation
+│   ├── Auditing
+│   │   ├── AuditEngagement
+│   │   ├── Commands
+│   │   ├── DependencyInjection
 │   │   └── Validation
 │   ├── Behaviors
 │   │   ├── Caching
@@ -222,31 +368,64 @@ PlantSafety
 │   │   ├── Transactions
 │   │   └── Validation
 │   ├── bin
-│   │   ├── Debug
-│   │   └── Release
+│   │   └── Debug
+│   ├── Checklists
+│   │   ├── ChecklistTemplate
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   └── Validation
 │   ├── Common
 │   │   ├── Constants
 │   │   ├── Enums
 │   │   ├── Errors
 │   │   ├── Extensions
 │   │   ├── Guards
+│   │   ├── Interfaces
 │   │   ├── Mapping
 │   │   ├── Results
 │   │   ├── Types
 │   │   └── Utilities
 │   ├── Compliance
 │   │   ├── Abstractions
+│   │   ├── Auditing
+│   │   ├── Certification
+│   │   ├── Commands
 │   │   ├── Constants
 │   │   ├── DependencyInjection
+│   │   ├── Handlers
+│   │   ├── ManagementOfChange
+│   │   ├── Obligations
 │   │   ├── Permissions
+│   │   ├── Permits
 │   │   ├── Policies
+│   │   ├── Policy
+│   │   ├── Procedures
+│   │   ├── Queries
+│   │   ├── RegulatoryCalendar
+│   │   ├── RegulatoryRequirements
+│   │   ├── Repositories
+│   │   ├── Tracking
 │   │   └── Validation
 │   ├── ContinuousImprovement
 │   │   ├── Abstractions
+│   │   ├── CAPA
 │   │   ├── Constants
 │   │   ├── DependencyInjection
+│   │   ├── Handlers
 │   │   ├── Permissions
 │   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── RCA
+│   │   ├── Repositories
+│   │   └── Validation
+│   ├── ContractorSafety
+│   │   ├── ActiveMonitoringAuditing
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── IncidentTrackingPerformanceEvaluation
+│   │   ├── PermitToWork
+│   │   ├── PreQualificationVetting
+│   │   ├── SiteOrientation
 │   │   └── Validation
 │   ├── Contracts
 │   │   ├── Dtos
@@ -254,9 +433,37 @@ PlantSafety
 │   │   ├── Messages
 │   │   ├── Requests
 │   │   └── Responses
+│   ├── CrossDomain
+│   │   ├── Administration
+│   │   ├── Backup
+│   │   ├── Cleanup
+│   │   ├── Employees
+│   │   ├── Machines
+│   │   ├── Operators
+│   │   ├── Permissions
+│   │   ├── Restore
+│   │   ├── Roles
+│   │   ├── Updates
+│   │   ├── Users
+│   │   └── WorkCenters
+│   ├── Dashboards
+│   │   ├── Dashboard
+│   │   ├── DependencyInjection
+│   │   └── Widget
 │   ├── DependencyInjection
 │   │   ├── Modules
 │   │   ├── Services
+│   │   └── Validation
+│   ├── EmployeeSafety
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyPreparedness
+│   │   ├── EnvironmentalHealthMonitoring
+│   │   ├── ErgonomicsAndMaterialHandling
+│   │   ├── HazardCommunicationTraining
+│   │   ├── LotoPrograms
+│   │   ├── MachineGuarding
+│   │   ├── Ppe
 │   │   └── Validation
 │   ├── EnterpriseFabric
 │   │   ├── Abstractions
@@ -266,44 +473,225 @@ PlantSafety
 │   │   ├── Policies
 │   │   └── Validation
 │   ├── Features
+│   │   ├── AiGovernance
 │   │   ├── Analytics
 │   │   ├── Compliance
 │   │   ├── ContinuousImprovement
+│   │   ├── DigitalTwin
 │   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
 │   │   ├── Financials
 │   │   ├── Operational
 │   │   ├── PlanningProjects
-│   │   └── SafetyEvents
+│   │   ├── ProcessManagement
+│   │   ├── SafetyEvents
+│   │   ├── Sustainability
+│   │   └── WorkerWellBeing
 │   ├── Financials
 │   │   ├── Abstractions
 │   │   ├── Constants
 │   │   ├── DependencyInjection
+│   │   ├── Financials
 │   │   ├── Permissions
 │   │   ├── Policies
 │   │   └── Validation
+│   ├── HealthChecks
+│   │   ├── Handlers
+│   │   ├── Models
+│   │   ├── Queries
+│   │   └── Repositories
+│   ├── Integrations
+│   │   ├── Analytics
+│   │   ├── Analyzers
+│   │   ├── Auditing
+│   │   ├── Commands
+│   │   ├── Documents
+│   │   ├── Email
+│   │   ├── Export
+│   │   ├── Import
+│   │   ├── IoT
+│   │   ├── Notifications
+│   │   ├── Reporting
+│   │   └── Texting
+│   ├── Intelligence
+│   │   ├── AITraining
+│   │   ├── AllInvestigations
+│   │   ├── DataLake
+│   │   └── PredictiveSafety
+│   ├── MachineSafety
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyStopDevices
+│   │   ├── LotoSystems
+│   │   ├── MachineGuardsBarriers
+│   │   ├── PresenceSensingDevices
+│   │   ├── SafetyValvesRelays
+│   │   ├── TwoHandControls
+│   │   └── Validation
 │   ├── obj
-│   │   ├── Debug
-│   │   └── Release
+│   │   └── Debug
+│   ├── Observability
+│   │   ├── AutomatedIncidentDetection
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── EnvironmentalAssetMonitoring
+│   │   ├── FacilityTrafficMonitoring
+│   │   ├── MachineProcessMonitoring
+│   │   ├── PPEBehavioralMonitoring
+│   │   └── Validation
 │   ├── Operational
 │   │   ├── Abstractions
+│   │   ├── Alerts
+│   │   ├── Checklists
+│   │   ├── Commands
+│   │   ├── CompetencyManagement
 │   │   ├── Constants
+│   │   ├── Contractor
 │   │   ├── DependencyInjection
+│   │   ├── EquipmentSafety
+│   │   ├── Ergonomics
+│   │   ├── FatigueManagement
+│   │   ├── Handlers
+│   │   ├── HazardAssessments
+│   │   ├── HazardousMaterials
+│   │   ├── IndustrialHygiene
+│   │   ├── Inspections
+│   │   ├── JobSafetyAnalysis
+│   │   ├── LockoutTagout
 │   │   ├── Permissions
+│   │   ├── PermitsToWork
 │   │   ├── Policies
+│   │   ├── PPEManagement
+│   │   ├── PredictiveMaintenance
+│   │   ├── PreventiveMaintenance
+│   │   ├── Queries
+│   │   ├── Repositories
+│   │   ├── RiskManagement
+│   │   ├── Schedules
+│   │   ├── Training
+│   │   └── Validation
+│   ├── Operations
+│   │   ├── Archival
+│   │   ├── AuditViewer
+│   │   ├── Backup
+│   │   ├── Configuration
+│   │   ├── Monitoring
+│   │   ├── SchemaGuard
+│   │   └── SystemHealth
+│   ├── PermitToWork
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── PermitExpiration
+│   │   ├── PermitScheduling
+│   │   ├── PermitTemplate
+│   │   ├── PermitWorkflow
 │   │   └── Validation
 │   ├── PlanningProjects
 │   │   ├── Abstractions
 │   │   ├── Constants
 │   │   ├── DependencyInjection
 │   │   ├── Permissions
+│   │   ├── PlanningProjects
 │   │   ├── Policies
+│   │   └── Validation
+│   ├── PPE
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── PPEAssignment
+│   │   ├── PPECategory
+│   │   ├── PPEInventory
+│   │   ├── PPETrainingFit
+│   │   ├── PPEZoneMapping
+│   │   └── Validation
+│   ├── RiskManagement
+│   │   ├── ChemicalEnvironmentalSafety
+│   │   ├── Commands
+│   │   ├── ContinuousMonitoringReview
+│   │   ├── ControlMeasuresHierarchy
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyPreparedness
+│   │   ├── ErgonomicsMaterialHandling
+│   │   ├── HazardIdentificationMeasurement
+│   │   ├── LotoConfinedSpaces
+│   │   ├── MachineOperationalGuarding
+│   │   ├── PreStartupSafetyReview
+│   │   ├── ProcessSafetyInformation
+│   │   ├── TrainingContractorManagement
+│   │   └── Validation
+│   ├── SafetyCulture
+│   │   ├── Commands
+│   │   ├── CultureAssessment
+│   │   ├── DependencyInjection
 │   │   └── Validation
 │   ├── SafetyEvents
 │   │   ├── Abstractions
+│   │   ├── Commands
 │   │   ├── Constants
+│   │   ├── CrisisManagement
 │   │   ├── DependencyInjection
+│   │   ├── DrillsAndExercises
+│   │   ├── EmergencyManagement
+│   │   ├── Handlers
+│   │   ├── IncidentManagement
+│   │   ├── NearMisses
+│   │   ├── Observation
 │   │   ├── Permissions
 │   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── Repositories
+│   │   ├── RootCauseAnalysis
+│   │   └── Validation
+│   ├── SafetyPolicies
+│   │   ├── Commands
+│   │   ├── ConfinedSpaceEntry
+│   │   ├── ContractorSafety
+│   │   ├── DependencyInjection
+│   │   ├── ElectricalSafety
+│   │   ├── EmergencyResponseEvacuation
+│   │   ├── EnvironmentalChemicalSafety
+│   │   ├── EquipmentMachineOperation
+│   │   ├── HazardCommunicationAssessment
+│   │   ├── HotWork
+│   │   ├── HousekeepingErgonomics
+│   │   ├── IncidentInvestigationCorrectiveAction
+│   │   ├── MachineMaintenanceInspection
+│   │   ├── MaterialHandlingStorage
+│   │   ├── PersonalProtectiveEquipment
+│   │   ├── SafetyCultureBehavioral
+│   │   ├── SafetyTrainingReporting
+│   │   ├── SecurityAccessControl
+│   │   ├── Validation
+│   │   └── WorkingAtHeights
+│   ├── SafetyProcedures
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyResponsePlanning
+│   │   ├── ErgonomicsWorkstationDesign
+│   │   ├── HazardCommunicationRightToKnow
+│   │   ├── LotoProcedures
+│   │   ├── MachineGuardingInspections
+│   │   ├── MaterialHandlingStorage
+│   │   ├── PpePolicies
+│   │   ├── RoutineSafetyAuditsIncidentReporting
+│   │   └── Validation
+│   ├── Scheduling
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyDrillPlanning
+│   │   ├── HazardIsolationSequencing
+│   │   ├── PMScheduling
+│   │   ├── ShiftFatigue
+│   │   ├── Validation
+│   │   └── WorkOrderPriority
+│   ├── Scorecards
+│   │   ├── Commands
+│   │   ├── CulturalPrecursorMetrics
+│   │   ├── DependencyInjection
+│   │   ├── LaggingIndicators
+│   │   ├── LeadingIndicators
+│   │   ├── ReportingDistribution
+│   │   ├── ScorecardDataSources
+│   │   ├── ScorecardStructureVisualization
 │   │   └── Validation
 │   └── Validation
 │       ├── Attributes
@@ -311,7 +699,36 @@ PlantSafety
 │       ├── Extensions
 │       ├── Fluent
 │       └── Rules
+├── PlantSafety.CompatibilityTests
+│   ├── ApiContracts
+│   ├── bin
+│   │   └── Debug
+│   └── obj
+│       └── Debug
+├── PlantSafety.DataIntegrationTests
+│   ├── bin
+│   │   └── Debug
+│   ├── Identifiers
+│   ├── obj
+│   │   └── Debug
+│   ├── StoredProcedures
+│   └── Support
 ├── PlantSafety.Domain
+│   ├── AccidentManagement
+│   │   ├── Aggregates
+│   │   ├── DomainEvents
+│   │   ├── Entities
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Factories
+│   │   ├── Interfaces
+│   │   ├── Policies
+│   │   ├── Rules
+│   │   ├── Services
+│   │   ├── Snapshots
+│   │   ├── Specifications
+│   │   └── ValueObjects
 │   ├── AiGovernance
 │   │   ├── Aggregates
 │   │   ├── Events
@@ -322,6 +739,8 @@ PlantSafety
 │   │   ├── Events
 │   │   ├── Repositories
 │   │   └── ValueObjects
+│   ├── Alerts
+│   │   └── Alert
 │   ├── Analytics
 │   │   ├── Aggregates
 │   │   ├── Culture
@@ -332,8 +751,16 @@ PlantSafety
 │   │   ├── Repositories
 │   │   ├── ScoreCards
 │   │   └── ValueObjects
+│   ├── Auditing
+│   │   ├── AuditEngagement
+│   │   ├── AuditFinding
+│   │   └── SmartEnums
 │   ├── bin
 │   │   └── Debug
+│   ├── Checklists
+│   │   ├── ChecklistCompletion
+│   │   ├── ChecklistTemplate
+│   │   └── SmartEnums
 │   ├── Common
 │   │   ├── Abstractions
 │   │   ├── Base
@@ -358,6 +785,15 @@ PlantSafety
 │   ├── ContinuousImprovement
 │   │   ├── CAPA
 │   │   └── RCA
+│   ├── ContractorSafety
+│   │   ├── ActiveMonitoringAuditing
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── IncidentTrackingPerformanceEvaluation
+│   │   ├── PermitToWork
+│   │   ├── PreQualificationVetting
+│   │   ├── Repositories
+│   │   └── SiteOrientation
 │   ├── ContractorVisitor
 │   │   ├── Aggregates
 │   │   ├── Events
@@ -368,11 +804,25 @@ PlantSafety
 │   │   ├── Machines
 │   │   ├── Operators
 │   │   └── WorkCenters
+│   ├── Dashboards
+│   │   ├── Dashboard
+│   │   └── Widget
 │   ├── DigitalTwin
 │   │   ├── Aggregates
 │   │   ├── Events
 │   │   ├── Repositories
 │   │   └── ValueObjects
+│   ├── EmployeeSafety
+│   │   ├── Aggregates
+│   │   ├── EmergencyPreparedness
+│   │   ├── EnvironmentalHealthMonitoring
+│   │   ├── ErgonomicsAndMaterialHandling
+│   │   ├── Events
+│   │   ├── HazardCommunicationTraining
+│   │   ├── LotoPrograms
+│   │   ├── MachineGuarding
+│   │   ├── Ppe
+│   │   └── Repositories
 │   ├── EnterpriseFabric
 │   │   ├── Aggregates
 │   │   ├── Events
@@ -405,8 +855,26 @@ PlantSafety
 │   │   ├── AITraining
 │   │   ├── DataLake
 │   │   └── PredictiveSafety
+│   ├── MachineSafety
+│   │   ├── Aggregates
+│   │   ├── EmergencyStopDevices
+│   │   ├── Events
+│   │   ├── LotoSystems
+│   │   ├── MachineGuardsBarriers
+│   │   ├── PresenceSensingDevices
+│   │   ├── Repositories
+│   │   ├── SafetyValvesRelays
+│   │   └── TwoHandControls
 │   ├── obj
 │   │   └── Debug
+│   ├── Observability
+│   │   ├── Aggregates
+│   │   ├── AutomatedIncidentDetection
+│   │   ├── EnvironmentalAssetMonitoring
+│   │   ├── Events
+│   │   ├── FacilityTrafficMonitoring
+│   │   ├── MachineProcessMonitoring
+│   │   └── PPEBehavioralMonitoring
 │   ├── Operational
 │   │   ├── Alerts
 │   │   ├── Checklists
@@ -433,6 +901,13 @@ PlantSafety
 │   │   ├── Events
 │   │   ├── Repositories
 │   │   └── ValueObjects
+│   ├── PermitToWork
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── PermitExpiration
+│   │   ├── PermitScheduling
+│   │   ├── PermitTemplate
+│   │   └── PermitWorkflow
 │   ├── PlanningProjects
 │   │   ├── Entities
 │   │   ├── Enums
@@ -440,6 +915,38 @@ PlantSafety
 │   │   ├── Services
 │   │   ├── Specifications
 │   │   └── ValueObjects
+│   ├── PPE
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── PPEAssignment
+│   │   ├── PPECategory
+│   │   ├── PPEInventory
+│   │   ├── PPETrainingFit
+│   │   └── PPEZoneMapping
+│   ├── ProcessManagement
+│   │   ├── Aggregates
+│   │   ├── Events
+│   │   ├── Repositories
+│   │   └── ValueObjects
+│   ├── RiskManagement
+│   │   ├── Aggregates
+│   │   ├── DomainEvents
+│   │   ├── Entities
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Factories
+│   │   ├── Interfaces
+│   │   ├── Policies
+│   │   ├── Rules
+│   │   ├── Services
+│   │   ├── Snapshots
+│   │   ├── Specifications
+│   │   └── ValueObjects
+│   ├── SafetyCulture
+│   │   ├── CultureAssessment
+│   │   ├── SmartEnums
+│   │   └── StopWorkEvent
 │   ├── SafetyEvents
 │   │   ├── Aggregates
 │   │   ├── CrisisManagement
@@ -452,12 +959,57 @@ PlantSafety
 │   │   ├── Repositories
 │   │   ├── RootCauseAnalysis
 │   │   └── ValueObjects
-│   ├── Sustainability
+│   ├── SafetyPolicies
 │   │   ├── Aggregates
+│   │   ├── DomainEvents
+│   │   ├── Entities
+│   │   ├── Enums
 │   │   ├── Events
-│   │   ├── Repositories
+│   │   ├── Exceptions
+│   │   ├── Factories
+│   │   ├── Interfaces
+│   │   ├── Policies
+│   │   ├── Rules
+│   │   ├── Services
+│   │   ├── Snapshots
+│   │   ├── Specifications
 │   │   └── ValueObjects
-│   ├── Training
+│   ├── SafetyProcedures
+│   │   ├── Aggregates
+│   │   ├── EmergencyResponsePlanning
+│   │   ├── ErgonomicsWorkstationDesign
+│   │   ├── Events
+│   │   ├── HazardCommunicationRightToKnow
+│   │   ├── LotoProcedures
+│   │   ├── MachineGuardingInspections
+│   │   ├── MaterialHandlingStorage
+│   │   ├── PpePolicies
+│   │   ├── Repositories
+│   │   └── RoutineSafetyAuditsIncidentReporting
+│   ├── Scheduling
+│   │   ├── Aggregates
+│   │   ├── EmergencyDrillPlanning
+│   │   ├── Events
+│   │   ├── HazardIsolationSequencing
+│   │   ├── PMScheduling
+│   │   ├── ShiftFatigue
+│   │   └── WorkOrderPriority
+│   ├── Scorecards
+│   │   ├── Aggregates
+│   │   ├── DomainEvents
+│   │   ├── Entities
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Factories
+│   │   ├── Interfaces
+│   │   ├── Policies
+│   │   ├── Rules
+│   │   ├── Services
+│   │   ├── Snapshots
+│   │   ├── Specifications
+│   │   └── ValueObjects
+│   ├── Sustainability
 │   │   ├── Aggregates
 │   │   ├── Events
 │   │   ├── Repositories
@@ -468,23 +1020,50 @@ PlantSafety
 │       ├── Repositories
 │       └── ValueObjects
 ├── PlantSafety.Infrastructure
+│   ├── AccidentManagement
+│   │   ├── DependencyInjection
+│   │   ├── Persistence
+│   │   └── Sql
 │   ├── AiGovernance
+│   │   └── Sql
 │   ├── AiSafetyIntelligence
 │   │   ├── AiInvestigations
 │   │   ├── AiTraining
 │   │   ├── DataLake
 │   │   └── PredictiveSafety
+│   ├── Alerts
+│   │   ├── Alert
+│   │   ├── DependencyInjection
+│   │   └── Sql
 │   ├── Analytics
 │   │   ├── Culture
 │   │   ├── Dashboard
+│   │   ├── DependencyInjection
 │   │   ├── Engagement
+│   │   ├── Persistence
+│   │   ├── Predictive
 │   │   ├── PredictiveAnalytics
-│   │   └── ScoreCards
+│   │   ├── Reporting
+│   │   ├── Schedules
+│   │   ├── ScoreCards
+│   │   ├── Sql
+│   │   └── TrendAnalysis
+│   ├── Auditing
+│   │   ├── AuditEngagement
+│   │   ├── AuditFinding
+│   │   ├── DependencyInjection
+│   │   └── Sql
 │   ├── BackgroundJobs
 │   ├── bin
 │   │   └── Debug
 │   ├── Caching
+│   ├── Checklists
+│   │   ├── ChecklistCompletion
+│   │   ├── ChecklistTemplate
+│   │   ├── DependencyInjection
+│   │   └── Sql
 │   ├── Common
+│   │   ├── Clock
 │   │   ├── Configuration
 │   │   ├── Constants
 │   │   ├── Exceptions
@@ -492,49 +1071,186 @@ PlantSafety
 │   │   ├── Logging
 │   │   ├── Mapping
 │   │   ├── Middleware
+│   │   ├── Persistence
 │   │   ├── Pipelines
 │   │   ├── Serialization
 │   │   └── Utilities
 │   ├── Compliance
 │   │   ├── Auditing
 │   │   ├── Certification
+│   │   ├── Commands
 │   │   ├── Compliance
+│   │   ├── DependencyInjection
 │   │   ├── ManagementOfChange
+│   │   ├── Obligations
 │   │   ├── Permits
+│   │   ├── Persistence
 │   │   ├── Policies
+│   │   ├── Policy
 │   │   ├── Procedures
-│   │   └── RegulatoryCalendar
+│   │   ├── RegulatoryCalendar
+│   │   ├── RegulatoryRequirements
+│   │   ├── Sql
+│   │   └── Tracking
 │   ├── ContinuousImprovement
 │   │   ├── CAPA
-│   │   └── RCA
+│   │   ├── DependencyInjection
+│   │   ├── Persistence
+│   │   ├── RCA
+│   │   └── Sql
+│   ├── ContractorSafety
+│   │   ├── ActiveMonitoringAuditing
+│   │   ├── DependencyInjection
+│   │   ├── IncidentTrackingPerformanceEvaluation
+│   │   ├── PermitToWork
+│   │   ├── Persistence
+│   │   ├── PreQualificationVetting
+│   │   ├── SiteOrientation
+│   │   └── Sql
 │   ├── ContractorVisitor
 │   ├── CrossDomain
+│   │   ├── Administration
+│   │   ├── Backup
+│   │   ├── Cleanup
 │   │   ├── Employees
 │   │   ├── Machines
 │   │   ├── Operators
+│   │   ├── Permissions
+│   │   ├── Restore
+│   │   ├── Roles
+│   │   ├── Sql
+│   │   ├── Updates
+│   │   ├── Users
 │   │   └── WorkCenters
+│   ├── Dashboards
+│   │   ├── Dashboard
+│   │   ├── DependencyInjection
+│   │   ├── Sql
+│   │   └── Widget
 │   ├── DependencyInjection
 │   ├── DigitalTwin
+│   │   └── Sql
+│   ├── EmployeeSafety
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyPreparedness
+│   │   ├── EnvironmentalHealthMonitoring
+│   │   ├── ErgonomicsAndMaterialHandling
+│   │   ├── HazardCommunicationTraining
+│   │   ├── LotoPrograms
+│   │   ├── MachineGuarding
+│   │   ├── Persistence
+│   │   ├── Ppe
+│   │   └── Sql
 │   ├── EnterpriseFabric
+│   │   └── Sql
 │   ├── EnvironmentalHealth
-│   │   └── EnvironmentalMonitoring
+│   │   ├── EnvironmentalMonitoring
+│   │   └── Sql
 │   ├── ExternalServices
+│   ├── Features
+│   │   ├── AiGovernance
+│   │   ├── Analytics
+│   │   ├── Compliance
+│   │   ├── ContinuousImprovement
+│   │   ├── DependencyInjection
+│   │   ├── DigitalTwin
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── Financials
+│   │   ├── Operational
+│   │   ├── PlanningProjects
+│   │   ├── ProcessManagement
+│   │   ├── SafetyEvents
+│   │   ├── Sustainability
+│   │   └── WorkerWellBeing
 │   ├── FileStorage
 │   ├── Financials
+│   │   ├── DependencyInjection
 │   │   ├── Persistence
 │   │   ├── Services
 │   │   └── Sql
 │   ├── Governance
+│   ├── HealthChecks
+│   │   ├── DependencyInjection
+│   │   ├── Persistence
+│   │   └── Sql
 │   ├── HumanFactors
 │   │   ├── Ergonomics
 │   │   └── FatigueManagement
 │   ├── Identity
+│   ├── Integrations
+│   │   ├── Analytics
+│   │   ├── Analyzers
+│   │   ├── Auditing
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── Documents
+│   │   ├── Email
+│   │   ├── Export
+│   │   ├── Import
+│   │   ├── IoT
+│   │   ├── Notifications
+│   │   ├── Reporting
+│   │   ├── Sql
+│   │   └── Texting
+│   ├── Intelligence
+│   │   ├── AITraining
+│   │   ├── AllInvestigations
+│   │   ├── DataLake
+│   │   ├── DependencyInjection
+│   │   ├── PredictiveSafety
+│   │   └── Sql
+│   ├── MachineSafety
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyStopDevices
+│   │   ├── LotoSystems
+│   │   ├── MachineGuardsBarriers
+│   │   ├── Persistence
+│   │   ├── PresenceSensingDevices
+│   │   ├── SafetyValvesRelays
+│   │   ├── Sql
+│   │   └── TwoHandControls
 │   ├── Messaging
 │   │   ├── Consumers
+│   │   ├── CrossModule
 │   │   ├── Publishers
 │   │   └── Sagas
 │   ├── obj
 │   │   └── Debug
+│   ├── Observability
+│   │   ├── AutomatedIncidentDetection
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── EnvironmentalAssetMonitoring
+│   │   ├── FacilityTrafficMonitoring
+│   │   ├── MachineProcessMonitoring
+│   │   ├── PPEBehavioralMonitoring
+│   │   └── Sql
+│   ├── Operational
+│   │   ├── Alerts
+│   │   ├── Checklists
+│   │   ├── Commands
+│   │   ├── CompetencyManagement
+│   │   ├── Contractor
+│   │   ├── DependencyInjection
+│   │   ├── EquipmentSafety
+│   │   ├── Ergonomics
+│   │   ├── FatigueManagement
+│   │   ├── HazardAssessments
+│   │   ├── HazardousMaterials
+│   │   ├── IndustrialHygiene
+│   │   ├── Inspections
+│   │   ├── JobSafetyAnalysis
+│   │   ├── LockoutTagout
+│   │   ├── PermitsToWork
+│   │   ├── PPEManagement
+│   │   ├── PredictiveMaintenance
+│   │   ├── PreventiveMaintenance
+│   │   ├── Repositories
+│   │   ├── RiskManagement
+│   │   ├── Schedules
+│   │   ├── Sql
+│   │   └── Training
 │   ├── OperationalSafety
 │   │   ├── Alerts
 │   │   ├── Checklists
@@ -547,33 +1263,107 @@ PlantSafety
 │   │   ├── RiskManagement
 │   │   ├── Schedules
 │   │   └── WorkforceSafety
+│   ├── Operations
+│   │   ├── Archival
+│   │   ├── Backup
+│   │   ├── Configuration
+│   │   ├── Monitoring
+│   │   ├── SchemaGuard
+│   │   └── SystemHealth
+│   ├── PermitToWork
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── PermitExpiration
+│   │   ├── PermitScheduling
+│   │   ├── PermitTemplate
+│   │   ├── PermitWorkflow
+│   │   └── Sql
 │   ├── Persistence
 │   │   ├── Configurations
 │   │   ├── ConnectionFactory
 │   │   ├── Dapper
+│   │   ├── Migrations
+│   │   ├── Reflection
 │   │   ├── Repositories
 │   │   ├── Scripts
 │   │   └── UnitOfWork
 │   ├── PlanningProjects
+│   │   ├── DependencyInjection
 │   │   ├── Persistence
 │   │   ├── Services
 │   │   └── Sql
+│   ├── PPE
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── PPEAssignment
+│   │   ├── PPECategory
+│   │   ├── PPEInventory
+│   │   ├── PPETrainingFit
+│   │   ├── PPEZoneMapping
+│   │   └── Sql
+│   ├── ProcessManagement
+│   │   └── Sql
+│   ├── RiskManagement
+│   │   ├── DependencyInjection
+│   │   ├── Persistence
+│   │   └── Sql
+│   ├── SafetyCulture
+│   │   ├── CultureAssessment
+│   │   ├── DependencyInjection
+│   │   ├── Sql
+│   │   └── StopWorkEvent
 │   ├── SafetyEvents
+│   │   ├── Commands
 │   │   ├── CrisisManagement
+│   │   ├── DependencyInjection
 │   │   ├── DrillsAndExercises
 │   │   ├── EmergencyManagement
 │   │   ├── IncidentManagement
 │   │   ├── NearMisses
 │   │   ├── Observation
-│   │   └── RootCauseAnalysis
+│   │   ├── Persistence
+│   │   ├── RootCauseAnalysis
+│   │   └── Sql
+│   ├── SafetyPolicies
+│   │   ├── DependencyInjection
+│   │   ├── Persistence
+│   │   └── Sql
+│   ├── SafetyProcedures
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyResponsePlanning
+│   │   ├── ErgonomicsWorkstationDesign
+│   │   ├── HazardCommunicationRightToKnow
+│   │   ├── LotoProcedures
+│   │   ├── MachineGuardingInspections
+│   │   ├── MaterialHandlingStorage
+│   │   ├── Persistence
+│   │   ├── PpePolicies
+│   │   ├── RoutineSafetyAuditsIncidentReporting
+│   │   └── Sql
+│   ├── Scheduling
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── EmergencyDrillPlanning
+│   │   ├── HazardIsolationSequencing
+│   │   ├── PMScheduling
+│   │   ├── ShiftFatigue
+│   │   ├── Sql
+│   │   └── WorkOrderPriority
+│   ├── Scorecards
+│   │   ├── DependencyInjection
+│   │   ├── Persistence
+│   │   └── Sql
 │   ├── Search
 │   │   └── IndexDefinitions
 │   ├── Sustainability
+│   │   └── Sql
 │   ├── Training
 │   │   └── CompetencyManagement
 │   └── WorkerWellBeing
+│       ├── Sql
 │       └── Wellness
 ├── PlantSafety.IntegrationTests
+│   ├── AccidentManagement
 │   ├── Analytics
 │   │   ├── Culture
 │   │   ├── Dashboard
@@ -592,6 +1382,7 @@ PlantSafety
 │   │   └── TestFixtures
 │   ├── Compliance
 │   │   ├── Auditing
+│   │   ├── BulkUpdate
 │   │   ├── Certification
 │   │   ├── Compliance
 │   │   ├── ManagementOfChange
@@ -601,11 +1392,13 @@ PlantSafety
 │   │   └── RegulatoryCalendar
 │   ├── ContinuousImprovement
 │   │   ├── CAPA
+│   │   ├── Export
 │   │   └── RCA
 │   ├── Events
 │   ├── Financials
 │   │   ├── Api
 │   │   ├── EndToEnd
+│   │   ├── Roi
 │   │   └── Sql
 │   ├── Fixtures
 │   ├── Helpers
@@ -613,7 +1406,11 @@ PlantSafety
 │   │   ├── Messaging
 │   │   └── Persistence
 │   ├── Integrations
+│   │   ├── Analytics
+│   │   ├── Analyzers
+│   │   ├── Auditing
 │   │   ├── BackgroundServices
+│   │   ├── Commands
 │   │   ├── Documents
 │   │   ├── Email
 │   │   ├── Export
@@ -632,6 +1429,7 @@ PlantSafety
 │   │   └── Debug
 │   ├── Operational
 │   │   ├── Alerts
+│   │   ├── BulkUpdate
 │   │   ├── Checklists
 │   │   ├── CompetencyManagement
 │   │   ├── Contractor
@@ -651,12 +1449,16 @@ PlantSafety
 │   │   ├── Training
 │   │   ├── Wellness
 │   │   └── WorkforceSafety
+│   ├── Operations
+│   │   └── AuditViewer
 │   ├── PlanningProjects
 │   │   ├── Api
 │   │   ├── EndToEnd
+│   │   ├── Projects
 │   │   └── Sql
 │   ├── Queries
 │   ├── Repositories
+│   ├── RiskManagement
 │   ├── SafetyEvents
 │   │   ├── CrisisManagement
 │   │   ├── DrillsAndExercises
@@ -669,17 +1471,35 @@ PlantSafety
 │       ├── Snapshot
 │       └── Utilities
 ├── PlantSafety.Intelligence
-│   ├── AIInvestigations
-│   ├── AITraining
+│   └── obj
+│       └── Debug
+├── PlantSafety.PerformanceTests
+│   ├── Alerts
 │   ├── bin
 │   │   └── Debug
-│   ├── DataLake
-│   ├── FeatureEngineering
-│   ├── ModelRegistry
+│   └── obj
+│       └── Debug
+├── PlantSafety.ResilienceTests
+│   ├── bin
+│   │   └── Debug
+│   ├── Chaos
 │   ├── obj
 │   │   └── Debug
-│   ├── Pipelines
-│   └── PredictiveSafety
+│   ├── Outbox
+│   └── Sensors
+├── PlantSafety.ScenarioTests
+│   ├── Alerts
+│   ├── bin
+│   │   └── Debug
+│   └── obj
+│       └── Debug
+├── PlantSafety.SecurityTests
+│   ├── bin
+│   │   └── Debug
+│   ├── Identity
+│   ├── obj
+│   │   └── Debug
+│   └── Persistence
 ├── PlantSafety.SharedKernel
 │   ├── Abstractions
 │   │   ├── Logging
@@ -742,6 +1562,20 @@ PlantSafety
 │   │   └── Yaml
 │   ├── Time
 │   └── Validation
+├── PlantSafety.SmokeTests
+│   ├── bin
+│   │   └── Debug
+│   ├── Domain
+│   ├── obj
+│   │   └── Debug
+│   └── Repositories
+├── PlantSafety.StressTests
+│   ├── Alerts
+│   ├── bin
+│   │   └── Debug
+│   ├── obj
+│   │   └── Debug
+│   └── Support
 ├── PlantSafety.Tests
 │   ├── Analytics
 │   │   ├── Culture
@@ -749,7 +1583,10 @@ PlantSafety
 │   │   ├── Engagement
 │   │   ├── PredictiveAnalytics
 │   │   └── ScoreCards
+│   ├── Api
+│   │   └── Authorization
 │   ├── Application
+│   │   ├── AccidentManagement
 │   │   ├── AiGovernance
 │   │   ├── AiSafetyIntelligence
 │   │   ├── Analytics
@@ -762,7 +1599,9 @@ PlantSafety
 │   │   ├── HumanFactors
 │   │   ├── Integrations
 │   │   ├── OperationalSafety
+│   │   ├── Operations
 │   │   ├── Pipeline
+│   │   ├── RiskManagement
 │   │   ├── SafetyEvents
 │   │   ├── Sustainability
 │   │   ├── Training
@@ -791,6 +1630,7 @@ PlantSafety
 │   │   ├── CAPA
 │   │   └── RCA
 │   ├── Domain
+│   │   ├── AccidentManagement
 │   │   ├── AiGovernance
 │   │   ├── AiSafetyIntelligence
 │   │   ├── Analytics
@@ -804,6 +1644,7 @@ PlantSafety
 │   │   ├── HumanFactors
 │   │   ├── Integrations
 │   │   ├── OperationalSafety
+│   │   ├── RiskManagement
 │   │   ├── SafetyEvents
 │   │   ├── Sustainability
 │   │   ├── Training
@@ -813,6 +1654,8 @@ PlantSafety
 │   │   ├── Domain
 │   │   ├── Mappings
 │   │   └── Queries
+│   ├── Infrastructure
+│   │   └── Common
 │   ├── Integrations
 │   │   ├── BackgroundServices
 │   │   ├── Documents
@@ -872,17 +1715,92 @@ PlantSafety
 │   │   ├── Financials
 │   │   ├── Layout
 │   │   ├── Pages
-│   │   └── ProjectPlanning
+│   │   ├── ProjectPlanning
+│   │   └── Shared
 │   ├── Infrastructure
 │   │   ├── ApiClients
 │   │   ├── Auth
-│   │   └── Correlation
+│   │   ├── Correlation
+│   │   └── Realtime
 │   ├── Models
 │   │   ├── Auth
 │   │   └── Common
 │   ├── Modules
+│   │   ├── Admin
+│   │   ├── AiGovernance
+│   │   ├── AiInvestigation
+│   │   ├── AiTraining
 │   │   ├── Alerts
-│   │   └── DiagnosticsViewer
+│   │   ├── Auditing
+│   │   ├── Certifications
+│   │   ├── Checklist
+│   │   ├── Compliance
+│   │   ├── ContractorManagement
+│   │   ├── CrisisManagement
+│   │   ├── Culture
+│   │   ├── CultureAnalytics
+│   │   ├── DashboardAnalytics
+│   │   ├── DataLake
+│   │   ├── DiagnosticsViewer
+│   │   ├── DigitalTwin
+│   │   ├── DocumentManagement
+│   │   ├── Drills
+│   │   ├── EmergencyManagement
+│   │   ├── EngagementAnalytics
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── EquipmentSafety
+│   │   ├── Ergonomics
+│   │   ├── Exports
+│   │   ├── FatigueManagement
+│   │   ├── Financials
+│   │   ├── Governance
+│   │   ├── HazardAssessment
+│   │   ├── HazMat
+│   │   ├── HumanFactors
+│   │   ├── IncidentManagement
+│   │   ├── IndustrialHygiene
+│   │   ├── Inspections
+│   │   ├── Jsa
+│   │   ├── Loto
+│   │   ├── MachineManagement
+│   │   ├── Maintenance
+│   │   ├── MOC
+│   │   ├── NearMiss
+│   │   ├── Observations
+│   │   ├── OperationsArchival
+│   │   ├── OperationsAuditViewer
+│   │   ├── OperationsBackup
+│   │   ├── OperationsConfiguration
+│   │   ├── OperationsMonitoring
+│   │   ├── OperationsSystemHealth
+│   │   ├── Permits
+│   │   ├── PlanningProjects
+│   │   ├── Policies
+│   │   ├── PPE
+│   │   ├── PredictiveAnalytics
+│   │   ├── PredictiveMaintenance
+│   │   ├── PredictiveSafety
+│   │   ├── ProcessManagement
+│   │   ├── ProductionTracking
+│   │   ├── ProjectBudgeting
+│   │   ├── ProjectScheduling
+│   │   ├── Rca
+│   │   ├── RegulatoryCalendar
+│   │   ├── Reporting
+│   │   ├── ReportingAnalytics
+│   │   ├── ROI
+│   │   ├── Routing
+│   │   ├── SafetyPrograms
+│   │   ├── Scheduling
+│   │   ├── SchedulingAnalytics
+│   │   ├── SchemaGuard
+│   │   ├── Scorecards
+│   │   ├── Sustainability
+│   │   ├── Training
+│   │   ├── TrendAnalysis
+│   │   ├── WorkerManagement
+│   │   └── WorkerWellBeing
 │   ├── obj
 │   │   └── Debug
 │   ├── Platforms
@@ -901,7 +1819,8 @@ PlantSafety
 │   ├── Routing
 │   ├── State
 │   └── wwwroot
-│       └── css
+│       ├── css
+│       └── js
 ├── src
 ├── tests
 ├── tools

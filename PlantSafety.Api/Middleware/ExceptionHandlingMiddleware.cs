@@ -31,6 +31,7 @@
 
 using System.Text.Json;
 using PlantSafety.Api.Models;
+using PlantSafety.Application.Common.Errors;
 
 namespace PlantSafety.Api.Middleware;
 
@@ -82,16 +83,29 @@ public sealed class ExceptionHandlingMiddleware
                 context.Request.Path,
                 correlationId);
 
-            await WriteErrorResponseAsync(context, correlationId);
+            await WriteErrorResponseAsync(context, ex, correlationId);
         }
     }
 
-    private static async Task WriteErrorResponseAsync(HttpContext context, string correlationId)
+    // Maps the well-known Application-layer exception types to the HTTP status codes their own
+    // doc comments already promise (ConcurrencyConflictException -> 409, ApplicationAuthorizationException
+    // -> 403, DomainRuleException -> 400) instead of the previous blanket 500. This middleware was
+    // the only thing standing between those documented contracts and every unhandled exception
+    // actually surfacing as a 500 Internal Server Error, which silently broke ETag/optimistic-
+    // concurrency conflict reporting for any handler that lets the exception propagate.
+    private static async Task WriteErrorResponseAsync(HttpContext context, Exception ex, string correlationId)
     {
-        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        var problem = ex switch
+        {
+            ConcurrencyConflictException => ProblemDetailsExtensions.ConflictProblem(ex.Message, correlationId),
+            ApplicationAuthorizationException => ProblemDetailsExtensions.ForbiddenProblem(correlationId),
+            DomainRuleException => ProblemDetailsExtensions.ValidationProblem([ex.Message], correlationId),
+            _ => ProblemDetailsExtensions.InternalServerErrorProblem(correlationId)
+        };
+
+        context.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/problem+json";
 
-        var problem = ProblemDetailsExtensions.InternalServerErrorProblem(correlationId);
         var json = JsonSerializer.Serialize(problem, JsonOptions);
         await context.Response.WriteAsync(json);
     }

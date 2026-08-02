@@ -7925,17 +7925,17 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\dross\\.nuget\\packages\\": {},
+    "D:\\NuGetPackages": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.IntegrationTests\\PlantSafety.IntegrationTests.csproj",
+      "projectUniqueName": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.IntegrationTests\\PlantSafety.IntegrationTests.csproj",
       "projectName": "PlantSafety.IntegrationTests",
-      "projectPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.IntegrationTests\\PlantSafety.IntegrationTests.csproj",
-      "packagesPath": "C:\\Users\\dross\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.IntegrationTests\\obj\\",
+      "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.IntegrationTests\\PlantSafety.IntegrationTests.csproj",
+      "packagesPath": "D:\\NuGetPackages",
+      "outputPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.IntegrationTests\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -7959,20 +7959,20 @@
           "framework": "net8.0",
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Api\\PlantSafety.Api.csproj": {
-              "projectPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Api\\PlantSafety.Api.csproj"
+            "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Api\\PlantSafety.Api.csproj": {
+              "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Api\\PlantSafety.Api.csproj"
             },
-            "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Application\\PlantSafety.Application.csproj": {
-              "projectPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Application\\PlantSafety.Application.csproj"
+            "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Application\\PlantSafety.Application.csproj": {
+              "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Application\\PlantSafety.Application.csproj"
             },
-            "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Domain\\PlantSafety.Domain.csproj": {
-              "projectPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Domain\\PlantSafety.Domain.csproj"
+            "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Domain\\PlantSafety.Domain.csproj": {
+              "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Domain\\PlantSafety.Domain.csproj"
             },
-            "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Infrastructure\\PlantSafety.Infrastructure.csproj": {
-              "projectPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.Infrastructure\\PlantSafety.Infrastructure.csproj"
+            "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Infrastructure\\PlantSafety.Infrastructure.csproj": {
+              "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Infrastructure\\PlantSafety.Infrastructure.csproj"
             },
-            "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj": {
-              "projectPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj"
+            "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj": {
+              "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj"
             }
           }
         }

@@ -8,13 +8,17 @@
 --  SchemaVersion:  2026.1
 --  Description:    Updates all mutable fields of an Accident aggregate root row. Backs
 --                  IAccidentRepository.UpdateAsync. Additive-only evolution.
---  UPDATED:        2026-07-28 -- returns the post-update row's ETag (CONVERT(NVARCHAR(34),
---                  CAST(RowVersion AS BINARY(8)), 1)) via a trailing SELECT so callers have an
---                  up-to-date ETag immediately after update without a separate round-trip. Schema-
---                  only: no @ETag input parameter or conflict-rejection logic is introduced here --
---                  IAccidentRepository.UpdateAsync has no ETag concept to enforce (see
---                  AccidentDapperRepository.AccidentRow.ETag remarks); the pre-existing
---                  IF NOT EXISTS/THROW 50004 existence check above is unchanged.
+--  UPDATED:        2026-07-29 -- Added @ETag optimistic-concurrency guard against the native
+--                  RowVersion column (Phase 4 AccidentManagement concurrency remediation; mirrors
+--                  usp_Risk_Update / usp_PermitWorkflow_Update). @RowsAffected is captured via
+--                  @@ROWCOUNT immediately after the UPDATE (before the audit INSERT, which would
+--                  otherwise reset it) and returned via SELECT in place of the previous ETag-only
+--                  SELECT -- callers MUST invoke via ExecuteScalarAsync (not ExecuteNonQuery), since
+--                  SET NOCOUNT ON makes ExecuteNonQuery always return -1, silently disabling the
+--                  concurrency check. A stale/wrong @ETag or a missing/deleted row both naturally
+--                  produce zero rows affected. The pre-existing IF NOT EXISTS/THROW 50004 existence
+--                  check (already TenantId-scoped) is unchanged and still fires first for a
+--                  genuinely missing/deleted row.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -34,7 +38,8 @@ CREATE OR ALTER PROCEDURE [AccidentManagement].[usp_Accident_Update]
     @RegulatoryReferenceNumber NVARCHAR(100) = NULL,
     @RegulatoryFiledAtUtc      DATETIME2(3) = NULL,
     @ClosedAtUtc               DATETIME2(3) = NULL,
-    @UpdatedBy                 UNIQUEIDENTIFIER = NULL
+    @UpdatedBy                 UNIQUEIDENTIFIER = NULL,
+    @ETag                      NVARCHAR(64) = NULL
 AS
 SET NOCOUNT ON;
 BEGIN
@@ -62,7 +67,10 @@ BEGIN
             UpdatedBy = @UpdatedBy,
             UpdatedAtUtc = SYSUTCDATETIME(),
             ConcurrencyToken = NEWID()
-        WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0;
+        WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0
+          AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
 
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -71,9 +79,7 @@ BEGIN
         BEGIN CATCH
         END CATCH;
 
-        SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
-        FROM [AccidentManagement].[Accident]
-        WHERE AccidentId = @AccidentId AND TenantId = @TenantId;
+        SELECT @RowsAffected;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'AccidentId=', @AccidentId, N'; User=', SYSTEM_USER);

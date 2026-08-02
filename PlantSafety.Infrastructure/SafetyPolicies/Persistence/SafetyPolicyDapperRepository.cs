@@ -168,6 +168,12 @@ public sealed class SafetyPolicyDapperRepository(
         }
 
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private async Task<IReadOnlyList<PolicyAcknowledgmentRow>> GetAcknowledgmentRowsAsync(SafetyPolicyId id, CancellationToken cancellationToken)

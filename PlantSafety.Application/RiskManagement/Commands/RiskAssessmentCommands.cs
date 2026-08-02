@@ -5,8 +5,12 @@
 //   effectiveness validation, periodic review, and closure. Carries the full command envelope per
 //   Handbook Rule 2.1.
 // SchemaVersion: 1
+// UPDATED: 2026-07-29 -- All 7 mutating commands now implement IConcurrencyAwareCommand (Phase 4
+//   RiskManagement concurrency remediation): callers should supply the ETag captured from a prior
+//   read; a stale value results in ConcurrencyConflictException. Mirrors PermitToWork's commands.
 
 using MediatR;
+using PlantSafety.Application.Behaviors.Concurrency;
 using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.RiskManagement.Commands;
@@ -14,39 +18,67 @@ namespace PlantSafety.Application.RiskManagement.Commands;
 /// <summary>Records the Severity x Likelihood risk score for a hazard (Phase 1, Step 2).</summary>
 public sealed record ScoreRiskCommand(
     Guid CommandId, Guid CorrelationId, Guid CausationId, DateTime RequestedAtUtc,
-    Guid TenantId, Guid RiskId, int Severity, int Likelihood, Guid ScoredBy) : IRequest<Result<RiskStatusResult>>;
+    Guid TenantId, Guid RiskId, int Severity, int Likelihood, Guid ScoredBy) : IRequest<Result<RiskStatusResult>>, IConcurrencyAwareCommand
+{
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
+}
 
 /// <summary>Assigns a P1-P4 remediation priority and documents the finding (Phase 1, Steps 3-4).</summary>
 public sealed record PrioritizeRiskCommand(
     Guid CommandId, Guid CorrelationId, Guid CausationId, DateTime RequestedAtUtc,
-    Guid TenantId, Guid RiskId, string? Priority, Guid PrioritizedBy) : IRequest<Result<RiskStatusResult>>;
+    Guid TenantId, Guid RiskId, string? Priority, Guid PrioritizedBy) : IRequest<Result<RiskStatusResult>>, IConcurrencyAwareCommand
+{
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
+}
 
 /// <summary>Applies a control measure from the Hierarchy of Controls (Phase 2, Steps 5-6).</summary>
 public sealed record ApplyRiskControlMeasureCommand(
     Guid CommandId, Guid CorrelationId, Guid CausationId, DateTime RequestedAtUtc,
     Guid TenantId, Guid RiskId, string HierarchyLevel, string Description, string? Justification, Guid ResponsiblePersonId)
-    : IRequest<Result<ApplyRiskControlMeasureResult>>;
+    : IRequest<Result<ApplyRiskControlMeasureResult>>, IConcurrencyAwareCommand
+{
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
+}
 
 /// <summary>Validates residual risk after controls are applied (Phase 2, Step 7).</summary>
 public sealed record ValidateRiskEffectivenessCommand(
     Guid CommandId, Guid CorrelationId, Guid CausationId, DateTime RequestedAtUtc,
     Guid TenantId, Guid RiskId, int ResidualSeverity, int ResidualLikelihood, Guid ValidatedBy)
-    : IRequest<Result<ValidateRiskEffectivenessResult>>;
+    : IRequest<Result<ValidateRiskEffectivenessResult>>, IConcurrencyAwareCommand
+{
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
+}
 
 /// <summary>Starts the periodic monitoring/review cycle for a Mitigated risk (Phase 3, Steps 9-10).</summary>
 public sealed record StartRiskReviewCycleCommand(
     Guid CommandId, Guid CorrelationId, Guid CausationId, DateTime RequestedAtUtc,
-    Guid TenantId, Guid RiskId, Guid StartedBy) : IRequest<Result<RiskStatusResult>>;
+    Guid TenantId, Guid RiskId, Guid StartedBy) : IRequest<Result<RiskStatusResult>>, IConcurrencyAwareCommand
+{
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
+}
 
 /// <summary>Completes a periodic review cycle, bumping the revision and returning the risk to Mitigated.</summary>
 public sealed record CompleteRiskReviewCommand(
     Guid CommandId, Guid CorrelationId, Guid CausationId, DateTime RequestedAtUtc,
-    Guid TenantId, Guid RiskId, string? NewReviewCadence, Guid ReviewedBy) : IRequest<Result<RiskStatusResult>>;
+    Guid TenantId, Guid RiskId, string? NewReviewCadence, Guid ReviewedBy) : IRequest<Result<RiskStatusResult>>, IConcurrencyAwareCommand
+{
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
+}
 
 /// <summary>Formally closes a Mitigated or UnderReview risk.</summary>
 public sealed record CloseRiskCommand(
     Guid CommandId, Guid CorrelationId, Guid CausationId, DateTime RequestedAtUtc,
-    Guid TenantId, Guid RiskId, Guid ClosedBy) : IRequest<Result<RiskStatusResult>>;
+    Guid TenantId, Guid RiskId, Guid ClosedBy) : IRequest<Result<RiskStatusResult>>, IConcurrencyAwareCommand
+{
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
+}
 
 /// <summary>Result payload shared by Risk lifecycle-transition commands.</summary>
 /// <param name="RiskId">Identity of the affected risk.</param>

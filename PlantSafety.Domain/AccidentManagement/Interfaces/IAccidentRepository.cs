@@ -8,6 +8,10 @@
 //  SchemaVersion:  2026.1
 //  Description:    Domain repository interface for the Accident aggregate root.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-29 -- UpdateAsync now takes an optimistic-concurrency ETag (Phase 4
+//                  concurrency remediation, mirrors IRiskRepository.UpdateAsync /
+//                  IPermitWorkflowRepository.UpdateAsync). Callers must supply the last-known ETag;
+//                  a stale value causes ConcurrencyConflictException rather than a blind overwrite.
 // ============================================================================
 using PlantSafety.Domain.AccidentManagement.Aggregates;
 using PlantSafety.Domain.AccidentManagement.Specifications;
@@ -34,6 +38,14 @@ public interface IAccidentRepository
     /// <summary>Persists a new Accident aggregate.</summary>
     Task AddAsync(Accident aggregate, CancellationToken cancellationToken = default);
 
-    /// <summary>Persists changes to an existing Accident aggregate.</summary>
-    Task UpdateAsync(Accident aggregate, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Persists changes to an existing Accident aggregate, enforcing optimistic concurrency.
+    /// </summary>
+    /// <param name="aggregate">The mutated aggregate to persist.</param>
+    /// <param name="eTag">
+    /// The last-known concurrency token (from a prior read). A stale or mismatched value causes
+    /// the persistence layer to reject the write as a concurrency conflict (zero rows affected).
+    /// </param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    Task UpdateAsync(Accident aggregate, string? eTag, CancellationToken cancellationToken = default);
 }

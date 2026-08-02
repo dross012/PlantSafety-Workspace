@@ -13,6 +13,7 @@
 //                  CloseRiskCommandHandler) with a mocked IRiskRepository.
 //                  Isolated, deterministic, <50ms per test. No I/O, no network.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.RiskManagement.Commands;
 using PlantSafety.Domain.RiskManagement.Enums;
 using PlantSafety.Domain.RiskManagement.Interfaces;
@@ -30,7 +31,7 @@ public sealed class RiskAssessmentCommandHandlersTests : UnitTestBase
             tenantId: TestTenantId.Value, riskTitle: "Unguarded conveyor", location: "Line 3", hazardSource: "Mechanical", ownerId: TestUserId);
 
     private void ReturnsRisk(RiskAggregate risk) =>
-        _repository.GetByIdAsync(Arg.Any<RiskId>(), Arg.Any<CancellationToken>()).Returns(risk);
+        _repository.GetByIdAsync(Arg.Any<RiskId>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(risk);
 
     // ---- ScoreRiskCommandHandler -------------------------------------------------
 
@@ -48,13 +49,13 @@ public sealed class RiskAssessmentCommandHandlersTests : UnitTestBase
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be("Scored");
-        await _repository.Received(1).UpdateAsync(risk, Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpdateAsync(risk, Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ScoreRisk_WhenRiskNotFound_ShouldReturnFailure()
     {
-        _repository.GetByIdAsync(Arg.Any<RiskId>(), Arg.Any<CancellationToken>()).Returns((RiskAggregate?)null);
+        _repository.GetByIdAsync(Arg.Any<RiskId>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((RiskAggregate?)null);
 
         var handler = new ScoreRiskCommandHandler(_repository, NullLogger<ScoreRiskCommandHandler>());
         var cmd = new ScoreRiskCommand(Guid.NewGuid(), TestCorrelationId.Value, TestCausationId.Value, FixedUtcNow,
@@ -64,6 +65,7 @@ public sealed class RiskAssessmentCommandHandlersTests : UnitTestBase
 
         result.IsFailure.Should().BeTrue();
         result.Error.ErrorCode.Should().Be("RiskManagement.Risk.NotFound");
+        result.Error.Severity.Should().Be(ErrorSeverity.NotFound, "a missing Risk must map to HTTP 404, not the default 500");
     }
 
     // ---- PrioritizeRiskCommandHandler --------------------------------------------
@@ -239,7 +241,7 @@ public sealed class RiskAssessmentCommandHandlersTests : UnitTestBase
     [Fact]
     public async Task Close_WhenRiskNotFound_ShouldReturnFailure()
     {
-        _repository.GetByIdAsync(Arg.Any<RiskId>(), Arg.Any<CancellationToken>()).Returns((RiskAggregate?)null);
+        _repository.GetByIdAsync(Arg.Any<RiskId>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((RiskAggregate?)null);
 
         var handler = new CloseRiskCommandHandler(_repository, NullLogger<CloseRiskCommandHandler>());
         var cmd = new CloseRiskCommand(Guid.NewGuid(), TestCorrelationId.Value, TestCausationId.Value, FixedUtcNow,
@@ -248,5 +250,7 @@ public sealed class RiskAssessmentCommandHandlersTests : UnitTestBase
         var result = await handler.Handle(cmd, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+        result.Error.ErrorCode.Should().Be("RiskManagement.Risk.NotFound");
+        result.Error.Severity.Should().Be(ErrorSeverity.NotFound, "a missing Risk must map to HTTP 404, not the default 500");
     }
 }

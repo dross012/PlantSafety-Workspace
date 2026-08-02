@@ -9,6 +9,14 @@
 --  Description:    Table backing the WorkOrderPriority aggregate root (IWorkOrderPriorityRepository).
 --                  Tenant-scoped (TenantId NOT NULL uniqueidentifier).
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-30 (Phase 4 Scheduling.WorkOrderPriority concurrency remediation) --
+--                  added a native RowVersion ROWVERSION NOT NULL column, additive alongside the
+--                  pre-existing ConcurrencyToken UNIQUEIDENTIFIER DEFAULT (NEWID()) column,
+--                  matching every other Phase 1-3 module (see RiskManagement's Risk.sql for the
+--                  identical precedent). Exposed to callers as ETag via
+--                  CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) in
+--                  usp_WorkOrderPriority_GetById. Idempotent via COL_LENGTH guard; safe to re-run
+--                  against a database that already has the column.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -41,5 +49,13 @@ BEGIN
     CREATE NONCLUSTERED INDEX IX_WorkOrderPriority_TenantId_Site ON [Scheduling].[WorkOrderPriority] (TenantId, SiteId, IsDeleted);
     CREATE NONCLUSTERED INDEX IX_WorkOrderPriority_Status ON [Scheduling].[WorkOrderPriority] (Status, IsDeleted);
     CREATE NONCLUSTERED INDEX IX_WorkOrderPriority_CreatedAtUtc ON [Scheduling].[WorkOrderPriority] (CreatedAtUtc);
+END
+GO
+
+-- Additive: native ROWVERSION concurrency column, alongside the pre-existing (vestigial)
+-- ConcurrencyToken UNIQUEIDENTIFIER column -- see header comment. Idempotent.
+IF COL_LENGTH('[Scheduling].[WorkOrderPriority]', 'RowVersion') IS NULL
+BEGIN
+    ALTER TABLE [Scheduling].[WorkOrderPriority] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

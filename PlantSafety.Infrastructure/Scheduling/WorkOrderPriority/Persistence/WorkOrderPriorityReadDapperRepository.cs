@@ -40,4 +40,18 @@ public sealed class WorkOrderPriorityReadDapperRepository(
         return await queryExecutor.QueryAsync<WorkOrderPriorityItemDto>(
             "[Scheduling].[usp_WorkOrderPriority_GetRange]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<WorkOrderPriorityItemDto?> GetByIdAsync(Guid workOrderPriorityId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById read-model for WorkOrderPriority {WorkOrderPriorityId} Tenant {TenantId}", workOrderPriorityId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("WorkOrderPriorityId", workOrderPriorityId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<WorkOrderPriorityItemDto>(
+            "[Scheduling].[usp_WorkOrderPriority_GetById]", parameters, cancellationToken);
+    }
 }

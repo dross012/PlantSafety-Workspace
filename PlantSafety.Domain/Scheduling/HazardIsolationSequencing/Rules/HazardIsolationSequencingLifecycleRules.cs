@@ -17,6 +17,9 @@ public static class HazardIsolationSequencingLifecycleRules
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
     public static bool CanActivate(HazardIsolationSequencingStatus current) => current == HazardIsolationSequencingStatus.Created;
 
+    /// <summary>Returns <see langword="true"/> when a conflict may be flagged while in <paramref name="current"/>.</summary>
+    public static bool CanFlagConflict(HazardIsolationSequencingStatus current) => current == HazardIsolationSequencingStatus.Active;
+
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
     public static bool CanComplete(HazardIsolationSequencingStatus current) => current == HazardIsolationSequencingStatus.Active;
 

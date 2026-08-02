@@ -11,6 +11,14 @@
 //                  InfrastructureServiceRegistration.cs -- a human wires this extension in
 //                  centrally after all module-scoped agents finish.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-29 -- registers AccidentReadDapperRepository against
+//                  Application.AccidentManagement.Repositories.IAccidentRepository (Phase 4
+//                  read-model gap remediation). That interface shares its simple name with
+//                  Domain.AccidentManagement.Interfaces.IAccidentRepository already registered
+//                  below -- both registration lines use fully-qualified names rather than a
+//                  `using` for the Application repositories namespace, to avoid an
+//                  ambiguous-reference compile error. Mirrors
+//                  RiskManagementInfrastructureServiceRegistration's identical precedent.
 // ============================================================================
 using PlantSafety.Application.AccidentManagement.CorrectiveActionsCAPA.Repositories;
 using PlantSafety.Application.AccidentManagement.InvestigationRootCauseAnalysis.Repositories;
@@ -28,6 +36,7 @@ public static class AccidentManagementInfrastructureServiceRegistration
     public static IServiceCollection AddAccidentManagementInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IAccidentRepository, AccidentDapperRepository>();
+        services.AddScoped<PlantSafety.Application.AccidentManagement.Repositories.IAccidentRepository, AccidentReadDapperRepository>();
 
         services.AddScoped<AccidentManagementCategoryDapperRepository>();
         services.AddScoped<ISiteSecuringAndTriageRepository>(sp => sp.GetRequiredService<AccidentManagementCategoryDapperRepository>());

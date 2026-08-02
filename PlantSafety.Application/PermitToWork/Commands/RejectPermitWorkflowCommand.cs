@@ -3,8 +3,11 @@
 // FILE DESCRIPTION: Command to decline a permit request during hazard assessment, control
 // implementation, or authorization review.
 // SchemaVersion: 1
+// UPDATED: 2026-07-29 -- Implements IConcurrencyAwareCommand (Gap 2 remediation): callers should
+//   supply the ETag captured from a prior read; a stale value results in ConcurrencyConflictException.
 
 using PlantSafety.Application.Abstractions.Messaging;
+using PlantSafety.Application.Behaviors.Concurrency;
 using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.PermitToWork.Commands;
@@ -17,7 +20,7 @@ public sealed record RejectPermitWorkflowCommand(
     Guid TenantId,
     Guid PermitWorkflowId,
     Guid RejectedByUserId,
-    string Reason) : ICommand<Result<PermitWorkflowActionResult>>
+    string Reason) : ICommand<Result<PermitWorkflowActionResult>>, IConcurrencyAwareCommand
 {
     /// <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
     public DateTime RequestedAtUtc { get; init; } = DateTime.UtcNow;
@@ -30,4 +33,7 @@ public sealed record RejectPermitWorkflowCommand(
 
     /// <inheritdoc cref="ICommand{TResponse}.CausationId" />
     Guid? ICommand<Result<PermitWorkflowActionResult>>.CausationId => CausationId;
+
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
 }

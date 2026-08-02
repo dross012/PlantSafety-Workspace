@@ -44,4 +44,18 @@ public sealed class DrillsAndExercisesDapperRepository(
         return await queryExecutor.QueryAsync<DrillsAndExercisesItemDto>(
             "[SafetyEvents].[usp_DrillsAndExercises_GetDrills]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<DrillsAndExercisesDetailDto?> GetByIdAsync(Guid drillsAndExercisesId, Guid tenantId, CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetById for DrillsAndExercises {DrillsAndExercisesId} Tenant {TenantId}", drillsAndExercisesId, tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("DrillsAndExercisesId", drillsAndExercisesId)
+            .AddGuid("TenantId", tenantId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<DrillsAndExercisesDetailDto>(
+            "[SafetyEvents].[usp_DrillsAndExercises_GetById]", parameters, cancellationToken);
+    }
 }

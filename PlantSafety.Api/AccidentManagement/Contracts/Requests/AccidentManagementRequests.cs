@@ -4,6 +4,9 @@
 //   only; envelope fields (CommandId/CorrelationId/TenantId/ActorId/etc.) are populated
 //   server-side by RequestEnvelopeFactory.
 // SchemaVersion: 1
+// UPDATED: 2026-07-29 -- All mutating request DTOs gain an optional ETag (Phase 4
+//   AccidentManagement concurrency remediation). CloseAccidentInvestigationRequest is new -- that
+//   endpoint previously took no request body at all.
 
 namespace PlantSafety.Api.AccidentManagement.Contracts.Requests;
 
@@ -43,6 +46,9 @@ public sealed class AssignAccidentInvestigatorRequest
 {
     /// <summary>Identity of the investigator being assigned.</summary>
     public required Guid InvestigatorId { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for <c>POST /api/v1/accidentmanagement/{accidentId}/root-cause</c>.</summary>
@@ -53,6 +59,9 @@ public sealed class RecordAccidentRootCauseRequest
 
     /// <summary>Free-form investigation notes.</summary>
     public required string Notes { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for <c>POST /api/v1/accidentmanagement/{accidentId}/corrective-actions</c>.</summary>
@@ -69,6 +78,9 @@ public sealed class CreateAccidentCorrectiveActionRequest
 
     /// <summary>UTC due date for completion.</summary>
     public required DateTime DueAtUtc { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for <c>POST /api/v1/accidentmanagement/{accidentId}/corrective-actions/{correctiveActionId}/complete</c>.</summary>
@@ -76,6 +88,9 @@ public sealed class CompleteAccidentCorrectiveActionRequest
 {
     /// <summary>Evidence supporting completion of the corrective action.</summary>
     public required string CompletionEvidence { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for <c>POST /api/v1/accidentmanagement/{accidentId}/regulatory-report</c>.</summary>
@@ -86,6 +101,16 @@ public sealed class FileAccidentRegulatoryReportRequest
 
     /// <summary>Agency-assigned reference number for the filing.</summary>
     public required string ReferenceNumber { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
+}
+
+/// <summary>Request body for <c>POST /api/v1/accidentmanagement/{accidentId}/close</c>.</summary>
+public sealed class CloseAccidentInvestigationRequest
+{
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Query-string filters shared by all AccidentManagement category read-model endpoints.</summary>

@@ -489,17 +489,17 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\dross\\.nuget\\packages\\": {},
+    "D:\\NuGetPackages": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj",
+      "projectUniqueName": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj",
       "projectName": "PlantSafety.SharedKernel",
-      "projectPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj",
-      "packagesPath": "C:\\Users\\dross\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\dross\\source\\PlantSafety\\PlantSafety.SharedKernel\\obj\\",
+      "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.SharedKernel\\PlantSafety.SharedKernel.csproj",
+      "packagesPath": "D:\\NuGetPackages",
+      "outputPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.SharedKernel\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -9,6 +9,14 @@
 --  Description:    Table backing the PMScheduling aggregate root (IPMSchedulingRepository).
 --                  Tenant-scoped (TenantId NOT NULL uniqueidentifier).
 --                  Additive-only evolution.
+--  UPDATED:        2026-07-30 (Phase 4 Scheduling.PMScheduling concurrency remediation) -- added a
+--                  native RowVersion ROWVERSION NOT NULL column, additive alongside the pre-existing
+--                  ConcurrencyToken UNIQUEIDENTIFIER DEFAULT (NEWID()) column, matching every other
+--                  Phase 1-3 module (see RiskManagement's Risk.sql for the identical precedent).
+--                  Exposed to callers as ETag via
+--                  CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) in
+--                  usp_PMScheduling_GetById. Idempotent via COL_LENGTH guard; safe to re-run
+--                  against a database that already has the column.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -43,5 +51,13 @@ BEGIN
     CREATE NONCLUSTERED INDEX IX_PMScheduling_TenantId_Site ON [Scheduling].[PMScheduling] (TenantId, SiteId, IsDeleted);
     CREATE NONCLUSTERED INDEX IX_PMScheduling_Status ON [Scheduling].[PMScheduling] (Status, IsDeleted);
     CREATE NONCLUSTERED INDEX IX_PMScheduling_CreatedAtUtc ON [Scheduling].[PMScheduling] (CreatedAtUtc);
+END
+GO
+
+-- Additive: native ROWVERSION concurrency column, alongside the pre-existing (vestigial)
+-- ConcurrencyToken UNIQUEIDENTIFIER column -- see header comment. Idempotent.
+IF COL_LENGTH('[Scheduling].[PMScheduling]', 'RowVersion') IS NULL
+BEGIN
+    ALTER TABLE [Scheduling].[PMScheduling] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO

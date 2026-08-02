@@ -122,6 +122,12 @@ public sealed class FacilityTrafficMonitoringDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[Observability].[usp_FacilityTrafficMonitoring_Update]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <summary>Reconstructs a <see cref="FacilityTrafficMonitoring"/> aggregate from its flat read-model row.</summary>

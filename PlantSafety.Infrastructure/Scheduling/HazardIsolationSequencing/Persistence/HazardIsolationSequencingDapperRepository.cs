@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Scheduling.HazardIsolationSequencing
 //  Layer:          Infrastructure
@@ -6,16 +6,24 @@
 //  Created:        2026-07-21
 //  Author:         PlantSafety Platform Team (Claude Code infrastructure-creation-agent)
 //  SchemaVersion:  2026.1
-//  Description:    Dapper-backed implementation of IHazardIsolationSequencingRepository (Domain repository
-//                  interface for the HazardIsolationSequencing aggregate root). All DB access via stored
-//                  procedures in the [Scheduling] schema. Aggregate reconstruction uses
-//                  AggregateReflectionHydrator because HazardIsolationSequencing exposes only a private
-//                  'for rehydration only' constructor and private-setter properties.
-//                  ListAsync evaluates the supplied specification in-memory over the
-//                  full active candidate set, since the interface carries no tenant/site
-//                  scoping parameter to push down to SQL.
+//  Description:    Dapper-backed implementation of IHazardIsolationSequencingRepository (Domain
+//                  repository interface for the HazardIsolationSequencing aggregate root). All DB
+//                  access via stored procedures in the [Scheduling] schema. Aggregate reconstruction
+//                  uses AggregateReflectionHydrator because HazardIsolationSequencing exposes only a
+//                  private 'for rehydration only' constructor and private-setter properties.
+//                  ListAsync evaluates the supplied specification in-memory over the full active
+//                  candidate set, since the interface carries no tenant/site scoping parameter to
+//                  push down to SQL.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: GetByIdAsync is now tenant-scoped and
+//                  UpdateAsync now takes an optimistic-concurrency ETag and enforces it via
+//                  ExecuteScalarAsync + @@ROWCOUNT (usp_HazardIsolationSequencing_Update.sql),
+//                  throwing ConcurrencyConflictException on zero rows affected. Both AddAsync AND
+//                  UpdateAsync enqueue domain events to the outbox after their write (already
+//                  correct pre-existing behavior; verified, not changed). Mirrors
+//                  PermitsDapperRepository.cs.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.Scheduling.HazardIsolationSequencing.Aggregates;
 using PlantSafety.Domain.Scheduling.HazardIsolationSequencing.Enums;
 using PlantSafety.Domain.Scheduling.HazardIsolationSequencing.Events;
@@ -36,11 +44,14 @@ public sealed class HazardIsolationSequencingDapperRepository(
     : IHazardIsolationSequencingRepository
 {
     /// <inheritdoc/>
-    public async Task<PlantSafety.Domain.Scheduling.HazardIsolationSequencing.Aggregates.HazardIsolationSequencing?> GetByIdAsync(HazardIsolationSequencingId id, CancellationToken cancellationToken = default)
+    public async Task<PlantSafety.Domain.Scheduling.HazardIsolationSequencing.Aggregates.HazardIsolationSequencing?> GetByIdAsync(HazardIsolationSequencingId id, Guid tenantId, CancellationToken cancellationToken = default)
     {
-        logger.LogDebug("GetById for HazardIsolationSequencing {HazardIsolationSequencingId}", id.Value);
+        logger.LogDebug("GetById for HazardIsolationSequencing {HazardIsolationSequencingId} Tenant {TenantId}", id.Value, tenantId);
 
-        var parameters = new StoredProcedureBuilder().AddGuid("HazardIsolationSequencingId", id.Value).Build();
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("HazardIsolationSequencingId", id.Value)
+            .AddGuid("TenantId", tenantId)
+            .Build();
         var row = await queryExecutor.QuerySingleOrDefaultAsync<HazardIsolationSequencingRow>(
             "[Scheduling].[usp_HazardIsolationSequencing_GetById]", parameters, cancellationToken);
 
@@ -92,7 +103,7 @@ public sealed class HazardIsolationSequencingDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[Scheduling].[usp_HazardIsolationSequencing_Insert]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
-    
+
         // Outbox wiring (platform-wide domain-event fix): enqueue any domain events
         // raised by the aggregate during this write so TransactionalUnitOfWork.CommitAsync
         // (invoked by TransactionBehavior after the handler returns) can flush them to
@@ -103,10 +114,10 @@ public sealed class HazardIsolationSequencingDapperRepository(
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
         }
         aggregate.ClearDomainEvents();
-}
+    }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.HazardIsolationSequencing.Aggregates.HazardIsolationSequencing aggregate, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(PlantSafety.Domain.Scheduling.HazardIsolationSequencing.Aggregates.HazardIsolationSequencing aggregate, string? eTag, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Update HazardIsolationSequencing {HazardIsolationSequencingId}", aggregate.HazardIsolationSequencingId.Value);
 
@@ -115,6 +126,7 @@ public sealed class HazardIsolationSequencingDapperRepository(
 
         var parameters = new StoredProcedureBuilder()
             .AddGuid("HazardIsolationSequencingId", aggregate.HazardIsolationSequencingId.Value)
+            .AddGuid("TenantId", aggregate.TenantId)
             .AddString("Status", aggregate.Status.ToString(), 50)
             .AddString("HazardZone", aggregate.HazardZone, 400)
             .AddString("TaskType", aggregate.TaskType, 400)
@@ -122,10 +134,30 @@ public sealed class HazardIsolationSequencingDapperRepository(
             .AddDateTime("WindowEndUtc", aggregate.WindowEndUtc?.Value)
             .AddBool("ConflictDetected", aggregate.ConflictDetected)
             .AddGuid("UpdatedBy", aggregate.CreatedBy.Value)
+            .AddString("ETag", eTag, size: 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[Scheduling].[usp_HazardIsolationSequencing_Update]", parameters, tx, cancellationToken: cancellationToken);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable
+        // the @ETag concurrency check below. See usp_HazardIsolationSequencing_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[Scheduling].[usp_HazardIsolationSequencing_Update]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"HazardIsolationSequencing {aggregate.HazardIsolationSequencingId.Value} was modified by another process or the ETag is stale.",
+                Guid.Empty);
+        }
+
         tx.Commit();
+
+        // Outbox wiring (platform-wide domain-event fix): enqueue any domain events raised
+        // during this lifecycle transition. UpdateAsync must do this too, not just AddAsync --
+        // otherwise every post-creation transition would silently drop its domain event.
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <summary>Reconstructs a <see cref="HazardIsolationSequencing"/> aggregate from its flat read-model row.</summary>
@@ -152,6 +184,14 @@ public sealed class HazardIsolationSequencingDapperRepository(
     /// <summary>Flat read-model row shape returned by <c>usp_HazardIsolationSequencing_GetById</c>/<c>usp_HazardIsolationSequencing_GetAllActive</c>.</summary>
     private sealed record HazardIsolationSequencingRow
     {
+        /// <summary>
+        /// Optimistic-concurrency token (native RowVersion projected as a hex string), populated by
+        /// <c>usp_HazardIsolationSequencing_GetById</c>. Not consumed by aggregate hydration --
+        /// callers obtain the ETag for a subsequent write from a prior single-record read (see the
+        /// Application-layer HazardIsolationSequencingItemDto.ETag).
+        /// </summary>
+        public string? ETag { get; init; }
+
         public required Guid HazardIsolationSequencingId { get; init; }
         public required Guid TenantId { get; init; }
         public Guid? SiteId { get; init; }

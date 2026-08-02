@@ -11,6 +11,14 @@
 //                  InfrastructureServiceRegistration.cs -- a human wires this extension in
 //                  centrally after all module-scoped agents finish.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-29 -- registers RiskReadDapperRepository against
+//                  Application.RiskManagement.Repositories.IRiskRepository (Phase 4 read-model
+//                  gap remediation). That interface shares its simple name with
+//                  Domain.RiskManagement.Interfaces.IRiskRepository already registered below --
+//                  both registration lines use fully-qualified names rather than a `using` for the
+//                  Application repositories namespace, to avoid an ambiguous-reference compile
+//                  error. Mirrors PermitToWorkInfrastructureServiceRegistration's identical
+//                  same-name/different-namespace precedent.
 // ============================================================================
 using PlantSafety.Application.RiskManagement.ChemicalEnvironmentalSafety.Repositories;
 using PlantSafety.Application.RiskManagement.ContinuousMonitoringReview.Repositories;
@@ -35,6 +43,7 @@ public static class RiskManagementInfrastructureServiceRegistration
     public static IServiceCollection AddRiskManagementInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IRiskRepository, RiskDapperRepository>();
+        services.AddScoped<PlantSafety.Application.RiskManagement.Repositories.IRiskRepository, RiskReadDapperRepository>();
 
         services.AddScoped<RiskManagementCategoryDapperRepository>();
         services.AddScoped<IChemicalEnvironmentalSafetyRepository>(sp => sp.GetRequiredService<RiskManagementCategoryDapperRepository>());

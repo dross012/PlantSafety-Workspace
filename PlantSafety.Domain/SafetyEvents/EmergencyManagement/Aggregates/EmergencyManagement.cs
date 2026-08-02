@@ -123,6 +123,135 @@ public sealed partial class EmergencyManagement
         return agg;
     }
 
+    // ---- Lifecycle: RespondTo / Stabilize ------------------------------------
+
+    /// <summary>
+    /// Records that the response team has begun responding to the declared emergency
+    /// (Created -&gt; Active). Valid only from <see cref="EmergencyManagementStatus.Created"/>.
+    /// </summary>
+    public void RespondTo(
+        UserId respondedBy,
+        UtcTimestamp respondedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyManagementLifecycleRules.CanActivate, EmergencyManagementStatus.Active);
+
+        ResponseTeamNotified = true;
+        Status = EmergencyManagementStatus.Active;
+
+        AddDomainEvent(new EmergencyManagementRespondedToEvent(
+            EventId: new EmergencyManagementEventId(Uuid7.New()),
+            EmergencyManagementId: EmergencyManagementId,
+            RespondedBy: respondedBy,
+            RespondedAtUtc: respondedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records that the emergency has been stabilized during active response. Does not change
+    /// lifecycle status. Valid only while <see cref="EmergencyManagementStatus.Active"/>.
+    /// </summary>
+    public void Stabilize(
+        UserId stabilizedBy,
+        UtcTimestamp stabilizedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyManagementLifecycleRules.CanStabilize, EmergencyManagementStatus.Active);
+
+        StabilizedAtUtc = stabilizedAtUtc;
+
+        AddDomainEvent(new EmergencyManagementStabilizedEvent(
+            EventId: new EmergencyManagementEventId(Uuid7.New()),
+            EmergencyManagementId: EmergencyManagementId,
+            StabilizedBy: stabilizedBy,
+            StabilizedAtUtc: stabilizedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Resolve / Close / Archive --------------------------------
+
+    /// <summary>
+    /// Resolves the emergency (Active -&gt; Completed). Valid only from
+    /// <see cref="EmergencyManagementStatus.Active"/>.
+    /// </summary>
+    public void Resolve(
+        UserId resolvedBy,
+        UtcTimestamp resolvedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyManagementLifecycleRules.CanComplete, EmergencyManagementStatus.Completed);
+
+        ResolvedAtUtc = resolvedAtUtc;
+        Status = EmergencyManagementStatus.Completed;
+
+        AddDomainEvent(new EmergencyManagementResolvedEvent(
+            EventId: new EmergencyManagementEventId(Uuid7.New()),
+            EmergencyManagementId: EmergencyManagementId,
+            ResolvedBy: resolvedBy,
+            ResolvedAtUtc: resolvedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Closes a resolved emergency record (Completed -&gt; Closed). Valid only from
+    /// <see cref="EmergencyManagementStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyManagementLifecycleRules.CanClose, EmergencyManagementStatus.Closed);
+
+        Status = EmergencyManagementStatus.Closed;
+
+        AddDomainEvent(new EmergencyManagementClosedEvent(
+            EventId: new EmergencyManagementEventId(Uuid7.New()),
+            EmergencyManagementId: EmergencyManagementId,
+            ClosedBy: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed emergency record for compliance retention (Closed -&gt; Archived). Valid
+    /// only from <see cref="EmergencyManagementStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EmergencyManagementLifecycleRules.CanArchive, EmergencyManagementStatus.Archived);
+
+        Status = EmergencyManagementStatus.Archived;
+
+        AddDomainEvent(new EmergencyManagementArchivedEvent(
+            EventId: new EmergencyManagementEventId(Uuid7.New()),
+            EmergencyManagementId: EmergencyManagementId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IEmergencyManagementDomainEvent evt) => _domainEvents.Add(evt);
@@ -137,5 +266,13 @@ public sealed partial class EmergencyManagement
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for EmergencyManagement {EmergencyManagementId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<EmergencyManagementStatus, bool> guard, EmergencyManagementStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new EmergencyManagementInvalidStatusTransitionException(
+            EmergencyManagementId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

@@ -8,6 +8,13 @@
 //  SchemaVersion:  2026.1
 //  Description:    Domain repository interface for the PermitWorkflow aggregate root.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-29 -- UpdateAsync now takes an optimistic-concurrency ETag (Gap 2
+//                  remediation). The ConcurrencyToken UNIQUEIDENTIFIER column was regenerated on
+//                  every UPDATE but never checked; the backing table now also carries a native
+//                  RowVersion column, and callers must supply the last-known ETag (obtained from
+//                  a prior read) so a stale write fails fast with ConcurrencyConflictException
+//                  rather than silently overwriting concurrent changes. Mirrors
+//                  IIncidentRepository.UpdateAsync's eTag parameter.
 // ============================================================================
 namespace PlantSafety.Domain.PermitToWork.PermitWorkflow.Interfaces;
 
@@ -23,6 +30,14 @@ public interface IPermitWorkflowRepository
     /// <summary>Persists a new PermitWorkflow aggregate.</summary>
     Task AddAsync(PlantSafety.Domain.PermitToWork.PermitWorkflow.Aggregates.PermitWorkflow aggregate, CancellationToken cancellationToken = default);
 
-    /// <summary>Persists changes to an existing PermitWorkflow aggregate.</summary>
-    Task UpdateAsync(PlantSafety.Domain.PermitToWork.PermitWorkflow.Aggregates.PermitWorkflow aggregate, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Persists changes to an existing PermitWorkflow aggregate, enforcing optimistic concurrency.
+    /// </summary>
+    /// <param name="aggregate">The mutated aggregate to persist.</param>
+    /// <param name="eTag">
+    /// The last-known concurrency token (from a prior read). A stale or mismatched value causes
+    /// the persistence layer to reject the write as a concurrency conflict (zero rows affected).
+    /// </param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    Task UpdateAsync(PlantSafety.Domain.PermitToWork.PermitWorkflow.Aggregates.PermitWorkflow aggregate, string? eTag, CancellationToken cancellationToken = default);
 }

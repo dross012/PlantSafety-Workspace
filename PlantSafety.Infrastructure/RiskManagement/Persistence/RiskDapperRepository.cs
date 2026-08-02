@@ -27,6 +27,7 @@
 //                  Domain-layer behavior or persisted domain state.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.RiskManagement.Aggregates;
 using PlantSafety.Domain.RiskManagement.Entities;
 using PlantSafety.Domain.RiskManagement.Enums;
@@ -63,11 +64,11 @@ public sealed class RiskDapperRepository(
     ];
 
     /// <inheritdoc/>
-    public async Task<Risk?> GetByIdAsync(RiskId id, CancellationToken cancellationToken = default)
+    public async Task<Risk?> GetByIdAsync(RiskId id, Guid tenantId, CancellationToken cancellationToken = default)
     {
-        logger.LogDebug("GetById for Risk {RiskId}", id.Value);
+        logger.LogDebug("GetById for Risk {RiskId} Tenant {TenantId}", id.Value, tenantId);
 
-        var parameters = new StoredProcedureBuilder().AddGuid("RiskId", id.Value).Build();
+        var parameters = new StoredProcedureBuilder().AddGuid("RiskId", id.Value).AddGuid("TenantId", tenantId).Build();
         var row = await queryExecutor.QuerySingleOrDefaultAsync<RiskRow>(
             "[RiskMgmt].[usp_Risk_GetById]", parameters, cancellationToken);
 
@@ -79,12 +80,13 @@ public sealed class RiskDapperRepository(
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<Risk>> ListAsync(RiskSpecification specification, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Risk>> ListAsync(Guid tenantId, RiskSpecification specification, CancellationToken cancellationToken = default)
     {
-        logger.LogDebug("List Risk via specification {Specification}", specification.GetType().Name);
+        logger.LogDebug("List Risk via specification {Specification} for Tenant {TenantId}", specification.GetType().Name, tenantId);
 
+        var parameters = new StoredProcedureBuilder().AddGuid("TenantId", tenantId).Build();
         var rows = await queryExecutor.QueryAsync<RiskRow>(
-            "[RiskMgmt].[usp_Risk_GetAllActive]", new DynamicParameters(), cancellationToken);
+            "[RiskMgmt].[usp_Risk_GetAllActive]", parameters, cancellationToken);
 
         var predicate = specification.ToPredicate();
         var results = new List<Risk>();
@@ -154,7 +156,7 @@ public sealed class RiskDapperRepository(
 }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(Risk aggregate, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(Risk aggregate, string? eTag, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Update Risk {RiskId}", aggregate.RiskId.Value);
 
@@ -163,6 +165,7 @@ public sealed class RiskDapperRepository(
 
         var parameters = new StoredProcedureBuilder()
             .AddGuid("RiskId", aggregate.RiskId.Value)
+            .AddGuid("TenantId", aggregate.TenantId)
             .AddString("Status", aggregate.Status.ToString(), 30)
             .AddString("Category", aggregate.Category.Code, 30)
             .AddInt("CurrentSeverity", aggregate.CurrentScore?.Severity)
@@ -178,9 +181,18 @@ public sealed class RiskDapperRepository(
             .AddInt("ReviewCount", aggregate.ReviewCount)
             .AddInt("RiskVersion", aggregate.RiskVersion)
             .AddGuid("UpdatedBy", aggregate.CreatedBy.Value)
+            .AddString("ETag", eTag, size: 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[RiskMgmt].[usp_Risk_Update]", parameters, tx, cancellationToken: cancellationToken);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable the
+        // @ETag concurrency check below. See usp_Risk_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[RiskMgmt].[usp_Risk_Update]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"Risk {aggregate.RiskId.Value} was modified by another process or the ETag is stale.", Guid.Empty);
+        }
 
         // Reconcile ControlMeasures: entries are immutable once applied -- upsert each.
         foreach (var cm in aggregate.ControlMeasures)
@@ -200,6 +212,12 @@ public sealed class RiskDapperRepository(
         }
 
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private async Task<IReadOnlyList<ControlMeasureRow>> GetControlMeasureRowsAsync(RiskId id, CancellationToken cancellationToken)

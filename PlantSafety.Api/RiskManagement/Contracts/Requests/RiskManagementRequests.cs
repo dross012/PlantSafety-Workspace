@@ -4,6 +4,9 @@
 //   only; envelope fields (CommandId/CorrelationId/TenantId/ActorId/etc.) are populated
 //   server-side by RequestEnvelopeFactory.
 // SchemaVersion: 1
+// UPDATED: 2026-07-29 -- All lifecycle-transition request DTOs gain an optional ETag (Phase 4
+//   RiskManagement concurrency remediation). StartRiskReviewCycleRequest/CloseRiskRequest are new
+//   -- those two endpoints previously took no request body at all.
 
 namespace PlantSafety.Api.RiskManagement.Contracts.Requests;
 
@@ -37,6 +40,9 @@ public sealed class ScoreRiskRequest
 
     /// <summary>Likelihood component of the Severity x Likelihood matrix.</summary>
     public int Likelihood { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for <c>POST /api/v1/riskmanagement/{riskId}/prioritize</c>.</summary>
@@ -44,6 +50,9 @@ public sealed class PrioritizeRiskRequest
 {
     /// <summary>P1-P4 remediation priority.</summary>
     public string? Priority { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for <c>POST /api/v1/riskmanagement/{riskId}/control-measures</c>.</summary>
@@ -60,6 +69,9 @@ public sealed class ApplyRiskControlMeasureRequest
 
     /// <summary>Identity of the person responsible for the control measure.</summary>
     public required Guid ResponsiblePersonId { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for <c>POST /api/v1/riskmanagement/{riskId}/validate-effectiveness</c>.</summary>
@@ -70,6 +82,9 @@ public sealed class ValidateRiskEffectivenessRequest
 
     /// <summary>Residual likelihood after controls are applied.</summary>
     public int ResidualLikelihood { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for <c>POST /api/v1/riskmanagement/{riskId}/complete-review</c>.</summary>
@@ -77,6 +92,23 @@ public sealed class CompleteRiskReviewRequest
 {
     /// <summary>Optional new review cadence to apply going forward.</summary>
     public string? NewReviewCadence { get; init; }
+
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
+}
+
+/// <summary>Request body for <c>POST /api/v1/riskmanagement/{riskId}/start-review</c>.</summary>
+public sealed class StartRiskReviewCycleRequest
+{
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
+}
+
+/// <summary>Request body for <c>POST /api/v1/riskmanagement/{riskId}/close</c>.</summary>
+public sealed class CloseRiskRequest
+{
+    /// <summary>Optimistic-concurrency token from a prior read. A stale value returns 409 Conflict.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Query-string filters shared by all RiskManagement category read-model endpoints.</summary>

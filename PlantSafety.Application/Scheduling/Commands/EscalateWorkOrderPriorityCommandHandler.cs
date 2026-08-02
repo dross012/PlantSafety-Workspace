@@ -2,6 +2,12 @@
 // CREATED: 2026-07-21
 // FILE DESCRIPTION: Handler for EscalateWorkOrderPriorityCommand.
 // SchemaVersion: 1
+// UPDATED: 2026-07-30 -- Two Phase 4 fixes: (1) GetByIdAsync now scoped by request.TenantId,
+//   closing a cross-tenant read/mutate gap (usp_WorkOrderPriority_GetById previously filtered by
+//   WorkOrderPriorityId only); (2) NotFound ApplicationErrors now pass ErrorSeverity.NotFound
+//   explicitly -- the default severity is Error (->500), so a missing record previously returned
+//   500, not 404. Also forwards request.ETag to UpdateAsync and lets ConcurrencyConflictException
+//   propagate unhandled rather than being swallowed into a generic ApplicationError.
 
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -33,13 +39,14 @@ public sealed class EscalateWorkOrderPriorityCommandHandler : IRequestHandler<Es
         try
         {
             var id = WorkOrderPriorityId.FromGuid(request.WorkOrderPriorityId);
-            var aggregate = await _repository.GetByIdAsync(id, cancellationToken);
+            var aggregate = await _repository.GetByIdAsync(id, request.TenantId, cancellationToken);
             if (aggregate is null)
             {
                 return Result<WorkOrderPriorityActionResult>.Failure(new ApplicationError(
                     "Scheduling.WorkOrderPriority.NotFound",
                     "The requested work order priority record could not be found.",
-                    Guid.NewGuid()));
+                    Guid.NewGuid(),
+                    ErrorSeverity.NotFound));
             }
 
             var performedBy = UserId.FromGuid(request.PerformedByUserId);
@@ -51,11 +58,15 @@ public sealed class EscalateWorkOrderPriorityCommandHandler : IRequestHandler<Es
                 correlationId: new CorrelationId(request.CorrelationId),
                 causationId: new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
 
             return Result<WorkOrderPriorityActionResult>.Success(new WorkOrderPriorityActionResult(
                 aggregate.WorkOrderPriorityId.Value,
                 aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

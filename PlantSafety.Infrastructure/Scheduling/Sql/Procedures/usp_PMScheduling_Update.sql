@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Project:        PlantSafety.Platform
 --  Module:         Scheduling
 --  Layer:          Infrastructure -- SQL Scripts
@@ -8,12 +8,30 @@
 --  SchemaVersion:  2026.1
 --  Description:    Overwrites the full mutable state of a PMScheduling aggregate root row.
 --                  Backs IPMSchedulingRepository.UpdateAsync. Additive-only evolution.
+--  UPDATED:        2026-07-30 (Phase 4 Scheduling.PMScheduling remediation) -- added @TenantId
+--                  (cross-tenant access remediation): the UPDATE's WHERE clause now also requires
+--                  TenantId = @TenantId, so a PMScheduling record loaded and mutated in-process
+--                  cannot be persisted against a different tenant's row even in principle. The
+--                  caller (PMSchedulingDapperRepository.UpdateAsync) binds this from the
+--                  aggregate's own TenantId, which is only ever set via a tenant-checked
+--                  GetByIdAsync. Also added @ETag optimistic-concurrency guard against the native
+--                  RowVersion column. @RowsAffected is captured via @@ROWCOUNT immediately after
+--                  the UPDATE (before the audit INSERT, which would otherwise reset it) and
+--                  returned via SELECT -- callers MUST invoke via ExecuteScalarAsync (not
+--                  ExecuteNonQuery), since SET NOCOUNT ON makes ExecuteNonQuery always return -1,
+--                  silently disabling the concurrency check. A stale/wrong @ETag or a
+--                  missing/deleted/cross-tenant row both naturally produce zero rows affected. The
+--                  pre-existing IF NOT EXISTS/THROW 50004 existence check is intentionally left
+--                  PMSchedulingId/IsDeleted-only (not tenant-scoped) so a genuinely-missing row
+--                  still raises the specific "not found" error rather than being folded into the
+--                  rows-affected-based concurrency-conflict path.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
 
 CREATE OR ALTER PROCEDURE [Scheduling].[usp_PMScheduling_Update]
     @PMSchedulingId UNIQUEIDENTIFIER,
+    @TenantId UNIQUEIDENTIFIER,
     @Status NVARCHAR(50),
     @EquipmentId UNIQUEIDENTIFIER,
     @EquipmentDescription NVARCHAR(400),
@@ -22,7 +40,8 @@ CREATE OR ALTER PROCEDURE [Scheduling].[usp_PMScheduling_Update]
     @IsOverdue BIT,
     @EscalationPriorityCode NVARCHAR(400) = NULL,
     @CompletionNotes NVARCHAR(400) = NULL,
-    @UpdatedBy UNIQUEIDENTIFIER = NULL
+    @UpdatedBy UNIQUEIDENTIFIER = NULL,
+    @ETag NVARCHAR(64) = NULL
 AS
 SET NOCOUNT ON;
 BEGIN
@@ -43,7 +62,10 @@ BEGIN
             UpdatedBy = @UpdatedBy,
             UpdatedAtUtc = SYSUTCDATETIME(),
             ConcurrencyToken = NEWID()
-        WHERE PMSchedulingId = @PMSchedulingId AND IsDeleted = 0;
+        WHERE PMSchedulingId = @PMSchedulingId AND TenantId = @TenantId AND IsDeleted = 0
+          AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+        DECLARE @RowsAffected INT = @@ROWCOUNT;
 
         BEGIN TRY
             INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -51,6 +73,8 @@ BEGIN
         END TRY
         BEGIN CATCH
         END CATCH;
+
+        SELECT @RowsAffected;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PMSchedulingId=', @PMSchedulingId, N'; User=', SYSTEM_USER);

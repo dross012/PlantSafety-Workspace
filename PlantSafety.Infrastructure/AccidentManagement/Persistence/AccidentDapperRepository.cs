@@ -17,6 +17,7 @@
 //                  interface carries no tenant/site scoping parameter to push down to SQL.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Application.Common.Errors;
 using PlantSafety.Domain.AccidentManagement.Aggregates;
 using PlantSafety.Domain.AccidentManagement.Entities;
 using PlantSafety.Domain.AccidentManagement.Enums;
@@ -130,7 +131,7 @@ public sealed class AccidentDapperRepository(
 }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(Accident aggregate, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(Accident aggregate, string? eTag, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Update Accident {AccidentId}", aggregate.AccidentId.Value);
 
@@ -153,9 +154,18 @@ public sealed class AccidentDapperRepository(
             .AddDateTime("RegulatoryFiledAtUtc", aggregate.RegulatoryFiledAtUtc?.Value)
             .AddDateTime("ClosedAtUtc", aggregate.ClosedAtUtc?.Value)
             .AddGuid("UpdatedBy", aggregate.CreatedBy.Value)
+            .AddString("ETag", eTag, size: 64)
             .Build();
 
-        await commandExecutor.ExecuteAsync(conn, "[AccidentManagement].[usp_Accident_Update]", parameters, tx, cancellationToken: cancellationToken);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable the
+        // @ETag concurrency check below. See usp_Accident_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[AccidentManagement].[usp_Accident_Update]", parameters, tx, cancellationToken: cancellationToken);
+        if (rowsAffected == 0)
+        {
+            throw new ConcurrencyConflictException(
+                $"Accident {aggregate.AccidentId.Value} was modified by another process or the ETag is stale.", Guid.Empty);
+        }
 
         // Reconcile CorrectiveActions: CAPA items are never removed, only mutated -- upsert each.
         foreach (var ca in aggregate.CorrectiveActions)
@@ -181,6 +191,12 @@ public sealed class AccidentDapperRepository(
         }
 
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private async Task<IReadOnlyList<CorrectiveActionRow>> GetCorrectiveActionRowsAsync(AccidentId id, Guid tenantId, CancellationToken cancellationToken)

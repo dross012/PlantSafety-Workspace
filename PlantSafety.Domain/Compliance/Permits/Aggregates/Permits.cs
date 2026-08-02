@@ -14,6 +14,15 @@
 //                  permit-to-work: its type, work description, location, hazards, and
 //                  issue/expiry window.
 //                  Additive-only evolution.
+//  UPDATED:        2026-07-30 -- Phase 4 full build-out: added Approve/Reject/Complete/Expire/
+//                  Close/Archive lifecycle methods. Previously this aggregate had only a Create
+//                  factory -- PermitsStatus/PermitsLifecycleRules/PermitsArchivalPolicy were fully
+//                  scaffolded but nothing called them, and no command in the Application layer
+//                  ever loaded or mutated this aggregate (confirmed by
+//                  docs/architecture/scheduling-maintenance-compliance-extraction-blueprint.md
+//                  Sec 1.2: only 3 write actions existed across ~124 Compliance API endpoints, none
+//                  touching a Domain aggregate). Mirrors PermitToWork.PermitWorkflow's lifecycle
+//                  shape and guard/event/exception conventions.
 // ============================================================================
 namespace PlantSafety.Domain.Compliance.Permits.Aggregates;
 
@@ -68,6 +77,26 @@ public sealed partial class Permits
 
     /// <summary>Identity of the user who created this record (CRUD authorship).</summary>
     public UserId CreatedBy { get; private set; }
+
+    // ---- Lifecycle attributes (Approve/Reject/Complete/Expire/Close/Archive) -
+
+    /// <summary>Reason recorded when a permit request is rejected.</summary>
+    public string? RejectedReason { get; private set; }
+
+    /// <summary>UTC instant the permit request was rejected.</summary>
+    public UtcTimestamp? RejectedAtUtc { get; private set; }
+
+    /// <summary>UTC instant the permitted work was marked completed.</summary>
+    public UtcTimestamp? CompletedAtUtc { get; private set; }
+
+    /// <summary>UTC instant an issued permit expired without being completed/closed.</summary>
+    public UtcTimestamp? ExpiredAtUtc { get; private set; }
+
+    /// <summary>UTC instant the permit was closed.</summary>
+    public UtcTimestamp? ClosedAtUtc { get; private set; }
+
+    /// <summary>UTC instant the permit was archived for compliance retention.</summary>
+    public UtcTimestamp? ArchivedAtUtc { get; private set; }
 
     // ---- Domain Events -----------------------------------------------------
 
@@ -131,6 +160,172 @@ public sealed partial class Permits
         return agg;
     }
 
+    // ---- Lifecycle: Approve / Reject -----------------------------------------
+
+    /// <summary>
+    /// Approves and issues the permit request (Created -&gt; Active), computing its expiry from
+    /// <paramref name="validityHours"/> when supplied. Valid only from <see cref="PermitsStatus.Created"/>.
+    /// </summary>
+    public void Approve(
+        UserId approvedByUserId,
+        UtcTimestamp approvedAtUtc,
+        int? validityHours,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PermitsLifecycleRules.CanActivate, PermitsStatus.Created);
+
+        ApprovedByUserId = approvedByUserId;
+        IssuedAtUtc = approvedAtUtc;
+        ExpiresAtUtc = validityHours is > 0
+            ? UtcTimestamp.From(approvedAtUtc.Value.AddHours(validityHours.Value))
+            : null;
+        Status = PermitsStatus.Active;
+
+        AddDomainEvent(new PermitsApprovedEvent(
+            EventId: new PermitsEventId(Uuid7.New()),
+            PermitsId: PermitsId,
+            ApprovedByUserId: approvedByUserId,
+            ApprovedAtUtc: approvedAtUtc,
+            ExpiresAtUtc: ExpiresAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Declines a permit request before approval (Created -&gt; Rejected). Valid only from
+    /// <see cref="PermitsStatus.Created"/>.
+    /// </summary>
+    public void Reject(
+        UserId rejectedByUserId,
+        string reason,
+        UtcTimestamp rejectedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PermitsLifecycleRules.CanReject, PermitsStatus.Created);
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("A rejection reason must be supplied.", nameof(reason));
+
+        RejectedReason = reason.Trim();
+        RejectedAtUtc = rejectedAtUtc;
+        Status = PermitsStatus.Rejected;
+
+        AddDomainEvent(new PermitsRejectedEvent(
+            EventId: new PermitsEventId(Uuid7.New()),
+            PermitsId: PermitsId,
+            RejectedByUserId: rejectedByUserId,
+            Reason: RejectedReason,
+            RejectedAtUtc: rejectedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Complete / Expire ----------------------------------------
+
+    /// <summary>
+    /// Marks the permitted work completed (Active -&gt; Completed). Valid only from
+    /// <see cref="PermitsStatus.Active"/>.
+    /// </summary>
+    public void Complete(
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PermitsLifecycleRules.CanComplete, PermitsStatus.Active);
+
+        CompletedAtUtc = completedAtUtc;
+        Status = PermitsStatus.Completed;
+
+        AddDomainEvent(new PermitsCompletedEvent(
+            EventId: new PermitsEventId(Uuid7.New()),
+            PermitsId: PermitsId,
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Expires an issued permit that passed its validity window without being completed or closed
+    /// (Active -&gt; Expired). Valid only from <see cref="PermitsStatus.Active"/>.
+    /// </summary>
+    public void Expire(
+        UtcTimestamp expiredAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PermitsLifecycleRules.CanExpire, PermitsStatus.Active);
+
+        ExpiredAtUtc = expiredAtUtc;
+        Status = PermitsStatus.Expired;
+
+        AddDomainEvent(new PermitsExpiredEvent(
+            EventId: new PermitsEventId(Uuid7.New()),
+            PermitsId: PermitsId,
+            ExpiredAtUtc: expiredAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Close / Archive -------------------------------------------
+
+    /// <summary>
+    /// Formally closes a completed permit (Completed -&gt; Closed). Valid only from
+    /// <see cref="PermitsStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PermitsLifecycleRules.CanClose, PermitsStatus.Completed);
+
+        ClosedAtUtc = closedAtUtc;
+        Status = PermitsStatus.Closed;
+
+        AddDomainEvent(new PermitsClosedEvent(
+            EventId: new PermitsEventId(Uuid7.New()),
+            PermitsId: PermitsId,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed permit for compliance retention (Closed -&gt; Archived). Valid only from
+    /// <see cref="PermitsStatus.Closed"/>. See <see cref="Policies.PermitsArchivalPolicy"/> for
+    /// eligibility outside the aggregate boundary (e.g. batch archival jobs).
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PermitsLifecycleRules.CanArchive, PermitsStatus.Closed);
+
+        ArchivedAtUtc = archivedAtUtc;
+        Status = PermitsStatus.Archived;
+
+        AddDomainEvent(new PermitsArchivedEvent(
+            EventId: new PermitsEventId(Uuid7.New()),
+            PermitsId: PermitsId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IPermitsDomainEvent evt) => _domainEvents.Add(evt);
@@ -145,5 +340,13 @@ public sealed partial class Permits
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Permits {PermitsId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<PermitsStatus, bool> guard, PermitsStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new PermitsInvalidStatusTransitionException(
+            PermitsId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

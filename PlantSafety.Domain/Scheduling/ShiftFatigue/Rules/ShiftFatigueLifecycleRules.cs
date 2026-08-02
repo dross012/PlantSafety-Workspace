@@ -17,6 +17,9 @@ public static class ShiftFatigueLifecycleRules
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
     public static bool CanActivate(ShiftFatigueStatus current) => current == ShiftFatigueStatus.Created;
 
+    /// <summary>Returns <see langword="true"/> when the fatigue risk score may be reassessed while in <paramref name="current"/>.</summary>
+    public static bool CanReassessRisk(ShiftFatigueStatus current) => current == ShiftFatigueStatus.Active;
+
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
     public static bool CanComplete(ShiftFatigueStatus current) => current == ShiftFatigueStatus.Active;
 

@@ -115,7 +115,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             PermitWorkflowId: permitWorkflowId,
             RequiredControls: request.RequiredControls,
             RiskScore: request.RiskScore,
-            PerformedByUserId: env.ActorId);
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -143,7 +146,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             TenantId: env.TenantId,
             PermitWorkflowId: permitWorkflowId,
             ControlsConfirmedBy: request.ControlsConfirmedBy,
-            PerformedByUserId: env.ActorId);
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -159,6 +165,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ApproveAsync(
         Guid permitWorkflowId,
+        [FromBody] ApprovePermitWorkflowRequest? request,
         CancellationToken cancellationToken)
     {
         var env = _envelopeFactory.NewCommandEnvelope();
@@ -169,7 +176,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             CausationId: env.CausationId ?? Guid.NewGuid(),
             TenantId: env.TenantId,
             PermitWorkflowId: permitWorkflowId,
-            ApprovedByUserId: env.ActorId);
+            ApprovedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -197,7 +207,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             TenantId: env.TenantId,
             PermitWorkflowId: permitWorkflowId,
             IssuerUserId: env.ActorId,
-            ValidityHours: request.ValidityHours);
+            ValidityHours: request.ValidityHours)
+        {
+            ETag = request.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -225,7 +238,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             TenantId: env.TenantId,
             PermitWorkflowId: permitWorkflowId,
             ClosureSignedByUserId: env.ActorId,
-            ClosureNotes: request.ClosureNotes);
+            ClosureNotes: request.ClosureNotes)
+        {
+            ETag = request.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -241,6 +257,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ArchiveAsync(
         Guid permitWorkflowId,
+        [FromBody] ArchivePermitWorkflowRequest? request,
         CancellationToken cancellationToken)
     {
         var env = _envelopeFactory.NewCommandEnvelope();
@@ -251,7 +268,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             CausationId: env.CausationId ?? Guid.NewGuid(),
             TenantId: env.TenantId,
             PermitWorkflowId: permitWorkflowId,
-            PerformedByUserId: env.ActorId);
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -279,7 +299,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             TenantId: env.TenantId,
             PermitWorkflowId: permitWorkflowId,
             RejectedByUserId: env.ActorId,
-            Reason: request.Reason);
+            Reason: request.Reason)
+        {
+            ETag = request.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -321,6 +344,7 @@ public sealed class PermitToWorkV1Controller : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> PublishPermitTemplateAsync(
         Guid permitTemplateId,
+        [FromBody] PublishPermitTemplateRequest? request,
         CancellationToken cancellationToken)
     {
         var env = _envelopeFactory.NewCommandEnvelope();
@@ -331,7 +355,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             CausationId: env.CausationId ?? Guid.NewGuid(),
             TenantId: env.TenantId,
             PermitTemplateId: permitTemplateId,
-            PerformedByUserId: env.ActorId);
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -359,7 +386,10 @@ public sealed class PermitToWorkV1Controller : ControllerBase
             TenantId: env.TenantId,
             PermitTemplateId: permitTemplateId,
             PerformedByUserId: env.ActorId,
-            Reason: request.Reason);
+            Reason: request.Reason)
+        {
+            ETag = request.ETag
+        };
 
         var result = await _sender.Send(command, cancellationToken);
 

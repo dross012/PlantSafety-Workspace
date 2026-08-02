@@ -135,6 +135,12 @@ public sealed class AuditFindingDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[Auditing].[usp_AuditFinding_Update]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     private static Domain.Auditing.AuditFinding.Aggregates.AuditFinding Hydrate(AuditFindingRow row)

@@ -3,8 +3,13 @@
 // FILE DESCRIPTION: Command to escalate an overdue P1/P2 work order
 // ("Automatic escalation for overdue P1/P2 items").
 // SchemaVersion: 1
+// UPDATED: 2026-07-30 -- Implements IConcurrencyAwareCommand (Phase 4
+//   Scheduling.WorkOrderPriority concurrency remediation): callers should supply the ETag captured
+//   from a prior read; a stale value results in ConcurrencyConflictException. Mirrors
+//   RiskManagement's commands.
 
 using PlantSafety.Application.Abstractions.Messaging;
+using PlantSafety.Application.Behaviors.Concurrency;
 using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Scheduling.Commands;
@@ -17,7 +22,7 @@ public sealed record EscalateWorkOrderPriorityCommand(
     Guid TenantId,
     Guid WorkOrderPriorityId,
     string EscalationReason,
-    Guid PerformedByUserId) : ICommand<Result<WorkOrderPriorityActionResult>>
+    Guid PerformedByUserId) : ICommand<Result<WorkOrderPriorityActionResult>>, IConcurrencyAwareCommand
 {
     /// <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
     public DateTime RequestedAtUtc { get; init; } = DateTime.UtcNow;
@@ -30,4 +35,7 @@ public sealed record EscalateWorkOrderPriorityCommand(
 
     /// <inheritdoc cref="ICommand{TResponse}.CausationId" />
     Guid? ICommand<Result<WorkOrderPriorityActionResult>>.CausationId => CausationId;
+
+    /// <inheritdoc/>
+    public string? ETag { get; init; }
 }

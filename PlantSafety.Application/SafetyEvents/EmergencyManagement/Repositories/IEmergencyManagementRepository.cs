@@ -1,5 +1,7 @@
 // AUTHOR: PlantSafety Platform Team
 // CREATED: 2026-06-17
+// UPDATED: 2026-08-02 -- Phase 4 full build-out: added GetByIdAsync, backing the new
+//          GetEmergencyManagementByIdQuery read path via usp_EmergencyManagementItems_GetById.
 // FILE DESCRIPTION: Repository abstraction for the EmergencyManagement read-model.
 // SchemaVersion: 1
 
@@ -17,4 +19,11 @@ public interface IEmergencyManagementRepository
         DateTime from,
         DateTime to,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns the EmergencyManagement read-model record for the given identity, scoped to the
+    /// given tenant, or <see langword="null"/> if not found or if the record belongs to a
+    /// different tenant.
+    /// </summary>
+    Task<EmergencyManagementItemDto?> GetByIdAsync(Guid emergencyManagementId, Guid tenantId, CancellationToken cancellationToken);
 }

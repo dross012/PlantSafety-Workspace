@@ -8,6 +8,10 @@
 //              PermitExpiration). Covers the full PTW lifecycle: Request -> AssessHazards ->
 //              ImplementControls -> Approve -> Issue -> RecordClosureSignature -> Archive,
 //              plus Reject.
+// UPDATED: 2026-07-29 -- Mutating lifecycle requests gain an optional ETag field (Gap 2
+//              remediation) so clients can supply the optimistic-concurrency token captured from
+//              a prior read (e.g. PermitWorkflowItemDto.ETag); a stale value results in a
+//              concurrency-conflict error. Mirrors UpdateIncidentRequest.ETag.
 // ============================================================================
 
 namespace PlantSafety.Api.PermitToWork.Contracts.Requests;
@@ -28,6 +32,20 @@ public sealed record RequestPermitWorkflowRequest
     public required string WorkDescription { get; init; }
 }
 
+/// <summary>Request body for recording supervisor/safety-officer approval of a permit (PTW Workflow Step 4).</summary>
+public sealed record ApprovePermitWorkflowRequest
+{
+    /// <summary>Optimistic-concurrency token from the last read of this PermitWorkflow. Null skips the check.</summary>
+    public string? ETag { get; init; }
+}
+
+/// <summary>Request body for archiving a closed permit for compliance retention (PTW Workflow Step 7).</summary>
+public sealed record ArchivePermitWorkflowRequest
+{
+    /// <summary>Optimistic-concurrency token from the last read of this PermitWorkflow. Null skips the check.</summary>
+    public string? ETag { get; init; }
+}
+
 /// <summary>Request body for recording the hazard assessment and required controls (PTW Workflow Step 2).</summary>
 public sealed record AssessPermitHazardsRequest
 {
@@ -36,6 +54,9 @@ public sealed record AssessPermitHazardsRequest
 
     /// <summary>Risk score assigned by the safety officer.</summary>
     public required int RiskScore { get; init; }
+
+    /// <summary>Optimistic-concurrency token from the last read of this PermitWorkflow. Null skips the check.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for recording that required safety controls have been implemented (PTW Workflow Step 3).</summary>
@@ -43,6 +64,9 @@ public sealed record ImplementPermitControlsRequest
 {
     /// <summary>Identity/role of the person confirming the controls are in place.</summary>
     public required string ControlsConfirmedBy { get; init; }
+
+    /// <summary>Optimistic-concurrency token from the last read of this PermitWorkflow. Null skips the check.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for issuing an approved permit, making it active (PTW Workflow Step 4/5).</summary>
@@ -50,6 +74,9 @@ public sealed record IssuePermitWorkflowRequest
 {
     /// <summary>Optional validity window, in hours, from issuance. Null means no computed expiration.</summary>
     public int? ValidityHours { get; init; }
+
+    /// <summary>Optimistic-concurrency token from the last read of this PermitWorkflow. Null skips the check.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for recording the closure signature for an active permit (PTW Workflow Step 6).</summary>
@@ -57,6 +84,9 @@ public sealed record RecordPermitClosureSignatureRequest
 {
     /// <summary>Optional closure notes from the post-work review.</summary>
     public string? ClosureNotes { get; init; }
+
+    /// <summary>Optimistic-concurrency token from the last read of this PermitWorkflow. Null skips the check.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for declining a PermitWorkflow request.</summary>
@@ -64,6 +94,16 @@ public sealed record RejectPermitWorkflowRequest
 {
     /// <summary>Reason for rejection.</summary>
     public required string Reason { get; init; }
+
+    /// <summary>Optimistic-concurrency token from the last read of this PermitWorkflow. Null skips the check.</summary>
+    public string? ETag { get; init; }
+}
+
+/// <summary>Request body for publishing a draft PermitTemplate, making it active for permit requests.</summary>
+public sealed record PublishPermitTemplateRequest
+{
+    /// <summary>Optimistic-concurrency token from the last read of this PermitTemplate. Null skips the check.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for deprecating an active PermitTemplate.</summary>
@@ -71,6 +111,9 @@ public sealed record DeprecatePermitTemplateRequest
 {
     /// <summary>Reason the template is being deprecated.</summary>
     public required string Reason { get; init; }
+
+    /// <summary>Optimistic-concurrency token from the last read of this PermitTemplate. Null skips the check.</summary>
+    public string? ETag { get; init; }
 }
 
 /// <summary>Request body for a bulk PermitToWork operation.</summary>

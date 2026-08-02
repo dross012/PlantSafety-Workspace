@@ -8,6 +8,9 @@
 --  SchemaVersion:  2026.1
 --  Description:    Read-only stored procedure backing IPermitTemplateRepository.GetPermitTemplateAsync
 --                  (Application-layer read model). Additive-only evolution.
+--  UPDATED:        2026-07-29 -- Projects RowVersion as a string ETag (Gap 2 remediation) so
+--                  PermitTemplateItemDto.ETag can round-trip back into a subsequent mutating
+--                  command's IConcurrencyAwareCommand.ETag for read-before-write clients.
 -- ============================================================================
 USE [PlantSafety.CoreDB];
 GO
@@ -20,7 +23,8 @@ CREATE OR ALTER PROCEDURE [PermitToWork].[usp_PermitTemplate_GetRange]
 AS
 SET NOCOUNT ON;
 BEGIN
-    SELECT PermitTemplateId, TenantId, SiteId, Status, PermitTypeCode, RequiredControls, StandardValidityHours, CreatedAtUtc
+    SELECT PermitTemplateId, TenantId, SiteId, Status, PermitTypeCode, RequiredControls, StandardValidityHours, CreatedAtUtc,
+        CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
     FROM [PermitToWork].[PermitTemplate]
     WHERE TenantId = @TenantId
       AND (@SiteId IS NULL OR SiteId = @SiteId)

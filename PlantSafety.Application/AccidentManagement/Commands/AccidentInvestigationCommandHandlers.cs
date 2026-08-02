@@ -5,6 +5,11 @@
 //   the repository interface. No business rules live here -- all invariants are enforced inside
 //   the Accident aggregate and its CorrectiveAction child entity.
 // SchemaVersion: 1
+// UPDATED: 2026-07-29 -- Two Phase 4 fixes: (1) UpdateAsync now forwards the caller's ETag,
+//   propagating ConcurrencyConflictException rather than swallowing it into a generic 400 error
+//   (mirrors RiskManagement's handlers); (2) NotFound ApplicationErrors now pass
+//   ErrorSeverity.NotFound explicitly -- the default severity is Error (->500), so a missing
+//   Accident previously returned 500, not 404.
 
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -38,14 +43,18 @@ public sealed class AssignAccidentInvestigatorCommandHandler : IRequestHandler<A
         {
             var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
+                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId, ErrorSeverity.NotFound));
 
             var investigatorId = UserId.FromGuid(request.InvestigatorId);
             aggregate.AssignInvestigator(investigatorId, UtcTimestamp.Now(), PerformedByActor.User(investigatorId),
                 new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<AccidentStatusResult>.Success(new AccidentStatusResult(aggregate.AccidentId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -75,7 +84,7 @@ public sealed class RecordAccidentRootCauseCommandHandler : IRequestHandler<Reco
         {
             var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
+                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId, ErrorSeverity.NotFound));
 
             var recordedBy = UserId.FromGuid(request.RecordedBy);
             var rootCause = RootCauseCategory.IsValid(request.RootCauseCategory) ? RootCauseCategory.From(request.RootCauseCategory) : RootCauseCategory.Default;
@@ -83,8 +92,12 @@ public sealed class RecordAccidentRootCauseCommandHandler : IRequestHandler<Reco
             aggregate.RecordRootCause(rootCause, request.Notes, UtcTimestamp.Now(), PerformedByActor.User(recordedBy),
                 new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<AccidentStatusResult>.Success(new AccidentStatusResult(aggregate.AccidentId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -114,7 +127,7 @@ public sealed class CreateAccidentCorrectiveActionCommandHandler : IRequestHandl
         {
             var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<CreateAccidentCorrectiveActionResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
+                return Result<CreateAccidentCorrectiveActionResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId, ErrorSeverity.NotFound));
 
             var createdBy = UserId.FromGuid(request.CreatedBy);
             var responsiblePersonId = UserId.FromGuid(request.ResponsiblePersonId);
@@ -123,8 +136,12 @@ public sealed class CreateAccidentCorrectiveActionCommandHandler : IRequestHandl
             var action = aggregate.CreateCorrectiveAction(category, request.Description, responsiblePersonId, UtcTimestamp.From(request.DueAtUtc),
                 UtcTimestamp.Now(), PerformedByActor.User(createdBy), new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<CreateAccidentCorrectiveActionResult>.Success(new CreateAccidentCorrectiveActionResult(aggregate.AccidentId.Value, action.CorrectiveActionId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -154,14 +171,18 @@ public sealed class CompleteAccidentCorrectiveActionCommandHandler : IRequestHan
         {
             var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
+                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId, ErrorSeverity.NotFound));
 
             var completedBy = UserId.FromGuid(request.CompletedBy);
             aggregate.CompleteCorrectiveAction(CorrectiveActionId.FromGuid(request.CorrectiveActionId), request.CompletionEvidence, UtcTimestamp.Now(),
                 PerformedByActor.User(completedBy), new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<AccidentStatusResult>.Success(new AccidentStatusResult(aggregate.AccidentId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -191,14 +212,18 @@ public sealed class FileAccidentRegulatoryReportCommandHandler : IRequestHandler
         {
             var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
+                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId, ErrorSeverity.NotFound));
 
             var filedBy = UserId.FromGuid(request.FiledBy);
             aggregate.FileRegulatoryReport(filedBy, request.RegulatoryAgency, request.ReferenceNumber, UtcTimestamp.Now(),
                 PerformedByActor.User(filedBy), new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<AccidentStatusResult>.Success(new AccidentStatusResult(aggregate.AccidentId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -228,14 +253,18 @@ public sealed class CloseAccidentInvestigationCommandHandler : IRequestHandler<C
         {
             var aggregate = await _repository.GetByIdAsync(AccidentId.FromGuid(request.AccidentId), request.TenantId, cancellationToken);
             if (aggregate is null)
-                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId));
+                return Result<AccidentStatusResult>.Failure(new ApplicationError("AccidentManagement.Accident.NotFound", "Accident not found.", request.AccidentId, ErrorSeverity.NotFound));
 
             var closedBy = UserId.FromGuid(request.ClosedBy);
             aggregate.CloseInvestigation(closedBy, UtcTimestamp.Now(), PerformedByActor.User(closedBy),
                 new CorrelationId(request.CorrelationId), new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
             return Result<AccidentStatusResult>.Success(new AccidentStatusResult(aggregate.AccidentId.Value, aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

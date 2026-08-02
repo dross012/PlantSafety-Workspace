@@ -51,11 +51,18 @@ public sealed class ApprovePermitWorkflowCommandHandler : IRequestHandler<Approv
                 correlationId: new CorrelationId(request.CorrelationId),
                 causationId: new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
 
             return Result<PermitWorkflowActionResult>.Success(new PermitWorkflowActionResult(
                 aggregate.PermitWorkflowId.Value,
                 aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            // Let this propagate to ExceptionHandlingMiddleware, which maps it to HTTP 409 --
+            // swallowing it here as a generic ApplicationError would misreport a stale-ETag
+            // conflict as an ordinary 400 failure.
+            throw;
         }
         catch (Exception ex)
         {

@@ -17,6 +17,9 @@ public static class EmergencyManagementLifecycleRules
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
     public static bool CanActivate(EmergencyManagementStatus current) => current == EmergencyManagementStatus.Created;
 
+    /// <summary>Returns <see langword="true"/> when the emergency may be stabilized while in <paramref name="current"/>.</summary>
+    public static bool CanStabilize(EmergencyManagementStatus current) => current == EmergencyManagementStatus.Active;
+
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
     public static bool CanComplete(EmergencyManagementStatus current) => current == EmergencyManagementStatus.Active;
 

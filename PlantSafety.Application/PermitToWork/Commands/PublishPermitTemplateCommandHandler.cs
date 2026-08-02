@@ -50,11 +50,15 @@ public sealed class PublishPermitTemplateCommandHandler : IRequestHandler<Publis
                 correlationId: new CorrelationId(request.CorrelationId),
                 causationId: new CausationId(request.CausationId));
 
-            await _repository.UpdateAsync(aggregate, cancellationToken);
+            await _repository.UpdateAsync(aggregate, request.ETag, cancellationToken);
 
             return Result<PermitTemplateActionResult>.Success(new PermitTemplateActionResult(
                 aggregate.PermitTemplateId.Value,
                 aggregate.Status.ToString()));
+        }
+        catch (ConcurrencyConflictException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

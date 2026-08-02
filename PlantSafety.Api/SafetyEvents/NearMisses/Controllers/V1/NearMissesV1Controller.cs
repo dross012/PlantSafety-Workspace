@@ -21,11 +21,18 @@
 using PlantSafety.Api.SafetyEvents.NearMisses.Contracts.Requests;
 using PlantSafety.Api.SafetyEvents.NearMisses.Contracts.Responses;
 using PlantSafety.Api.SafetyEvents.NearMisses.Authorization;
+using PlantSafety.Application.SafetyEvents.NearMisses.Commands;
 using PlantSafety.Application.SafetyEvents.NearMisses.Queries;
+
+using PlantSafety.Api.Common;
+using PlantSafety.Api.Context;
 
 namespace PlantSafety.Api.SafetyEvents.NearMisses.Controllers.V1;
 
-/// <summary>V1 controller for NearMisses read endpoints.</summary>
+/// <summary>
+/// V1 controller for the SafetyEvents.NearMisses module's read endpoints (pre-existing) plus the
+/// Phase 4 full build-out's Create/lifecycle/by-id command and query endpoints.
+/// </summary>
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/safety-events/near-misses")]
@@ -34,10 +41,188 @@ namespace PlantSafety.Api.SafetyEvents.NearMisses.Controllers.V1;
 public sealed class NearMissesV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="NearMissesV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public NearMissesV1Controller(ISender sender) => _sender = sender;
+    /// <param name="envelopeFactory">Builds the canonical command/query envelope fields.</param>
+    public NearMissesV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
+
+    /// <summary>Reports a new NearMisses record.</summary>
+    [HttpPost]
+    [Authorize(Policy = NearMissesAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CreateAsync(
+        [FromBody] CreateNearMissesRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CreateNearMissesCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            RequestedAtUtc: env.RequestedAtUtc,
+            ApiVersionToken: env.ApiVersionToken,
+            TenantId: env.TenantId,
+            SiteId: request.SiteId,
+            Category: request.Category,
+            PotentialSeverity: request.PotentialSeverity,
+            ReportedAtUtc: request.ReportedAtUtc ?? DateTime.UtcNow,
+            ReportedByUserId: env.ActorId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Starts review of a NearMisses record (Reported -&gt; UnderReview).</summary>
+    [HttpPost("{nearMissesId:guid}/start-review")]
+    [Authorize(Policy = NearMissesAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> StartReviewAsync(
+        Guid nearMissesId,
+        [FromBody] StartReviewNearMissesRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new StartReviewNearMissesCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            NearMissesId: nearMissesId,
+            ReviewedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Completes review of a NearMisses record and records findings (UnderReview -&gt; Completed).</summary>
+    [HttpPost("{nearMissesId:guid}/complete")]
+    [Authorize(Policy = NearMissesAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CompleteAsync(
+        Guid nearMissesId,
+        [FromBody] CompleteNearMissesRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CompleteNearMissesCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            NearMissesId: nearMissesId,
+            CompletedByUserId: env.ActorId,
+            Findings: request?.Findings)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Formally closes a completed NearMisses record (Completed -&gt; Closed).</summary>
+    [HttpPost("{nearMissesId:guid}/close")]
+    [Authorize(Policy = NearMissesAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CloseAsync(
+        Guid nearMissesId,
+        [FromBody] CloseNearMissesRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CloseNearMissesCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            NearMissesId: nearMissesId,
+            ClosedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Archives a closed NearMisses record for compliance retention (Closed -&gt; Archived).</summary>
+    [HttpPost("{nearMissesId:guid}/archive")]
+    [Authorize(Policy = NearMissesAuthorizationPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<NearMissesStatusResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ArchiveAsync(
+        Guid nearMissesId,
+        [FromBody] ArchiveNearMissesRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new ArchiveNearMissesCommand(
+            CommandId: env.CommandId,
+            CorrelationId: env.CorrelationId,
+            CausationId: env.CausationId ?? Guid.NewGuid(),
+            TenantId: env.TenantId,
+            NearMissesId: nearMissesId,
+            PerformedByUserId: env.ActorId)
+        {
+            ETag = request?.ETag
+        };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single NearMisses read-model record by identity, including its current ETag.</summary>
+    [HttpGet("{nearMissesId:guid}")]
+    [Authorize(Policy = NearMissesAuthorizationPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<PlantSafety.Application.SafetyEvents.NearMisses.Models.NearMissesDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetByIdAsync(
+        Guid nearMissesId,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetNearMissesByIdQuery(env.TenantId, nearMissesId);
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
 
     /// <summary>Returns NearMisses data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>

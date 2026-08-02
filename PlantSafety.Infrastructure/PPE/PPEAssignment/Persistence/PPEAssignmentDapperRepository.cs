@@ -128,6 +128,12 @@ public sealed class PPEAssignmentDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[PPE].[usp_PPEAssignment_Update]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
+        aggregate.ClearDomainEvents();
     }
 
     /// <summary>Reconstructs a <see cref="PPEAssignment"/> aggregate from its flat read-model row.</summary>
