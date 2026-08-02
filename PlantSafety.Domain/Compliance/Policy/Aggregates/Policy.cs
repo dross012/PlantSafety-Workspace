@@ -121,6 +121,135 @@ public sealed partial class Policy
         return agg;
     }
 
+    // ---- Lifecycle: Approve / Acknowledge -------------------------------------
+
+    /// <summary>
+    /// Approves the policy and makes it effective (Created -&gt; Active). Valid only from
+    /// <see cref="PolicyStatus.Created"/>.
+    /// </summary>
+    public void Approve(
+        UserId approvedBy,
+        UtcTimestamp effectiveAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PolicyLifecycleRules.CanActivate, PolicyStatus.Created);
+
+        EffectiveAtUtc = effectiveAtUtc;
+        Status = PolicyStatus.Active;
+
+        AddDomainEvent(new PolicyApprovedEvent(
+            EventId: new PolicyEventId(Uuid7.New()),
+            PolicyId: PolicyId,
+            ApprovedByUserId: approvedBy,
+            EffectiveAtUtc: effectiveAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records an acknowledgment of this policy by a person. Does not change lifecycle status.
+    /// Valid only while the policy is <see cref="PolicyStatus.Active"/>.
+    /// </summary>
+    public void RecordAcknowledgment(
+        UserId acknowledgedBy,
+        UtcTimestamp acknowledgedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PolicyLifecycleRules.CanAcknowledge, PolicyStatus.Active);
+
+        AcknowledgmentCount++;
+
+        AddDomainEvent(new PolicyAcknowledgedEvent(
+            EventId: new PolicyEventId(Uuid7.New()),
+            PolicyId: PolicyId,
+            AcknowledgedByUserId: acknowledgedBy,
+            AcknowledgedAtUtc: acknowledgedAtUtc,
+            AcknowledgmentCount: AcknowledgmentCount,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Supersede / Close / Archive -------------------------------
+
+    /// <summary>
+    /// Supersedes an active policy with a newer revision (Active -&gt; Completed). Valid only from
+    /// <see cref="PolicyStatus.Active"/>.
+    /// </summary>
+    public void Supersede(
+        UserId supersededBy,
+        UtcTimestamp supersededAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PolicyLifecycleRules.CanComplete, PolicyStatus.Active);
+
+        Status = PolicyStatus.Completed;
+
+        AddDomainEvent(new PolicySupersededEvent(
+            EventId: new PolicyEventId(Uuid7.New()),
+            PolicyId: PolicyId,
+            SupersededByUserId: supersededBy,
+            SupersededAtUtc: supersededAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Formally closes a superseded policy (Completed -&gt; Closed). Valid only from
+    /// <see cref="PolicyStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PolicyLifecycleRules.CanClose, PolicyStatus.Completed);
+
+        Status = PolicyStatus.Closed;
+
+        AddDomainEvent(new PolicyClosedEvent(
+            EventId: new PolicyEventId(Uuid7.New()),
+            PolicyId: PolicyId,
+            ClosedByUserId: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed policy for compliance retention (Closed -&gt; Archived). Valid only from
+    /// <see cref="PolicyStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PolicyLifecycleRules.CanArchive, PolicyStatus.Closed);
+
+        Status = PolicyStatus.Archived;
+
+        AddDomainEvent(new PolicyArchivedEvent(
+            EventId: new PolicyEventId(Uuid7.New()),
+            PolicyId: PolicyId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IPolicyDomainEvent evt) => _domainEvents.Add(evt);
@@ -135,5 +264,13 @@ public sealed partial class Policy
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Policy {PolicyId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<PolicyStatus, bool> guard, PolicyStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new PolicyInvalidStatusTransitionException(
+            PolicyId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

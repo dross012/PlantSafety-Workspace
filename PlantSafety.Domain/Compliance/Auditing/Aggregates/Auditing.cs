@@ -145,6 +145,122 @@ public sealed partial class Auditing
         return agg;
     }
 
+    // ---- Lifecycle: Start / RecordFindings / Close / Archive ---------------
+    // Phase 4 full build-out (2026-08-02): this aggregate previously had only the Create
+    // factory -- AuditingStatus/AuditingLifecycleRules were fully scaffolded but nothing called
+    // them. Mirrors Compliance.Permits' Approve/Reject/Complete/Expire/Close/Archive build-out
+    // shape.
+
+    /// <summary>
+    /// Starts the audit program/execution (Created -&gt; Active). Valid only from
+    /// <see cref="AuditingStatus.Created"/>.
+    /// </summary>
+    public void Start(
+        UserId startedBy,
+        UtcTimestamp startedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, AuditingLifecycleRules.CanActivate, AuditingStatus.Created);
+
+        Status = AuditingStatus.Active;
+
+        AddDomainEvent(new AuditingStartedEvent(
+            EventId: new AuditingEventId(Uuid7.New()),
+            AuditingId: AuditingId,
+            StartedBy: startedBy,
+            StartedAtUtc: startedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records the audit's findings and computed compliance score, marking the audit completed
+    /// (Active -&gt; Completed). Valid only from <see cref="AuditingStatus.Active"/>.
+    /// </summary>
+    public void RecordFindings(
+        UserId completedBy,
+        int findingsCount,
+        decimal? score,
+        string complianceRating,
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, AuditingLifecycleRules.CanComplete, AuditingStatus.Active);
+        if (findingsCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(findingsCount), "Findings count must not be negative.");
+
+        FindingsCount = findingsCount;
+        Score = score;
+        ComplianceRating = (complianceRating ?? "NotRated").Trim();
+        CompletedAtUtc = completedAtUtc;
+        Status = AuditingStatus.Completed;
+
+        AddDomainEvent(new AuditingFindingsRecordedEvent(
+            EventId: new AuditingEventId(Uuid7.New()),
+            AuditingId: AuditingId,
+            CompletedBy: completedBy,
+            FindingsCount: findingsCount,
+            Score: score,
+            ComplianceRating: ComplianceRating,
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Formally closes a completed audit (Completed -&gt; Closed). Valid only from
+    /// <see cref="AuditingStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, AuditingLifecycleRules.CanClose, AuditingStatus.Completed);
+
+        Status = AuditingStatus.Closed;
+
+        AddDomainEvent(new AuditingClosedEvent(
+            EventId: new AuditingEventId(Uuid7.New()),
+            AuditingId: AuditingId,
+            ClosedBy: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed audit for compliance retention (Closed -&gt; Archived). Valid only from
+    /// <see cref="AuditingStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, AuditingLifecycleRules.CanArchive, AuditingStatus.Closed);
+
+        Status = AuditingStatus.Archived;
+
+        AddDomainEvent(new AuditingArchivedEvent(
+            EventId: new AuditingEventId(Uuid7.New()),
+            AuditingId: AuditingId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IAuditingDomainEvent evt) => _domainEvents.Add(evt);
@@ -159,5 +275,13 @@ public sealed partial class Auditing
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Auditing {AuditingId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<AuditingStatus, bool> guard, AuditingStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new AuditingInvalidStatusTransitionException(
+            AuditingId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

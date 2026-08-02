@@ -123,6 +123,13 @@ using PlantSafety.Infrastructure.Analytics.Engagement.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.PredictiveAnalytics.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Permits.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.ManagementOfChange.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.Policies.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.Procedures.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.RegulatoryCalendar.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.Auditing.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.Certification.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.Compliance.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.PredictiveMaintenance.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.PreventiveMaintenance.DependencyInjection;
 using PlantSafety.Infrastructure.Features.DependencyInjection;
@@ -407,6 +414,13 @@ public static class InfrastructureServiceRegistration
             .AddPPEInfrastructure()
             .AddPermitToWorkInfrastructure()
             .AddPermitsInfrastructure()
+            .AddManagementOfChangeAggregateInfrastructure()
+            .AddPolicyAggregateInfrastructure()
+            .AddProceduresAggregateInfrastructure()
+            .AddRegulatoryCalendarInfrastructure()
+            .AddComplianceAuditingInfrastructure()
+            .AddComplianceCertificationInfrastructure()
+            .AddComplianceRuleInfrastructure()
             .AddScoreCardsAggregateInfrastructure()
             .AddEngagementAggregateInfrastructure()
             .AddPredictiveAnalyticsAggregateInfrastructure()

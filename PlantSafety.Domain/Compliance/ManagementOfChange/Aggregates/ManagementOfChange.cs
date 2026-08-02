@@ -135,6 +135,111 @@ public sealed partial class ManagementOfChange
         return agg;
     }
 
+    // ---- Lifecycle: Approve / Implement --------------------------------------
+
+    /// <summary>
+    /// Approves the change request, making it active (Created -&gt; Active). Valid only from
+    /// <see cref="ManagementOfChangeStatus.Created"/>.
+    /// </summary>
+    public void Approve(
+        UserId approvedBy,
+        UtcTimestamp approvedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ManagementOfChangeLifecycleRules.CanActivate, ManagementOfChangeStatus.Created);
+
+        ApprovedByUserId = approvedBy;
+        ApprovalStatus = "Approved";
+        Status = ManagementOfChangeStatus.Active;
+
+        AddDomainEvent(new ManagementOfChangeApprovedEvent(
+            EventId: new ManagementOfChangeEventId(Uuid7.New()),
+            ManagementOfChangeId: ManagementOfChangeId,
+            ApprovedByUserId: approvedBy,
+            ApprovedAtUtc: approvedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records implementation of the approved change (Active -&gt; Completed). Valid only from
+    /// <see cref="ManagementOfChangeStatus.Active"/>.
+    /// </summary>
+    public void Implement(
+        UserId implementedBy,
+        UtcTimestamp implementationAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ManagementOfChangeLifecycleRules.CanComplete, ManagementOfChangeStatus.Active);
+
+        ImplementationAtUtc = implementationAtUtc;
+        Status = ManagementOfChangeStatus.Completed;
+
+        AddDomainEvent(new ManagementOfChangeImplementedEvent(
+            EventId: new ManagementOfChangeEventId(Uuid7.New()),
+            ManagementOfChangeId: ManagementOfChangeId,
+            ImplementedByUserId: implementedBy,
+            ImplementationAtUtc: implementationAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Close / Archive -------------------------------------------
+
+    /// <summary>
+    /// Formally closes an implemented change (Completed -&gt; Closed). Valid only from
+    /// <see cref="ManagementOfChangeStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ManagementOfChangeLifecycleRules.CanClose, ManagementOfChangeStatus.Completed);
+
+        Status = ManagementOfChangeStatus.Closed;
+
+        AddDomainEvent(new ManagementOfChangeClosedEvent(
+            EventId: new ManagementOfChangeEventId(Uuid7.New()),
+            ManagementOfChangeId: ManagementOfChangeId,
+            ClosedByUserId: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed change for compliance retention (Closed -&gt; Archived). Valid only from
+    /// <see cref="ManagementOfChangeStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ManagementOfChangeLifecycleRules.CanArchive, ManagementOfChangeStatus.Closed);
+
+        Status = ManagementOfChangeStatus.Archived;
+
+        AddDomainEvent(new ManagementOfChangeArchivedEvent(
+            EventId: new ManagementOfChangeEventId(Uuid7.New()),
+            ManagementOfChangeId: ManagementOfChangeId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IManagementOfChangeDomainEvent evt) => _domainEvents.Add(evt);
@@ -149,5 +254,13 @@ public sealed partial class ManagementOfChange
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for ManagementOfChange {ManagementOfChangeId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<ManagementOfChangeStatus, bool> guard, ManagementOfChangeStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new ManagementOfChangeInvalidStatusTransitionException(
+            ManagementOfChangeId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

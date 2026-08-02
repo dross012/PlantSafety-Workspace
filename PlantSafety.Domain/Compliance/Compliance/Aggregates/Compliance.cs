@@ -118,6 +118,145 @@ public sealed partial class Compliance
         return agg;
     }
 
+    // ---- Lifecycle: Activate / Evaluate / Complete / Close / Archive -------
+    // Phase 4 full build-out (2026-08-02): this aggregate previously had only the Create
+    // factory. Event names deliberately avoid the bare "Compliance" prefix (e.g.
+    // ComplianceRuleActivatedEvent, not ComplianceActivatedEvent) -- see the naming warning in
+    // this module's build-out task: "Compliance" collides with both the immediate namespace
+    // segment (PlantSafety.Domain.Compliance.Compliance) and the parent module namespace
+    // (PlantSafety.Domain.Compliance). Mirrors Compliance.Permits' lifecycle build-out shape.
+
+    /// <summary>
+    /// Activates a compliance evaluation record (Created -&gt; Active). Valid only from
+    /// <see cref="ComplianceStatus.Created"/>.
+    /// </summary>
+    public void Activate(
+        UserId activatedBy,
+        UtcTimestamp activatedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ComplianceLifecycleRules.CanActivate, ComplianceStatus.Created);
+
+        Status = ComplianceStatus.Active;
+
+        AddDomainEvent(new ComplianceRuleActivatedEvent(
+            EventId: new ComplianceEventId(Uuid7.New()),
+            ComplianceId: ComplianceId,
+            ActivatedBy: activatedBy,
+            ActivatedAtUtc: activatedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Re-evaluates an active compliance record, updating its score and non-conformance count.
+    /// Does not change lifecycle status. Valid only from <see cref="ComplianceStatus.Active"/>.
+    /// </summary>
+    public void Evaluate(
+        UserId evaluatedBy,
+        decimal complianceScore,
+        int nonConformanceCount,
+        UtcTimestamp evaluatedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ComplianceLifecycleRules.CanEvaluate, ComplianceStatus.Active);
+        if (nonConformanceCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(nonConformanceCount), "Non-conformance count must not be negative.");
+
+        ComplianceScore = complianceScore;
+        NonConformanceCount = nonConformanceCount;
+        LastEvaluatedAtUtc = evaluatedAtUtc;
+
+        AddDomainEvent(new ComplianceRuleEvaluatedEvent(
+            EventId: new ComplianceEventId(Uuid7.New()),
+            ComplianceId: ComplianceId,
+            EvaluatedBy: evaluatedBy,
+            ComplianceScore: complianceScore,
+            NonConformanceCount: nonConformanceCount,
+            EvaluatedAtUtc: evaluatedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Marks the compliance evaluation record completed (Active -&gt; Completed). Valid only from
+    /// <see cref="ComplianceStatus.Active"/>.
+    /// </summary>
+    public void Complete(
+        UserId completedBy,
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ComplianceLifecycleRules.CanComplete, ComplianceStatus.Active);
+
+        Status = ComplianceStatus.Completed;
+
+        AddDomainEvent(new ComplianceRuleCompletedEvent(
+            EventId: new ComplianceEventId(Uuid7.New()),
+            ComplianceId: ComplianceId,
+            CompletedBy: completedBy,
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Formally closes a completed compliance record (Completed -&gt; Closed). Valid only from
+    /// <see cref="ComplianceStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ComplianceLifecycleRules.CanClose, ComplianceStatus.Completed);
+
+        Status = ComplianceStatus.Closed;
+
+        AddDomainEvent(new ComplianceRuleClosedEvent(
+            EventId: new ComplianceEventId(Uuid7.New()),
+            ComplianceId: ComplianceId,
+            ClosedBy: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed compliance record for retention (Closed -&gt; Archived). Valid only from
+    /// <see cref="ComplianceStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ComplianceLifecycleRules.CanArchive, ComplianceStatus.Closed);
+
+        Status = ComplianceStatus.Archived;
+
+        AddDomainEvent(new ComplianceRuleArchivedEvent(
+            EventId: new ComplianceEventId(Uuid7.New()),
+            ComplianceId: ComplianceId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IComplianceDomainEvent evt) => _domainEvents.Add(evt);
@@ -132,5 +271,13 @@ public sealed partial class Compliance
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Compliance {ComplianceId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<ComplianceStatus, bool> guard, ComplianceStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new ComplianceInvalidStatusTransitionException(
+            ComplianceId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

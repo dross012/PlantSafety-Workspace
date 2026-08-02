@@ -17,6 +17,9 @@ public static class ComplianceLifecycleRules
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
     public static bool CanActivate(ComplianceStatus current) => current == ComplianceStatus.Created;
 
+    /// <summary>Returns <see langword="true"/> when the aggregate may be re-evaluated from <paramref name="current"/>.</summary>
+    public static bool CanEvaluate(ComplianceStatus current) => current == ComplianceStatus.Active;
+
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
     public static bool CanComplete(ComplianceStatus current) => current == ComplianceStatus.Active;
 

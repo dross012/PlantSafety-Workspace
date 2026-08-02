@@ -122,6 +122,134 @@ public sealed partial class Certification
         return agg;
     }
 
+    // ---- Lifecycle: Verify / Renew / Expire / Close / Archive ---------------
+    // Phase 4 full build-out (2026-08-02): this aggregate previously had only the Create
+    // factory. Mirrors Compliance.Permits' lifecycle build-out shape.
+
+    /// <summary>
+    /// Verifies and activates a certification record (Created -&gt; Active). Valid only from
+    /// <see cref="CertificationStatus.Created"/>.
+    /// </summary>
+    public void Verify(
+        UserId verifiedBy,
+        UtcTimestamp verifiedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CertificationLifecycleRules.CanActivate, CertificationStatus.Created);
+
+        Status = CertificationStatus.Active;
+
+        AddDomainEvent(new CertificationVerifiedEvent(
+            EventId: new CertificationEventId(Uuid7.New()),
+            CertificationId: CertificationId,
+            VerifiedBy: verifiedBy,
+            VerifiedAtUtc: verifiedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Renews an active certification, extending its expiry and clearing the renewal-required
+    /// flag. Does not change lifecycle status. Valid only from <see cref="CertificationStatus.Active"/>.
+    /// </summary>
+    public void Renew(
+        UserId renewedBy,
+        UtcTimestamp newExpiresAtUtc,
+        UtcTimestamp renewedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CertificationLifecycleRules.CanRenew, CertificationStatus.Active);
+
+        ExpiresAtUtc = newExpiresAtUtc;
+        RenewalRequired = false;
+
+        AddDomainEvent(new CertificationRenewedEvent(
+            EventId: new CertificationEventId(Uuid7.New()),
+            CertificationId: CertificationId,
+            RenewedBy: renewedBy,
+            NewExpiresAtUtc: newExpiresAtUtc,
+            RenewedAtUtc: renewedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Expires an active certification that has passed its validity window (Active -&gt; Completed).
+    /// Valid only from <see cref="CertificationStatus.Active"/>.
+    /// </summary>
+    public void Expire(
+        UtcTimestamp expiredAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CertificationLifecycleRules.CanComplete, CertificationStatus.Active);
+
+        Status = CertificationStatus.Completed;
+
+        AddDomainEvent(new CertificationExpiredEvent(
+            EventId: new CertificationEventId(Uuid7.New()),
+            CertificationId: CertificationId,
+            ExpiredAtUtc: expiredAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Formally closes a completed/expired certification (Completed -&gt; Closed). Valid only from
+    /// <see cref="CertificationStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CertificationLifecycleRules.CanClose, CertificationStatus.Completed);
+
+        Status = CertificationStatus.Closed;
+
+        AddDomainEvent(new CertificationClosedEvent(
+            EventId: new CertificationEventId(Uuid7.New()),
+            CertificationId: CertificationId,
+            ClosedBy: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed certification for compliance retention (Closed -&gt; Archived). Valid only
+    /// from <see cref="CertificationStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CertificationLifecycleRules.CanArchive, CertificationStatus.Closed);
+
+        Status = CertificationStatus.Archived;
+
+        AddDomainEvent(new CertificationArchivedEvent(
+            EventId: new CertificationEventId(Uuid7.New()),
+            CertificationId: CertificationId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(ICertificationDomainEvent evt) => _domainEvents.Add(evt);
@@ -136,5 +264,13 @@ public sealed partial class Certification
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Certification {CertificationId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<CertificationStatus, bool> guard, CertificationStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new CertificationInvalidStatusTransitionException(
+            CertificationId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

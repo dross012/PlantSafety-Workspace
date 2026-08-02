@@ -126,6 +126,110 @@ public sealed partial class RegulatoryCalendar
         return agg;
     }
 
+    // ---- Lifecycle: Activate / RecordCompliance -----------------------------
+
+    /// <summary>
+    /// Activates the regulatory obligation (Created -&gt; Active). Valid only from
+    /// <see cref="RegulatoryCalendarStatus.Created"/>.
+    /// </summary>
+    public void Activate(
+        UserId activatedBy,
+        UtcTimestamp activatedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, RegulatoryCalendarLifecycleRules.CanActivate, RegulatoryCalendarStatus.Created);
+
+        Status = RegulatoryCalendarStatus.Active;
+
+        AddDomainEvent(new RegulatoryCalendarActivatedEvent(
+            EventId: new RegulatoryCalendarEventId(Uuid7.New()),
+            RegulatoryCalendarId: RegulatoryCalendarId,
+            ActivatedByUserId: activatedBy,
+            ActivatedAtUtc: activatedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records compliance with the obligation (Active -&gt; Completed). Valid only from
+    /// <see cref="RegulatoryCalendarStatus.Active"/>.
+    /// </summary>
+    public void RecordCompliance(
+        UserId completedBy,
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, RegulatoryCalendarLifecycleRules.CanComplete, RegulatoryCalendarStatus.Active);
+
+        Status = RegulatoryCalendarStatus.Completed;
+
+        AddDomainEvent(new RegulatoryCalendarComplianceRecordedEvent(
+            EventId: new RegulatoryCalendarEventId(Uuid7.New()),
+            RegulatoryCalendarId: RegulatoryCalendarId,
+            CompletedByUserId: completedBy,
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Close / Archive -----------------------------------------
+
+    /// <summary>
+    /// Formally closes a completed obligation (Completed -&gt; Closed). Valid only from
+    /// <see cref="RegulatoryCalendarStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, RegulatoryCalendarLifecycleRules.CanClose, RegulatoryCalendarStatus.Completed);
+
+        Status = RegulatoryCalendarStatus.Closed;
+
+        AddDomainEvent(new RegulatoryCalendarClosedEvent(
+            EventId: new RegulatoryCalendarEventId(Uuid7.New()),
+            RegulatoryCalendarId: RegulatoryCalendarId,
+            ClosedByUserId: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed obligation for compliance retention (Closed -&gt; Archived). Valid only
+    /// from <see cref="RegulatoryCalendarStatus.Closed"/>. See
+    /// <see cref="Policies.RegulatoryCalendarArchivalPolicy"/> for eligibility outside the
+    /// aggregate boundary (e.g. batch archival jobs).
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, RegulatoryCalendarLifecycleRules.CanArchive, RegulatoryCalendarStatus.Closed);
+
+        Status = RegulatoryCalendarStatus.Archived;
+
+        AddDomainEvent(new RegulatoryCalendarArchivedEvent(
+            EventId: new RegulatoryCalendarEventId(Uuid7.New()),
+            RegulatoryCalendarId: RegulatoryCalendarId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IRegulatoryCalendarDomainEvent evt) => _domainEvents.Add(evt);
@@ -140,5 +244,13 @@ public sealed partial class RegulatoryCalendar
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for RegulatoryCalendar {RegulatoryCalendarId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<RegulatoryCalendarStatus, bool> guard, RegulatoryCalendarStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new RegulatoryCalendarInvalidStatusTransitionException(
+            RegulatoryCalendarId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

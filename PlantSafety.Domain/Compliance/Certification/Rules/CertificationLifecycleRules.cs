@@ -20,6 +20,9 @@ public static class CertificationLifecycleRules
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
     public static bool CanComplete(CertificationStatus current) => current == CertificationStatus.Active;
 
+    /// <summary>Returns <see langword="true"/> when the aggregate may be renewed from <paramref name="current"/>.</summary>
+    public static bool CanRenew(CertificationStatus current) => current == CertificationStatus.Active;
+
     /// <summary>Returns <see langword="true"/> when the aggregate may be closed from <paramref name="current"/>.</summary>
     public static bool CanClose(CertificationStatus current) => current == CertificationStatus.Completed;
 

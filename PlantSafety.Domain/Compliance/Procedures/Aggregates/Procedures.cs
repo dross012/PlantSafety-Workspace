@@ -126,6 +126,109 @@ public sealed partial class Procedures
         return agg;
     }
 
+    // ---- Lifecycle: Approve / Supersede ---------------------------------------
+
+    /// <summary>
+    /// Approves the procedure and makes it effective (Created -&gt; Active). Valid only from
+    /// <see cref="ProceduresStatus.Created"/>.
+    /// </summary>
+    public void Approve(
+        UserId approvedBy,
+        UtcTimestamp effectiveAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProceduresLifecycleRules.CanActivate, ProceduresStatus.Created);
+
+        EffectiveAtUtc = effectiveAtUtc;
+        Status = ProceduresStatus.Active;
+
+        AddDomainEvent(new ProceduresApprovedEvent(
+            EventId: new ProceduresEventId(Uuid7.New()),
+            ProceduresId: ProceduresId,
+            ApprovedByUserId: approvedBy,
+            EffectiveAtUtc: effectiveAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Supersedes an active procedure with a newer revision (Active -&gt; Completed). Valid only from
+    /// <see cref="ProceduresStatus.Active"/>.
+    /// </summary>
+    public void Supersede(
+        UserId supersededBy,
+        UtcTimestamp supersededAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProceduresLifecycleRules.CanComplete, ProceduresStatus.Active);
+
+        Status = ProceduresStatus.Completed;
+
+        AddDomainEvent(new ProceduresSupersededEvent(
+            EventId: new ProceduresEventId(Uuid7.New()),
+            ProceduresId: ProceduresId,
+            SupersededByUserId: supersededBy,
+            SupersededAtUtc: supersededAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Close / Archive -------------------------------------------
+
+    /// <summary>
+    /// Formally closes a superseded procedure (Completed -&gt; Closed). Valid only from
+    /// <see cref="ProceduresStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProceduresLifecycleRules.CanClose, ProceduresStatus.Completed);
+
+        Status = ProceduresStatus.Closed;
+
+        AddDomainEvent(new ProceduresClosedEvent(
+            EventId: new ProceduresEventId(Uuid7.New()),
+            ProceduresId: ProceduresId,
+            ClosedByUserId: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed procedure for compliance retention (Closed -&gt; Archived). Valid only from
+    /// <see cref="ProceduresStatus.Closed"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProceduresLifecycleRules.CanArchive, ProceduresStatus.Closed);
+
+        Status = ProceduresStatus.Archived;
+
+        AddDomainEvent(new ProceduresArchivedEvent(
+            EventId: new ProceduresEventId(Uuid7.New()),
+            ProceduresId: ProceduresId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IProceduresDomainEvent evt) => _domainEvents.Add(evt);
@@ -140,5 +243,13 @@ public sealed partial class Procedures
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Procedures {ProceduresId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<ProceduresStatus, bool> guard, ProceduresStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new ProceduresInvalidStatusTransitionException(
+            ProceduresId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

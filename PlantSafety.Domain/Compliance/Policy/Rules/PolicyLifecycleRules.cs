@@ -25,4 +25,7 @@ public static class PolicyLifecycleRules
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be archived from <paramref name="current"/>.</summary>
     public static bool CanArchive(PolicyStatus current) => current == PolicyStatus.Closed;
+
+    /// <summary>Returns <see langword="true"/> when acknowledgments may be recorded from <paramref name="current"/>.</summary>
+    public static bool CanAcknowledge(PolicyStatus current) => current == PolicyStatus.Active;
 }
