@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         Governance
 //  Layer:          Domain
@@ -8,18 +8,32 @@
 //  SchemaVersion:  2026.1
 //  Description:    Domain repository interface for the Governance aggregate root.
 //                  Additive-only evolution.
+//  UPDATED:        2026-08-02 -- Phase 4 full build-out: GetByIdAsync now takes a tenantId
+//                  parameter (tenant-scoped from the start) and UpdateAsync now takes an
+//                  optimistic-concurrency ETag, mirroring IAuditingRepository's identical
+//                  retrofit. This aggregate previously had no write path at all -- no
+//                  Application-layer command ever called these methods -- so there is no
+//                  pre-existing 2-arg call site to migrate.
 // ============================================================================
 namespace PlantSafety.Domain.Governance.Repositories;
 
 /// <summary>Domain repository interface for the <see cref="Governance"/> aggregate root.</summary>
 public interface IGovernanceRepository
 {
-    /// <summary>Retrieves a Governance aggregate by its identity, or <see langword="null"/> if not found.</summary>
-    Task<PlantSafety.Domain.Governance.Aggregates.Governance?> GetByIdAsync(GovernanceId id, CancellationToken cancellationToken = default);
+    /// <summary>Retrieves a Governance aggregate by its identity, scoped to the given tenant, or <see langword="null"/> if not found.</summary>
+    Task<PlantSafety.Domain.Governance.Aggregates.Governance?> GetByIdAsync(GovernanceId id, Guid tenantId, CancellationToken cancellationToken = default);
 
     /// <summary>Persists a new Governance aggregate.</summary>
     Task AddAsync(PlantSafety.Domain.Governance.Aggregates.Governance aggregate, CancellationToken cancellationToken = default);
 
-    /// <summary>Persists changes to an existing Governance aggregate.</summary>
-    Task UpdateAsync(PlantSafety.Domain.Governance.Aggregates.Governance aggregate, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Persists changes to an existing Governance aggregate, enforcing optimistic concurrency.
+    /// </summary>
+    /// <param name="aggregate">The mutated aggregate to persist.</param>
+    /// <param name="eTag">
+    /// The last-known concurrency token (from a prior read). A stale or mismatched value causes
+    /// the persistence layer to reject the write as a concurrency conflict (zero rows affected).
+    /// </param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    Task UpdateAsync(PlantSafety.Domain.Governance.Aggregates.Governance aggregate, string? eTag, CancellationToken cancellationToken = default);
 }

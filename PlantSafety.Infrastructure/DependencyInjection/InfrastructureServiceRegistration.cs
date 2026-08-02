@@ -128,6 +128,9 @@ using PlantSafety.Infrastructure.Compliance.Policies.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Procedures.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.RegulatoryCalendar.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Auditing.DependencyInjection;
+using PlantSafety.Infrastructure.ProcessManagement.DependencyInjection;
+using PlantSafety.Infrastructure.Sustainability.DependencyInjection;
+using PlantSafety.Infrastructure.WorkerWellBeing.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Certification.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Compliance.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.PredictiveMaintenance.DependencyInjection;
@@ -144,6 +147,14 @@ using PlantSafety.Infrastructure.Intelligence.DependencyInjection;
 using PlantSafety.Infrastructure.PlanningProjects.DependencyInjection;
 using PlantSafety.Application.Compliance.Commands;
 using PlantSafety.Infrastructure.Compliance.Commands.Persistence;
+using PlantSafety.Infrastructure.AiGovernance.DependencyInjection;
+using PlantSafety.Infrastructure.AiSafetyIntelligence.DependencyInjection;
+using PlantSafety.Infrastructure.ContractorVisitor.DependencyInjection;
+using PlantSafety.Infrastructure.DigitalTwin.DependencyInjection;
+using PlantSafety.Infrastructure.EnvironmentalHealth.DependencyInjection;
+using PlantSafety.Infrastructure.Governance.DependencyInjection;
+using PlantSafety.Infrastructure.HumanFactors.DependencyInjection;
+using PlantSafety.Infrastructure.OperationalSafety.DependencyInjection;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -419,6 +430,9 @@ public static class InfrastructureServiceRegistration
             .AddProceduresAggregateInfrastructure()
             .AddRegulatoryCalendarInfrastructure()
             .AddComplianceAuditingInfrastructure()
+            .AddProcessManagementAggregateInfrastructure()
+            .AddSustainabilityAggregateInfrastructure()
+            .AddWorkerWellBeingAggregateInfrastructure()
             .AddComplianceCertificationInfrastructure()
             .AddComplianceRuleInfrastructure()
             .AddScoreCardsAggregateInfrastructure()
@@ -432,6 +446,31 @@ public static class InfrastructureServiceRegistration
             .AddSafetyCultureInfrastructure()
             .AddAlertsInfrastructure()
             .AddDashboardsInfrastructure();
+
+        // Phase 4 full build-out (2026-08-02): previously-bare DDD aggregates AiGovernance,
+        // AiSafetyIntelligence, ContractorVisitor, DigitalTwin. AiGovernance and DigitalTwin are
+        // distinct concepts from the pre-existing, unrelated "GovernedModel"/"Twin" Features
+        // verticals registered separately via .AddFeaturesLegacyRepositories() below.
+        services
+            .AddAiGovernanceModuleInfrastructure()
+            .AddAiSafetyIntelligenceModuleInfrastructure()
+            .AddContractorVisitorModuleInfrastructure()
+            .AddDigitalTwinModuleInfrastructure();
+
+        // Phase 4 full build-out (2026-08-02): previously-bare DDD aggregates
+        // EnvironmentalHealth, Governance, HumanFactors, OperationalSafety. EnvironmentalHealth
+        // is a distinct bounded context from the pre-existing, unrelated, LIVE
+        // Features.EnvironmentalHealth "reading" vertical (registered separately, by
+        // fully-qualified name, a few lines above via AddScoped<...IEnvironmentalHealthReadingRepository...>)
+        // and from the separate, already-modernized EmployeeSafety.EnvironmentalHealthMonitoring
+        // aggregate. OperationalSafety (this aggregate root) is likewise distinct from the
+        // pre-existing, unrelated, LIVE OperationalSafety.Alerts/Checklists/PPEManagement/
+        // RiskManagement/Schedules registrations above.
+        services
+            .AddEnvironmentalHealthAggregateInfrastructure()
+            .AddGovernanceAggregateInfrastructure()
+            .AddHumanFactorsAggregateInfrastructure()
+            .AddOperationalSafetyAggregateInfrastructure();
 
         // Legacy-module repositories (pre-existing Compliance/Analytics/Operational/etc.
         // modules whose Application-layer repository interfaces had no Infrastructure

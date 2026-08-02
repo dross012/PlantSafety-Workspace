@@ -4,6 +4,12 @@
 //  Layer:          Domain
 //  File:           IProcessDefinitionDomainEvent.cs
 //  Created:        2026-07-15
+//  Updated:        2026-08-02 -- Phase 4 full build-out: now extends the platform-canonical
+//                  PlantSafety.Domain.Common.Abstractions.IDomainEvent (previously declared its
+//                  own standalone copy of the same four members) so ProcessDefinition domain
+//                  events can flow through the shared IOutboxWriter.Enqueue(IDomainEvent, ...)
+//                  pipeline used by every other module. Purely additive -- the member shapes are
+//                  identical, so no existing implementer needs any change.
 //  Author:         PlantSafety Platform Team
 //  SchemaVersion:  2026.1
 //  Description:    Marker interface for all ProcessDefinition domain events.
@@ -13,17 +19,6 @@
 namespace PlantSafety.Domain.ProcessManagement.Events;
 
 /// <summary>Marker interface for domain events raised by the <c>ProcessDefinition</c> aggregate.</summary>
-public interface IProcessDefinitionDomainEvent
+public interface IProcessDefinitionDomainEvent : IDomainEvent
 {
-    /// <summary>Canonical event type discriminator.</summary>
-    string EventType { get; }
-
-    /// <summary>Additive event schema version.</summary>
-    int EventVersion { get; }
-
-    /// <summary>Domain schema version this event was authored against.</summary>
-    string SchemaVersion { get; }
-
-    /// <summary>UTC timestamp the event occurred at.</summary>
-    UtcTimestamp OccurredAtUtc { get; }
 }

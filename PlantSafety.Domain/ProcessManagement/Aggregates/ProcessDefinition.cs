@@ -4,6 +4,10 @@
 //  Layer:          Domain
 //  File:           ProcessDefinition.cs
 //  Created:        2026-07-15
+//  Updated:        2026-08-02 -- Phase 4 full build-out: converted the string Status field to the
+//                  documented ProcessDefinitionStatus enum (additive-only, field name unchanged)
+//                  and added the SubmitForReview/Approve/Retire/Archive/Revise lifecycle. Mirrors
+//                  Compliance.Policy's Supersede-style same-status action for Revise.
 //  Author:         PlantSafety Platform Team
 //  SchemaVersion:  2026.1
 //  Description:    Aggregate root for the ProcessManagement bounded context. Represents a
@@ -34,8 +38,8 @@ public sealed class ProcessDefinition
     /// <summary>Safety-critical process category (e.g., HazardousMaterials, ConfinedSpace, LOTO, HotWork).</summary>
     public string Category { get; private set; } = string.Empty;
 
-    /// <summary>Lifecycle status: Draft, Active, UnderReview, Retired.</summary>
-    public string Status { get; private set; } = "Draft";
+    /// <summary>Current lifecycle status.</summary>
+    public ProcessDefinitionStatus Status { get; private set; } = ProcessDefinitionStatus.Draft;
 
     /// <summary>Monotonically increasing revision number, starting at 1.</summary>
     public int Version { get; private set; } = 1;
@@ -87,7 +91,7 @@ public sealed class ProcessDefinition
             SiteId              = siteId,
             ProcessName         = processName.Trim(),
             Category            = category.Trim(),
-            Status              = "Draft",
+            Status              = ProcessDefinitionStatus.Draft,
             Version             = 1,
             OwnerId             = ownerId,
             CreatedAtUtc        = createdAtUtc,
@@ -110,4 +114,146 @@ public sealed class ProcessDefinition
 
     /// <summary>Clears the in-memory event list after dispatch.</summary>
     public void ClearDomainEvents() => _domainEvents.Clear();
+
+    // ---- Lifecycle: SubmitForReview / Approve / Retire / Archive / Revise --
+
+    /// <summary>
+    /// Submits this Draft process definition for review (Draft -&gt; UnderReview). Valid only from
+    /// <see cref="ProcessDefinitionStatus.Draft"/>.
+    /// </summary>
+    public void SubmitForReview(
+        UserId submittedBy,
+        UtcTimestamp submittedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProcessDefinitionLifecycleRules.CanSubmitForReview, ProcessDefinitionStatus.Draft);
+
+        Status = ProcessDefinitionStatus.UnderReview;
+
+        AddDomainEvent(new ProcessDefinitionSubmittedForReviewEvent(
+            EventId: Uuid7.New(),
+            ProcessDefinitionId: ProcessDefinitionId.Value,
+            SubmittedByUserId: submittedBy.Value,
+            SubmittedAtUtc: submittedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Approves a process definition under review and makes it effective (UnderReview -&gt; Active).
+    /// Valid only from <see cref="ProcessDefinitionStatus.UnderReview"/>.
+    /// </summary>
+    public void Approve(
+        UserId approvedBy,
+        UtcTimestamp approvedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProcessDefinitionLifecycleRules.CanApprove, ProcessDefinitionStatus.UnderReview);
+
+        Status = ProcessDefinitionStatus.Active;
+
+        AddDomainEvent(new ProcessDefinitionApprovedEvent(
+            EventId: Uuid7.New(),
+            ProcessDefinitionId: ProcessDefinitionId.Value,
+            ApprovedByUserId: approvedBy.Value,
+            ApprovedAtUtc: approvedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Retires an active process definition from use (Active -&gt; Retired). Valid only from
+    /// <see cref="ProcessDefinitionStatus.Active"/>.
+    /// </summary>
+    public void Retire(
+        UserId retiredBy,
+        string? reason,
+        UtcTimestamp retiredAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProcessDefinitionLifecycleRules.CanRetire, ProcessDefinitionStatus.Active);
+
+        Status = ProcessDefinitionStatus.Retired;
+
+        AddDomainEvent(new ProcessDefinitionRetiredEvent(
+            EventId: Uuid7.New(),
+            ProcessDefinitionId: ProcessDefinitionId.Value,
+            RetiredByUserId: retiredBy.Value,
+            Reason: reason,
+            RetiredAtUtc: retiredAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a retired process definition for compliance retention (Retired -&gt; Archived). Valid
+    /// only from <see cref="ProcessDefinitionStatus.Retired"/>.
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProcessDefinitionLifecycleRules.CanArchive, ProcessDefinitionStatus.Retired);
+
+        Status = ProcessDefinitionStatus.Archived;
+
+        AddDomainEvent(new ProcessDefinitionArchivedEvent(
+            EventId: Uuid7.New(),
+            ProcessDefinitionId: ProcessDefinitionId.Value,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Revises an active process definition in place (same-status action; Active remains Active),
+    /// incrementing <see cref="Version"/>. Valid only from <see cref="ProcessDefinitionStatus.Active"/>.
+    /// Mirrors Compliance.Policy's Supersede-style / Analytics.Dashboard's RefreshData-style
+    /// same-status action pattern.
+    /// </summary>
+    public void Revise(
+        UserId revisedBy,
+        UtcTimestamp revisedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, ProcessDefinitionLifecycleRules.CanRevise, ProcessDefinitionStatus.Active);
+
+        Version++;
+
+        AddDomainEvent(new ProcessDefinitionRevisedEvent(
+            EventId: Uuid7.New(),
+            ProcessDefinitionId: ProcessDefinitionId.Value,
+            RevisedByUserId: revisedBy.Value,
+            Version: Version,
+            RevisedAtUtc: revisedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Helpers -------------------------------------------------------------
+
+    private void AddDomainEvent(IProcessDefinitionDomainEvent evt) => _domainEvents.Add(evt);
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<ProcessDefinitionStatus, bool> guard, ProcessDefinitionStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new ProcessDefinitionInvalidStatusTransitionException(
+            ProcessDefinitionId, Status.ToString(), expected.ToString(), correlationId, causationId);
+    }
 }
