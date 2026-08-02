@@ -20169,6 +20169,222 @@
         <member name="P:PlantSafety.Application.ContinuousImprovement.Queries.ExportContinuousImprovementResult.RecordCount">
             <summary>Actual number of records included in the export.</summary>
         </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand">
+            <summary>Archives a closed RCA record for compliance retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Archives a closed RCA record for compliance retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#ContinuousImprovement#RCA#Commands#RCAStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommandHandler.#ctor(PlantSafety.Domain.ContinuousImprovement.RCA.Interfaces.IRCARepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommandHandler.Handle(PlantSafety.Application.ContinuousImprovement.RCA.Commands.ArchiveRCACommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand">
+            <summary>Approves and formally closes an RCA record (PendingApproval -&gt; Closed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.String)">
+            <summary>Approves and formally closes an RCA record (PendingApproval -&gt; Closed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#ContinuousImprovement#RCA#Commands#RCAStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommandHandler.#ctor(PlantSafety.Domain.ContinuousImprovement.RCA.Interfaces.IRCARepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommandHandler.Handle(PlantSafety.Application.ContinuousImprovement.RCA.Commands.CloseRCACommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand">
+            <summary>Creates a new ContinuousImprovement RCA record.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="ProblemStatement">Problem statement being analyzed.</param>
+            <param name="Methodology">Analysis methodology used (e.g., FiveWhys/FishboneDiagram/FaultTree/Bowtie).</param>
+            <param name="OwnerUserId">Identity of the user who owns the RCA.</param>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.#ctor(System.Guid,System.Guid,System.Guid,System.DateTime,System.String,System.Guid,System.Nullable{System.Guid},System.String,System.String,System.Guid)">
+            <summary>Creates a new ContinuousImprovement RCA record.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="ProblemStatement">Problem statement being analyzed.</param>
+            <param name="Methodology">Analysis methodology used (e.g., FiveWhys/FishboneDiagram/FaultTree/Bowtie).</param>
+            <param name="OwnerUserId">Identity of the user who owns the RCA.</param>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.CommandId">
+            <summary>Unique identifier for this command instance (Uuid7).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.CorrelationId">
+            <summary>Operation-group correlation identifier, constant across the whole request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.CausationId">
+            <summary>Identifier of the immediate parent command or event. Null only for root operations.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.RequestedAtUtc">
+            <summary>UTC instant the command was issued, generated once at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.ApiVersionToken">
+            <summary>API version token the request was issued under.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.SiteId">
+            <summary>Optional site scope. Null applies tenant-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.ProblemStatement">
+            <summary>Problem statement being analyzed.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.Methodology">
+            <summary>Analysis methodology used (e.g., FiveWhys/FishboneDiagram/FaultTree/Bowtie).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.OwnerUserId">
+            <summary>Identity of the user who owns the RCA.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#ContinuousImprovement#RCA#Commands#RCAStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommandHandler.#ctor(PlantSafety.Domain.ContinuousImprovement.RCA.Interfaces.IRCARepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommandHandler.Handle(PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.RCAStatusResult">
+            <summary>Result payload shared by RCA lifecycle commands.</summary>
+            <param name="RcaId">Identity of the affected RCA aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.RCAStatusResult.#ctor(System.Guid,System.String)">
+            <summary>Result payload shared by RCA lifecycle commands.</summary>
+            <param name="RcaId">Identity of the affected RCA aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.RCAStatusResult.RcaId">
+            <summary>Identity of the affected RCA aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.RCAStatusResult.Status">
+            <summary>Lifecycle status after the transition.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand">
+            <summary>Begins analysis work on an RCA record (Initiated -&gt; InProgress).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Begins analysis work on an RCA record (Initiated -&gt; InProgress).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#ContinuousImprovement#RCA#Commands#RCAStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommandHandler.#ctor(PlantSafety.Domain.ContinuousImprovement.RCA.Interfaces.IRCARepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommandHandler.Handle(PlantSafety.Application.ContinuousImprovement.RCA.Commands.StartAnalysisRCACommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand">
+            <summary>Submits an RCA record for approval (InProgress -&gt; PendingApproval).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.String)">
+            <summary>Submits an RCA record for approval (InProgress -&gt; PendingApproval).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#ContinuousImprovement#RCA#Commands#RCAStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommandHandler.#ctor(PlantSafety.Domain.ContinuousImprovement.RCA.Interfaces.IRCARepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommandHandler.Handle(PlantSafety.Application.ContinuousImprovement.RCA.Commands.SubmitForApprovalRCACommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Handlers.GetRCAByIdQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAByIdQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Handlers.GetRCAByIdQueryHandler.#ctor(PlantSafety.Application.ContinuousImprovement.RCA.Repositories.IRCADetailRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.ContinuousImprovement.RCA.Handlers.GetRCAByIdQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Handlers.GetRCAByIdQueryHandler.Handle(PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAByIdQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Handlers.GetRCAQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAQuery"/>.</summary>
         </member>
@@ -20177,6 +20393,73 @@
         </member>
         <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Handlers.GetRCAQueryHandler.Handle(PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAQuery,System.Threading.CancellationToken)">
             <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto">
+            <summary>A single RCA read-model record, including the full lifecycle state.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.RcaId">
+            <summary>RCA record identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.SiteId">
+            <summary>Site identifier, or null when not site-scoped.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.ProblemStatement">
+            <summary>Problem statement being analyzed.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.Methodology">
+            <summary>Analysis methodology used (e.g., FiveWhys/FishboneDiagram/FaultTree/Bowtie).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.Status">
+            <summary>Current lifecycle status (Initiated/InProgress/PendingApproval/Closed/Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.InitiatedAtUtc">
+            <summary>UTC timestamp when the RCA was initiated.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.OwnerUserId">
+            <summary>Identity of the user who owns the RCA.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.StartedBy">
+            <summary>Identity of the user who started the analysis.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.StartedAtUtc">
+            <summary>UTC instant analysis work began.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.SubmittedBy">
+            <summary>Identity of the user who submitted the RCA for approval.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.Findings">
+            <summary>Findings recorded when the RCA was submitted for approval, if any.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.SubmittedAtUtc">
+            <summary>UTC instant the RCA was submitted for approval.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.ClosedBy">
+            <summary>Identity of the user who formally closed the RCA.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.RootCauseSummary">
+            <summary>Root cause summary recorded when the RCA was closed, if any.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.ClosedAtUtc">
+            <summary>UTC instant the RCA was closed.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.ArchivedAtUtc">
+            <summary>UTC instant the RCA was archived for compliance retention.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.CreatedAtUtc">
+            <summary>UTC timestamp when the record was created.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.CreatedBy">
+            <summary>Identity of the user who created this record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCADetailDto.ETag">
+            <summary>
+            Optimistic-concurrency token (native RowVersion projected as a hex string). Callers must
+            echo this value back on a subsequent mutating command's ETag field; a stale/mismatched
+            value results in a concurrency-conflict error.
+            </summary>
         </member>
         <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCAItemDto">
             <summary>A single root cause analysis record tracked by the ContinuousImprovement RCA module.</summary>
@@ -20204,6 +20487,22 @@
         </member>
         <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Models.RCAItemDto.OwnerUserId">
             <summary>Identity of the user who owns the RCA.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAByIdQuery">
+            <summary>Retrieves a single RCA read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="RcaId">Identity of the RCA record to retrieve.</param>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAByIdQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves a single RCA read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="RcaId">Identity of the RCA record to retrieve.</param>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAByIdQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAByIdQuery.RcaId">
+            <summary>Identity of the RCA record to retrieve.</summary>
         </member>
         <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Queries.GetRCAQuery">
             <summary>
@@ -20263,11 +20562,26 @@
         <member name="P:PlantSafety.Application.ContinuousImprovement.RCA.Queries.RCAQueryResult.Items">
             <summary>Matching RCA items.</summary>
         </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Repositories.IRCADetailRepository">
+            <summary>Read-only repository for a single RCA record by identity. Implemented in the Infrastructure layer.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Repositories.IRCADetailRepository.GetByIdAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the full RCA read-model record for the given identity, scoped to the given
+            tenant, or <see langword="null"/> if not found or if it belongs to a different tenant.
+            </summary>
+        </member>
         <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Repositories.IRCARepository">
             <summary>Read-only repository for RCA data. Implemented in the Infrastructure layer.</summary>
         </member>
         <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Repositories.IRCARepository.GetRcaRecordsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns RCA items for the tenant/site within the given UTC date range.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.ContinuousImprovement.RCA.Validation.CreateRCACommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.ContinuousImprovement.RCA.Validation.CreateRCACommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.ContinuousImprovement.RCA.Commands.CreateRCACommand"/>.</summary>
         </member>
         <member name="T:PlantSafety.Application.ContinuousImprovement.Repositories.IExportContinuousImprovementRepository">
             <summary>Generates ContinuousImprovement export files and uploads them to durable storage. Implemented in the Infrastructure layer.</summary>

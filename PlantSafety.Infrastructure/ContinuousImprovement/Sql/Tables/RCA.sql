@@ -39,3 +39,79 @@ BEGIN
     CREATE NONCLUSTERED INDEX [IX_RCA_InitiatedAtUtc] ON [ContinuousImprovement].[RCA] (InitiatedAtUtc);
 END
 GO
+
+-- ============================================================================
+-- Phase 4 full build-out (2026-08-02): additive columns backing the newly built RCA aggregate's
+-- full lifecycle (StartAnalysis/SubmitForApproval/Close/Archive) plus a native RowVersion for
+-- optimistic-concurrency ETags. This table pre-existed as a read-only projection (no lifecycle
+-- attribute columns, no RowVersion) -- every column below is added via an idempotent guard so
+-- re-running this script against an already-migrated database is a no-op. The pre-existing
+-- CreatedAtUtc/CreatedBy/IsDeleted/ModifiedAtUtc/ModifiedBy audit columns are reused as-is (no
+-- rename) -- the aggregate's write-side repository maps its own CreatedBy/CreatedAtUtc onto these
+-- same columns and reuses ModifiedAtUtc/ModifiedBy (not a new "UpdatedAtUtc/UpdatedBy" pair) for
+-- symmetry with the table's own pre-existing naming.
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'StartedBy')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD StartedBy UNIQUEIDENTIFIER NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'StartedAtUtc')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD StartedAtUtc DATETIME2(3) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'SubmittedBy')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD SubmittedBy UNIQUEIDENTIFIER NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'Findings')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD Findings NVARCHAR(MAX) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'SubmittedAtUtc')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD SubmittedAtUtc DATETIME2(3) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'ClosedBy')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD ClosedBy UNIQUEIDENTIFIER NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'RootCauseSummary')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD RootCauseSummary NVARCHAR(MAX) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'ClosedAtUtc')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD ClosedAtUtc DATETIME2(3) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'ArchivedAtUtc')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD ArchivedAtUtc DATETIME2(3) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[ContinuousImprovement].[RCA]') AND name = 'RowVersion')
+BEGIN
+    ALTER TABLE [ContinuousImprovement].[RCA] ADD RowVersion ROWVERSION NOT NULL;
+END
+GO
+
+-- NOTE: the longest RCAStatus enum member is 'PendingApproval' (15 chars); the pre-existing
+-- Status NVARCHAR(50) column already comfortably accommodates every lifecycle status name, so no
+-- widening ALTER is required here.

@@ -451,6 +451,7 @@ public static class InfrastructureServiceRegistration
             .AddFeaturesLegacyRepositories()
             .AddIntelligenceRepositories()
             .AddContinuousImprovementRepositories()
+            .AddContinuousImprovementRCAAggregateInfrastructure()
             .AddPlanningProjectsRepositories()
             .AddHealthChecksRepositories()
             .AddFinancialsRepositories();
