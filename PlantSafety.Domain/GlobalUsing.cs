@@ -469,8 +469,11 @@ global using PlantSafety.Domain.DigitalTwin.Enums;
 global using PlantSafety.Domain.DigitalTwin.Exceptions;
 global using PlantSafety.Domain.DigitalTwin.Rules;
 global using PlantSafety.Domain.EnterpriseFabric.Aggregates;
+global using PlantSafety.Domain.EnterpriseFabric.Enums;
 global using PlantSafety.Domain.EnterpriseFabric.Events;
+global using PlantSafety.Domain.EnterpriseFabric.Exceptions;
 global using PlantSafety.Domain.EnterpriseFabric.Repositories;
+global using PlantSafety.Domain.EnterpriseFabric.Rules;
 global using PlantSafety.Domain.EnterpriseFabric.ValueObjects;
 global using PlantSafety.Domain.EnvironmentalHealth.Aggregates;
 global using PlantSafety.Domain.EnvironmentalHealth.Enums;
@@ -624,18 +627,35 @@ global using PlantSafety.Domain.SafetyCulture.StopWorkEvent.ValueObjects.Ids;
 // its own explicit, file-scoped `using` directives instead of relying on this global list.
 
 // ---- Financials / PlanningProjects -----------------------------------------
+global using PlantSafety.Domain.Financials.Aggregates;
 global using PlantSafety.Domain.Financials.Entities;
 global using PlantSafety.Domain.Financials.Enums;
 global using PlantSafety.Domain.Financials.Events;
+global using PlantSafety.Domain.Financials.Exceptions;
+global using PlantSafety.Domain.Financials.Interfaces;
+global using PlantSafety.Domain.Financials.Rules;
 global using PlantSafety.Domain.Financials.Services;
 global using PlantSafety.Domain.Financials.Specifications;
 global using PlantSafety.Domain.Financials.ValueObjects;
+global using PlantSafety.Domain.PlanningProjects.Aggregates;
 global using PlantSafety.Domain.PlanningProjects.Entities;
 global using PlantSafety.Domain.PlanningProjects.Enums;
 global using PlantSafety.Domain.PlanningProjects.Events;
+global using PlantSafety.Domain.PlanningProjects.Exceptions;
+global using PlantSafety.Domain.PlanningProjects.Interfaces;
+global using PlantSafety.Domain.PlanningProjects.Rules;
 global using PlantSafety.Domain.PlanningProjects.Services;
 global using PlantSafety.Domain.PlanningProjects.Specifications;
 global using PlantSafety.Domain.PlanningProjects.ValueObjects;
+
+// ---- Intelligence.AIInvestigations (Phase 4 full build-out, 2026-08-02) ----------------
+global using PlantSafety.Domain.Intelligence.AIInvestigations.Aggregates;
+global using PlantSafety.Domain.Intelligence.AIInvestigations.Enums;
+global using PlantSafety.Domain.Intelligence.AIInvestigations.Events;
+global using PlantSafety.Domain.Intelligence.AIInvestigations.Exceptions;
+global using PlantSafety.Domain.Intelligence.AIInvestigations.Interfaces;
+global using PlantSafety.Domain.Intelligence.AIInvestigations.Rules;
+global using PlantSafety.Domain.Intelligence.AIInvestigations.ValueObjects.Ids;
 
 // ---- EmployeeSafety / ContractorSafety / MachineSafety / SafetyProcedures (Legacy Module Batch) ----
 global using PlantSafety.Domain.EmployeeSafety.MachineGuarding.Aggregates;
@@ -1334,3 +1354,27 @@ global using PlantSafety.Domain.Observability.AutomatedIncidentDetection.ValueOb
 global using PlantSafety.Domain.Observability.AutomatedIncidentDetection.ValueObjects.Ids;
 global using PlantSafety.Domain.Observability.Aggregates;
 global using PlantSafety.Domain.Observability.Events;
+
+// ---- Intelligence.AITraining / Intelligence.DataLake / Intelligence.PredictiveSafety (Phase 4
+// full build-out, 2026-08-02) --------------------------------------------------------------------
+global using PlantSafety.Domain.Intelligence.AITraining.Aggregates;
+global using PlantSafety.Domain.Intelligence.AITraining.Enums;
+global using PlantSafety.Domain.Intelligence.AITraining.Events;
+global using PlantSafety.Domain.Intelligence.AITraining.Exceptions;
+global using PlantSafety.Domain.Intelligence.AITraining.Interfaces;
+global using PlantSafety.Domain.Intelligence.AITraining.Rules;
+global using PlantSafety.Domain.Intelligence.AITraining.ValueObjects.Ids;
+global using PlantSafety.Domain.Intelligence.DataLake.Aggregates;
+global using PlantSafety.Domain.Intelligence.DataLake.Enums;
+global using PlantSafety.Domain.Intelligence.DataLake.Events;
+global using PlantSafety.Domain.Intelligence.DataLake.Exceptions;
+global using PlantSafety.Domain.Intelligence.DataLake.Interfaces;
+global using PlantSafety.Domain.Intelligence.DataLake.Rules;
+global using PlantSafety.Domain.Intelligence.DataLake.ValueObjects.Ids;
+global using PlantSafety.Domain.Intelligence.PredictiveSafety.Aggregates;
+global using PlantSafety.Domain.Intelligence.PredictiveSafety.Enums;
+global using PlantSafety.Domain.Intelligence.PredictiveSafety.Events;
+global using PlantSafety.Domain.Intelligence.PredictiveSafety.Exceptions;
+global using PlantSafety.Domain.Intelligence.PredictiveSafety.Interfaces;
+global using PlantSafety.Domain.Intelligence.PredictiveSafety.Rules;
+global using PlantSafety.Domain.Intelligence.PredictiveSafety.ValueObjects.Ids;

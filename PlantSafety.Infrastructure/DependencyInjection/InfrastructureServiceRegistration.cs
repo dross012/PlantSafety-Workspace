@@ -155,6 +155,7 @@ using PlantSafety.Infrastructure.EnvironmentalHealth.DependencyInjection;
 using PlantSafety.Infrastructure.Governance.DependencyInjection;
 using PlantSafety.Infrastructure.HumanFactors.DependencyInjection;
 using PlantSafety.Infrastructure.OperationalSafety.DependencyInjection;
+using PlantSafety.Infrastructure.EnterpriseFabric.DependencyInjection;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -472,6 +473,18 @@ public static class InfrastructureServiceRegistration
             .AddHumanFactorsAggregateInfrastructure()
             .AddOperationalSafetyAggregateInfrastructure();
 
+        // Phase 4 full build-out (2026-08-02): previously-bare/anemic DDD aggregates
+        // EnterpriseFabric and Financials.FinancialRecord. EnterpriseFabric (this aggregate root)
+        // is distinct from the pre-existing, unrelated, LIVE Features.EnterpriseFabric.Users
+        // vertical (registered separately above via AddScoped<...IUserRepository...>) and the
+        // pre-existing, unrelated Features.EnterpriseFabric.FabricNodes table. FinancialRecord is
+        // a brand-new aggregate root (Financials had none before this pass) and is additive
+        // alongside the pre-existing, unrelated AddFinancialsRepositories() read-only vertical
+        // registered a few lines below.
+        services
+            .AddEnterpriseFabricAggregateInfrastructure()
+            .AddFinancialRecordAggregateInfrastructure();
+
         // Legacy-module repositories (pre-existing Compliance/Analytics/Operational/etc.
         // modules whose Application-layer repository interfaces had no Infrastructure
         // implementation until this pass — closes the ValidateOnBuild gap documented in
@@ -494,6 +507,26 @@ public static class InfrastructureServiceRegistration
             .AddPlanningProjectsRepositories()
             .AddHealthChecksRepositories()
             .AddFinancialsRepositories();
+
+        // Phase 4 full build-out (2026-08-02): previously-bare/anemic DDD aggregates
+        // PlanningProjects.Project and Intelligence.AIInvestigations. Project is a brand-new
+        // aggregate root (PlanningProjects had only the ProjectMilestone child entity before this
+        // pass) and is additive alongside the pre-existing, unrelated LIVE
+        // Features.PlanningProjects.Handlers.Projects.IProjectRepository generic project-tracking
+        // vertical and the pre-existing read-only AddPlanningProjectsRepositories() vertical above.
+        // AIInvestigation is likewise a brand-new aggregate root (Intelligence.AIInvestigations
+        // previously had only a placeholder marker class) and is additive alongside the
+        // pre-existing, unrelated read-only AddIntelligenceRepositories() vertical above.
+        services
+            .AddPlanningProjectsAggregateInfrastructure()
+            .AddAIInvestigationsAggregateInfrastructure();
+
+        // Phase 4 full build-out (2026-08-02): previously-bare/anemic DDD aggregates
+        // Intelligence.AITraining (AITrainingJob), Intelligence.DataLake (DataLakeActivity), and
+        // Intelligence.PredictiveSafety (PredictiveSafetyAlert). Each previously had only a
+        // placeholder marker class in the Domain layer; each is additive alongside the
+        // pre-existing, unrelated read-only AddIntelligenceRepositories() vertical above.
+        services.AddIntelligenceAggregatesInfrastructure();
 
         services.AddScoped<IComplianceBulkRepository, ComplianceBulkDapperRepository>();
 

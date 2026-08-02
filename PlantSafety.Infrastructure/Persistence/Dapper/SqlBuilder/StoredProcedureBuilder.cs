@@ -107,6 +107,34 @@ public sealed class StoredProcedureBuilder
         return this;
     }
 
+    /// <summary>Adds a BIGINT parameter.</summary>
+    public StoredProcedureBuilder AddLong(string name, long value)
+    {
+        _params.Add(name, value, DbType.Int64);
+        return this;
+    }
+
+    /// <summary>Adds a nullable BIGINT parameter.</summary>
+    public StoredProcedureBuilder AddLong(string name, long? value)
+    {
+        _params.Add(name, value, DbType.Int64);
+        return this;
+    }
+
+    /// <summary>Adds a FLOAT (double-precision) parameter.</summary>
+    public StoredProcedureBuilder AddDouble(string name, double value)
+    {
+        _params.Add(name, value, DbType.Double);
+        return this;
+    }
+
+    /// <summary>Adds a nullable FLOAT (double-precision) parameter.</summary>
+    public StoredProcedureBuilder AddDouble(string name, double? value)
+    {
+        _params.Add(name, value, DbType.Double);
+        return this;
+    }
+
     /// <summary>Builds the <see cref="DynamicParameters"/> instance.</summary>
     public DynamicParameters Build() => _params;
 }
