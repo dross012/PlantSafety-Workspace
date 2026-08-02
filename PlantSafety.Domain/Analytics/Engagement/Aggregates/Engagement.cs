@@ -20,6 +20,13 @@
 //                  worker engagement measurement: its score, survey period,
 //                  participation channel, and response volume.
 //                  Additive-only evolution.
+//  UPDATED:        2026-08-02 -- Phase 4 full build-out: added Review/RecordTouchpoint/Complete/
+//                  Close/Archive lifecycle methods. Previously this aggregate had only a Create
+//                  factory -- EngagementStatus/EngagementLifecycleRules were fully scaffolded but
+//                  nothing called them, and no file anywhere under
+//                  PlantSafety.Application\Analytics\Engagement referenced this aggregate at all
+//                  (that Application folder did not exist). Mirrors Permits.cs's lifecycle
+//                  shape and guard/event/exception conventions.
 // ============================================================================
 namespace PlantSafety.Domain.Analytics.Engagement.Aggregates;
 
@@ -122,6 +129,139 @@ public sealed partial class Engagement
         return agg;
     }
 
+    // ---- Lifecycle: Review / RecordTouchpoint --------------------------------
+
+    /// <summary>
+    /// Reviews and activates a newly created Engagement measurement (Created -&gt; Active). Valid
+    /// only from <see cref="EngagementStatus.Created"/>.
+    /// </summary>
+    public void Review(
+        UserId reviewedBy,
+        UtcTimestamp reviewedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EngagementLifecycleRules.CanActivate, EngagementStatus.Created);
+
+        Status = EngagementStatus.Active;
+
+        AddDomainEvent(new EngagementReviewedEvent(
+            EventId: new EngagementEventId(Uuid7.New()),
+            EngagementId: EngagementId,
+            ReviewedByUserId: reviewedBy,
+            ReviewedAtUtc: reviewedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records a worker touchpoint against an active Engagement measurement, updating
+    /// <see cref="LastEngagedAtUtc"/> and <see cref="ResponseCount"/>. Does not change
+    /// <see cref="Status"/>. Valid only from <see cref="EngagementStatus.Active"/>.
+    /// </summary>
+    public void RecordTouchpoint(
+        UtcTimestamp touchedAtUtc,
+        int responseCount,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EngagementLifecycleRules.CanRecordTouchpoint, EngagementStatus.Active);
+        if (responseCount < 0)
+            throw new ArgumentException("Response count must not be negative.", nameof(responseCount));
+
+        LastEngagedAtUtc = touchedAtUtc;
+        ResponseCount = responseCount;
+
+        AddDomainEvent(new EngagementTouchpointRecordedEvent(
+            EventId: new EngagementEventId(Uuid7.New()),
+            EngagementId: EngagementId,
+            TouchedAtUtc: touchedAtUtc,
+            ResponseCount: responseCount,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Complete / Close / Archive -------------------------------
+
+    /// <summary>
+    /// Completes an active Engagement measurement (Active -&gt; Completed). Valid only from
+    /// <see cref="EngagementStatus.Active"/>.
+    /// </summary>
+    public void Complete(
+        UserId completedBy,
+        UtcTimestamp completedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EngagementLifecycleRules.CanComplete, EngagementStatus.Active);
+
+        Status = EngagementStatus.Completed;
+
+        AddDomainEvent(new EngagementCompletedEvent(
+            EventId: new EngagementEventId(Uuid7.New()),
+            EngagementId: EngagementId,
+            CompletedByUserId: completedBy,
+            CompletedAtUtc: completedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Formally closes a completed Engagement measurement (Completed -&gt; Closed). Valid only from
+    /// <see cref="EngagementStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EngagementLifecycleRules.CanClose, EngagementStatus.Completed);
+
+        Status = EngagementStatus.Closed;
+
+        AddDomainEvent(new EngagementClosedEvent(
+            EventId: new EngagementEventId(Uuid7.New()),
+            EngagementId: EngagementId,
+            ClosedByUserId: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed Engagement measurement for long-term retention (Closed -&gt; Archived).
+    /// Valid only from <see cref="EngagementStatus.Closed"/>. See
+    /// <see cref="Policies.EngagementArchivalPolicy"/> for eligibility outside the aggregate
+    /// boundary (e.g. batch archival jobs).
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, EngagementLifecycleRules.CanArchive, EngagementStatus.Closed);
+
+        Status = EngagementStatus.Archived;
+
+        AddDomainEvent(new EngagementArchivedEvent(
+            EventId: new EngagementEventId(Uuid7.New()),
+            EngagementId: EngagementId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IEngagementDomainEvent evt) => _domainEvents.Add(evt);
@@ -136,5 +276,13 @@ public sealed partial class Engagement
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Engagement {EngagementId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<EngagementStatus, bool> guard, EngagementStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new EngagementInvalidStatusTransitionException(
+            EngagementId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

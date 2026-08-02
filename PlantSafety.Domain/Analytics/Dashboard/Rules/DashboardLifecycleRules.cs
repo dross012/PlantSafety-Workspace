@@ -25,4 +25,7 @@ public static class DashboardLifecycleRules
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be archived from <paramref name="current"/>.</summary>
     public static bool CanArchive(DashboardStatus current) => current == DashboardStatus.Closed;
+
+    /// <summary>Returns <see langword="true"/> when the aggregate's data may be refreshed from <paramref name="current"/>.</summary>
+    public static bool CanRefresh(DashboardStatus current) => current == DashboardStatus.Active;
 }

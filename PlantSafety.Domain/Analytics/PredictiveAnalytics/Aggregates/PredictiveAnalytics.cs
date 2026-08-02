@@ -23,6 +23,13 @@
 //                  prediction type, target entity, predicted risk score, confidence,
 //                  and horizon.
 //                  Additive-only evolution.
+//  UPDATED:        2026-08-02 -- Phase 4 full build-out: added Review/Action/Close/Archive
+//                  lifecycle methods, grounded in the status vocabulary documented on
+//                  PredictiveAnalyticsItemDto.Status ("Generated/Reviewed/Actioned"). Previously
+//                  this aggregate had only a Create factory -- PredictiveAnalyticsStatus/
+//                  PredictiveAnalyticsLifecycleRules were fully scaffolded but nothing called
+//                  them. Mirrors Permits.cs's lifecycle shape and guard/event/exception
+//                  conventions.
 // ============================================================================
 namespace PlantSafety.Domain.Analytics.PredictiveAnalytics.Aggregates;
 
@@ -129,6 +136,112 @@ public sealed partial class PredictiveAnalytics
         return agg;
     }
 
+    // ---- Lifecycle: Review / Action -------------------------------------------
+
+    /// <summary>
+    /// Reviews a generated prediction (Created -&gt; Active, i.e. "Reviewed"). Valid only from
+    /// <see cref="PredictiveAnalyticsStatus.Created"/>.
+    /// </summary>
+    public void Review(
+        UserId reviewedBy,
+        UtcTimestamp reviewedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PredictiveAnalyticsLifecycleRules.CanActivate, PredictiveAnalyticsStatus.Created);
+
+        Status = PredictiveAnalyticsStatus.Active;
+
+        AddDomainEvent(new PredictiveAnalyticsReviewedEvent(
+            EventId: new PredictiveAnalyticsEventId(Uuid7.New()),
+            PredictiveAnalyticsId: PredictiveAnalyticsId,
+            ReviewedByUserId: reviewedBy,
+            ReviewedAtUtc: reviewedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records that a reviewed prediction has been acted upon (Active -&gt; Completed, i.e.
+    /// "Actioned"). Valid only from <see cref="PredictiveAnalyticsStatus.Active"/>.
+    /// </summary>
+    public void Action(
+        UserId actionedBy,
+        string? actionNotes,
+        UtcTimestamp actionedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PredictiveAnalyticsLifecycleRules.CanComplete, PredictiveAnalyticsStatus.Active);
+
+        Status = PredictiveAnalyticsStatus.Completed;
+
+        AddDomainEvent(new PredictiveAnalyticsActionedEvent(
+            EventId: new PredictiveAnalyticsEventId(Uuid7.New()),
+            PredictiveAnalyticsId: PredictiveAnalyticsId,
+            ActionedByUserId: actionedBy,
+            ActionNotes: string.IsNullOrWhiteSpace(actionNotes) ? null : actionNotes.Trim(),
+            ActionedAtUtc: actionedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    // ---- Lifecycle: Close / Archive -------------------------------------------
+
+    /// <summary>
+    /// Formally closes an actioned prediction (Completed -&gt; Closed). Valid only from
+    /// <see cref="PredictiveAnalyticsStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PredictiveAnalyticsLifecycleRules.CanClose, PredictiveAnalyticsStatus.Completed);
+
+        Status = PredictiveAnalyticsStatus.Closed;
+
+        AddDomainEvent(new PredictiveAnalyticsClosedEvent(
+            EventId: new PredictiveAnalyticsEventId(Uuid7.New()),
+            PredictiveAnalyticsId: PredictiveAnalyticsId,
+            ClosedByUserId: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed prediction for long-term retention (Closed -&gt; Archived). Valid only
+    /// from <see cref="PredictiveAnalyticsStatus.Closed"/>. See
+    /// <see cref="Policies.PredictiveAnalyticsArchivalPolicy"/> for eligibility outside the
+    /// aggregate boundary (e.g. batch archival jobs).
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, PredictiveAnalyticsLifecycleRules.CanArchive, PredictiveAnalyticsStatus.Closed);
+
+        Status = PredictiveAnalyticsStatus.Archived;
+
+        AddDomainEvent(new PredictiveAnalyticsArchivedEvent(
+            EventId: new PredictiveAnalyticsEventId(Uuid7.New()),
+            PredictiveAnalyticsId: PredictiveAnalyticsId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IPredictiveAnalyticsDomainEvent evt) => _domainEvents.Add(evt);
@@ -143,5 +256,13 @@ public sealed partial class PredictiveAnalytics
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for PredictiveAnalytics {PredictiveAnalyticsId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<PredictiveAnalyticsStatus, bool> guard, PredictiveAnalyticsStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new PredictiveAnalyticsInvalidStatusTransitionException(
+            PredictiveAnalyticsId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

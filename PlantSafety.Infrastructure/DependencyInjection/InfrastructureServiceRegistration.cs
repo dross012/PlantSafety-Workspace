@@ -118,6 +118,9 @@ using PlantSafety.Infrastructure.SafetyCulture.DependencyInjection;
 using PlantSafety.Infrastructure.Alerts.DependencyInjection;
 using PlantSafety.Infrastructure.Dashboards.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.DependencyInjection;
+using PlantSafety.Infrastructure.Analytics.ScoreCards.DependencyInjection;
+using PlantSafety.Infrastructure.Analytics.Engagement.DependencyInjection;
+using PlantSafety.Infrastructure.Analytics.PredictiveAnalytics.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Permits.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.PredictiveMaintenance.DependencyInjection;
@@ -404,6 +407,9 @@ public static class InfrastructureServiceRegistration
             .AddPPEInfrastructure()
             .AddPermitToWorkInfrastructure()
             .AddPermitsInfrastructure()
+            .AddScoreCardsAggregateInfrastructure()
+            .AddEngagementAggregateInfrastructure()
+            .AddPredictiveAnalyticsAggregateInfrastructure()
             .AddPredictiveMaintenanceInfrastructure()
             .AddPreventiveMaintenanceTaskInfrastructure()
             .AddObservabilityInfrastructure()

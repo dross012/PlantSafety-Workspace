@@ -2531,6 +2531,66 @@
         <member name="M:PlantSafety.Application.Analytics.Culture.Behavior.Repositories.IBehaviorRepository.GetBehaviorObservationsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns Behavior items for the tenant/site within the given UTC date range.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand">
+            <summary>Archives a closed Culture survey period for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Archives a closed Culture survey period for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Culture#Commands#CultureStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommandHandler.#ctor(PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommandHandler.Handle(PlantSafety.Application.Analytics.Culture.Commands.ArchiveCultureCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand">
+            <summary>Formally closes a published Culture survey period (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Formally closes a published Culture survey period (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Culture#Commands#CultureStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommandHandler.#ctor(PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommandHandler.Handle(PlantSafety.Application.Analytics.Culture.Commands.CloseCultureCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand">
             <summary>Creates a new <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate under the Analytics.Culture bounded context.</summary>
             <param name="TenantId">Tenant that owns the new culture record.</param>
@@ -2569,6 +2629,82 @@
             <summary>Initializes dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommandHandler.Handle(PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.CultureStatusResult">
+            <summary>Result payload shared by Culture lifecycle-transition commands.</summary>
+            <param name="CultureId">Identity of the affected Culture aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.CultureStatusResult.#ctor(System.Guid,System.String)">
+            <summary>Result payload shared by Culture lifecycle-transition commands.</summary>
+            <param name="CultureId">Identity of the affected Culture aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CultureStatusResult.CultureId">
+            <summary>Identity of the affected Culture aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.CultureStatusResult.Status">
+            <summary>Lifecycle status after the transition.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand">
+            <summary>Publishes a reviewed Culture survey period's results (Active -&gt; Completed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Publishes a reviewed Culture survey period's results (Active -&gt; Completed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Culture#Commands#CultureStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommandHandler.#ctor(PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommandHandler.Handle(PlantSafety.Application.Analytics.Culture.Commands.PublishCultureCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand">
+            <summary>Reviews a submitted Culture survey period (Created -&gt; Active).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Reviews a submitted Culture survey period (Created -&gt; Active).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Culture#Commands#CultureStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommandHandler.#ctor(PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommandHandler.Handle(PlantSafety.Application.Analytics.Culture.Commands.ReviewCultureCommand,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="T:PlantSafety.Application.Analytics.Culture.CultureIndex.Handlers.GetCultureIndexQueryHandler">
@@ -2771,6 +2907,15 @@
         <member name="M:PlantSafety.Application.Analytics.Culture.EngagementScoring.Repositories.IEngagementScoringRepository.GetEngagementScoresAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns EngagementScoring items for the tenant/site within the given UTC date range.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Handlers.GetCultureByIdQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.Queries.GetCultureByIdQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Handlers.GetCultureByIdQueryHandler.#ctor(PlantSafety.Application.Analytics.Culture.Repositories.ICultureReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Culture.Handlers.GetCultureByIdQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Handlers.GetCultureByIdQueryHandler.Handle(PlantSafety.Application.Analytics.Culture.Queries.GetCultureByIdQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse">
             <summary>Response DTO projecting a <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate.</summary>
             <param name="CultureId">Underlying identifier value of the Culture aggregate.</param>
@@ -2818,6 +2963,65 @@
         <member name="M:PlantSafety.Application.Analytics.Culture.Mappings.CultureMappings.ToResponse(PlantSafety.Domain.Analytics.Culture.Aggregates.Culture)">
             <summary>Projects a <see cref="N:PlantSafety.Application.Analytics.Culture"/> aggregate into a <see cref="T:PlantSafety.Application.Analytics.Culture.Mappings.CultureResponse"/>.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto">
+            <summary>A single Culture read-model record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.CultureId">
+            <summary>Record identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.SiteId">
+            <summary>Site identifier, or null when not site-scoped.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.Status">
+            <summary>Current lifecycle status (Created/Active/Completed/Closed/Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.SurveyPeriod">
+            <summary>Survey period this measurement covers (e.g., "2026-Q3").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.CultureIndexScore">
+            <summary>Computed safety culture index score (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.EngagementScore">
+            <summary>Computed engagement score (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.ParticipationRate">
+            <summary>Survey participation rate (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.TopRiskTheme">
+            <summary>Top risk theme identified from this survey period.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.CreatedAtUtc">
+            <summary>UTC timestamp when the record was created.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.CreatedBy">
+            <summary>Identity of the user who created this record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Models.CultureItemDto.ETag">
+            <summary>
+            Optimistic-concurrency token (native RowVersion projected as a hex string). Callers must
+            echo this value back on a subsequent mutating command's ETag field; a stale/mismatched
+            value results in a concurrency-conflict error.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Queries.GetCultureByIdQuery">
+            <summary>Retrieves a single Culture read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="CultureId">Identity of the Culture record to retrieve.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Queries.GetCultureByIdQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves a single Culture read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="CultureId">Identity of the Culture record to retrieve.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Queries.GetCultureByIdQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Culture.Queries.GetCultureByIdQuery.CultureId">
+            <summary>Identity of the Culture record to retrieve.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.Culture.Queries.GetCultureQuery">
             <summary>Retrieves a single Culture record by <paramref name="Id"/>, scoped to <paramref name="TenantId"/>.</summary>
             <param name="Id">Identifier of the Culture record to retrieve.</param>
@@ -2833,6 +3037,15 @@
         </member>
         <member name="P:PlantSafety.Application.Analytics.Culture.Queries.GetCultureQuery.TenantId">
             <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Culture.Repositories.ICultureReadRepository">
+            <summary>Read-only repository for Culture data. Implemented in the Infrastructure layer.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Culture.Repositories.ICultureReadRepository.GetByIdAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the Culture read-model record for the given identity, scoped to the given tenant,
+            or <see langword="null"/> if not found or if the Culture record belongs to a different tenant.
+            </summary>
         </member>
         <member name="T:PlantSafety.Application.Analytics.Culture.TrendModeling.Handlers.GetTrendModelingQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Culture.TrendModeling.Queries.GetTrendModelingQuery"/>.</summary>
@@ -2940,6 +3153,277 @@
         <member name="M:PlantSafety.Application.Analytics.Culture.Validators.CreateCultureCommandValidator.#ctor">
             <summary>Configures validation rules for <see cref="T:PlantSafety.Application.Analytics.Culture.Commands.CreateCultureCommand"/>.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand">
+            <summary>Archives a closed Dashboard for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Archives a closed Dashboard for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Dashboard#Commands#DashboardStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommandHandler.#ctor(PlantSafety.Domain.Analytics.Dashboard.Interfaces.IDashboardRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommandHandler.Handle(PlantSafety.Application.Analytics.Dashboard.Commands.ArchiveDashboardCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand">
+            <summary>Formally closes a deprecated Dashboard (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Formally closes a deprecated Dashboard (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Dashboard#Commands#DashboardStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommandHandler.#ctor(PlantSafety.Domain.Analytics.Dashboard.Interfaces.IDashboardRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommandHandler.Handle(PlantSafety.Application.Analytics.Dashboard.Commands.CloseDashboardCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand">
+            <summary>Defines a new KPI Dashboard.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="DashboardName">Human-readable dashboard name.</param>
+            <param name="DashboardType">Dashboard classification (e.g., Executive, Operator, SiteSafety, Compliance).</param>
+            <param name="OwnerUserId">Identity of the accountable dashboard owner.</param>
+            <param name="RefreshIntervalSeconds">Refresh interval, in seconds, for live data widgets.</param>
+            <param name="WidgetCount">Count of widgets configured on this dashboard.</param>
+            <param name="RequesterUserId">Identity of the user creating this record.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.#ctor(System.Guid,System.Guid,System.Guid,System.DateTime,System.String,System.Guid,System.Nullable{System.Guid},System.String,System.String,System.Guid,System.Int32,System.Int32,System.Guid)">
+            <summary>Defines a new KPI Dashboard.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="DashboardName">Human-readable dashboard name.</param>
+            <param name="DashboardType">Dashboard classification (e.g., Executive, Operator, SiteSafety, Compliance).</param>
+            <param name="OwnerUserId">Identity of the accountable dashboard owner.</param>
+            <param name="RefreshIntervalSeconds">Refresh interval, in seconds, for live data widgets.</param>
+            <param name="WidgetCount">Count of widgets configured on this dashboard.</param>
+            <param name="RequesterUserId">Identity of the user creating this record.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.CommandId">
+            <summary>Unique identifier for this command instance (Uuid7).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.CorrelationId">
+            <summary>Operation-group correlation identifier, constant across the whole request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.CausationId">
+            <summary>Identifier of the immediate parent command or event. Null only for root operations.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.RequestedAtUtc">
+            <summary>UTC instant the command was issued, generated once at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.ApiVersionToken">
+            <summary>API version token the request was issued under.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.SiteId">
+            <summary>Optional site scope. Null applies tenant-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.DashboardName">
+            <summary>Human-readable dashboard name.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.DashboardType">
+            <summary>Dashboard classification (e.g., Executive, Operator, SiteSafety, Compliance).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.OwnerUserId">
+            <summary>Identity of the accountable dashboard owner.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.RefreshIntervalSeconds">
+            <summary>Refresh interval, in seconds, for live data widgets.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.WidgetCount">
+            <summary>Count of widgets configured on this dashboard.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.RequesterUserId">
+            <summary>Identity of the user creating this record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Dashboard#Commands#CreateDashboardResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand.FromDto(System.Guid,System.Nullable{System.Guid},System.String,System.String,System.Guid,System.Int32,System.Int32,System.Guid,System.Nullable{System.Guid},System.Nullable{System.Guid},System.String)">
+            <summary>Builds a <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand"/> from raw, untrusted transport values.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommandHandler.#ctor(PlantSafety.Domain.Analytics.Dashboard.Interfaces.IDashboardRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommandHandler.Handle(PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardResult">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand"/> execution.</summary>
+            <param name="DashboardId">Identity of the newly created Dashboard aggregate.</param>
+            <param name="Status">Lifecycle status of the newly created record.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardResult.#ctor(System.Guid,System.String)">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand"/> execution.</summary>
+            <param name="DashboardId">Identity of the newly created Dashboard aggregate.</param>
+            <param name="Status">Lifecycle status of the newly created record.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardResult.DashboardId">
+            <summary>Identity of the newly created Dashboard aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardResult.Status">
+            <summary>Lifecycle status of the newly created record.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.DashboardStatusResult">
+            <summary>Result payload shared by Dashboard lifecycle-transition commands.</summary>
+            <param name="DashboardId">Identity of the affected Dashboard aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.DashboardStatusResult.#ctor(System.Guid,System.String)">
+            <summary>Result payload shared by Dashboard lifecycle-transition commands.</summary>
+            <param name="DashboardId">Identity of the affected Dashboard aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.DashboardStatusResult.DashboardId">
+            <summary>Identity of the affected Dashboard aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.DashboardStatusResult.Status">
+            <summary>Lifecycle status after the transition.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand">
+            <summary>Deprecates a published Dashboard (Active -&gt; Completed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Deprecates a published Dashboard (Active -&gt; Completed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Dashboard#Commands#DashboardStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommandHandler.#ctor(PlantSafety.Domain.Analytics.Dashboard.Interfaces.IDashboardRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommandHandler.Handle(PlantSafety.Application.Analytics.Dashboard.Commands.DeprecateDashboardCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand">
+            <summary>Publishes a Dashboard for general use (Created -&gt; Active).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Publishes a Dashboard for general use (Created -&gt; Active).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Dashboard#Commands#DashboardStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommandHandler.#ctor(PlantSafety.Domain.Analytics.Dashboard.Interfaces.IDashboardRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommandHandler.Handle(PlantSafety.Application.Analytics.Dashboard.Commands.PublishDashboardCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand">
+            <summary>Records a data refresh for a published Dashboard. Does not change lifecycle status.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Records a data refresh for a published Dashboard. Does not change lifecycle status.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Dashboard#Commands#DashboardStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommandHandler.#ctor(PlantSafety.Domain.Analytics.Dashboard.Interfaces.IDashboardRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommandHandler.Handle(PlantSafety.Application.Analytics.Dashboard.Commands.RefreshDashboardDataCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.Dashboard.Executive.Handlers.GetExecutiveQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Executive.Queries.GetExecutiveQuery"/>.</summary>
         </member>
@@ -3039,6 +3523,15 @@
         </member>
         <member name="M:PlantSafety.Application.Analytics.Dashboard.Executive.Repositories.IExecutiveRepository.GetExecutiveSummaryAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns Executive items for the tenant/site within the given UTC date range.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Handlers.GetDashboardByIdQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.Queries.GetDashboardByIdQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Handlers.GetDashboardByIdQueryHandler.#ctor(PlantSafety.Application.Analytics.Dashboard.Repositories.IDashboardReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Dashboard.Handlers.GetDashboardByIdQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Handlers.GetDashboardByIdQueryHandler.Handle(PlantSafety.Application.Analytics.Dashboard.Queries.GetDashboardByIdQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
         </member>
         <member name="T:PlantSafety.Application.Analytics.Dashboard.KPISnapshots.Handlers.GetKPISnapshotsQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.KPISnapshots.Queries.GetKPISnapshotsQuery"/>.</summary>
@@ -3140,6 +3633,71 @@
         <member name="M:PlantSafety.Application.Analytics.Dashboard.KPISnapshots.Repositories.IKPISnapshotsRepository.GetKpiSnapshotsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns KPISnapshots items for the tenant/site within the given UTC date range.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto">
+            <summary>A single Dashboard read-model record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.DashboardId">
+            <summary>Record identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.SiteId">
+            <summary>Site identifier, or null when not site-scoped.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.Status">
+            <summary>Current lifecycle status (Created/Active/Completed/Closed/Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.DashboardName">
+            <summary>Human-readable dashboard name.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.DashboardType">
+            <summary>Dashboard classification (e.g., Executive, Operator, SiteSafety, Compliance).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.OwnerId">
+            <summary>Identity of the accountable dashboard owner.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.RefreshIntervalSeconds">
+            <summary>Refresh interval, in seconds, for live data widgets.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.WidgetCount">
+            <summary>Count of widgets configured on this dashboard.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.IsPublished">
+            <summary>Indicates whether this dashboard is published for general use.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.LastRefreshedAtUtc">
+            <summary>UTC timestamp this dashboard's data was last refreshed.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.CreatedAtUtc">
+            <summary>UTC timestamp when the record was created.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.CreatedBy">
+            <summary>Identity of the user who created this record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Models.DashboardItemDto.ETag">
+            <summary>
+            Optimistic-concurrency token (native RowVersion projected as a hex string). Callers must
+            echo this value back on a subsequent mutating command's ETag field; a stale/mismatched
+            value results in a concurrency-conflict error.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Queries.GetDashboardByIdQuery">
+            <summary>Retrieves a single Dashboard read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="DashboardId">Identity of the Dashboard record to retrieve.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Queries.GetDashboardByIdQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves a single Dashboard read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="DashboardId">Identity of the Dashboard record to retrieve.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Queries.GetDashboardByIdQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Dashboard.Queries.GetDashboardByIdQuery.DashboardId">
+            <summary>Identity of the Dashboard record to retrieve.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.Dashboard.ReadModel.Handlers.GetReadModelQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.ReadModel.Queries.GetReadModelQuery"/>.</summary>
         </member>
@@ -3239,6 +3797,15 @@
         </member>
         <member name="M:PlantSafety.Application.Analytics.Dashboard.ReadModel.Repositories.IReadModelRepository.GetDashboardRowsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns ReadModel items for the tenant/site within the given UTC date range.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Repositories.IDashboardReadRepository">
+            <summary>Read-only repository for Dashboard root-aggregate data. Implemented in the Infrastructure layer.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Repositories.IDashboardReadRepository.GetByIdAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the Dashboard read-model record for the given identity, scoped to the given tenant,
+            or <see langword="null"/> if not found or if the Dashboard record belongs to a different tenant.
+            </summary>
         </member>
         <member name="T:PlantSafety.Application.Analytics.Dashboard.TrendAnalysis.Handlers.GetTrendAnalysisQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Dashboard.TrendAnalysis.Queries.GetTrendAnalysisQuery"/>.</summary>
@@ -3340,6 +3907,12 @@
         <member name="M:PlantSafety.Application.Analytics.Dashboard.TrendAnalysis.Repositories.ITrendAnalysisRepository.GetTrendPointsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns TrendAnalysis items for the tenant/site within the given UTC date range.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.Dashboard.Validation.CreateDashboardCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Dashboard.Validation.CreateDashboardCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Analytics.Dashboard.Commands.CreateDashboardCommand"/>.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.DependencyInjection.AnalyticsApplicationServiceRegistration">
             <summary>
             Extension methods to register Analytics Application-layer services.
@@ -3350,6 +3923,444 @@
             Registers Analytics-specific Application services.
             MediatR handlers and validators are auto-registered via assembly scan.
             </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand">
+            <summary>Archives a closed Engagement measurement for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Archives a closed Engagement measurement for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Engagement#Commands#EngagementStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommandHandler.#ctor(PlantSafety.Domain.Analytics.Engagement.Interfaces.IEngagementRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommandHandler.Handle(PlantSafety.Application.Analytics.Engagement.Commands.ArchiveEngagementCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand">
+            <summary>Formally closes a completed Engagement measurement (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Formally closes a completed Engagement measurement (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Engagement#Commands#EngagementStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommandHandler.#ctor(PlantSafety.Domain.Analytics.Engagement.Interfaces.IEngagementRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommandHandler.Handle(PlantSafety.Application.Analytics.Engagement.Commands.CloseEngagementCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand">
+            <summary>Completes an active Engagement measurement (Active -&gt; Completed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Completes an active Engagement measurement (Active -&gt; Completed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Engagement#Commands#EngagementStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommandHandler.#ctor(PlantSafety.Domain.Analytics.Engagement.Interfaces.IEngagementRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommandHandler.Handle(PlantSafety.Application.Analytics.Engagement.Commands.CompleteEngagementCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand">
+            <summary>Submits a new Engagement measurement.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="WorkerId">Worker this engagement measurement relates to.</param>
+            <param name="EngagementScore">Computed engagement score (0-100).</param>
+            <param name="SurveyPeriod">Survey period this measurement covers (e.g., "2026-Q3").</param>
+            <param name="ParticipationChannel">Channel through which engagement was captured (e.g., MobileApp, Kiosk, Paper, Interview).</param>
+            <param name="ResponseCount">Number of responses/interactions captured for this measurement.</param>
+            <param name="LastEngagedAtUtc">UTC timestamp this worker last engaged with a safety touchpoint, if known at creation time.</param>
+            <param name="RequesterUserId">Identity of the worker or supervisor submitting the measurement.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.#ctor(System.Guid,System.Guid,System.Guid,System.DateTime,System.String,System.Guid,System.Nullable{System.Guid},System.Guid,System.Decimal,System.String,System.String,System.Int32,System.Nullable{System.DateTime},System.Guid)">
+            <summary>Submits a new Engagement measurement.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="WorkerId">Worker this engagement measurement relates to.</param>
+            <param name="EngagementScore">Computed engagement score (0-100).</param>
+            <param name="SurveyPeriod">Survey period this measurement covers (e.g., "2026-Q3").</param>
+            <param name="ParticipationChannel">Channel through which engagement was captured (e.g., MobileApp, Kiosk, Paper, Interview).</param>
+            <param name="ResponseCount">Number of responses/interactions captured for this measurement.</param>
+            <param name="LastEngagedAtUtc">UTC timestamp this worker last engaged with a safety touchpoint, if known at creation time.</param>
+            <param name="RequesterUserId">Identity of the worker or supervisor submitting the measurement.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.CommandId">
+            <summary>Unique identifier for this command instance (Uuid7).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.CorrelationId">
+            <summary>Operation-group correlation identifier, constant across the whole request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.CausationId">
+            <summary>Identifier of the immediate parent command or event. Null only for root operations.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.RequestedAtUtc">
+            <summary>UTC instant the command was issued, generated once at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.ApiVersionToken">
+            <summary>API version token the request was issued under.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.SiteId">
+            <summary>Optional site scope. Null applies tenant-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.WorkerId">
+            <summary>Worker this engagement measurement relates to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.EngagementScore">
+            <summary>Computed engagement score (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.SurveyPeriod">
+            <summary>Survey period this measurement covers (e.g., "2026-Q3").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.ParticipationChannel">
+            <summary>Channel through which engagement was captured (e.g., MobileApp, Kiosk, Paper, Interview).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.ResponseCount">
+            <summary>Number of responses/interactions captured for this measurement.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.LastEngagedAtUtc">
+            <summary>UTC timestamp this worker last engaged with a safety touchpoint, if known at creation time.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.RequesterUserId">
+            <summary>Identity of the worker or supervisor submitting the measurement.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Engagement#Commands#CreateEngagementResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand.FromDto(System.Guid,System.Nullable{System.Guid},System.Guid,System.Decimal,System.String,System.String,System.Int32,System.Nullable{System.DateTime},System.Guid,System.Nullable{System.Guid},System.Nullable{System.Guid},System.String)">
+            <summary>Builds a <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand"/> from raw, untrusted transport values.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommandHandler.#ctor(PlantSafety.Domain.Analytics.Engagement.Interfaces.IEngagementRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommandHandler.Handle(PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementResult">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand"/> execution.</summary>
+            <param name="EngagementId">Identity of the newly created Engagement aggregate.</param>
+            <param name="Status">Lifecycle status of the newly created record.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementResult.#ctor(System.Guid,System.String)">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand"/> execution.</summary>
+            <param name="EngagementId">Identity of the newly created Engagement aggregate.</param>
+            <param name="Status">Lifecycle status of the newly created record.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementResult.EngagementId">
+            <summary>Identity of the newly created Engagement aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementResult.Status">
+            <summary>Lifecycle status of the newly created record.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.EngagementStatusResult">
+            <summary>Result payload shared by Engagement lifecycle-transition commands.</summary>
+            <param name="EngagementId">Identity of the affected Engagement aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.EngagementStatusResult.#ctor(System.Guid,System.String)">
+            <summary>Result payload shared by Engagement lifecycle-transition commands.</summary>
+            <param name="EngagementId">Identity of the affected Engagement aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.EngagementStatusResult.EngagementId">
+            <summary>Identity of the affected Engagement aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.EngagementStatusResult.Status">
+            <summary>Lifecycle status after the transition.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand">
+            <summary>Records a worker touchpoint against an active Engagement measurement.</summary>
+            <param name="ResponseCount">Updated response/interaction count for this measurement.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Int32)">
+            <summary>Records a worker touchpoint against an active Engagement measurement.</summary>
+            <param name="ResponseCount">Updated response/interaction count for this measurement.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand.ResponseCount">
+            <summary>Updated response/interaction count for this measurement.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Engagement#Commands#EngagementStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommandHandler.#ctor(PlantSafety.Domain.Analytics.Engagement.Interfaces.IEngagementRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommandHandler.Handle(PlantSafety.Application.Analytics.Engagement.Commands.RecordEngagementTouchpointCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand">
+            <summary>Reviews and activates a new Engagement measurement (Created -&gt; Active).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Reviews and activates a new Engagement measurement (Created -&gt; Active).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#Engagement#Commands#EngagementStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommandHandler.#ctor(PlantSafety.Domain.Analytics.Engagement.Interfaces.IEngagementRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommandHandler.Handle(PlantSafety.Application.Analytics.Engagement.Commands.ReviewEngagementCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Handlers.GetEngagementByIdQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementByIdQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Handlers.GetEngagementByIdQueryHandler.#ctor(PlantSafety.Application.Analytics.Engagement.Repositories.IEngagementRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Engagement.Handlers.GetEngagementByIdQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Handlers.GetEngagementByIdQueryHandler.Handle(PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementByIdQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Handlers.GetEngagementRecordsQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Handlers.GetEngagementRecordsQueryHandler.#ctor(PlantSafety.Application.Analytics.Engagement.Repositories.IEngagementRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.Engagement.Handlers.GetEngagementRecordsQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Handlers.GetEngagementRecordsQueryHandler.Handle(PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto">
+            <summary>A single Engagement read-model record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.EngagementId">
+            <summary>Record identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.SiteId">
+            <summary>Site identifier, or null when not site-scoped.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.Status">
+            <summary>Current lifecycle status (Created/Active/Completed/Closed/Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.WorkerId">
+            <summary>Worker this engagement measurement relates to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.EngagementScore">
+            <summary>Computed engagement score (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.SurveyPeriod">
+            <summary>Survey period this measurement covers (e.g., "2026-Q3").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.ParticipationChannel">
+            <summary>Channel through which engagement was captured (e.g., MobileApp, Kiosk, Paper, Interview).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.ResponseCount">
+            <summary>Number of responses/interactions captured for this measurement.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.LastEngagedAtUtc">
+            <summary>UTC timestamp this worker last engaged with a safety touchpoint.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.CreatedAtUtc">
+            <summary>UTC timestamp when the record was created.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.CreatedBy">
+            <summary>Identity of the user who created this record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto.ETag">
+            <summary>
+            Optimistic-concurrency token (native RowVersion projected as a hex string). Callers must
+            echo this value back on a subsequent mutating command's ETag field; a stale/mismatched
+            value results in a concurrency-conflict error.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Queries.EngagementRecordsQueryResult">
+            <summary>Result of <see cref="T:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery"/>.</summary>
+            <param name="TenantId">Tenant the data belongs to.</param>
+            <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
+            <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
+            <param name="Items">Matching Engagement items.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Queries.EngagementRecordsQueryResult.#ctor(System.Guid,System.Nullable{System.Guid},System.DateTime,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Analytics.Engagement.Models.EngagementItemDto})">
+            <summary>Result of <see cref="T:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery"/>.</summary>
+            <param name="TenantId">Tenant the data belongs to.</param>
+            <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
+            <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
+            <param name="Items">Matching Engagement items.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.EngagementRecordsQueryResult.TenantId">
+            <summary>Tenant the data belongs to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.EngagementRecordsQueryResult.SiteId">
+            <summary>Site the data is scoped to, or null for tenant-wide results.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.EngagementRecordsQueryResult.GeneratedAt">
+            <summary>UTC timestamp when this read-model snapshot was generated.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.EngagementRecordsQueryResult.Items">
+            <summary>Matching Engagement items.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementByIdQuery">
+            <summary>Retrieves a single Engagement read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="EngagementId">Identity of the Engagement record to retrieve.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementByIdQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves a single Engagement read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="EngagementId">Identity of the Engagement record to retrieve.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementByIdQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementByIdQuery.EngagementId">
+            <summary>Identity of the Engagement record to retrieve.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery">
+            <summary>
+            Retrieves Engagement data for the given tenant, optionally scoped to a single site,
+            within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site filter. Null returns data for all accessible sites.</param>
+            <param name="From">Inclusive start of the date range (UTC).</param>
+            <param name="To">Inclusive end of the date range (UTC).</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery.#ctor(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime)">
+            <summary>
+            Retrieves Engagement data for the given tenant, optionally scoped to a single site,
+            within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site filter. Null returns data for all accessible sites.</param>
+            <param name="From">Inclusive start of the date range (UTC).</param>
+            <param name="To">Inclusive end of the date range (UTC).</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery.SiteId">
+            <summary>Optional site filter. Null returns data for all accessible sites.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery.From">
+            <summary>Inclusive start of the date range (UTC).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.Engagement.Queries.GetEngagementRecordsQuery.To">
+            <summary>Inclusive end of the date range (UTC).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Repositories.IEngagementRepository">
+            <summary>Read-only repository for Engagement data. Implemented in the Infrastructure layer.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Repositories.IEngagementRepository.GetByIdAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the Engagement read-model record for the given identity, scoped to the given
+            tenant, or <see langword="null"/> if not found or if the record belongs to a different
+            tenant.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Repositories.IEngagementRepository.GetEngagementRecordsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>Returns Engagement items for the tenant/site within the given UTC date range.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.Engagement.Validation.CreateEngagementCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.Engagement.Validation.CreateEngagementCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Analytics.Engagement.Commands.CreateEngagementCommand"/>.</summary>
         </member>
         <member name="T:PlantSafety.Application.Analytics.Handlers.ExportAnalyticsQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Queries.ExportAnalyticsQuery"/>.</summary>
@@ -3390,6 +4401,266 @@
         <member name="P:PlantSafety.Application.Analytics.Models.EngagementDataPointDto.Trend">
             <summary>Trend direction: Improving, Stable, or Declining.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand">
+            <summary>Records that a reviewed prediction has been acted upon (Active -&gt; Completed, i.e. "Actioned").</summary>
+            <param name="ActionNotes">Optional free-text notes describing the action taken.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.String)">
+            <summary>Records that a reviewed prediction has been acted upon (Active -&gt; Completed, i.e. "Actioned").</summary>
+            <param name="ActionNotes">Optional free-text notes describing the action taken.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand.ActionNotes">
+            <summary>Optional free-text notes describing the action taken.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#PredictiveAnalytics#Commands#PredictiveAnalyticsStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommandHandler.#ctor(PlantSafety.Domain.Analytics.PredictiveAnalytics.Interfaces.IPredictiveAnalyticsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommandHandler.Handle(PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ActionPredictiveAnalyticsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand">
+            <summary>Archives a closed prediction for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Archives a closed prediction for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#PredictiveAnalytics#Commands#PredictiveAnalyticsStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommandHandler.#ctor(PlantSafety.Domain.Analytics.PredictiveAnalytics.Interfaces.IPredictiveAnalyticsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommandHandler.Handle(PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ArchivePredictiveAnalyticsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand">
+            <summary>Formally closes an actioned prediction (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Formally closes an actioned prediction (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#PredictiveAnalytics#Commands#PredictiveAnalyticsStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommandHandler.#ctor(PlantSafety.Domain.Analytics.PredictiveAnalytics.Interfaces.IPredictiveAnalyticsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommandHandler.Handle(PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ClosePredictiveAnalyticsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand">
+            <summary>Submits a new PredictiveAnalytics record.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="ModelName">Name of the predictive model that generated this output.</param>
+            <param name="PredictionType">Prediction classification (e.g., IncidentRisk, EquipmentFailure, ComplianceDrift).</param>
+            <param name="TargetEntityId">Entity this prediction targets (worker, equipment, site), when applicable.</param>
+            <param name="PredictedRiskScore">Predicted risk score (0-100).</param>
+            <param name="ConfidenceLevel">Model confidence level for this prediction (0-100).</param>
+            <param name="PredictionHorizonDays">Prediction horizon, in days, this output forecasts over.</param>
+            <param name="RequesterUserId">Identity of the system/user generating the prediction.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.DateTime,System.String,System.Guid,System.Nullable{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.Decimal,System.Decimal,System.Int32,System.Guid)">
+            <summary>Submits a new PredictiveAnalytics record.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="ModelName">Name of the predictive model that generated this output.</param>
+            <param name="PredictionType">Prediction classification (e.g., IncidentRisk, EquipmentFailure, ComplianceDrift).</param>
+            <param name="TargetEntityId">Entity this prediction targets (worker, equipment, site), when applicable.</param>
+            <param name="PredictedRiskScore">Predicted risk score (0-100).</param>
+            <param name="ConfidenceLevel">Model confidence level for this prediction (0-100).</param>
+            <param name="PredictionHorizonDays">Prediction horizon, in days, this output forecasts over.</param>
+            <param name="RequesterUserId">Identity of the system/user generating the prediction.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.CommandId">
+            <summary>Unique identifier for this command instance (Uuid7).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.CorrelationId">
+            <summary>Operation-group correlation identifier, constant across the whole request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.CausationId">
+            <summary>Identifier of the immediate parent command or event. Null only for root operations.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.RequestedAtUtc">
+            <summary>UTC instant the command was issued, generated once at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.ApiVersionToken">
+            <summary>API version token the request was issued under.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.SiteId">
+            <summary>Optional site scope. Null applies tenant-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.ModelName">
+            <summary>Name of the predictive model that generated this output.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.PredictionType">
+            <summary>Prediction classification (e.g., IncidentRisk, EquipmentFailure, ComplianceDrift).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.TargetEntityId">
+            <summary>Entity this prediction targets (worker, equipment, site), when applicable.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.PredictedRiskScore">
+            <summary>Predicted risk score (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.ConfidenceLevel">
+            <summary>Model confidence level for this prediction (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.PredictionHorizonDays">
+            <summary>Prediction horizon, in days, this output forecasts over.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.RequesterUserId">
+            <summary>Identity of the system/user generating the prediction.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#PredictiveAnalytics#Commands#CreatePredictiveAnalyticsResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand.FromDto(System.Guid,System.Nullable{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.Decimal,System.Decimal,System.Int32,System.Guid,System.Nullable{System.Guid},System.Nullable{System.Guid},System.String)">
+            <summary>Builds a <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand"/> from raw, untrusted transport values.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommandHandler.#ctor(PlantSafety.Domain.Analytics.PredictiveAnalytics.Interfaces.IPredictiveAnalyticsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommandHandler.Handle(PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsResult">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand"/> execution.</summary>
+            <param name="PredictiveAnalyticsId">Identity of the newly created PredictiveAnalytics aggregate.</param>
+            <param name="Status">Lifecycle status of the newly created record.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsResult.#ctor(System.Guid,System.String)">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand"/> execution.</summary>
+            <param name="PredictiveAnalyticsId">Identity of the newly created PredictiveAnalytics aggregate.</param>
+            <param name="Status">Lifecycle status of the newly created record.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsResult.PredictiveAnalyticsId">
+            <summary>Identity of the newly created PredictiveAnalytics aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsResult.Status">
+            <summary>Lifecycle status of the newly created record.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.PredictiveAnalyticsStatusResult">
+            <summary>Result payload shared by PredictiveAnalytics lifecycle-transition commands.</summary>
+            <param name="PredictiveAnalyticsId">Identity of the affected PredictiveAnalytics aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.PredictiveAnalyticsStatusResult.#ctor(System.Guid,System.String)">
+            <summary>Result payload shared by PredictiveAnalytics lifecycle-transition commands.</summary>
+            <param name="PredictiveAnalyticsId">Identity of the affected PredictiveAnalytics aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.PredictiveAnalyticsStatusResult.PredictiveAnalyticsId">
+            <summary>Identity of the affected PredictiveAnalytics aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.PredictiveAnalyticsStatusResult.Status">
+            <summary>Lifecycle status after the transition.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand">
+            <summary>Reviews a generated prediction (Created -&gt; Active, i.e. "Reviewed").</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Reviews a generated prediction (Created -&gt; Active, i.e. "Reviewed").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#PredictiveAnalytics#Commands#PredictiveAnalyticsStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommandHandler.#ctor(PlantSafety.Domain.Analytics.PredictiveAnalytics.Interfaces.IPredictiveAnalyticsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommandHandler.Handle(PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.ReviewPredictiveAnalyticsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Handlers.GetPredictiveAnalyticsByIdQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Queries.GetPredictiveAnalyticsByIdQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Handlers.GetPredictiveAnalyticsByIdQueryHandler.#ctor(PlantSafety.Application.Analytics.PredictiveAnalytics.Repositories.IPredictiveAnalyticsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.PredictiveAnalytics.Handlers.GetPredictiveAnalyticsByIdQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Handlers.GetPredictiveAnalyticsByIdQueryHandler.Handle(PlantSafety.Application.Analytics.PredictiveAnalytics.Queries.GetPredictiveAnalyticsByIdQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Handlers.GetPredictiveAnalyticsQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Queries.GetPredictiveAnalyticsQuery"/>.</summary>
         </member>
@@ -3425,6 +4696,32 @@
         </member>
         <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Models.PredictiveAnalyticsItemDto.GeneratedBy">
             <summary>Identity of the system/user that generated the prediction.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Models.PredictiveAnalyticsItemDto.ETag">
+            <summary>
+            Optimistic-concurrency token (native RowVersion projected as a hex string). Populated by
+            the by-id read path (usp_PredictiveAnalytics_GetById); null for list results from
+            usp_PredictiveAnalytics_List. Callers must echo this value back on a subsequent mutating
+            command's ETag field; a stale/mismatched value results in a concurrency-conflict error.
+            Added 2026-08-02 for the Phase 4 full build-out -- additive, does not affect existing
+            GetPredictiveAnalyticsQuery/GetPredictiveAnalyticsQueryHandler callers.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Queries.GetPredictiveAnalyticsByIdQuery">
+            <summary>Retrieves a single PredictiveAnalytics read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="PredictiveAnalyticsId">Identity of the PredictiveAnalytics record to retrieve.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Queries.GetPredictiveAnalyticsByIdQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves a single PredictiveAnalytics read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="PredictiveAnalyticsId">Identity of the PredictiveAnalytics record to retrieve.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Queries.GetPredictiveAnalyticsByIdQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.PredictiveAnalytics.Queries.GetPredictiveAnalyticsByIdQuery.PredictiveAnalyticsId">
+            <summary>Identity of the PredictiveAnalytics record to retrieve.</summary>
         </member>
         <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Queries.GetPredictiveAnalyticsQuery">
             <summary>
@@ -3489,6 +4786,21 @@
         </member>
         <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Repositories.IPredictiveAnalyticsRepository.GetPredictionsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns PredictiveAnalytics items for the tenant/site within the given UTC date range.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Repositories.IPredictiveAnalyticsRepository.GetByIdAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the PredictiveAnalytics read-model record for the given identity, scoped to the
+            given tenant, or <see langword="null"/> if not found or if the record belongs to a
+            different tenant. Added 2026-08-02 for the Phase 4 full build-out (backs
+            GetPredictiveAnalyticsByIdQuery); additive, does not affect the pre-existing
+            GetPredictionsAsync member.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Validation.CreatePredictiveAnalyticsCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.PredictiveAnalytics.Validation.CreatePredictiveAnalyticsCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Analytics.PredictiveAnalytics.Commands.CreatePredictiveAnalyticsCommand"/>.</summary>
         </member>
         <member name="T:PlantSafety.Application.Analytics.Predictive.ComplianceFailure.Handlers.GetComplianceFailureQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.Predictive.ComplianceFailure.Queries.GetComplianceFailureQuery"/>.</summary>
@@ -4235,6 +5547,247 @@
         <member name="M:PlantSafety.Application.Analytics.Schedules.Repositories.ISchedulesRepository.GetScheduleItemsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns Schedules items for the tenant/site within the given UTC date range.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand">
+            <summary>Archives a closed ScoreCards record for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Archives a closed ScoreCards record for long-term retention (Closed -&gt; Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#ScoreCards#Commands#ScoreCardsStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommandHandler.#ctor(PlantSafety.Domain.Analytics.ScoreCards.Interfaces.IScoreCardsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommandHandler.Handle(PlantSafety.Application.Analytics.ScoreCards.Commands.ArchiveScoreCardsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand">
+            <summary>Formally closes a finalized ScoreCards record (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Formally closes a finalized ScoreCards record (Completed -&gt; Closed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#ScoreCards#Commands#ScoreCardsStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommandHandler.#ctor(PlantSafety.Domain.Analytics.ScoreCards.Interfaces.IScoreCardsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommandHandler.Handle(PlantSafety.Application.Analytics.ScoreCards.Commands.CloseScoreCardsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand">
+            <summary>Submits a new ScoreCards record.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="ScoreCardName">Human-readable scorecard name.</param>
+            <param name="ReportingPeriod">Reporting period this scorecard covers (e.g., "2026-Q3").</param>
+            <param name="KpiCategory">KPI category this scorecard reports on (e.g., Safety, Compliance, Operations).</param>
+            <param name="PerformanceIndex">Computed performance index (0-100).</param>
+            <param name="GeneratedForSiteId">Site this scorecard was generated for, if site-scoped. Null means enterprise-wide.</param>
+            <param name="CreatedByUserId">Identity of the user creating this record.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.DateTime,System.String,System.Guid,System.Nullable{System.Guid},System.String,System.String,System.String,System.Decimal,System.Nullable{System.Guid},System.Guid)">
+            <summary>Submits a new ScoreCards record.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="ScoreCardName">Human-readable scorecard name.</param>
+            <param name="ReportingPeriod">Reporting period this scorecard covers (e.g., "2026-Q3").</param>
+            <param name="KpiCategory">KPI category this scorecard reports on (e.g., Safety, Compliance, Operations).</param>
+            <param name="PerformanceIndex">Computed performance index (0-100).</param>
+            <param name="GeneratedForSiteId">Site this scorecard was generated for, if site-scoped. Null means enterprise-wide.</param>
+            <param name="CreatedByUserId">Identity of the user creating this record.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.CommandId">
+            <summary>Unique identifier for this command instance (Uuid7).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.CorrelationId">
+            <summary>Operation-group correlation identifier, constant across the whole request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.CausationId">
+            <summary>Identifier of the immediate parent command or event. Null only for root operations.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.RequestedAtUtc">
+            <summary>UTC instant the command was issued, generated once at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.ApiVersionToken">
+            <summary>API version token the request was issued under.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.SiteId">
+            <summary>Optional site scope. Null applies tenant-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.ScoreCardName">
+            <summary>Human-readable scorecard name.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.ReportingPeriod">
+            <summary>Reporting period this scorecard covers (e.g., "2026-Q3").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.KpiCategory">
+            <summary>KPI category this scorecard reports on (e.g., Safety, Compliance, Operations).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.PerformanceIndex">
+            <summary>Computed performance index (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.GeneratedForSiteId">
+            <summary>Site this scorecard was generated for, if site-scoped. Null means enterprise-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.CreatedByUserId">
+            <summary>Identity of the user creating this record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#ScoreCards#Commands#CreateScoreCardsResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand.FromDto(System.Guid,System.Nullable{System.Guid},System.String,System.String,System.String,System.Decimal,System.Nullable{System.Guid},System.Guid,System.Nullable{System.Guid},System.Nullable{System.Guid},System.String)">
+            <summary>Builds a <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand"/> from raw, untrusted transport values.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommandHandler.#ctor(PlantSafety.Domain.Analytics.ScoreCards.Interfaces.IScoreCardsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommandHandler.Handle(PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsResult">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand"/> execution.</summary>
+            <param name="ScoreCardsId">Identity of the newly created ScoreCards aggregate.</param>
+            <param name="Status">Lifecycle status of the newly created record.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsResult.#ctor(System.Guid,System.String)">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand"/> execution.</summary>
+            <param name="ScoreCardsId">Identity of the newly created ScoreCards aggregate.</param>
+            <param name="Status">Lifecycle status of the newly created record.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsResult.ScoreCardsId">
+            <summary>Identity of the newly created ScoreCards aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsResult.Status">
+            <summary>Lifecycle status of the newly created record.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand">
+            <summary>Finalizes a published ScoreCards record (Active -&gt; Completed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Finalizes a published ScoreCards record (Active -&gt; Completed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#ScoreCards#Commands#ScoreCardsStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommandHandler.#ctor(PlantSafety.Domain.Analytics.ScoreCards.Interfaces.IScoreCardsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommandHandler.Handle(PlantSafety.Application.Analytics.ScoreCards.Commands.FinalizeScoreCardsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand">
+            <summary>Publishes a ScoreCards record for consumption (Created -&gt; Active).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Guid)">
+            <summary>Publishes a ScoreCards record for consumption (Created -&gt; Active).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Analytics#ScoreCards#Commands#ScoreCardsStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommandHandler.#ctor(PlantSafety.Domain.Analytics.ScoreCards.Interfaces.IScoreCardsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommandHandler.Handle(PlantSafety.Application.Analytics.ScoreCards.Commands.PublishScoreCardsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Commands.ScoreCardsStatusResult">
+            <summary>Result payload shared by ScoreCards lifecycle-transition commands.</summary>
+            <param name="ScoreCardsId">Identity of the affected ScoreCards aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Commands.ScoreCardsStatusResult.#ctor(System.Guid,System.String)">
+            <summary>Result payload shared by ScoreCards lifecycle-transition commands.</summary>
+            <param name="ScoreCardsId">Identity of the affected ScoreCards aggregate.</param>
+            <param name="Status">Lifecycle status after the transition.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.ScoreCardsStatusResult.ScoreCardsId">
+            <summary>Identity of the affected ScoreCards aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Commands.ScoreCardsStatusResult.Status">
+            <summary>Lifecycle status after the transition.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.ScoreCards.Compliance.Handlers.GetComplianceQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Compliance.Queries.GetComplianceQuery"/>.</summary>
         </member>
@@ -4435,6 +5988,177 @@
         <member name="M:PlantSafety.Application.Analytics.ScoreCards.Department.Repositories.IDepartmentRepository.GetDepartmentScoresAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns Department items for the tenant/site within the given UTC date range.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Handlers.GetScoreCardsByIdQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsByIdQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Handlers.GetScoreCardsByIdQueryHandler.#ctor(PlantSafety.Application.Analytics.ScoreCards.Repositories.IScoreCardsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.ScoreCards.Handlers.GetScoreCardsByIdQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Handlers.GetScoreCardsByIdQueryHandler.Handle(PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsByIdQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Handlers.GetScoreCardsQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Handlers.GetScoreCardsQueryHandler.#ctor(PlantSafety.Application.Analytics.ScoreCards.Repositories.IScoreCardsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Analytics.ScoreCards.Handlers.GetScoreCardsQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Handlers.GetScoreCardsQueryHandler.Handle(PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto">
+            <summary>A single ScoreCards read-model record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.ScoreCardsId">
+            <summary>Record identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.SiteId">
+            <summary>Site identifier, or null when not site-scoped.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.Status">
+            <summary>Current lifecycle status (Created/Active/Completed/Closed/Archived).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.ScoreCardName">
+            <summary>Human-readable scorecard name.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.ReportingPeriod">
+            <summary>Reporting period this scorecard covers (e.g., "2026-Q3").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.KpiCategory">
+            <summary>KPI category this scorecard reports on (e.g., Safety, Compliance, Operations).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.PerformanceIndex">
+            <summary>Computed performance index (0-100).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.GeneratedForSiteId">
+            <summary>Site this scorecard was generated for, if site-scoped. Null means enterprise-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.GeneratedAtUtc">
+            <summary>UTC timestamp this scorecard was generated.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.PublishedByUserId">
+            <summary>Identity of the user who published this scorecard, if published.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.PublishedAtUtc">
+            <summary>UTC instant the scorecard was published.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.FinalizedByUserId">
+            <summary>Identity of the user who finalized this scorecard, if finalized.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.FinalizedAtUtc">
+            <summary>UTC instant the scorecard was finalized.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.ClosedByUserId">
+            <summary>Identity of the user who closed this scorecard, if closed.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.ClosedAtUtc">
+            <summary>UTC instant the scorecard was closed.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.ArchivedAtUtc">
+            <summary>UTC instant the scorecard was archived for long-term retention.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.CreatedAtUtc">
+            <summary>UTC timestamp when the record was created.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.CreatedBy">
+            <summary>Identity of the user who created this record.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto.ETag">
+            <summary>
+            Optimistic-concurrency token (native RowVersion projected as a hex string). Callers must
+            echo this value back on a subsequent mutating command's ETag field; a stale/mismatched
+            value results in a concurrency-conflict error.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsByIdQuery">
+            <summary>Retrieves a single ScoreCards read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="ScoreCardsId">Identity of the ScoreCards record to retrieve.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsByIdQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves a single ScoreCards read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="ScoreCardsId">Identity of the ScoreCards record to retrieve.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsByIdQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsByIdQuery.ScoreCardsId">
+            <summary>Identity of the ScoreCards record to retrieve.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery">
+            <summary>
+            Retrieves ScoreCards data for the given tenant, optionally scoped to a single site,
+            within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site filter. Null returns data for all accessible sites.</param>
+            <param name="From">Inclusive start of the date range (UTC).</param>
+            <param name="To">Inclusive end of the date range (UTC).</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery.#ctor(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime)">
+            <summary>
+            Retrieves ScoreCards data for the given tenant, optionally scoped to a single site,
+            within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site filter. Null returns data for all accessible sites.</param>
+            <param name="From">Inclusive start of the date range (UTC).</param>
+            <param name="To">Inclusive end of the date range (UTC).</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery.SiteId">
+            <summary>Optional site filter. Null returns data for all accessible sites.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery.From">
+            <summary>Inclusive start of the date range (UTC).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery.To">
+            <summary>Inclusive end of the date range (UTC).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Queries.ScoreCardsQueryResult">
+            <summary>Result of <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery"/>.</summary>
+            <param name="TenantId">Tenant the data belongs to.</param>
+            <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
+            <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
+            <param name="Items">Matching ScoreCards items.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Queries.ScoreCardsQueryResult.#ctor(System.Guid,System.Nullable{System.Guid},System.DateTime,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Analytics.ScoreCards.Models.ScoreCardsItemDto})">
+            <summary>Result of <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Queries.GetScoreCardsQuery"/>.</summary>
+            <param name="TenantId">Tenant the data belongs to.</param>
+            <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
+            <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
+            <param name="Items">Matching ScoreCards items.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.ScoreCardsQueryResult.TenantId">
+            <summary>Tenant the data belongs to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.ScoreCardsQueryResult.SiteId">
+            <summary>Site the data is scoped to, or null for tenant-wide results.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.ScoreCardsQueryResult.GeneratedAt">
+            <summary>UTC timestamp when this read-model snapshot was generated.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Analytics.ScoreCards.Queries.ScoreCardsQueryResult.Items">
+            <summary>Matching ScoreCards items.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Repositories.IScoreCardsRepository">
+            <summary>Read-only repository for ScoreCards data. Implemented in the Infrastructure layer.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Repositories.IScoreCardsRepository.GetByIdAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the ScoreCards read-model record for the given identity, scoped to the given tenant,
+            or <see langword="null"/> if not found or if the ScoreCards record belongs to a different tenant.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Repositories.IScoreCardsRepository.GetScoreCardsAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>Returns ScoreCards items for the tenant/site within the given UTC date range.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Analytics.ScoreCards.Supervisor.Handlers.GetSupervisorQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Supervisor.Queries.GetSupervisorQuery"/>.</summary>
         </member>
@@ -4634,6 +6358,12 @@
         </member>
         <member name="M:PlantSafety.Application.Analytics.ScoreCards.Training.Repositories.ITrainingRepository.GetTrainingScoresAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>Returns Training items for the tenant/site within the given UTC date range.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Analytics.ScoreCards.Validation.CreateScoreCardsCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Analytics.ScoreCards.Validation.CreateScoreCardsCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Analytics.ScoreCards.Commands.CreateScoreCardsCommand"/>.</summary>
         </member>
         <member name="T:PlantSafety.Application.Analytics.TrendAnalysis.Handlers.GetTrendAnalysisQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Analytics.TrendAnalysis.Queries.GetTrendAnalysisQuery"/>.</summary>
@@ -9001,6 +10731,20 @@
         </member>
         <member name="M:PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository.AddAsync(PlantSafety.Domain.Analytics.Culture.Aggregates.Culture,System.Threading.CancellationToken)">
             <summary>Persists a newly created <see cref="T:PlantSafety.Domain.Analytics.Culture.Aggregates.Culture"/> aggregate.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository.GetByIdAsync(PlantSafety.Domain.Analytics.Culture.ValueObjects.Ids.CultureId,System.Guid,System.Threading.CancellationToken)">
+            <summary>Retrieves a Culture aggregate by its identity, scoped to the given tenant, or <see langword="null"/> if not found.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Common.Interfaces.Persistence.ICultureRepository.UpdateAsync(PlantSafety.Domain.Analytics.Culture.Aggregates.Culture,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Persists changes to an existing Culture aggregate, enforcing optimistic concurrency.
+            </summary>
+            <param name="culture">The mutated aggregate to persist.</param>
+            <param name="eTag">
+            The last-known concurrency token (from a prior read). A stale or mismatched value causes
+            the persistence layer to reject the write as a concurrency conflict (zero rows affected).
+            </param>
+            <param name="cancellationToken">Propagated cancellation token.</param>
         </member>
         <member name="T:PlantSafety.Application.Common.Interfaces.Persistence.IOutboxWriter">
             <summary>

@@ -16,6 +16,10 @@
 //                  KPI dashboard definition: its name, type, owner, refresh cadence,
 //                  and widget composition.
 //                  Additive-only evolution.
+//  UPDATED:        2026-08-02 -- Phase 4 full build-out: added Publish/RefreshData/Deprecate/
+//                  Close/Archive lifecycle methods. Previously this aggregate had only a Create
+//                  factory. Mirrors Compliance.Permits' lifecycle shape and guard/event/exception
+//                  conventions.
 // ============================================================================
 namespace PlantSafety.Domain.Analytics.Dashboard.Aggregates;
 
@@ -64,6 +68,29 @@ public sealed partial class Dashboard
 
     /// <summary>Identity of the user who created this record (CRUD authorship).</summary>
     public UserId CreatedBy { get; private set; }
+
+    // ---- Lifecycle attributes (Publish/Deprecate/Close/Archive) -------------
+
+    /// <summary>Identity of the user who published this dashboard, if published.</summary>
+    public UserId? PublishedByUserId { get; private set; }
+
+    /// <summary>UTC instant the dashboard was published (Created -&gt; Active).</summary>
+    public UtcTimestamp? PublishedAtUtc { get; private set; }
+
+    /// <summary>Identity of the user who deprecated this dashboard, if deprecated.</summary>
+    public UserId? DeprecatedByUserId { get; private set; }
+
+    /// <summary>UTC instant the dashboard was deprecated (Active -&gt; Completed).</summary>
+    public UtcTimestamp? DeprecatedAtUtc { get; private set; }
+
+    /// <summary>Identity of the user who closed this dashboard, if closed.</summary>
+    public UserId? ClosedByUserId { get; private set; }
+
+    /// <summary>UTC instant the dashboard was closed (Completed -&gt; Closed).</summary>
+    public UtcTimestamp? ClosedAtUtc { get; private set; }
+
+    /// <summary>UTC instant the dashboard was archived for long-term retention (Closed -&gt; Archived).</summary>
+    public UtcTimestamp? ArchivedAtUtc { get; private set; }
 
     // ---- Domain Events -----------------------------------------------------
 
@@ -121,6 +148,139 @@ public sealed partial class Dashboard
         return agg;
     }
 
+    // ---- Lifecycle: Publish / RefreshData / Deprecate / Close / Archive -----
+
+    /// <summary>
+    /// Publishes the dashboard for general use (Created -&gt; Active). Valid only from
+    /// <see cref="DashboardStatus.Created"/>.
+    /// </summary>
+    public void Publish(
+        UserId publishedBy,
+        UtcTimestamp publishedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, DashboardLifecycleRules.CanActivate, DashboardStatus.Created);
+
+        PublishedByUserId = publishedBy;
+        PublishedAtUtc = publishedAtUtc;
+        IsPublished = true;
+        Status = DashboardStatus.Active;
+
+        AddDomainEvent(new DashboardPublishedEvent(
+            EventId: new DashboardEventId(Uuid7.New()),
+            DashboardId: DashboardId,
+            PublishedByUserId: publishedBy,
+            PublishedAtUtc: publishedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Records a data refresh for a published dashboard. Does not change lifecycle status. Valid
+    /// only from <see cref="DashboardStatus.Active"/>.
+    /// </summary>
+    public void RefreshData(
+        UtcTimestamp refreshedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, DashboardLifecycleRules.CanRefresh, DashboardStatus.Active);
+
+        LastRefreshedAtUtc = refreshedAtUtc;
+
+        AddDomainEvent(new DashboardRefreshedEvent(
+            EventId: new DashboardEventId(Uuid7.New()),
+            DashboardId: DashboardId,
+            RefreshedAtUtc: refreshedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Deprecates a published dashboard (Active -&gt; Completed). Valid only from
+    /// <see cref="DashboardStatus.Active"/>.
+    /// </summary>
+    public void Deprecate(
+        UserId deprecatedBy,
+        UtcTimestamp deprecatedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, DashboardLifecycleRules.CanComplete, DashboardStatus.Active);
+
+        DeprecatedByUserId = deprecatedBy;
+        DeprecatedAtUtc = deprecatedAtUtc;
+        IsPublished = false;
+        Status = DashboardStatus.Completed;
+
+        AddDomainEvent(new DashboardDeprecatedEvent(
+            EventId: new DashboardEventId(Uuid7.New()),
+            DashboardId: DashboardId,
+            DeprecatedByUserId: deprecatedBy,
+            DeprecatedAtUtc: deprecatedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Formally closes a deprecated dashboard (Completed -&gt; Closed). Valid only from
+    /// <see cref="DashboardStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, DashboardLifecycleRules.CanClose, DashboardStatus.Completed);
+
+        ClosedByUserId = closedBy;
+        ClosedAtUtc = closedAtUtc;
+        Status = DashboardStatus.Closed;
+
+        AddDomainEvent(new DashboardClosedEvent(
+            EventId: new DashboardEventId(Uuid7.New()),
+            DashboardId: DashboardId,
+            ClosedByUserId: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed dashboard for long-term retention (Closed -&gt; Archived). Valid only from
+    /// <see cref="DashboardStatus.Closed"/>. See <see cref="Policies.DashboardArchivalPolicy"/> for
+    /// eligibility outside the aggregate boundary (e.g. batch archival jobs).
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, DashboardLifecycleRules.CanArchive, DashboardStatus.Closed);
+
+        ArchivedAtUtc = archivedAtUtc;
+        Status = DashboardStatus.Archived;
+
+        AddDomainEvent(new DashboardArchivedEvent(
+            EventId: new DashboardEventId(Uuid7.New()),
+            DashboardId: DashboardId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(IDashboardDomainEvent evt) => _domainEvents.Add(evt);
@@ -135,5 +295,13 @@ public sealed partial class Dashboard
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Dashboard {DashboardId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<DashboardStatus, bool> guard, DashboardStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new DashboardInvalidStatusTransitionException(
+            DashboardId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }

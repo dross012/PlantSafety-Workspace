@@ -66,6 +66,11 @@ using PlantSafety.Infrastructure.Analytics.ScoreCards.Department.Persistence;
 using PlantSafety.Infrastructure.Analytics.ScoreCards.Supervisor.Persistence;
 using PlantSafety.Infrastructure.Analytics.ScoreCards.Training.Persistence;
 using PlantSafety.Infrastructure.Analytics.TrendAnalysis.Persistence;
+using PlantSafety.Application.Analytics.Culture.Repositories;
+using PlantSafety.Infrastructure.Analytics.Culture.Persistence;
+using PlantSafety.Application.Analytics.Dashboard.Repositories;
+using PlantSafety.Domain.Analytics.Dashboard.Interfaces;
+using PlantSafety.Infrastructure.Analytics.Dashboard.Persistence;
 
 namespace PlantSafety.Infrastructure.Analytics.DependencyInjection;
 
@@ -80,12 +85,21 @@ public static class AnalyticsLegacyRepositoryRegistration
     {
         // Culture subsystem
         services.AddScoped<Application.Common.Interfaces.Persistence.ICultureRepository, CultureRepository>();
+        // Phase 4 full build-out (2026-08-02): Application-layer read-model repository for the new
+        // GetCultureByIdQuery, distinct from the write-side ICultureRepository registered above.
+        services.AddScoped<ICultureReadRepository, CultureReadRepository>();
         services.AddScoped<IBehaviorRepository, BehaviorDapperRepository>();
         services.AddScoped<ICultureIndexRepository, CultureIndexDapperRepository>();
         services.AddScoped<IEngagementScoringRepository, EngagementScoringDapperRepository>();
         services.AddScoped<ITrendModelingRepository, TrendModelingDapperRepository>();
 
         // Dashboard subsystem
+        // Phase 4 full build-out (2026-08-02): write-side Domain aggregate repository and
+        // Application-layer read-model repository for the Dashboard root aggregate. This aggregate
+        // previously had zero persistence wiring at all -- no table, no stored procedures, and no
+        // DI registration.
+        services.AddScoped<IDashboardRepository, DashboardAggregateDapperRepository>();
+        services.AddScoped<IDashboardReadRepository, DashboardReadRepository>();
         services.AddScoped<IExecutiveRepository, ExecutiveDapperRepository>();
         services.AddScoped<IKPISnapshotsRepository, KPISnapshotsDapperRepository>();
         services.AddScoped<IReadModelRepository, ReadModelDapperRepository>();

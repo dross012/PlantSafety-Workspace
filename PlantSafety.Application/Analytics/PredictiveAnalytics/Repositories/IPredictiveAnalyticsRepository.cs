@@ -17,4 +17,13 @@ public interface IPredictiveAnalyticsRepository
         DateTime from,
         DateTime to,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns the PredictiveAnalytics read-model record for the given identity, scoped to the
+    /// given tenant, or <see langword="null"/> if not found or if the record belongs to a
+    /// different tenant. Added 2026-08-02 for the Phase 4 full build-out (backs
+    /// GetPredictiveAnalyticsByIdQuery); additive, does not affect the pre-existing
+    /// GetPredictionsAsync member.
+    /// </summary>
+    Task<PredictiveAnalyticsItemDto?> GetByIdAsync(Guid predictionId, Guid tenantId, CancellationToken cancellationToken);
 }

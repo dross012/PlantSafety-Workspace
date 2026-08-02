@@ -47,11 +47,38 @@ public sealed record CultureReadModel
     /// <summary>Top identified risk theme for the period.</summary>
     public string TopRiskTheme { get; init; } = string.Empty;
 
+    /// <summary>Identity of the user who reviewed this survey period, if reviewed.</summary>
+    public Guid? ReviewedByUserId { get; init; }
+
+    /// <summary>UTC instant the survey period was reviewed.</summary>
+    public DateTime? ReviewedAtUtc { get; init; }
+
+    /// <summary>Identity of the user who published this survey period, if published.</summary>
+    public Guid? PublishedByUserId { get; init; }
+
+    /// <summary>UTC instant the survey period was published.</summary>
+    public DateTime? PublishedAtUtc { get; init; }
+
+    /// <summary>Identity of the user who closed this survey period, if closed.</summary>
+    public Guid? ClosedByUserId { get; init; }
+
+    /// <summary>UTC instant the survey period was closed.</summary>
+    public DateTime? ClosedAtUtc { get; init; }
+
+    /// <summary>UTC instant the survey period was archived.</summary>
+    public DateTime? ArchivedAtUtc { get; init; }
+
     /// <summary>UTC creation timestamp.</summary>
     public DateTime CreatedAtUtc { get; init; }
 
     /// <summary>Identity of the creating user.</summary>
     public Guid CreatedBy { get; init; }
+
+    /// <summary>UTC timestamp when the record was last updated, if ever.</summary>
+    public DateTime? UpdatedAtUtc { get; init; }
+
+    /// <summary>Identity of the user who last updated the record, if ever.</summary>
+    public Guid? UpdatedBy { get; init; }
 
     /// <summary>
     /// Optimistic-concurrency token, projected from the row's native ROWVERSION column

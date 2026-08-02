@@ -31,4 +31,14 @@ public sealed record PredictiveAnalyticsItemDto
 
     /// <summary>Identity of the system/user that generated the prediction.</summary>
     public required Guid GeneratedBy { get; init; }
+
+    /// <summary>
+    /// Optimistic-concurrency token (native RowVersion projected as a hex string). Populated by
+    /// the by-id read path (usp_PredictiveAnalytics_GetById); null for list results from
+    /// usp_PredictiveAnalytics_List. Callers must echo this value back on a subsequent mutating
+    /// command's ETag field; a stale/mismatched value results in a concurrency-conflict error.
+    /// Added 2026-08-02 for the Phase 4 full build-out -- additive, does not affect existing
+    /// GetPredictiveAnalyticsQuery/GetPredictiveAnalyticsQueryHandler callers.
+    /// </summary>
+    public string? ETag { get; init; }
 }

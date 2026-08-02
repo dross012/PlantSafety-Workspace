@@ -16,6 +16,11 @@
 //                  safety-culture survey period: its computed culture index,
 //                  engagement score, participation rate, and top risk theme.
 //                  Additive-only evolution.
+//  UPDATED:        2026-08-02 -- Phase 4 full build-out: added Review/Publish/Close/Archive
+//                  lifecycle methods. Previously this aggregate had only a Create factory --
+//                  CultureStatus/CultureLifecycleRules/CultureArchivalPolicy were fully scaffolded
+//                  but nothing called them. Mirrors Compliance.Permits' Approve/Complete/Close/
+//                  Archive lifecycle shape and guard/event/exception conventions.
 // ============================================================================
 namespace PlantSafety.Domain.Analytics.Culture.Aggregates;
 
@@ -58,6 +63,29 @@ public sealed partial class Culture
 
     /// <summary>Identity of the user who created this record (CRUD authorship).</summary>
     public UserId CreatedBy { get; private set; }
+
+    // ---- Lifecycle attributes (Review/Publish/Close/Archive) ----------------
+
+    /// <summary>Identity of the user who reviewed this survey period, if reviewed.</summary>
+    public UserId? ReviewedByUserId { get; private set; }
+
+    /// <summary>UTC instant the survey period was reviewed (Created -&gt; Active).</summary>
+    public UtcTimestamp? ReviewedAtUtc { get; private set; }
+
+    /// <summary>Identity of the user who published this survey period, if published.</summary>
+    public UserId? PublishedByUserId { get; private set; }
+
+    /// <summary>UTC instant the survey period was published (Active -&gt; Completed).</summary>
+    public UtcTimestamp? PublishedAtUtc { get; private set; }
+
+    /// <summary>Identity of the user who closed this survey period, if closed.</summary>
+    public UserId? ClosedByUserId { get; private set; }
+
+    /// <summary>UTC instant the survey period was closed (Completed -&gt; Closed).</summary>
+    public UtcTimestamp? ClosedAtUtc { get; private set; }
+
+    /// <summary>UTC instant the survey period was archived for long-term retention (Closed -&gt; Archived).</summary>
+    public UtcTimestamp? ArchivedAtUtc { get; private set; }
 
     // ---- Domain Events -----------------------------------------------------
 
@@ -113,6 +141,114 @@ public sealed partial class Culture
         return agg;
     }
 
+    // ---- Lifecycle: Review / Publish / Close / Archive ----------------------
+
+    /// <summary>
+    /// Reviews a submitted survey period (Created -&gt; Active). Valid only from
+    /// <see cref="CultureStatus.Created"/>.
+    /// </summary>
+    public void Review(
+        UserId reviewedBy,
+        UtcTimestamp reviewedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CultureLifecycleRules.CanActivate, CultureStatus.Created);
+
+        ReviewedByUserId = reviewedBy;
+        ReviewedAtUtc = reviewedAtUtc;
+        Status = CultureStatus.Active;
+
+        AddDomainEvent(new CultureReviewedEvent(
+            EventId: new CultureEventId(Uuid7.New()),
+            CultureId: CultureId,
+            ReviewedByUserId: reviewedBy,
+            ReviewedAtUtc: reviewedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Publishes a reviewed survey period's results (Active -&gt; Completed). Valid only from
+    /// <see cref="CultureStatus.Active"/>.
+    /// </summary>
+    public void Publish(
+        UserId publishedBy,
+        UtcTimestamp publishedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CultureLifecycleRules.CanComplete, CultureStatus.Active);
+
+        PublishedByUserId = publishedBy;
+        PublishedAtUtc = publishedAtUtc;
+        Status = CultureStatus.Completed;
+
+        AddDomainEvent(new CulturePublishedEvent(
+            EventId: new CultureEventId(Uuid7.New()),
+            CultureId: CultureId,
+            PublishedByUserId: publishedBy,
+            PublishedAtUtc: publishedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Formally closes a published survey period (Completed -&gt; Closed). Valid only from
+    /// <see cref="CultureStatus.Completed"/>.
+    /// </summary>
+    public void Close(
+        UserId closedBy,
+        UtcTimestamp closedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CultureLifecycleRules.CanClose, CultureStatus.Completed);
+
+        ClosedByUserId = closedBy;
+        ClosedAtUtc = closedAtUtc;
+        Status = CultureStatus.Closed;
+
+        AddDomainEvent(new CultureClosedEvent(
+            EventId: new CultureEventId(Uuid7.New()),
+            CultureId: CultureId,
+            ClosedByUserId: closedBy,
+            ClosedAtUtc: closedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
+    /// <summary>
+    /// Archives a closed survey period for long-term retention (Closed -&gt; Archived). Valid only
+    /// from <see cref="CultureStatus.Closed"/>. See <see cref="Policies.CultureArchivalPolicy"/>
+    /// for eligibility outside the aggregate boundary (e.g. batch archival jobs).
+    /// </summary>
+    public void Archive(
+        UtcTimestamp archivedAtUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        EnsureStatusIsOneOf(correlationId, causationId, CultureLifecycleRules.CanArchive, CultureStatus.Closed);
+
+        ArchivedAtUtc = archivedAtUtc;
+        Status = CultureStatus.Archived;
+
+        AddDomainEvent(new CultureArchivedEvent(
+            EventId: new CultureEventId(Uuid7.New()),
+            CultureId: CultureId,
+            ArchivedAtUtc: archivedAtUtc,
+            Actor: actor,
+            CorrelationId: correlationId,
+            CausationId: causationId));
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void AddDomainEvent(ICultureDomainEvent evt) => _domainEvents.Add(evt);
@@ -127,5 +263,13 @@ public sealed partial class Culture
 
         throw new InvalidOperationException(
             $"Invalid lifecycle transition from '{Status}' for Culture {CultureId}.");
+    }
+
+    private void EnsureStatusIsOneOf(CorrelationId correlationId, CausationId causationId, Func<CultureStatus, bool> guard, CultureStatus expected)
+    {
+        if (guard(Status)) return;
+
+        throw new CultureInvalidStatusTransitionException(
+            CultureId, Status.ToString(), expected.ToString(), correlationId, causationId);
     }
 }
