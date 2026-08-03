@@ -59,4 +59,13 @@ public sealed record IncidentDto
 
     /// <summary>Row version for optimistic concurrency checks.</summary>
     public required string ETag { get; init; }
+
+    /// <summary>Reason recorded for the most recent escalation, if any. Added 2026-08-03.</summary>
+    public string? EscalationReason { get; init; }
+
+    /// <summary>Number of times this incident has been escalated. Added 2026-08-03.</summary>
+    public int EscalationCount { get; init; }
+
+    /// <summary>Resolution notes recorded when the incident was resolved, if any. Added 2026-08-03.</summary>
+    public string? ResolutionNotes { get; init; }
 }

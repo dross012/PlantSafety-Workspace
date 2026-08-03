@@ -71,6 +71,12 @@ public static class RouteDefinitions
     /// <summary>Auditing list.</summary>
     public const string AuditingList = "/modules/auditing";
 
+    /// <summary>Audit timeline viewer. Requires {EntityType}/{EntityId} route parameters (Phase 5 §6.1).</summary>
+    public const string AuditTimeline = "/modules/auditing/timeline";
+
+    /// <summary>Audit report generation/export/download page (Phase 5 §6.2).</summary>
+    public const string AuditReports = "/modules/auditing/reports";
+
     /// <summary>Worker management list.</summary>
     public const string WorkerManagementList = "/modules/worker-management";
 
@@ -118,6 +124,12 @@ public static class RouteDefinitions
 
     /// <summary>Document management list.</summary>
     public const string DocumentManagementList = "/modules/document-management";
+
+    /// <summary>Workflow approvals inbox (Phase 5 §5 — pending HumanApproval steps for the current actor).</summary>
+    public const string WorkflowApprovalsInbox = "/modules/workflow/approvals";
+
+    /// <summary>Workflow instance detail/timeline. Requires {id} route parameter.</summary>
+    public const string WorkflowInstanceDetail = "/modules/workflow/{id}";
 
     // ── Section 2 — Safety Event ──────────────────────────────────────────────
 
@@ -205,6 +217,9 @@ public static class RouteDefinitions
     /// <summary>Trend analysis dashboard.</summary>
     public const string TrendAnalysisDashboard = "/modules/trend-analysis";
 
+    /// <summary>BI Dashboards (Phase 5 §4.3 Scheduling/Production/Maintenance/Risk/ContinuousImprovement/Audit KPI sub-features).</summary>
+    public const string BiDashboards = "/modules/bi-dashboards";
+
     // ── Section 6 — Compliance ────────────────────────────────────────────────
 
     /// <summary>Compliance dashboard.</summary>
@@ -218,6 +233,9 @@ public static class RouteDefinitions
 
     /// <summary>Regulatory calendar.</summary>
     public const string RegulatoryCalendar = "/modules/regulatory-calendar";
+
+    /// <summary>Compliance Rules Engine evaluation trigger + results view (Phase 5 §6.3).</summary>
+    public const string ComplianceEvaluation = "/modules/compliance/evaluation";
 
     // ── Section 7 — Financial ─────────────────────────────────────────────────
 

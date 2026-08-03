@@ -101,6 +101,8 @@ global using PlantSafety.Domain.Analytics.Dashboard.Snapshots;
 global using PlantSafety.Domain.Analytics.Dashboard.Specifications;
 global using PlantSafety.Domain.Analytics.Dashboard.ValueObjects;
 global using PlantSafety.Domain.Analytics.Dashboard.ValueObjects.Ids;
+global using PlantSafety.Domain.Analytics.Dashboard.Kpi.ValueObjects;
+global using PlantSafety.Domain.Analytics.Dashboard.Kpi.Services;
 global using PlantSafety.Domain.Analytics.Engagement.Aggregates;
 global using PlantSafety.Domain.Analytics.Engagement.DomainEvents;
 global using PlantSafety.Domain.Analytics.Engagement.Entities;
@@ -131,6 +133,7 @@ global using PlantSafety.Domain.Analytics.PredictiveAnalytics.Snapshots;
 global using PlantSafety.Domain.Analytics.PredictiveAnalytics.Specifications;
 global using PlantSafety.Domain.Analytics.PredictiveAnalytics.ValueObjects;
 global using PlantSafety.Domain.Analytics.PredictiveAnalytics.ValueObjects.Ids;
+global using PlantSafety.Domain.Analytics.PredictiveAnalytics.Predictors;
 global using PlantSafety.Domain.Analytics.ScoreCards.Aggregates;
 global using PlantSafety.Domain.Analytics.ScoreCards.DomainEvents;
 global using PlantSafety.Domain.Analytics.ScoreCards.Entities;
@@ -1128,6 +1131,12 @@ global using PlantSafety.Domain.Scheduling.WorkOrderPriority.ValueObjects.Ids;
 global using PlantSafety.Domain.Scheduling.Aggregates;
 global using PlantSafety.Domain.Scheduling.Events;
 
+// ---- Scheduling.PredictiveScheduling (Phase 5 full build-out, 2026-08-02) --------
+global using PlantSafety.Domain.Scheduling.PredictiveScheduling.Enums;
+global using PlantSafety.Domain.Scheduling.PredictiveScheduling.Services;
+global using PlantSafety.Domain.Scheduling.PredictiveScheduling.ValueObjects;
+global using PlantSafety.Domain.Scheduling.PredictiveScheduling.ValueObjects.Ids;
+
 // ---- PPE (Legacy Program Structure Migration) --------------------------
 global using PlantSafety.Domain.PPE.PPECategory.Aggregates;
 global using PlantSafety.Domain.PPE.PPECategory.DomainEvents;
@@ -1355,6 +1364,11 @@ global using PlantSafety.Domain.Observability.AutomatedIncidentDetection.ValueOb
 global using PlantSafety.Domain.Observability.Aggregates;
 global using PlantSafety.Domain.Observability.Events;
 
+// ---- Observability.Telemetry (Phase 5 full build-out, 2026-08-02) ----------------
+global using PlantSafety.Domain.Observability.Telemetry.Enums;
+global using PlantSafety.Domain.Observability.Telemetry.ValueObjects;
+global using PlantSafety.Domain.Observability.Telemetry.Services;
+
 // ---- Intelligence.AITraining / Intelligence.DataLake / Intelligence.PredictiveSafety (Phase 4
 // full build-out, 2026-08-02) --------------------------------------------------------------------
 global using PlantSafety.Domain.Intelligence.AITraining.Aggregates;
@@ -1378,3 +1392,4 @@ global using PlantSafety.Domain.Intelligence.PredictiveSafety.Exceptions;
 global using PlantSafety.Domain.Intelligence.PredictiveSafety.Interfaces;
 global using PlantSafety.Domain.Intelligence.PredictiveSafety.Rules;
 global using PlantSafety.Domain.Intelligence.PredictiveSafety.ValueObjects.Ids;
+global using PlantSafety.Domain.Intelligence.PredictiveSafety.Predictors;

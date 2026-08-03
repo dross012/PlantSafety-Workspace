@@ -34,6 +34,7 @@ using PlantSafety.Application.Scheduling.PMScheduling.Models;
 using PlantSafety.Application.Scheduling.PMScheduling.Queries;
 using PlantSafety.Application.Scheduling.ShiftFatigue.Commands;
 using PlantSafety.Application.Scheduling.ShiftFatigue.Queries;
+using PlantSafety.Application.Scheduling.WorkOrderPriority.Models;
 using PlantSafety.Application.Scheduling.WorkOrderPriority.Queries;
 
 using PlantSafety.Api.Common;
@@ -250,6 +251,33 @@ public sealed class SchedulingV1Controller : ControllerBase
             PerformedByUserId: env.ActorId);
 
         var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single WorkOrderPriority read-model record by identity, including its current ETag.</summary>
+    /// <remarks>
+    /// Closes the Phase 4 Scheduling.WorkOrderPriority gap flagged by the platform-wide API contract
+    /// audit (2026-08-03): the Application-layer <see cref="GetWorkOrderPriorityByIdQuery"/> and its
+    /// handler already existed, but had no HTTP surface -- every sibling sub-aggregate in this
+    /// controller (PMScheduling, EmergencyDrillPlanning, HazardIsolationSequencing, ShiftFatigue)
+    /// exposes both a list and a by-id read; WorkOrderPriority was the sole outlier.
+    /// </remarks>
+    [HttpGet("work-order-priority/{workOrderPriorityId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<WorkOrderPriorityItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetWorkOrderPriorityByIdAsync(
+        Guid workOrderPriorityId,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+
+        var query = new GetWorkOrderPriorityByIdQuery(env.TenantId, workOrderPriorityId);
+
+        var result = await _sender.Send(query, cancellationToken);
 
         return this.ToActionResult(result, env.CorrelationId);
     }

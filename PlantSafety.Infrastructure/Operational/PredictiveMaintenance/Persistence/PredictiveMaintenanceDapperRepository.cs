@@ -68,4 +68,87 @@ public sealed class PredictiveMaintenanceDapperRepository(
         return await queryExecutor.QuerySingleOrDefaultAsync<PredictiveMaintenanceAlertItemDto>(
             "[Operational].[usp_PredictiveMaintenanceAlert_GetById]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<(IReadOnlyList<PredictiveMaintenanceAlertItemDto> Items, int TotalCount)> GetPagedAsync(
+        Guid tenantId,
+        Guid? equipmentId,
+        bool activeOnly,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug(
+            "GetPagedAsync for PredictiveMaintenanceAlert Tenant {TenantId} Equipment {EquipmentId} ActiveOnly {ActiveOnly}",
+            tenantId, equipmentId, activeOnly);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddGuid("EquipmentId", equipmentId)
+            .AddBool("ActiveOnly", activeOnly)
+            .AddInt("PageNumber", pageNumber)
+            .AddInt("PageSize", pageSize)
+            .Build();
+
+        var rows = await queryExecutor.QueryAsync<PredictiveMaintenanceAlertPagedRow>(
+            "[Operational].[usp_PredictiveMaintenanceAlert_List]", parameters, cancellationToken);
+
+        var totalCount = rows.Count > 0 ? rows[0].TotalCount : 0;
+
+        var items = rows.Select(r => new PredictiveMaintenanceAlertItemDto
+        {
+            PredictiveMaintenanceAlertId = r.PredictiveMaintenanceAlertId,
+            TenantId = r.TenantId,
+            SiteId = r.SiteId,
+            Status = r.Status,
+            EquipmentId = r.EquipmentId,
+            PredictedFailureType = r.PredictedFailureType,
+            PredictedAtUtc = r.PredictedAtUtc,
+            ReviewedBy = r.ReviewedBy,
+            ReviewedAtUtc = r.ReviewedAtUtc,
+            ActionScheduledBy = r.ActionScheduledBy,
+            WorkOrderReference = r.WorkOrderReference,
+            ActionScheduledAtUtc = r.ActionScheduledAtUtc,
+            ResolvedBy = r.ResolvedBy,
+            ResolutionNotes = r.ResolutionNotes,
+            ResolvedAtUtc = r.ResolvedAtUtc,
+            DismissedBy = r.DismissedBy,
+            DismissedReason = r.DismissedReason,
+            DismissedAtUtc = r.DismissedAtUtc,
+            ClosedBy = r.ClosedBy,
+            ClosedAtUtc = r.ClosedAtUtc,
+            CreatedAtUtc = r.CreatedAtUtc,
+            CreatedBy = r.CreatedBy,
+        }).ToList();
+
+        return (items, totalCount);
+    }
+
+    /// <summary>Flat row shape returned by <c>usp_PredictiveMaintenanceAlert_List</c>, carrying the windowed TotalCount alongside every page row.</summary>
+    private sealed record PredictiveMaintenanceAlertPagedRow
+    {
+        public required Guid PredictiveMaintenanceAlertId { get; init; }
+        public required Guid TenantId { get; init; }
+        public Guid? SiteId { get; init; }
+        public required string Status { get; init; }
+        public required Guid EquipmentId { get; init; }
+        public required string PredictedFailureType { get; init; }
+        public required DateTime PredictedAtUtc { get; init; }
+        public Guid? ReviewedBy { get; init; }
+        public DateTime? ReviewedAtUtc { get; init; }
+        public Guid? ActionScheduledBy { get; init; }
+        public string? WorkOrderReference { get; init; }
+        public DateTime? ActionScheduledAtUtc { get; init; }
+        public Guid? ResolvedBy { get; init; }
+        public string? ResolutionNotes { get; init; }
+        public DateTime? ResolvedAtUtc { get; init; }
+        public Guid? DismissedBy { get; init; }
+        public string? DismissedReason { get; init; }
+        public DateTime? DismissedAtUtc { get; init; }
+        public Guid? ClosedBy { get; init; }
+        public DateTime? ClosedAtUtc { get; init; }
+        public required DateTime CreatedAtUtc { get; init; }
+        public required Guid CreatedBy { get; init; }
+        public int TotalCount { get; init; }
+    }
 }

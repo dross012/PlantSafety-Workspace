@@ -17,4 +17,26 @@ public interface IReportingRepository
         DateTime from,
         DateTime to,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns a deterministically ordered, paginated page of the report catalog for the
+    /// tenant, optionally scoped to a single site and/or filtered by report type. Backs the
+    /// PlantSafety.UI Reporting module's Reports List page.
+    /// </summary>
+    Task<(IReadOnlyList<ReportListItemDto> Items, int TotalCount)> GetReportsPagedAsync(
+        Guid tenantId,
+        Guid? siteId,
+        string? typeFilter,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns a single report's full detail by identifier, or <see langword="null"/> if not
+    /// found for the tenant. Backs the PlantSafety.UI Reporting module's Report Detail page.
+    /// </summary>
+    Task<ReportDetailDto?> GetReportByIdAsync(
+        Guid tenantId,
+        Guid reportId,
+        CancellationToken cancellationToken);
 }

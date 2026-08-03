@@ -17,8 +17,10 @@ using PlantSafety.Infrastructure.Common.Configuration;
 using PlantSafety.Infrastructure.BackgroundJobs;
 using PlantSafety.Infrastructure.Caching;
 using PlantSafety.Infrastructure.Common.Clock;
+using PlantSafety.Infrastructure.Common.Concurrency;
 using PlantSafety.Infrastructure.Common.Extensions;
 using PlantSafety.Infrastructure.Common.Mapping;
+using PlantSafety.SharedKernel.Abstractions.Concurrency;
 using PlantSafety.Infrastructure.ExternalServices;
 using PlantSafety.Infrastructure.FileStorage;
 using PlantSafety.Infrastructure.Financials.Persistence;
@@ -27,6 +29,26 @@ using PlantSafety.Application.Abstractions.CurrentUser;
 using PlantSafety.Application.Abstractions.Security;
 using PlantSafety.Infrastructure.Identity;
 using PlantSafety.Infrastructure.Messaging.Publishers;
+using PlantSafety.Infrastructure.Messaging.Consumers.OperationalSafety;
+using PlantSafety.Infrastructure.Messaging.Consumers.Compliance;
+using PlantSafety.Infrastructure.Messaging.Consumers.Analytics;
+using PlantSafety.Infrastructure.Messaging.Consumers.SafetyEvents;
+using PlantSafety.Infrastructure.Messaging.Consumers.Training;
+using PlantSafety.Infrastructure.Messaging.Consumers.Sustainability;
+using PlantSafety.Infrastructure.Messaging.Consumers.WorkerWellBeing;
+using PlantSafety.Infrastructure.Messaging.Consumers.EnvironmentalHealth;
+using PlantSafety.Infrastructure.Messaging.Consumers.EnterpriseFabric;
+using PlantSafety.Infrastructure.Messaging.Consumers.Governance;
+using PlantSafety.Infrastructure.Messaging.Consumers.HumanFactors;
+using PlantSafety.Infrastructure.Messaging.Consumers.Integrations;
+using PlantSafety.Infrastructure.Messaging.Consumers.DigitalTwin;
+using PlantSafety.Infrastructure.Messaging.Consumers.ContractorVisitor;
+using PlantSafety.Infrastructure.Messaging.Consumers.AiGovernance;
+using PlantSafety.Infrastructure.Messaging.Consumers.AiSafetyIntelligence;
+using PlantSafety.Infrastructure.Messaging.Consumers.CrossModuleOrchestration;
+using PlantSafety.Infrastructure.Messaging.Consumers.DeadLetter;
+using PlantSafety.Infrastructure.Messaging.DeadLetter;
+using PlantSafety.Application.Messaging.Repositories;
 using PlantSafety.Infrastructure.OperationalSafety.Alerts.Interfaces;
 using PlantSafety.Infrastructure.OperationalSafety.Alerts.Repositories;
 using PlantSafety.Infrastructure.OperationalSafety.Checklists.Interfaces;
@@ -114,7 +136,11 @@ using PlantSafety.Infrastructure.PermitToWork.DependencyInjection;
 using PlantSafety.Infrastructure.Observability.DependencyInjection;
 using PlantSafety.Infrastructure.Checklists.DependencyInjection;
 using PlantSafety.Infrastructure.Auditing.DependencyInjection;
+using PlantSafety.Infrastructure.Auditing.AuditTimeline.DependencyInjection;
+using PlantSafety.Infrastructure.Auditing.AuditReport.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.RulesEngine.DependencyInjection;
 using PlantSafety.Infrastructure.SafetyCulture.DependencyInjection;
+using PlantSafety.Infrastructure.SafetyPrograms.DependencyInjection;
 using PlantSafety.Infrastructure.Alerts.DependencyInjection;
 using PlantSafety.Infrastructure.Dashboards.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.DependencyInjection;
@@ -129,12 +155,14 @@ using PlantSafety.Infrastructure.Compliance.Procedures.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.RegulatoryCalendar.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Auditing.DependencyInjection;
 using PlantSafety.Infrastructure.ProcessManagement.DependencyInjection;
+using PlantSafety.Infrastructure.ProcessManagement.Routing.DependencyInjection;
 using PlantSafety.Infrastructure.Sustainability.DependencyInjection;
 using PlantSafety.Infrastructure.WorkerWellBeing.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Certification.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Compliance.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.PredictiveMaintenance.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.PreventiveMaintenance.DependencyInjection;
+using PlantSafety.Infrastructure.Operational.WorkOrders.DependencyInjection;
 using PlantSafety.Infrastructure.Features.DependencyInjection;
 using PlantSafety.Infrastructure.Integrations.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.DependencyInjection;
@@ -156,6 +184,8 @@ using PlantSafety.Infrastructure.Governance.DependencyInjection;
 using PlantSafety.Infrastructure.HumanFactors.DependencyInjection;
 using PlantSafety.Infrastructure.OperationalSafety.DependencyInjection;
 using PlantSafety.Infrastructure.EnterpriseFabric.DependencyInjection;
+using PlantSafety.Infrastructure.Workflow.DependencyInjection;
+using PlantSafety.Infrastructure.Analytics.UnifiedModel.DependencyInjection;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -183,6 +213,25 @@ public static class InfrastructureServiceRegistration
         // DI validation error.
         services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+
+        // Distributed locking (Phase 6 pre-requisite, 2026-08-02): SQL Server sp_getapplock-backed
+        // IDistributedLockProvider protecting concurrent/racing state mutation of the Workflow
+        // module's WorkflowInstance aggregate (see WorkflowInstanceLockBehavior) and available for
+        // the 8 Phase 5 cross-module orchestration consumers to adopt next. Singleton for the same
+        // reason as SqlConnectionFactory immediately above: it is stateless (wraps only the
+        // singleton ISqlConnectionFactory) and opens a brand-new, dedicated SqlConnection per
+        // AcquireAsync/TryAcquireAsync call, so it is safe to consume from singleton hosted
+        // services as well as scoped request pipelines.
+        services.AddSingleton<IDistributedLockProvider, SqlServerDistributedLockProvider>();
+
+        // Cross-module orchestration consumer replay-atomicity fix (Phase 6 blocker, 2026-08-02):
+        // business-key dedup ledger for the 8 CrossModuleOrchestration consumers (see
+        // CrossModuleIdempotentConsumerBase.TryExecuteOnceAsync). Singleton for the same reason as
+        // ISqlConnectionFactory/IDistributedLockProvider above -- stateless, opens its own
+        // connection per call.
+        services.AddSingleton<
+            PlantSafety.Infrastructure.Messaging.Consumers.CrossModuleOrchestration.ICrossModuleDedupStore,
+            PlantSafety.Infrastructure.Messaging.Consumers.CrossModuleOrchestration.SqlCrossModuleDedupStore>();
 
         // Tenant-isolation remediation rollout switch (docs\lifecycle\security\rls-audit.md).
         // Defaults to OFF (unbound section binds to the type's default, EnableTenantContextPropagation
@@ -262,6 +311,41 @@ public static class InfrastructureServiceRegistration
         // deployments override with real Azure Service Bus credentials.
         services.AddMassTransit(x =>
         {
+            // Previously every {Module}ConsumerRegistration.Register(cfg) helper was a "TODO"
+            // stub that never actually called cfg.AddConsumer<T>(), and none of these Register()
+            // methods were ever invoked from here — so no MassTransit consumer (including all the
+            // pre-existing *CreatedConsumer classes) was ever wired to the bus, despite the classes
+            // themselves being fully implemented and idempotent (see IdempotentConsumerBase). This
+            // was a real cross-module eventing gap, closed here; additive-only evolution.
+            OperationalSafetyConsumerRegistration.Register(x);
+            ComplianceConsumerRegistration.Register(x);
+            AnalyticsConsumerRegistration.Register(x);
+            SafetyEventsConsumerRegistration.Register(x);
+            TrainingConsumerRegistration.Register(x);
+            SustainabilityConsumerRegistration.Register(x);
+            WorkerWellBeingConsumerRegistration.Register(x);
+            EnvironmentalHealthConsumerRegistration.Register(x);
+            EnterpriseFabricConsumerRegistration.Register(x);
+            GovernanceConsumerRegistration.Register(x);
+            HumanFactorsConsumerRegistration.Register(x);
+            IntegrationsConsumerRegistration.Register(x);
+            DigitalTwinConsumerRegistration.Register(x);
+            ContractorVisitorConsumerRegistration.Register(x);
+            AiGovernanceConsumerRegistration.Register(x);
+            AiSafetyIntelligenceConsumerRegistration.Register(x);
+
+            // Phase 5 §3 Cross-Module Orchestration (2026-08-02): the 8 real wiring points
+            // connecting Maintenance<->PredictiveMaintenance, Production<->Scheduling,
+            // RiskManagement<->ContinuousImprovement, and Intelligence<->everything. See
+            // CrossModuleOrchestrationConsumerRegistration for the full consumer list.
+            CrossModuleOrchestrationConsumerRegistration.Register(x);
+
+            // Phase 6 blocker fix (2026-08-02): the single, message-type-agnostic dead-letter
+            // fault sink -- see DeadLetterFaultConsumer<TMessage> remarks for why an open generic
+            // IConsumer<Fault<TMessage>> is MassTransit's documented pattern for covering every
+            // existing/future consumer's fault path with one registration.
+            DeadLetterConsumerRegistration.Register(x);
+
             x.UsingRabbitMq((context, cfg) =>
             {
                 var rabbitHost = configuration["RabbitMq:Host"] ?? "localhost";
@@ -273,9 +357,68 @@ public static class InfrastructureServiceRegistration
                     h.Username(rabbitUser);
                     h.Password(rabbitPass);
                 });
+
+                // Handbook §7 Performance & Stress / Phase 5 §7.2 "parallel consumers" (2026-08-02):
+                // no per-consumer ConcurrentMessageLimit convention previously existed anywhere in
+                // this codebase (17 *ConsumerRegistration.Register(cfg) call sites, all bare
+                // cfg.AddConsumer<T>() with no concurrency configuration). Rather than inventing a
+                // per-file convention, this sets RabbitMQ's PrefetchCount once, centrally, which is
+                // MassTransit's standard bus-wide throttle on unacknowledged/concurrently-processed
+                // messages per receive endpoint -- the single lowest-risk place to bound consumer
+                // parallelism without touching every registration file.
+                cfg.PrefetchCount = InfrastructureConstants.DefaultRabbitMqPrefetchCount;
+
+                // Phase 6 blocker fix (2026-08-02): bounded retry with exponential back-off,
+                // applied bus-wide to every receive endpoint configured below (Consumer Hardening
+                // Rules §12 "bounded retries with exponential backoff"). Previously there was NO
+                // UseMessageRetry(...) middleware anywhere in this configuration, so any
+                // transient consumer failure (e.g. a momentary SQL timeout) faulted the message on
+                // the very first attempt with no retry at all, and MassTransit's Fault<T> was never
+                // observed by anything -- see DeadLetterFaultConsumer<TMessage>, registered above,
+                // which is what actually persists the fault to [System].[DeadLetterEvents] once
+                // this retry budget is exhausted.
+                cfg.UseMessageRetry(r => r.Exponential(
+                    InfrastructureConstants.DefaultRetryCount,
+                    TimeSpan.FromMilliseconds(InfrastructureConstants.RetryBaseDelayMs),
+                    TimeSpan.FromSeconds(30),
+                    TimeSpan.FromMilliseconds(InfrastructureConstants.RetryBaseDelayMs)));
+
+                // Handbook §7 Performance & Stress / Outbox correctness fix (2026-08-02):
+                // OutboxProcessor.PublishAsync deserialises the outbox payload back into the
+                // concrete domain-event CLR type (using JsonSerializerConfiguration.Default,
+                // which already registers this converter) and then calls bus.Publish(...) --
+                // MassTransit's own transport serializer (this configuration) re-serialises that
+                // object a second time onto the wire. Both boundaries must recognise this
+                // codebase's Smart Enum convention (e.g. RiskManagement.Enums.RiskLevel) or the
+                // second boundary would silently reintroduce the same round-trip failure.
+                cfg.ConfigureJsonSerializerOptions(options =>
+                {
+                    options.Converters.Add(new SmartEnumJsonConverterFactory());
+
+                    // Regression audit fix (2026-08-03): the transport-level (second) serialization
+                    // boundary must recognise the same validating-constructor value-object
+                    // convention (RiskId, CorrelationId, CausationId, UtcTimestamp,
+                    // PerformedByActor, etc. -- see ValidatingValueObjectJsonConverterFactory
+                    // remarks) as JsonSerializerConfiguration.Default, or this boundary would
+                    // silently reintroduce the same zeroed-default-instance corruption on the wire.
+                    options.Converters.Add(new PlantSafety.Infrastructure.Common.Serialization.ValidatingValueObjectJsonConverterFactory());
+                    return options;
+                });
+
+                // Phase 6 blocker fix (2026-08-02): previously ABSENT from this configuration --
+                // without ConfigureEndpoints, MassTransit never creates a receive endpoint for any
+                // AddConsumer<T> registered above (17 pre-existing *ConsumerRegistration files, the
+                // 8 Phase 5 cross-module orchestration consumers, and this pass's
+                // DeadLetterFaultConsumer<>), so none of them would ever actually receive a
+                // message regardless of retry/fault configuration. This call uses MassTransit's
+                // standard consumer-type-name receive-endpoint convention (one queue per consumer
+                // type), which DeadLetterFaultConsumer<TMessage>'s ConsumerName recovery (via
+                // ConsumeContext.ReceiveContext.InputAddress) also depends on.
+                cfg.ConfigureEndpoints(context);
             });
         });
         services.AddScoped<IIntegrationEventPublisher, ServiceBusEventPublisher>();
+        services.AddScoped<IDeadLetterEventRepository, DeadLetterEventDapperRepository>();
 
         // Background jobs
         services.AddHostedService<OutboxProcessor>();
@@ -321,6 +464,14 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<INearMissRepository, NearMissDapperRepository>();
         services.AddScoped<IIncidentReadRepository, IncidentReadDapperRepository>();
         services.AddScoped<IIncidentRepository, IncidentDapperRepository>();
+        // 2026-08-03 (Claude Code modular-creation-agent): Incident timeline read repository
+        // backing GetIncidentTimelineQuery (UI Gaps Scoping, IncidentManagement Part 1).
+        services.AddScoped<PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentTimelineReadRepository,
+            PlantSafety.Infrastructure.Features.SafetyEvents.IncidentManagement.Repositories.IncidentTimelineReadDapperRepository>();
+        // 2026-08-03 (Claude Code modular-creation-agent): SLA policy repository backing the new
+        // SLA Monitor engine (UI Gaps Scoping, IncidentManagement Part 2).
+        services.AddScoped<PlantSafety.Application.SafetyEvents.SlaMonitoring.Repositories.ISlaPolicyRepository,
+            PlantSafety.Infrastructure.SafetyEvents.SlaMonitoring.Repositories.SlaPolicyDapperRepository>();
 
         // Features tree — Compliance module repositories
         services.AddScoped<IPermitRepository, PermitDapperRepository>();
@@ -441,12 +592,28 @@ public static class InfrastructureServiceRegistration
             .AddPredictiveAnalyticsAggregateInfrastructure()
             .AddPredictiveMaintenanceInfrastructure()
             .AddPreventiveMaintenanceTaskInfrastructure()
+            .AddWorkOrdersInfrastructure()
             .AddObservabilityInfrastructure()
             .AddChecklistsInfrastructure()
             .AddAuditingInfrastructure()
             .AddSafetyCultureInfrastructure()
             .AddAlertsInfrastructure()
-            .AddDashboardsInfrastructure();
+            .AddDashboardsInfrastructure()
+            .AddComplianceRulesEngineInfrastructure()
+            .AddAuditTimelineInfrastructure()
+            .AddAuditReportInfrastructure();
+
+        // SafetyPrograms (2026-08-03): thin composition-layer module over the existing
+        // SafetyPolicies/SafetyProcedures/SafetyCulture modules -- see
+        // docs/Phase5/ui-gaps-scoping.md section 8.
+        services.AddSafetyProgramsInfrastructure();
+
+        // ProcessManagement.Routing (2026-08-03): new sibling submodule alongside the existing
+        // ProcessManagement.ProcessDefinition aggregate -- partial reuse of ProcessDefinition's
+        // approval/versioning lifecycle plus genuinely new RouteDefinition/RouteVersionSnapshot
+        // aggregates for ordered steps, diffing, and simulation -- see
+        // docs/Phase5/ui-gaps-scoping.md section 9.
+        services.AddRoutingAggregateInfrastructure();
 
         // Phase 4 full build-out (2026-08-02): previously-bare DDD aggregates AiGovernance,
         // AiSafetyIntelligence, ContractorVisitor, DigitalTwin. AiGovernance and DigitalTwin are
@@ -529,6 +696,19 @@ public static class InfrastructureServiceRegistration
         services.AddIntelligenceAggregatesInfrastructure();
 
         services.AddScoped<IComplianceBulkRepository, ComplianceBulkDapperRepository>();
+
+        // Phase 5.5 Automation and workflow engine (2026-08-02): brand-new Workflow module
+        // (workflow definitions + deterministic runtime engine), additive alongside every module
+        // registered above.
+        services.AddWorkflowInfrastructure();
+
+        // Regression audit fix (2026-08-03): AddAnalyticsUnifiedModelDashboardInfrastructure()
+        // existed fully-implemented (see UnifiedModelDashboardInfrastructureServiceRegistration
+        // remarks -- self-documented as "NOT wired into the shared
+        // InfrastructureServiceRegistration.cs") but was never called from here, so the six
+        // unified-analytics-model BI dashboard repositories (Scheduling/Production/Maintenance/
+        // Risk/ContinuousImprovement/Audit) could never be resolved. Closes the gap.
+        services.AddAnalyticsUnifiedModelDashboardInfrastructure();
 
         return services;
     }

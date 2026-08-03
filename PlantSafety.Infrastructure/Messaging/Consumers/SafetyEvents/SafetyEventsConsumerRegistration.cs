@@ -9,6 +9,10 @@
 //  Description:    MassTransit consumer registration helper for the SafetyEvents area.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Infrastructure.SafetyEvents.EmergencyManagement.Messaging;
+using PlantSafety.Infrastructure.SafetyEvents.IncidentManagement.Messaging;
+using PlantSafety.Infrastructure.SafetyEvents.Observation.Messaging;
+
 namespace PlantSafety.Infrastructure.Messaging.Consumers.SafetyEvents;
 
 /// <summary>
@@ -20,6 +24,8 @@ public static class SafetyEventsConsumerRegistration
     /// <summary>Adds all SafetyEvents consumers to the MassTransit configurator.</summary>
     public static void Register(IBusRegistrationConfigurator cfg)
     {
-        // TODO: cfg.AddConsumer<{ModuleName}CreatedConsumer>();
+        cfg.AddConsumer<EmergencyManagementCreatedConsumer>();
+        cfg.AddConsumer<IncidentManagementCreatedConsumer>();
+        cfg.AddConsumer<ObservationCreatedConsumer>();
     }
 }

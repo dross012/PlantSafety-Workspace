@@ -67,6 +67,27 @@
                     </dd>
                 </dl>
 
+                @if (program.LinkedActivity.Count > 0)
+                {
+                    <h3 class="ps-detail-subtitle">Linked Activity</h3>
+                    <dl class="ps-detail-fields">
+                        @foreach (var section in program.LinkedActivity)
+                        {
+                            <dt>@($"{section.SourceModule}.{section.SourceCategory}")</dt>
+                            <dd>
+                                @if (section.IsAvailable)
+                                {
+                                    @($"{section.ActiveItemCount} active / {section.ItemCount} total")
+                                }
+                                else
+                                {
+                                    <span class="ps-text-muted">Unavailable: @section.UnavailableReason</span>
+                                }
+                            </dd>
+                        }
+                    </dl>
+                }
+
                 <div class="ps-detail-actions">
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.SafetyProgramsList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Safety Programs

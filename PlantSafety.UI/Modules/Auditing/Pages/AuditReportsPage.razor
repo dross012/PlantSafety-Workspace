@@ -1,0 +1,231 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-02
+   FILE DESCRIPTION: Audit Report generation/export/download page (Phase 5
+     §6.2 — Advanced Audit). Lets a user trigger GenerateAuditReportCommand
+     for any target entity (Timeline section auto-populated server-side;
+     Entity Identity/Approvals/Exceptions/Signatures sections supplied as
+     JSON), lists the generation history for that entity
+     (GetAuditReportHistoryQuery), and wires a real byte-stream download flow
+     against GetAuditReportContentQuery (via IAuditReportContentStore) using
+     the existing plantSafetyDownloadFile JS interop helper — the same
+     pattern already proven by Modules/OperationsAuditViewer's CSV export.
+     Built entirely from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent, DataGridComponent,
+     StatusIndicatorComponent).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/auditing/reports"
+
+@inject AuditingState State
+@inject AuditingApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Auditing.ApiClients
+@using PlantSafety.UI.Modules.Auditing.Models
+@using PlantSafety.UI.Modules.Auditing.State
+
+<PageTitle>Audit Reports — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The audit reports page could not be displayed.">
+
+        <div class="ps-page-actions">
+            <a href="@RouteDefinitions.AuditingList" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Auditing</a>
+        </div>
+
+        @if (State.ReportError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ReportError</div>
+        }
+
+        <CardComponent Title="Generate Audit Report">
+            <div class="ps-field-row">
+                <label for="targetType" class="ps-field-label">Entity Type</label>
+                <input id="targetType" class="ps-input ps-input-sm" @bind="_targetEntityType" placeholder="e.g. Risk, Permit, AuditFinding" />
+            </div>
+            <div class="ps-field-row">
+                <label for="targetId" class="ps-field-label">Entity Id</label>
+                <input id="targetId" class="ps-input ps-input-sm" @bind="_targetEntityId" placeholder="GUID" />
+            </div>
+            <div class="ps-field-row">
+                <label for="format" class="ps-field-label">Format</label>
+                <select id="format" class="ps-input ps-input-sm" @bind="_format">
+                    <option value="Pdf">PDF</option>
+                    <option value="Csv">CSV</option>
+                    <option value="Json">JSON</option>
+                </select>
+            </div>
+
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="GenerateAsync" disabled="@State.IsGeneratingReport">
+                <span class="bi bi-file-earmark-plus" aria-hidden="true"></span> @(State.IsGeneratingReport ? "Generating…" : "Generate Report")
+            </button>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadHistoryAsync" disabled="@State.IsLoadingReportHistory">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Load History
+            </button>
+        </CardComponent>
+
+        @if (State.CurrentReport is { } current)
+        {
+            <CardComponent Title="Most Recently Generated Report">
+                <dl class="ps-detail-fields">
+                    <dt>Status</dt> <dd><StatusIndicatorComponent Status="@MapStatus(current.Status)" Label="@current.Status" /></dd>
+                    <dt>Format</dt> <dd>@current.Format</dd>
+                    <dt>Sections</dt> <dd>@current.Sections.Count</dd>
+                    <dt>Size</dt> <dd>@(current.ContentSizeBytes is { } size ? $"{size:N0} bytes" : "—")</dd>
+                </dl>
+                @if (current.Status == "Generated")
+                {
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="() => DownloadAsync(current)" disabled="@State.IsDownloadingReport">
+                        <span class="bi bi-download" aria-hidden="true"></span> @(State.IsDownloadingReport ? "Downloading…" : "Download")
+                    </button>
+                }
+                else if (current.Status == "Failed")
+                {
+                    <div class="ps-alert ps-alert--warning" role="alert">@(current.FailureReason ?? "Report generation failed.")</div>
+                }
+            </CardComponent>
+        }
+
+        @if (State.IsLoadingReportHistory)
+        {
+            <LoadingIndicatorComponent Message="Loading report history…" />
+        }
+        else if (State.ReportHistory.Count > 0)
+        {
+            <CardComponent Title="Report History">
+                <DataGridComponent TItem="AuditReportDto"
+                                    Items="State.ReportHistory"
+                                    Headers="_headers"
+                                    KeySelector="r => r.AuditReportId"
+                                    EmptyMessage="No reports generated yet for this entity."
+                                    AriaLabel="Audit report history">
+                    <RowTemplate Context="report">
+                        <td>@report.TargetEntityType</td>
+                        <td>@report.Format</td>
+                        <td><StatusIndicatorComponent Status="@MapStatus(report.Status)" Label="@report.Status" /></td>
+                        <td>@report.RequestedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>
+                            @if (report.Status == "Generated")
+                            {
+                                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => DownloadAsync(report)" disabled="@State.IsDownloadingReport">
+                                    <span class="bi bi-download" aria-hidden="true"></span> Download
+                                </button>
+                            }
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Entity Type", "Format", "Status", "Requested", "Actions"];
+
+    private string _targetEntityType = string.Empty;
+    private string _targetEntityId = string.Empty;
+    private string _format = "Pdf";
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Audit Reports",
+            activeModuleCode: "auditing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Auditing", Href = RouteDefinitions.AuditingList },
+                new BreadcrumbItem { Label = "Reports" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task GenerateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_targetEntityType) || !Guid.TryParse(_targetEntityId, out var entityId) || entityId == Guid.Empty)
+        {
+            State.SetGenerateReportError("Enter a valid Entity Type and Entity Id (GUID) before generating a report.");
+            return;
+        }
+
+        State.BeginGenerateReport();
+
+        var request = new GenerateAuditReportRequest
+        {
+            TargetEntityType = _targetEntityType.Trim(),
+            TargetEntityId = entityId,
+            Format = _format,
+        };
+
+        var envelope = await ApiClient.GenerateAuditReportAsync(TenantId, request);
+
+        if (envelope.IsSuccess)
+            State.SetGeneratedReport(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetGenerateReportError(envelope.Problem!.Detail);
+        else
+            State.SetGenerateReportError($"Failed to generate audit report: {envelope.FaultType}");
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_targetEntityType) || !Guid.TryParse(_targetEntityId, out var entityId) || entityId == Guid.Empty)
+        {
+            State.SetReportHistoryError("Enter a valid Entity Type and Entity Id (GUID) before loading history.");
+            return;
+        }
+
+        State.BeginReportHistoryLoad();
+        var envelope = await ApiClient.GetAuditReportHistoryAsync(TenantId, _targetEntityType.Trim(), entityId);
+
+        if (envelope.IsSuccess)
+            State.SetReportHistory(envelope.Data ?? []);
+        else if (envelope.IsProblem)
+            State.SetReportHistoryError(envelope.Problem!.Detail);
+        else
+            State.SetReportHistoryError($"Failed to load report history: {envelope.FaultType}");
+    }
+
+    private async Task DownloadAsync(AuditReportDto report)
+    {
+        State.BeginDownloadReport();
+
+        var envelope = await ApiClient.GetAuditReportContentAsync(TenantId, report.AuditReportId);
+
+        if (!envelope.IsSuccess || envelope.Data is null)
+        {
+            State.SetDownloadReportError(envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to download report content: {envelope.FaultType}");
+            return;
+        }
+
+        var content = envelope.Data;
+        var base64 = Convert.ToBase64String(content.Content);
+        await JS.InvokeVoidAsync("plantSafetyDownloadFile", content.FileName, base64, content.ContentType);
+
+        State.CompleteDownloadReport();
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "generated" => "Healthy",
+        "draft" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

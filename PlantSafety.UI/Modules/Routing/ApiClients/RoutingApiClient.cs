@@ -1,6 +1,11 @@
 // ============================================================
 // AUTHOR: PlantSafety Platform
 // CREATED: 2026-07-14
+// UPDATED: 2026-08-03 -- Wired to the real ProcessManagement.Routing V1 controller
+//   (PlantSafety.Api.ProcessManagement.Routing.Controllers.V1.RouteDefinitionV1Controller,
+//   route prefix api/v1/routing/routings) backed by a genuinely new RouteDefinition/
+//   RouteVersionSnapshot domain model that partially reuses ProcessManagement's
+//   approval/versioning lifecycle. See docs/Phase5/ui-gaps-scoping.md §9.
 // FILE DESCRIPTION: Typed API client for the Routing module (Volume R1).
 //   Wraps all HTTP communication for the Dashboard, Detail, Steps, Version
 //   History, Diff Viewer, Simulation Workspace, and Approval Workflow

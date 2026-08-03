@@ -43,6 +43,9 @@ public sealed class IncidentToIncidentDtoMappingProfile
             LastModifiedByActorId = source.LastModifiedByActorId,
             LastModifiedAtUtc = source.LastModifiedAtUtc,
             ETag = source.ETag,
+            EscalationReason = source.EscalationReason,
+            EscalationCount = source.EscalationCount,
+            ResolutionNotes = source.ResolutionNotes,
         };
     }
 }
@@ -136,4 +139,20 @@ public sealed record IncidentReadModel
     /// <see cref="CreatedAtUtc"/>; mirrors [SafetyEvents].[Incident].CreatedBy.
     /// </summary>
     public required Guid CreatedBy { get; init; }
+
+    /// <summary>
+    /// Reason recorded for the most recent escalation, if any. Added 2026-08-03 for the
+    /// AssignTechnician/Escalate/AddNote/Resolve lifecycle commands (UI Gaps Scoping,
+    /// IncidentManagement Part 1); mirrors [SafetyEvents].[Incident].EscalationReason.
+    /// </summary>
+    public string? EscalationReason { get; init; }
+
+    /// <summary>UTC instant of the most recent escalation, if any. Mirrors Incident.EscalatedAtUtc.</summary>
+    public DateTimeOffset? EscalatedAtUtc { get; init; }
+
+    /// <summary>Number of times this incident has been escalated. Mirrors Incident.EscalationCount.</summary>
+    public int EscalationCount { get; init; }
+
+    /// <summary>Resolution notes recorded when resolved, if any. Mirrors Incident.ResolutionNotes.</summary>
+    public string? ResolutionNotes { get; init; }
 }

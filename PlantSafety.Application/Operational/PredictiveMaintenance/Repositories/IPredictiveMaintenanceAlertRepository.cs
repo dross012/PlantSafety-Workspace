@@ -29,4 +29,19 @@ public interface IPredictiveMaintenanceAlertRepository
     /// the given tenant, or <see langword="null"/> if not found or if it belongs to a different tenant.
     /// </summary>
     Task<PredictiveMaintenanceAlertItemDto?> GetByIdAsync(Guid predictiveMaintenanceAlertId, Guid tenantId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns a paginated page of PredictiveMaintenanceAlert read-model records for the given
+    /// tenant, optionally filtered by equipment and/or restricted to alerts that have not yet
+    /// reached a terminal status. Backs the Predictive Maintenance Insights sub-resources
+    /// (risk-summary, equipment-health, predictions list, equipment predictive view) added
+    /// 2026-08-03. Additive-only evolution -- does not change <see cref="GetByIdAsync"/>.
+    /// </summary>
+    Task<(IReadOnlyList<PredictiveMaintenanceAlertItemDto> Items, int TotalCount)> GetPagedAsync(
+        Guid tenantId,
+        Guid? equipmentId,
+        bool activeOnly,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken);
 }

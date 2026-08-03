@@ -1,0 +1,452 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-02
+   FILE DESCRIPTION: BI Dashboards landing page (Phase 5 §4.3 — Advanced
+     Platform Capabilities Blueprint). Wires the six new
+     PlantSafety.Application.Analytics.Dashboard.*Dashboard read-model
+     sub-features (Scheduling, Production, Maintenance, Risk,
+     ContinuousImprovement, Audit) via BiDashboardsApiClient, populates
+     BiDashboardsState, and renders KPI CardComponent tiles + DataGridComponent
+     daily-breakdown tables per tab — built entirely from the canonical
+     Shared component library (ErrorBoundaryComponent, LoadingIndicatorComponent,
+     TabControlComponent, CardComponent, DataGridComponent, StatusIndicatorComponent,
+     DateRangePickerComponent), following the Modules/DashboardAnalytics
+     exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/bi-dashboards"
+
+@inject BiDashboardsState State
+@inject BiDashboardsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.BiDashboards.ApiClients
+@using PlantSafety.UI.Modules.BiDashboards.Models
+@using PlantSafety.UI.Modules.BiDashboards.State
+
+<PageTitle>BI Dashboards — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The BI Dashboards page could not be displayed." OnRetry="() => LoadActiveTabAsync()">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="State.FilterStart" EndDate="State.FilterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        <TabControlComponent Tabs="_tabLabels"
+                              ActiveIndex="(int)State.ActiveTab"
+                              ActiveIndexChanged="OnTabIndexChangedAsync"
+                              AriaLabel="BI Dashboard sections" />
+
+        <div class="ps-tab-panel" role="tabpanel">
+
+            @* ── Scheduling ───────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == BiDashboardsTab.Scheduling)
+            {
+                @if (State.SchedulingError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.SchedulingError</div>
+                }
+
+                @if (State.IsLoadingScheduling)
+                {
+                    <LoadingIndicatorComponent Message="Loading scheduling KPIs…" />
+                }
+                else if (State.Scheduling.Count == 0)
+                {
+                    <CardComponent Title="Scheduling"><p class="ps-chart-empty">No scheduling KPI data found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    var latest = State.Scheduling[^1];
+                    <div class="ps-kpi-row">
+                        <CardComponent Title="On-Time Rate" Subtitle="@latest.OnTimeRate.ToString("P0")" />
+                        <CardComponent Title="Avg Variance (min)" Subtitle="@latest.AverageVarianceMinutes.ToString("N0")" />
+                        <CardComponent Title="P1 Outstanding" Subtitle="@latest.P1OutstandingCount.ToString()" />
+                        <CardComponent Title="Total Scheduled" Subtitle="@State.Scheduling.Sum(r => r.TotalScheduledEvents).ToString()" />
+                    </div>
+
+                    <CardComponent Title="Scheduling — Daily Breakdown">
+                        <DataGridComponent TItem="SchedulingDashboardItemDto"
+                                            Items="@(State.Scheduling.OrderByDescending(r => r.BusinessDate).ToList())"
+                                            Headers="_schedulingHeaders"
+                                            EmptyMessage="No scheduling KPI rows found."
+                                            AriaLabel="Scheduling KPI breakdown">
+                            <RowTemplate Context="row">
+                                <td>@row.BusinessDate.ToString("yyyy-MM-dd")</td>
+                                <td>@row.TotalScheduledEvents</td>
+                                <td>@row.OnTimeCompletedCount</td>
+                                <td>@row.LateCompletedCount</td>
+                                <td>@row.OnTimeRate.ToString("P0")</td>
+                                <td>@row.P1OutstandingCount</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Production ───────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == BiDashboardsTab.Production)
+            {
+                @if (State.ProductionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ProductionError</div>
+                }
+
+                @if (State.IsLoadingProduction)
+                {
+                    <LoadingIndicatorComponent Message="Loading production KPIs…" />
+                }
+                else if (State.Production.Count == 0)
+                {
+                    <CardComponent Title="Production"><p class="ps-chart-empty">No production KPI data found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    var latest = State.Production[^1];
+                    <div class="ps-kpi-row">
+                        <CardComponent Title="Compliance Rate" Subtitle="@latest.ComplianceRate.ToString("P0")" />
+                        <CardComponent Title="Total Events" Subtitle="@State.Production.Sum(r => r.TotalOperationalEvents).ToString()" />
+                        <CardComponent Title="Discrepancies" Subtitle="@State.Production.Sum(r => r.TotalDiscrepancies).ToString()" />
+                        <CardComponent Title="Non-Compliant" Subtitle="@State.Production.Sum(r => r.NonCompliantEventCount).ToString()" />
+                    </div>
+
+                    <CardComponent Title="Production — Daily Breakdown">
+                        <DataGridComponent TItem="ProductionDashboardItemDto"
+                                            Items="@(State.Production.OrderByDescending(r => r.BusinessDate).ToList())"
+                                            Headers="_productionHeaders"
+                                            EmptyMessage="No production KPI rows found."
+                                            AriaLabel="Production KPI breakdown">
+                            <RowTemplate Context="row">
+                                <td>@row.BusinessDate.ToString("yyyy-MM-dd")</td>
+                                <td>@row.TotalOperationalEvents</td>
+                                <td>@row.CompliantEventCount</td>
+                                <td>@row.NonCompliantEventCount</td>
+                                <td>@row.ComplianceRate.ToString("P0")</td>
+                                <td>@row.TotalDiscrepancies</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Maintenance ──────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == BiDashboardsTab.Maintenance)
+            {
+                @if (State.MaintenanceError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.MaintenanceError</div>
+                }
+
+                @if (State.IsLoadingMaintenance)
+                {
+                    <LoadingIndicatorComponent Message="Loading maintenance KPIs…" />
+                }
+                else if (State.Maintenance.Count == 0)
+                {
+                    <CardComponent Title="Maintenance"><p class="ps-chart-empty">No maintenance KPI data found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    var latest = State.Maintenance[^1];
+                    <div class="ps-kpi-row">
+                        <CardComponent Title="Schedule Compliance" Subtitle="@latest.ScheduleComplianceRate.ToString("P0")" />
+                        <CardComponent Title="Overdue Work Orders" Subtitle="@State.Maintenance.Sum(r => r.OverdueCount).ToString()" />
+                        <CardComponent Title="Total Downtime (min)" Subtitle="@State.Maintenance.Sum(r => r.TotalDowntimeMinutes).ToString("N0")" />
+                        <CardComponent Title="Avg Predicted Failure Prob." Subtitle="@(latest.AveragePredictedFailureProbability?.ToString("P0") ?? "—")" />
+                    </div>
+
+                    <CardComponent Title="Maintenance — Daily Breakdown">
+                        <DataGridComponent TItem="MaintenanceDashboardItemDto"
+                                            Items="@(State.Maintenance.OrderByDescending(r => r.BusinessDate).ToList())"
+                                            Headers="_maintenanceHeaders"
+                                            EmptyMessage="No maintenance KPI rows found."
+                                            AriaLabel="Maintenance KPI breakdown">
+                            <RowTemplate Context="row">
+                                <td>@row.BusinessDate.ToString("yyyy-MM-dd")</td>
+                                <td>@row.TotalWorkOrders</td>
+                                <td>@row.PreventiveCount</td>
+                                <td>@row.PredictiveCount</td>
+                                <td>@row.OnScheduleCount</td>
+                                <td>@row.OverdueCount</td>
+                                <td>@row.ScheduleComplianceRate.ToString("P0")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Risk ─────────────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == BiDashboardsTab.Risk)
+            {
+                @if (State.RiskError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.RiskError</div>
+                }
+
+                @if (State.IsLoadingRisk)
+                {
+                    <LoadingIndicatorComponent Message="Loading risk KPIs…" />
+                }
+                else if (State.Risk.Count == 0)
+                {
+                    <CardComponent Title="Risk"><p class="ps-chart-empty">No risk KPI data found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    var latest = State.Risk[^1];
+                    <div class="ps-kpi-row">
+                        <CardComponent Title="Critical" Subtitle="@State.Risk.Sum(r => r.CriticalCount).ToString()" />
+                        <CardComponent Title="High" Subtitle="@State.Risk.Sum(r => r.HighCount).ToString()" />
+                        <CardComponent Title="Medium" Subtitle="@State.Risk.Sum(r => r.MediumCount).ToString()" />
+                        <CardComponent Title="Avg Composite Score" Subtitle="@latest.AverageCompositeScore.ToString("N1")" />
+                    </div>
+
+                    <CardComponent Title="Risk — Daily Breakdown">
+                        <DataGridComponent TItem="RiskDashboardItemDto"
+                                            Items="@(State.Risk.OrderByDescending(r => r.BusinessDate).ToList())"
+                                            Headers="_riskHeaders"
+                                            EmptyMessage="No risk KPI rows found."
+                                            AriaLabel="Risk KPI breakdown">
+                            <RowTemplate Context="row">
+                                <td>@row.BusinessDate.ToString("yyyy-MM-dd")</td>
+                                <td>@row.TotalAssessments</td>
+                                <td><SeverityBadgeComponent Severity="Critical" Text="@row.CriticalCount.ToString()" /></td>
+                                <td><SeverityBadgeComponent Severity="High" Text="@row.HighCount.ToString()" /></td>
+                                <td><SeverityBadgeComponent Severity="Medium" Text="@row.MediumCount.ToString()" /></td>
+                                <td><SeverityBadgeComponent Severity="Low" Text="@row.LowCount.ToString()" /></td>
+                                <td>@row.AverageCompositeScore.ToString("N1")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Continuous Improvement ──────────────────────────────────────── *@
+            @if (State.ActiveTab == BiDashboardsTab.ContinuousImprovement)
+            {
+                @if (State.ContinuousImprovementError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ContinuousImprovementError</div>
+                }
+
+                @if (State.IsLoadingContinuousImprovement)
+                {
+                    <LoadingIndicatorComponent Message="Loading continuous improvement KPIs…" />
+                }
+                else if (State.ContinuousImprovement.Count == 0)
+                {
+                    <CardComponent Title="Continuous Improvement"><p class="ps-chart-empty">No continuous improvement KPI data found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    var latest = State.ContinuousImprovement[^1];
+                    <div class="ps-kpi-row">
+                        <CardComponent Title="On-Time Closure Rate" Subtitle="@latest.OnTimeClosureRate.ToString("P0")" />
+                        <CardComponent Title="Avg Cycle Time (days)" Subtitle="@latest.AverageCycleTimeDays.ToString("N1")" />
+                        <CardComponent Title="CAPA Opened" Subtitle="@State.ContinuousImprovement.Sum(r => r.CapaOpenedCount).ToString()" />
+                        <CardComponent Title="CAPA Closed" Subtitle="@State.ContinuousImprovement.Sum(r => r.CapaClosedCount).ToString()" />
+                    </div>
+
+                    <CardComponent Title="Continuous Improvement — Daily Breakdown">
+                        <DataGridComponent TItem="ContinuousImprovementDashboardItemDto"
+                                            Items="@(State.ContinuousImprovement.OrderByDescending(r => r.BusinessDate).ToList())"
+                                            Headers="_ciHeaders"
+                                            EmptyMessage="No continuous improvement KPI rows found."
+                                            AriaLabel="Continuous improvement KPI breakdown">
+                            <RowTemplate Context="row">
+                                <td>@row.BusinessDate.ToString("yyyy-MM-dd")</td>
+                                <td>@row.CapaOpenedCount</td>
+                                <td>@row.CapaClosedCount</td>
+                                <td>@row.RcaFindingCount</td>
+                                <td>@row.OnTimeClosureRate.ToString("P0")</td>
+                                <td>@row.AverageCycleTimeDays.ToString("N1")</td>
+                                <td>@row.EffectivenessVerifiedCount</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+            @* ── Audit ────────────────────────────────────────────────────────── *@
+            @if (State.ActiveTab == BiDashboardsTab.Audit)
+            {
+                @if (State.AuditError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.AuditError</div>
+                }
+
+                @if (State.IsLoadingAudit)
+                {
+                    <LoadingIndicatorComponent Message="Loading audit KPIs…" />
+                }
+                else if (State.Audit.Count == 0)
+                {
+                    <CardComponent Title="Audit"><p class="ps-chart-empty">No audit KPI data found for the selected range.</p></CardComponent>
+                }
+                else
+                {
+                    var latest = State.Audit[^1];
+                    <div class="ps-kpi-row">
+                        <CardComponent Title="On-Time Remediation Rate" Subtitle="@latest.OnTimeRemediationRate.ToString("P0")" />
+                        <CardComponent Title="Avg Remediation (days)" Subtitle="@latest.AverageRemediationDays.ToString("N1")" />
+                        <CardComponent Title="Critical Findings" Subtitle="@State.Audit.Sum(r => r.CriticalFindingCount).ToString()" />
+                        <CardComponent Title="Findings Closed" Subtitle="@State.Audit.Sum(r => r.FindingsClosedCount).ToString()" />
+                    </div>
+
+                    <CardComponent Title="Audit — Daily Breakdown">
+                        <DataGridComponent TItem="AuditDashboardItemDto"
+                                            Items="@(State.Audit.OrderByDescending(r => r.BusinessDate).ToList())"
+                                            Headers="_auditHeaders"
+                                            EmptyMessage="No audit KPI rows found."
+                                            AriaLabel="Audit KPI breakdown">
+                            <RowTemplate Context="row">
+                                <td>@row.BusinessDate.ToString("yyyy-MM-dd")</td>
+                                <td>@row.TotalFindingsRaised</td>
+                                <td><SeverityBadgeComponent Severity="Critical" Text="@row.CriticalFindingCount.ToString()" /></td>
+                                <td><SeverityBadgeComponent Severity="High" Text="@row.MajorFindingCount.ToString()" /></td>
+                                <td>@row.FindingsClosedCount</td>
+                                <td>@row.OnTimeRemediationRate.ToString("P0")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+            }
+
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Scheduling", "Production", "Maintenance", "Risk", "Continuous Improvement", "Audit"];
+    private static readonly string[] _schedulingHeaders = ["Date", "Total Scheduled", "On-Time", "Late", "On-Time Rate", "P1 Outstanding"];
+    private static readonly string[] _productionHeaders = ["Date", "Total Events", "Compliant", "Non-Compliant", "Compliance Rate", "Discrepancies"];
+    private static readonly string[] _maintenanceHeaders = ["Date", "Total WOs", "Preventive", "Predictive", "On Schedule", "Overdue", "Schedule Compliance"];
+    private static readonly string[] _riskHeaders = ["Date", "Total Assessments", "Critical", "High", "Medium", "Low", "Avg Composite Score"];
+    private static readonly string[] _ciHeaders = ["Date", "CAPA Opened", "CAPA Closed", "RCA Findings", "On-Time Closure", "Avg Cycle (days)", "Effectiveness Verified"];
+    private static readonly string[] _auditHeaders = ["Date", "Findings Raised", "Critical", "Major", "Closed", "On-Time Remediation"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "BI Dashboards",
+            activeModuleCode: "bi-dashboards",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Analytics", Href = RouteDefinitions.MenuAnalytics },
+                new BreadcrumbItem { Label = "BI Dashboards" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadActiveTabAsync();
+        }
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private Task OnTabIndexChangedAsync(int index) => SelectTabAsync((BiDashboardsTab)index);
+
+    private async Task SelectTabAsync(BiDashboardsTab tab)
+    {
+        State.SetActiveTab(tab);
+        await LoadActiveTabAsync();
+    }
+
+    private async Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetFilter(range.Start, range.End);
+        await LoadActiveTabAsync();
+    }
+
+    private Task LoadActiveTabAsync() => State.ActiveTab switch
+    {
+        BiDashboardsTab.Scheduling when State.Scheduling.Count == 0 && !State.IsLoadingScheduling => LoadSchedulingAsync(),
+        BiDashboardsTab.Production when State.Production.Count == 0 && !State.IsLoadingProduction => LoadProductionAsync(),
+        BiDashboardsTab.Maintenance when State.Maintenance.Count == 0 && !State.IsLoadingMaintenance => LoadMaintenanceAsync(),
+        BiDashboardsTab.Risk when State.Risk.Count == 0 && !State.IsLoadingRisk => LoadRiskAsync(),
+        BiDashboardsTab.ContinuousImprovement when State.ContinuousImprovement.Count == 0 && !State.IsLoadingContinuousImprovement => LoadContinuousImprovementAsync(),
+        BiDashboardsTab.Audit when State.Audit.Count == 0 && !State.IsLoadingAudit => LoadAuditAsync(),
+        _ => Task.CompletedTask,
+    };
+
+    private async Task LoadSchedulingAsync()
+    {
+        State.BeginSchedulingLoad();
+        var envelope = await ApiClient.GetSchedulingAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetScheduling(envelope.Data!.Items);
+        else
+            State.SetSchedulingError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadProductionAsync()
+    {
+        State.BeginProductionLoad();
+        var envelope = await ApiClient.GetProductionAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetProduction(envelope.Data!.Items);
+        else
+            State.SetProductionError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadMaintenanceAsync()
+    {
+        State.BeginMaintenanceLoad();
+        var envelope = await ApiClient.GetMaintenanceAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetMaintenance(envelope.Data!.Items);
+        else
+            State.SetMaintenanceError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadRiskAsync()
+    {
+        State.BeginRiskLoad();
+        var envelope = await ApiClient.GetRiskAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetRisk(envelope.Data!.Items);
+        else
+            State.SetRiskError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadContinuousImprovementAsync()
+    {
+        State.BeginContinuousImprovementLoad();
+        var envelope = await ApiClient.GetContinuousImprovementAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetContinuousImprovement(envelope.Data!.Items);
+        else
+            State.SetContinuousImprovementError(DescribeFailure(envelope));
+    }
+
+    private async Task LoadAuditAsync()
+    {
+        State.BeginAuditLoad();
+        var envelope = await ApiClient.GetAuditAsync(TenantId, null, State.FilterStart, State.FilterEnd);
+        if (envelope.IsSuccess)
+            State.SetAudit(envelope.Data!.Items);
+        else
+            State.SetAuditError(DescribeFailure(envelope));
+    }
+
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

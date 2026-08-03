@@ -70,4 +70,50 @@ public interface IIncidentRepository
         Guid actorId,
         Guid correlationId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Persists the result of calling <see cref="IncidentAggregate.AssignTechnician"/> on a
+    /// rehydrated aggregate: updates AssignedInvestigatorId (and Status, if it advanced from
+    /// Reported to Assigned), enqueues pending domain events, and persists any pending timeline
+    /// entries. Added 2026-08-03 (UI Gaps Scoping, IncidentManagement Part 1).
+    /// </summary>
+    Task AssignAsync(
+        IncidentAggregate aggregate,
+        Guid actorId,
+        Guid correlationId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Persists the result of calling <see cref="IncidentAggregate.Escalate"/> on a rehydrated
+    /// aggregate: updates Status/Severity/EscalationReason/EscalatedAtUtc/EscalationCount,
+    /// enqueues pending domain events, and persists any pending timeline entries.
+    /// </summary>
+    Task EscalateAsync(
+        IncidentAggregate aggregate,
+        Guid actorId,
+        Guid correlationId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Persists the result of calling <see cref="IncidentAggregate.AddNote"/> on a rehydrated
+    /// aggregate: enqueues pending domain events and persists the pending timeline entry. Does
+    /// not mutate the Incident row itself (notes have no dedicated column; the timeline entry is
+    /// the record of truth).
+    /// </summary>
+    Task AddNoteAsync(
+        IncidentAggregate aggregate,
+        Guid actorId,
+        Guid correlationId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Persists the result of calling <see cref="IncidentAggregate.Resolve"/> on a rehydrated
+    /// aggregate: updates Status/ResolutionNotes/ClosedAtUtc, enqueues pending domain events, and
+    /// persists any pending timeline entries.
+    /// </summary>
+    Task ResolveAsync(
+        IncidentAggregate aggregate,
+        Guid actorId,
+        Guid correlationId,
+        CancellationToken cancellationToken);
 }

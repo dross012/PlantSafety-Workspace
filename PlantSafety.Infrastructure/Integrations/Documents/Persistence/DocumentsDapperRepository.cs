@@ -44,4 +44,54 @@ public sealed class DocumentsDapperRepository(
         return await queryExecutor.QueryAsync<DocumentsItemDto>(
             "[Integrations].[usp_Documents_GetDocuments]", parameters, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<(IReadOnlyList<DocumentsItemDto> Items, int TotalCount)> ListDocumentsAsync(
+        Guid tenantId,
+        Guid? siteId,
+        string? documentType,
+        string? search,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("ListDocuments for Integrations.Documents tenant {TenantId}", tenantId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddGuid("SiteId", siteId)
+            .AddString("DocumentType", documentType, 100)
+            .AddString("Search", search, 200)
+            .AddInt("PageNumber", pageNumber)
+            .AddInt("PageSize", pageSize)
+            .Build();
+
+        // Mirrors the two-call pagination pattern used by Alerts.Alert.GetAlertHistoryAsync
+        // (AlertQueryDapperRepository.QueryHistoryAsync): a dedicated count procedure plus a
+        // dedicated paged-rows procedure, both driven from the same filter parameter set, rather
+        // than a single QueryMultiple call.
+        var totalCount = await queryExecutor.QuerySingleOrDefaultAsync<int>(
+            "[Integrations].[usp_Documents_ListDocumentsCount]", parameters, cancellationToken);
+        var items = await queryExecutor.QueryAsync<DocumentsItemDto>(
+            "[Integrations].[usp_Documents_ListDocumentsPage]", parameters, cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    /// <inheritdoc/>
+    public async Task<DocumentsItemDto?> GetDocumentByIdAsync(
+        Guid tenantId,
+        Guid documentId,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("GetDocumentById for Integrations.Documents tenant {TenantId}, document {DocumentId}", tenantId, documentId);
+
+        var parameters = new StoredProcedureBuilder()
+            .AddGuid("TenantId", tenantId)
+            .AddGuid("DocumentId", documentId)
+            .Build();
+
+        return await queryExecutor.QuerySingleOrDefaultAsync<DocumentsItemDto>(
+            "[Integrations].[usp_Documents_GetDocumentById]", parameters, cancellationToken);
+    }
 }

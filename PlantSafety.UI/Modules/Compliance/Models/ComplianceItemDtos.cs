@@ -149,3 +149,98 @@ public sealed class TrackingResponseDto
     /// <summary>Gets the matching tracking items. Never null; empty when no results.</summary>
     public IReadOnlyList<TrackingItemDto> Items { get; init; } = [];
 }
+
+// ============================================================
+// Phase 5 §6.3 — Compliance Rules Engine (PlantSafety.Application.Compliance.RulesEngine.*)
+// ============================================================
+
+/// <summary>Read-model DTO for a single compliance violation detail (mirrors <c>ComplianceViolationDto</c>).</summary>
+public sealed record ComplianceViolationDto
+{
+    /// <summary>Stable machine-readable violation code.</summary>
+    public string ViolationCode { get; init; } = string.Empty;
+
+    /// <summary>Human-readable description.</summary>
+    public string Description { get; init; } = string.Empty;
+
+    /// <summary>Severity code (Advisory/Low/Medium/High/Critical).</summary>
+    public string Severity { get; init; } = string.Empty;
+
+    /// <summary>Optional remediation guidance.</summary>
+    public string? RemediationGuidance { get; init; }
+}
+
+/// <summary>Read-model DTO for a single rule result recorded within a ComplianceEvaluation (mirrors <c>ComplianceRuleResultDto</c>).</summary>
+public sealed record ComplianceRuleResultDto
+{
+    /// <summary>Stable machine-readable rule code.</summary>
+    public string RuleCode { get; init; } = string.Empty;
+
+    /// <summary>Human-readable rule name.</summary>
+    public string RuleName { get; init; } = string.Empty;
+
+    /// <summary>Governing category (Safety/Regulatory/InternalPolicy).</summary>
+    public string Category { get; init; } = string.Empty;
+
+    /// <summary>Whether the rule passed.</summary>
+    public bool Passed { get; init; }
+
+    /// <summary>Violation details raised by this rule; empty when <see cref="Passed"/> is true.</summary>
+    public IReadOnlyList<ComplianceViolationDto> Violations { get; init; } = [];
+
+    /// <summary>UTC instant the rule was evaluated.</summary>
+    public DateTime EvaluatedAtUtc { get; init; }
+}
+
+/// <summary>Read-model DTO for a full ComplianceEvaluation run (mirrors <c>ComplianceEvaluationDto</c>).</summary>
+public sealed record ComplianceEvaluationDto
+{
+    /// <summary>Evaluation identity.</summary>
+    public Guid ComplianceEvaluationId { get; init; }
+
+    /// <summary>Tenant identifier.</summary>
+    public Guid TenantId { get; init; }
+
+    /// <summary>Site identifier, or null when tenant-wide.</summary>
+    public Guid? SiteId { get; init; }
+
+    /// <summary>Type discriminator of the evaluated entity.</summary>
+    public string TargetEntityType { get; init; } = string.Empty;
+
+    /// <summary>Identity of the evaluated entity.</summary>
+    public Guid TargetEntityId { get; init; }
+
+    /// <summary>Overall outcome (InProgress/Compliant/NonCompliant).</summary>
+    public string Status { get; init; } = string.Empty;
+
+    /// <summary>Rule results recorded during this run.</summary>
+    public IReadOnlyList<ComplianceRuleResultDto> RuleResults { get; init; } = [];
+
+    /// <summary>UTC instant the run started.</summary>
+    public DateTime StartedAtUtc { get; init; }
+
+    /// <summary>UTC instant the run completed, if any.</summary>
+    public DateTime? CompletedAtUtc { get; init; }
+
+    /// <summary>Identity of the user or system actor who triggered the run.</summary>
+    public Guid TriggeredBy { get; init; }
+}
+
+/// <summary>Request body for <c>EvaluateComplianceCommand</c>'s caller-supplied fields.</summary>
+public sealed record EvaluateComplianceRequest
+{
+    /// <summary>Optional site scope.</summary>
+    public Guid? SiteId { get; init; }
+
+    /// <summary>Type discriminator of the entity being evaluated (e.g. "Risk", "Permit", "AuditFinding").</summary>
+    public string TargetEntityType { get; init; } = string.Empty;
+
+    /// <summary>Identity of the entity being evaluated.</summary>
+    public Guid TargetEntityId { get; init; }
+
+    /// <summary>Optional subset of rule categories to run ("Safety"/"Regulatory"/"InternalPolicy"). Null runs all three.</summary>
+    public IReadOnlyCollection<string>? Categories { get; init; }
+
+    /// <summary>Caller-gathered, already-resolved data points the rule pipeline needs.</summary>
+    public IReadOnlyDictionary<string, string?> Facts { get; init; } = new Dictionary<string, string?>();
+}

@@ -1,0 +1,178 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-02
+   FILE DESCRIPTION: Audit Timeline viewer (Phase 5 §6.1 — Advanced Audit).
+     Reconstructs the full chronological AuditTimeline for any entity/
+     aggregate in the platform (event timeline, state-change history,
+     concurrency-conflict history, scheduling-decision history — merged into
+     one coherent view) via AuditingApiClient.GetAuditTimelineAsync
+     (GetAuditTimelineForEntityQuery). The entity type/id are supplied via
+     route parameters so any module's detail page can deep-link straight to
+     its own entity's timeline; a lookup form is also provided for ad hoc
+     navigation. Built entirely from the canonical Shared component library
+     (ErrorBoundaryComponent, LoadingIndicatorComponent, DataGridComponent,
+     SeverityBadgeComponent), following the Modules/Auditing exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/auditing/timeline"
+@page "/modules/auditing/timeline/{EntityType}/{EntityId:guid}"
+
+@inject AuditingState State
+@inject AuditingApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Auditing.ApiClients
+@using PlantSafety.UI.Modules.Auditing.Models
+@using PlantSafety.UI.Modules.Auditing.State
+
+<PageTitle>Audit Timeline — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The audit timeline could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="@RouteDefinitions.AuditingList" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Auditing</a>
+        </div>
+
+        <CardComponent Title="Look Up Entity Timeline">
+            <div class="ps-field-row">
+                <label for="entityType" class="ps-field-label">Entity Type</label>
+                <input id="entityType" class="ps-input ps-input-sm" @bind="_entityTypeInput" placeholder="e.g. Risk, Permit, AuditFinding" />
+            </div>
+            <div class="ps-field-row">
+                <label for="entityId" class="ps-field-label">Entity Id</label>
+                <input id="entityId" class="ps-input ps-input-sm" @bind="_entityIdInput" placeholder="GUID" />
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="NavigateToLookupAsync">
+                <span class="bi bi-search" aria-hidden="true"></span> Load Timeline
+            </button>
+        </CardComponent>
+
+        @if (!string.IsNullOrWhiteSpace(EntityType) && EntityId != Guid.Empty)
+        {
+            @if (State.TimelineError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.TimelineError</div>
+            }
+
+            @if (State.IsLoadingTimeline)
+            {
+                <LoadingIndicatorComponent Message="Loading audit timeline…" />
+            }
+            else if (State.Timeline is { } timeline)
+            {
+                <CardComponent Title="@($"Timeline: {timeline.EntityType} — {timeline.EntityId}")"
+                               Subtitle="@($"Composed {timeline.ComposedAtUtc:u} UTC — {timeline.Entries.Count} entries")">
+
+                    <DataGridComponent TItem="AuditTimelineEntryDto"
+                                        Items="@(timeline.Entries.OrderBy(e => e.UtcTimestamp).ToList())"
+                                        Headers="_headers"
+                                        KeySelector="e => e.AuditTimelineEntryId"
+                                        EmptyMessage="No timeline entries recorded for this entity."
+                                        AriaLabel="Audit timeline entries">
+                        <RowTemplate Context="entry">
+                            <td>@entry.UtcTimestamp.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                            <td><SeverityBadgeComponent Severity="@MapEntrySeverity(entry.EntryType)" Text="@entry.EntryType" /></td>
+                            <td>@entry.Summary</td>
+                            <td class="ps-mono">@(entry.ActorId?.ToString() ?? "—")</td>
+                            <td class="ps-mono">@(entry.CorrelationId?.ToString() ?? "—")</td>
+                        </RowTemplate>
+                    </DataGridComponent>
+                </CardComponent>
+            }
+            else
+            {
+                <div class="ps-alert" role="status">No timeline loaded.</div>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public string? EntityType { get; set; }
+    [Parameter] public Guid EntityId { get; set; }
+
+    private static readonly string[] _headers = ["Timestamp", "Type", "Summary", "Actor", "Correlation Id"];
+
+    private string _entityTypeInput = string.Empty;
+    private string _entityIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Audit Timeline",
+            activeModuleCode: "auditing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Auditing", Href = RouteDefinitions.AuditingList },
+                new BreadcrumbItem { Label = "Timeline" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _entityTypeInput = EntityType ?? _entityTypeInput;
+        _entityIdInput = EntityId != Guid.Empty ? EntityId.ToString() : _entityIdInput;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrWhiteSpace(EntityType) && EntityId != Guid.Empty)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private Task NavigateToLookupAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_entityTypeInput) || !Guid.TryParse(_entityIdInput, out var id) || id == Guid.Empty)
+        {
+            State.SetTimelineError("Enter a valid Entity Type and Entity Id (GUID).");
+            return Task.CompletedTask;
+        }
+
+        Nav.NavigateTo($"/modules/auditing/timeline/{Uri.EscapeDataString(_entityTypeInput.Trim())}/{id}");
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EntityType) || EntityId == Guid.Empty)
+            return;
+
+        State.BeginTimelineLoad();
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetAuditTimelineAsync(tenantId, EntityType, EntityId);
+
+        if (envelope.IsSuccess)
+            State.SetTimeline(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetTimelineError(envelope.Problem!.Detail);
+        else
+            State.SetTimelineError($"Failed to load audit timeline: {envelope.FaultType}");
+    }
+
+    private static string MapEntrySeverity(string entryType) => entryType.ToLowerInvariant() switch
+    {
+        "complianceviolation" => "Critical",
+        "concurrencyconflict" => "High",
+        "schedulingdecision" => "Medium",
+        "statechange" => "Info",
+        _ => "Low",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

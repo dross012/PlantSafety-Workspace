@@ -17,4 +17,24 @@ public interface IDocumentsRepository
         DateTime from,
         DateTime to,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns a paginated page of Integrations.Documents items for the tenant/site, optionally
+    /// filtered by document type ("category") and/or a free-text search term matched against the
+    /// file name, along with the total matching count (before paging).
+    /// </summary>
+    Task<(IReadOnlyList<DocumentsItemDto> Items, int TotalCount)> ListDocumentsAsync(
+        Guid tenantId,
+        Guid? siteId,
+        string? documentType,
+        string? search,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    /// <summary>Returns a single Integrations.Documents item by id, scoped to the tenant, or <see langword="null"/> when not found.</summary>
+    Task<DocumentsItemDto?> GetDocumentByIdAsync(
+        Guid tenantId,
+        Guid documentId,
+        CancellationToken cancellationToken);
 }

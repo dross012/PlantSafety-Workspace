@@ -11,6 +11,13 @@
 --                  [Auditing].[AuditCategoryRecord] table, filtered to the 'Operations'
 --                  discipline (Operations Audits).
 --                  Additive-only evolution.
+--  UPDATED:        2026-08-02 (Phase 6 query-plan-hint pass) -- added
+--                  OPTION (OPTIMIZE FOR UNKNOWN) per
+--                  ..\..\Analytics\UnifiedModel\Sql\query-plan-hint-convention.md: the optional
+--                  @SiteId filter's selectivity varies (all-sites vs one-site), and this pattern
+--                  is shared identically across all eight *_GetItems procs over
+--                  [Auditing].[AuditCategoryRecord]; OPTIMIZE FOR UNKNOWN gives a stable
+--                  average-selectivity estimate at zero recompile cost.
 -- ============================================================================
 
 CREATE OR ALTER PROCEDURE [Auditing].[usp_Operations_GetItems]
@@ -28,5 +35,6 @@ WHERE [Discipline] = N'Operations'
   AND (@SiteId IS NULL OR [SiteId] = @SiteId)
   AND [RecordedAtUtc] BETWEEN @FromUtc AND @ToUtc
   AND ISNULL([IsDeleted], 0) = 0
-ORDER BY [RecordedAtUtc] DESC;
+ORDER BY [RecordedAtUtc] DESC
+OPTION (OPTIMIZE FOR UNKNOWN);
 GO

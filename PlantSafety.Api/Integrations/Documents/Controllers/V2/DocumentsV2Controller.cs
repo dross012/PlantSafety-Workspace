@@ -56,4 +56,44 @@ public sealed class DocumentsV2Controller : ControllerBase
             "Integrations.Documents V2 endpoint not yet implemented - use v1.", correlationId));
         return Task.FromResult(result);
     }
+
+    /// <summary>V2 stub for the paginated document list endpoint. Currently returns a not-implemented stub.</summary>
+    /// <param name="request">Query parameters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Standardised <see cref="ApiResponse{T}"/> stub response.</returns>
+    [HttpGet("list")]
+    [ProducesResponseType(typeof(ApiResponse<DocumentsResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public Task<IActionResult> GetListAsync(
+        [FromQuery] ListDocumentsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
+                            ?? string.Empty;
+        IActionResult result = Ok(ApiResponse<DocumentsResponse>.Fail(
+            "Integrations.Documents V2 list endpoint not yet implemented - use v1.", correlationId));
+        return Task.FromResult(result);
+    }
+
+    /// <summary>V2 stub for the document detail-by-id endpoint. Currently returns a not-implemented stub.</summary>
+    /// <param name="documentId">The document identifier.</param>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Standardised <see cref="ApiResponse{T}"/> stub response.</returns>
+    [HttpGet("{documentId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<DocumentsResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public Task<IActionResult> GetByIdAsync(
+        Guid documentId,
+        [FromQuery] Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
+                            ?? string.Empty;
+        IActionResult result = Ok(ApiResponse<DocumentsResponse>.Fail(
+            "Integrations.Documents V2 detail endpoint not yet implemented - use v1.", correlationId));
+        return Task.FromResult(result);
+    }
 }

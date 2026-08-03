@@ -1,0 +1,230 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-02
+   FILE DESCRIPTION: Compliance Rules Engine evaluation trigger + results view
+     (Phase 5 §6.3). Lets a user run EvaluateComplianceCommand (Safety/
+     Regulatory/InternalPolicy rule pipelines) against any target entity, and
+     shows the resulting pass/fail per rule with full violation details
+     (code/description/severity/remediation guidance) via
+     ComplianceApiClient.EvaluateComplianceAsync, plus the evaluation history
+     for that entity (GetComplianceEvaluationHistoryQuery). Built entirely
+     from the canonical Shared component library (ErrorBoundaryComponent,
+     LoadingIndicatorComponent, DataGridComponent, StatusIndicatorComponent,
+     SeverityBadgeComponent), following the Modules/Compliance dashboard
+     exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/compliance/evaluation"
+
+@inject ComplianceState State
+@inject ComplianceApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Compliance.ApiClients
+@using PlantSafety.UI.Modules.Compliance.Models
+@using PlantSafety.UI.Modules.Compliance.State
+
+<PageTitle>Compliance Evaluation — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The compliance evaluation page could not be displayed.">
+
+        <div class="ps-page-actions">
+            <a href="@RouteDefinitions.ComplianceDashboard" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Compliance</a>
+        </div>
+
+        @if (State.EvaluationError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.EvaluationError</div>
+        }
+
+        <CardComponent Title="Run Compliance Evaluation">
+            <div class="ps-field-row">
+                <label for="targetType" class="ps-field-label">Entity Type</label>
+                <input id="targetType" class="ps-input ps-input-sm" @bind="_targetEntityType" placeholder="e.g. Risk, Permit, AuditFinding" />
+            </div>
+            <div class="ps-field-row">
+                <label for="targetId" class="ps-field-label">Entity Id</label>
+                <input id="targetId" class="ps-input ps-input-sm" @bind="_targetEntityId" placeholder="GUID" />
+            </div>
+            <div class="ps-field-row">
+                <span class="ps-field-label">Categories</span>
+                <label><input type="checkbox" @bind="_runSafety" /> Safety</label>
+                <label><input type="checkbox" @bind="_runRegulatory" /> Regulatory</label>
+                <label><input type="checkbox" @bind="_runInternalPolicy" /> InternalPolicy</label>
+            </div>
+
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="EvaluateAsync" disabled="@State.IsEvaluating">
+                <span class="bi bi-play-circle" aria-hidden="true"></span> @(State.IsEvaluating ? "Evaluating…" : "Run Evaluation")
+            </button>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadHistoryAsync" disabled="@State.IsLoadingEvaluationHistory">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Load History
+            </button>
+        </CardComponent>
+
+        @if (State.CurrentEvaluation is { } evaluation)
+        {
+            <CardComponent Title="@($"Evaluation Result — {evaluation.TargetEntityType}")"
+                           Subtitle="@($"Started {evaluation.StartedAtUtc:u} UTC")">
+                <StatusIndicatorComponent Status="@MapEvaluationStatus(evaluation.Status)" Label="@evaluation.Status" />
+
+                <DataGridComponent TItem="ComplianceRuleResultDto"
+                                    Items="evaluation.RuleResults"
+                                    Headers="_ruleHeaders"
+                                    EmptyMessage="No rules were evaluated."
+                                    AriaLabel="Compliance rule results">
+                    <RowTemplate Context="rule">
+                        <td>@rule.RuleName</td>
+                        <td>@rule.Category</td>
+                        <td><StatusIndicatorComponent Status="@(rule.Passed ? "Healthy" : "Critical")" Label="@(rule.Passed ? "Passed" : "Failed")" /></td>
+                        <td>
+                            @if (rule.Violations.Count == 0)
+                            {
+                                <span class="ps-text-muted">—</span>
+                            }
+                            else
+                            {
+                                <ul class="ps-violation-list">
+                                    @foreach (var violation in rule.Violations)
+                                    {
+                                        <li>
+                                            <SeverityBadgeComponent Severity="@violation.Severity" Text="@violation.Severity" />
+                                            @violation.Description
+                                            @if (!string.IsNullOrWhiteSpace(violation.RemediationGuidance))
+                                            {
+                                                <div class="ps-text-muted">Remediation: @violation.RemediationGuidance</div>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+        }
+
+        @if (State.IsLoadingEvaluationHistory)
+        {
+            <LoadingIndicatorComponent Message="Loading evaluation history…" />
+        }
+        else if (State.EvaluationHistory.Count > 0)
+        {
+            <CardComponent Title="Evaluation History">
+                <DataGridComponent TItem="ComplianceEvaluationDto"
+                                    Items="State.EvaluationHistory"
+                                    Headers="_historyHeaders"
+                                    KeySelector="e => e.ComplianceEvaluationId"
+                                    EmptyMessage="No prior evaluations found for this entity."
+                                    AriaLabel="Compliance evaluation history">
+                    <RowTemplate Context="item">
+                        <td>@item.TargetEntityType</td>
+                        <td><StatusIndicatorComponent Status="@MapEvaluationStatus(item.Status)" Label="@item.Status" /></td>
+                        <td>@item.RuleResults.Count(r => !r.Passed)</td>
+                        <td>@item.StartedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@(item.CompletedAtUtc?.ToString("yyyy-MM-dd HH:mm") + " UTC" ?? "—")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _ruleHeaders = ["Rule", "Category", "Result", "Violations"];
+    private static readonly string[] _historyHeaders = ["Entity Type", "Status", "Failed Rules", "Started", "Completed"];
+
+    private string _targetEntityType = string.Empty;
+    private string _targetEntityId = string.Empty;
+    private bool _runSafety = true;
+    private bool _runRegulatory = true;
+    private bool _runInternalPolicy = true;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Compliance Evaluation",
+            activeModuleCode: "compliance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Compliance", Href = RouteDefinitions.ComplianceDashboard },
+                new BreadcrumbItem { Label = "Evaluation" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private Guid TenantId => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task EvaluateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_targetEntityType) || !Guid.TryParse(_targetEntityId, out var entityId) || entityId == Guid.Empty)
+        {
+            State.SetEvaluateError("Enter a valid Entity Type and Entity Id (GUID) before running an evaluation.");
+            return;
+        }
+
+        var categories = new List<string>();
+        if (_runSafety) categories.Add("Safety");
+        if (_runRegulatory) categories.Add("Regulatory");
+        if (_runInternalPolicy) categories.Add("InternalPolicy");
+
+        State.BeginEvaluate();
+
+        var request = new EvaluateComplianceRequest
+        {
+            TargetEntityType = _targetEntityType.Trim(),
+            TargetEntityId = entityId,
+            Categories = categories.Count > 0 ? categories : null,
+            Facts = new Dictionary<string, string?>(),
+        };
+
+        var envelope = await ApiClient.EvaluateComplianceAsync(TenantId, request);
+
+        if (envelope.IsSuccess)
+            State.SetEvaluationResult(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetEvaluateError(envelope.Problem!.Detail);
+        else
+            State.SetEvaluateError($"Failed to run compliance evaluation: {envelope.FaultType}");
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_targetEntityType) || !Guid.TryParse(_targetEntityId, out var entityId) || entityId == Guid.Empty)
+        {
+            State.SetEvaluationHistoryError("Enter a valid Entity Type and Entity Id (GUID) before loading history.");
+            return;
+        }
+
+        State.BeginEvaluationHistoryLoad();
+        var envelope = await ApiClient.GetComplianceEvaluationHistoryAsync(TenantId, _targetEntityType.Trim(), entityId);
+
+        if (envelope.IsSuccess)
+            State.SetEvaluationHistory(envelope.Data ?? []);
+        else if (envelope.IsProblem)
+            State.SetEvaluationHistoryError(envelope.Problem!.Detail);
+        else
+            State.SetEvaluationHistoryError($"Failed to load evaluation history: {envelope.FaultType}");
+    }
+
+    private static string MapEvaluationStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "compliant" => "Healthy",
+        "inprogress" => "Warning",
+        "noncompliant" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

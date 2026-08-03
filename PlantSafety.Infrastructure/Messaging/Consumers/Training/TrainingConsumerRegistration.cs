@@ -9,6 +9,8 @@
 //  Description:    MassTransit consumer registration helper for the Training area.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Infrastructure.Training.CompetencyManagement.Messaging;
+
 namespace PlantSafety.Infrastructure.Messaging.Consumers.Training;
 
 /// <summary>
@@ -20,6 +22,6 @@ public static class TrainingConsumerRegistration
     /// <summary>Adds all Training consumers to the MassTransit configurator.</summary>
     public static void Register(IBusRegistrationConfigurator cfg)
     {
-        // TODO: cfg.AddConsumer<{ModuleName}CreatedConsumer>();
+        cfg.AddConsumer<CompetencyManagementCreatedConsumer>();
     }
 }

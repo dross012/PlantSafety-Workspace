@@ -1,0 +1,190 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-02
+   FILE DESCRIPTION: Workflow instance status/timeline page (Phase 5 §5).
+     Shows a single WorkflowInstance's current lifecycle state plus its full
+     step execution history (WorkflowStepHistoryEntryDto) as a chronological
+     timeline, and exposes the remaining lifecycle-transition actions
+     (Advance/Escalate/Retry/Cancel) alongside the inline Approve/Reject
+     actions already available from the Approvals Inbox. Built entirely from
+     the canonical Shared component library (ErrorBoundaryComponent,
+     LoadingIndicatorComponent, DataGridComponent, StatusIndicatorComponent),
+     following the Modules/Routing/Pages/RoutingApprovalPage exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/workflow/{Id:guid}"
+
+@inject WorkflowState State
+@inject WorkflowApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Workflow.ApiClients
+@using PlantSafety.UI.Modules.Workflow.Models
+@using PlantSafety.UI.Modules.Workflow.State
+
+<PageTitle>Workflow Instance — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The workflow instance could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="@RouteDefinitions.WorkflowApprovalsInbox" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Approvals</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingInstance">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.InstanceError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.InstanceError</div>
+        }
+
+        @if (State.ActionError is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.ActionError</div>
+        }
+
+        @if (State.IsLoadingInstance)
+        {
+            <LoadingIndicatorComponent Message="Loading workflow instance…" />
+        }
+        else if (State.Instance is { } instance)
+        {
+            <CardComponent Title="@($"Workflow: {instance.WorkflowType}")">
+                <dl class="ps-detail-fields">
+                    <dt>State</dt> <dd><StatusIndicatorComponent Status="@MapState(instance.State)" Label="@instance.State" /></dd>
+                    <dt>Started</dt> <dd>@instance.StartedAtUtc.ToString("u") UTC</dd>
+                    <dt>Completed</dt> <dd>@(instance.CompletedAtUtc?.ToString("u") + " UTC" ?? "—")</dd>
+                    <dt>Current Step</dt> <dd class="ps-mono">@(instance.CurrentStepId?.ToString() ?? "—")</dd>
+                    <dt>Initiated By</dt> <dd class="ps-mono">@instance.InitiatedBy</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="AdvanceAsync" disabled="@IsActing">Advance</button>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="EscalateAsync" disabled="@IsActing">Escalate</button>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="RetryAsync" disabled="@IsActing">Retry</button>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="CancelAsync" disabled="@IsActing">Cancel</button>
+                </div>
+                @if (IsActing)
+                {
+                    <LoadingIndicatorComponent Message="Submitting…" />
+                }
+            </CardComponent>
+
+            <CardComponent Title="Step Execution History">
+                <DataGridComponent TItem="WorkflowStepHistoryEntryDto"
+                                    Items="@(State.History.OrderBy(h => h.ActivatedAtUtc).ToList())"
+                                    Headers="_headers"
+                                    KeySelector="h => h.StepInstanceId"
+                                    EmptyMessage="No step execution history recorded yet."
+                                    AriaLabel="Workflow step execution history">
+                    <RowTemplate Context="step">
+                        <td>@step.StepType</td>
+                        <td><StatusIndicatorComponent Status="@MapState(step.Status)" Label="@step.Status" /></td>
+                        <td>@(step.AssignedRoleCode ?? step.AssignedUserId?.ToString() ?? "—")</td>
+                        <td>@(step.ActivatedAtUtc?.ToString("yyyy-MM-dd HH:mm") + " UTC" ?? "—")</td>
+                        <td>@(step.DecidedAtUtc?.ToString("yyyy-MM-dd HH:mm") + " UTC" ?? "—")</td>
+                        <td>@(step.DecisionNotes ?? "—")</td>
+                        <td>@step.AttemptCount</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+        }
+        else
+        {
+            <div class="ps-alert" role="status">Workflow instance not found.</div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private static readonly string[] _headers = ["Step Type", "Status", "Assigned To", "Activated", "Decided", "Notes", "Attempts"];
+    private bool _isActing;
+
+    private bool IsActing => _isActing;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Workflow Instance",
+            activeModuleCode: "workflow",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Workflow Approvals", Href = RouteDefinitions.WorkflowApprovalsInbox },
+                new BreadcrumbItem { Label = "Instance" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginInstanceLoad();
+
+        var instanceEnvelope = await ApiClient.GetInstanceAsync(Id);
+        var historyEnvelope = await ApiClient.GetHistoryAsync(Id);
+
+        if (instanceEnvelope.IsSuccess)
+            State.SetInstance(instanceEnvelope.Data!, historyEnvelope.IsSuccess ? historyEnvelope.Data ?? [] : []);
+        else if (instanceEnvelope.IsProblem)
+            State.SetInstanceError(instanceEnvelope.Problem!.Detail);
+        else
+            State.SetInstanceError($"Failed to load workflow instance: {instanceEnvelope.FaultType}");
+    }
+
+    private async Task AdvanceAsync() => await RunActionAsync(() => ApiClient.AdvanceAsync(Id));
+
+    private async Task EscalateAsync() => await RunActionAsync(() => ApiClient.EscalateAsync(Id));
+
+    private async Task RetryAsync() => await RunActionAsync(() => ApiClient.RetryAsync(Id));
+
+    private async Task CancelAsync() => await RunActionAsync(() => ApiClient.CancelAsync(Id, "Cancelled from Workflow Instance page"));
+
+    private async Task RunActionAsync(Func<Task<ApiResponseEnvelope<WorkflowInstanceStatusResult>>> action)
+    {
+        _isActing = true;
+        StateHasChanged();
+
+        var envelope = await action();
+
+        _isActing = false;
+
+        if (envelope.IsSuccess)
+        {
+            await LoadAsync();
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetActionError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetActionError($"Workflow action failed: {envelope.FaultType}");
+        }
+    }
+
+    private static string MapState(string state) => state.ToLowerInvariant() switch
+    {
+        "completed" or "approved" or "succeeded" => "Healthy",
+        "inprogress" or "pending" or "escalated" or "retrying" or "active" => "Warning",
+        "rejected" or "cancelled" or "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

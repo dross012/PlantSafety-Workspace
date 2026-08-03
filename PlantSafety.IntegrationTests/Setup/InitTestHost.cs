@@ -39,6 +39,7 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
     {
         await _sqlContainer.StartAsync();
         await TestDatabaseFactory.ApplySchemaAsync(ConnectionString);
+        await TestDatabaseFactory.ApplyCrossModuleDedupSchemaAsync(ConnectionString);
         await TestDatabaseFactory.ApplySharedAuditLoggingSchemaAsync(ConnectionString);
         await TestDatabaseFactory.ApplyIncidentManagementSchemaAsync(ConnectionString);
         await TestDatabaseFactory.ApplyRiskManagementSchemaAsync(ConnectionString);

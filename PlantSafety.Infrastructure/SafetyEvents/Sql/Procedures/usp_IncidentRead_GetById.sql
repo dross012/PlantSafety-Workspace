@@ -55,7 +55,11 @@ BEGIN
             LastModifiedAtUtc,
             CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag,
             CreatedAtUtc,
-            CreatedBy
+            CreatedBy,
+            EscalationReason,
+            EscalatedAtUtc,
+            EscalationCount,
+            ResolutionNotes
         FROM [SafetyEvents].[Incident]
         WHERE IncidentId = @IncidentId
           AND TenantId = @TenantId

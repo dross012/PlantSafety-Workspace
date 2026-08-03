@@ -318,6 +318,10 @@
               "target": "Package",
               "version": "[8.5.0, )"
             },
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2026.7.2, )"
+            },
             "Serilog": {
               "target": "Package",
               "version": "[4.3.0, )"

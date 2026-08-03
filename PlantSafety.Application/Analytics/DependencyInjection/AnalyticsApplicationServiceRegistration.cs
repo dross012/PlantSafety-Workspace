@@ -4,6 +4,7 @@
 // SchemaVersion: 1
 
 using Microsoft.Extensions.DependencyInjection;
+using PlantSafety.Application.Analytics.Dashboard.Kpi;
 
 namespace PlantSafety.Application.Analytics.DependencyInjection;
 
@@ -13,11 +14,14 @@ namespace PlantSafety.Application.Analytics.DependencyInjection;
 public static class AnalyticsApplicationServiceRegistration
 {
     /// <summary>
-    /// Registers Analytics-specific Application services.
+    /// Registers Analytics-specific Application services, including the Phase 5 production KPI
+    /// engine (Section 2.3: OEE, MTBF, MTTR, Throughput, Yield, Scrap Rate).
     /// MediatR handlers and validators are auto-registered via assembly scan.
     /// </summary>
     public static IServiceCollection AddAnalyticsApplicationServices(this IServiceCollection services)
     {
+        services.AddSingleton<ProductionKpiEngine>();
+
         return services;
     }
 }

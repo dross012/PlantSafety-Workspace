@@ -156,4 +156,131 @@ public sealed class IncidentDapperRepository(
 
         tx.Commit();
     }
+
+    /// <inheritdoc/>
+    public async Task AssignAsync(
+        IncidentAggregate aggregate,
+        Guid actorId,
+        Guid correlationId,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug(
+            "Assign Incident {IncidentId} to technician {TechnicianId}",
+            aggregate.IncidentManagementId.Value, aggregate.AssignedInvestigatorId?.Value);
+        using var conn = connectionFactory.CreateConnection();
+        using var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted);
+
+        var parameters = new StoredProcedureBuilder()
+            .WithCanonicalHeaders(aggregate.TenantId, correlationId, actorId, DateTime.UtcNow)
+            .AddGuid("IncidentId", aggregate.IncidentManagementId.Value)
+            .AddGuid("AssignedInvestigatorId", aggregate.AssignedInvestigatorId?.Value)
+            .AddString("Status", aggregate.Status.ToString(), size: 30)
+            .Build();
+
+        await commandExecutor.ExecuteAsync(conn, "[SafetyEvents].[usp_Incident_Assign]", parameters, tx);
+        tx.Commit();
+
+        await PersistPendingTimelineEntriesAsync(conn, aggregate, cancellationToken);
+        EnqueuePendingEvents(aggregate, actorId, correlationId);
+    }
+
+    /// <inheritdoc/>
+    public async Task EscalateAsync(
+        IncidentAggregate aggregate,
+        Guid actorId,
+        Guid correlationId,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("Escalate Incident {IncidentId}", aggregate.IncidentManagementId.Value);
+        using var conn = connectionFactory.CreateConnection();
+        using var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted);
+
+        var parameters = new StoredProcedureBuilder()
+            .WithCanonicalHeaders(aggregate.TenantId, correlationId, actorId, DateTime.UtcNow)
+            .AddGuid("IncidentId", aggregate.IncidentManagementId.Value)
+            .AddString("Status", aggregate.Status.ToString(), size: 30)
+            .AddString("Severity", aggregate.Severity, size: 30)
+            .AddString("EscalationReason", aggregate.EscalationReason, size: 1000)
+            .AddDateTime("EscalatedAtUtc", aggregate.EscalatedAtUtc?.Value)
+            .AddInt("EscalationCount", aggregate.EscalationCount)
+            .Build();
+
+        await commandExecutor.ExecuteAsync(conn, "[SafetyEvents].[usp_Incident_Escalate]", parameters, tx);
+        tx.Commit();
+
+        await PersistPendingTimelineEntriesAsync(conn, aggregate, cancellationToken);
+        EnqueuePendingEvents(aggregate, actorId, correlationId);
+    }
+
+    /// <inheritdoc/>
+    public async Task AddNoteAsync(
+        IncidentAggregate aggregate,
+        Guid actorId,
+        Guid correlationId,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("Add note to Incident {IncidentId}", aggregate.IncidentManagementId.Value);
+        using var conn = connectionFactory.CreateConnection();
+
+        // Notes have no dedicated column on [SafetyEvents].[Incident] -- the pending timeline
+        // entry (persisted below) is the sole record of truth, so no write-side stored procedure
+        // call against the Incident row itself is required here.
+        await PersistPendingTimelineEntriesAsync(conn, aggregate, cancellationToken);
+        EnqueuePendingEvents(aggregate, actorId, correlationId);
+    }
+
+    /// <inheritdoc/>
+    public async Task ResolveAsync(
+        IncidentAggregate aggregate,
+        Guid actorId,
+        Guid correlationId,
+        CancellationToken cancellationToken)
+    {
+        logger.LogDebug("Resolve Incident {IncidentId}", aggregate.IncidentManagementId.Value);
+        using var conn = connectionFactory.CreateConnection();
+        using var tx = conn.BeginTransaction(IsolationLevel.ReadCommitted);
+
+        var parameters = new StoredProcedureBuilder()
+            .WithCanonicalHeaders(aggregate.TenantId, correlationId, actorId, DateTime.UtcNow)
+            .AddGuid("IncidentId", aggregate.IncidentManagementId.Value)
+            .AddString("Status", aggregate.Status.ToString(), size: 30)
+            .AddString("ResolutionNotes", aggregate.ResolutionNotes, size: 2000)
+            .AddDateTime("ResolvedAtUtc", aggregate.ResolvedAtUtc?.Value)
+            .Build();
+
+        await commandExecutor.ExecuteAsync(conn, "[SafetyEvents].[usp_Incident_Resolve]", parameters, tx);
+        tx.Commit();
+
+        await PersistPendingTimelineEntriesAsync(conn, aggregate, cancellationToken);
+        EnqueuePendingEvents(aggregate, actorId, correlationId);
+    }
+
+    /// <summary>
+    /// Persists the aggregate's pending timeline entries (raised by lifecycle methods) to
+    /// <c>[SafetyEvents].[IncidentTimelineEntry]</c>, then clears them from the in-memory
+    /// aggregate. Mirrors <see cref="EnqueuePendingEvents"/>'s in-memory-then-clear pattern.
+    /// </summary>
+    private async Task PersistPendingTimelineEntriesAsync(
+        IDbConnection conn,
+        IncidentAggregate aggregate,
+        CancellationToken cancellationToken)
+    {
+        foreach (var entry in aggregate.PendingTimelineEntries)
+        {
+            var parameters = new StoredProcedureBuilder()
+                .AddGuid("EntryId", entry.EntryId)
+                .AddGuid("IncidentId", aggregate.IncidentManagementId.Value)
+                .AddGuid("TenantId", aggregate.TenantId)
+                .AddDateTime("TimestampUtc", entry.TimestampUtc.Value)
+                .AddString("Actor", entry.Actor, size: 200)
+                .AddString("EventType", entry.EventType, size: 30)
+                .AddString("Severity", entry.Severity, size: 30)
+                .AddString("Description", entry.Description, size: 2000)
+                .Build();
+
+            await commandExecutor.ExecuteAsync(conn, "[SafetyEvents].[usp_IncidentTimelineEntry_Insert]", parameters, null, cancellationToken: cancellationToken);
+        }
+
+        aggregate.ClearPendingTimelineEntries();
+    }
 }

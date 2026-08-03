@@ -32,6 +32,20 @@ public static class JsonSerializerConfiguration
 
         opts.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
 
+        // Handbook §7 Performance & Stress / Outbox correctness fix (2026-08-02): registered
+        // globally so every domain event carrying a "Smart Enum" value object (e.g.
+        // RiskManagement.Enums.RiskLevel) round-trips losslessly through the Outbox payload
+        // (OutboxWriter.Enqueue -> OutboxProcessor.PublishAsync), not just event types that
+        // happen not to reference one. See SmartEnumJsonConverterFactory for the detection rule.
+        opts.Converters.Add(new SmartEnumJsonConverterFactory());
+
+        // Regression audit fix (2026-08-03): registered globally so every domain event carrying a
+        // validating-constructor value object (e.g. RiskId, CorrelationId, CausationId,
+        // UtcTimestamp, PerformedByActor -- see ValidatingValueObjectJsonConverterFactory remarks)
+        // round-trips its real state through the Outbox payload instead of silently deserializing
+        // to a zeroed/default instance.
+        opts.Converters.Add(new ValidatingValueObjectJsonConverterFactory());
+
         return opts;
     }
 }

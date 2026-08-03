@@ -45,6 +45,13 @@ using PlantSafety.Application.Observability.DependencyInjection;
 using PlantSafety.Application.Checklists.DependencyInjection;
 using PlantSafety.Application.Auditing.DependencyInjection;
 using PlantSafety.Application.SafetyCulture.DependencyInjection;
+using PlantSafety.Application.SafetyPrograms.DependencyInjection;
+using PlantSafety.Application.Workflow.Behaviors;
+using PlantSafety.Application.Workflow.DependencyInjection;
+using PlantSafety.Application.Auditing.AuditReport.DependencyInjection;
+using PlantSafety.Application.Auditing.AuditTimeline.DependencyInjection;
+using PlantSafety.Application.Compliance.RulesEngine.DependencyInjection;
+using PlantSafety.Application.Scheduling.PredictiveScheduling.DependencyInjection;
 
 namespace PlantSafety.Application.DependencyInjection;
 
@@ -64,11 +71,13 @@ public static class ApplicationServiceRegistration
     /// 1. LoggingBehavior (outermost — wraps everything)
     /// 2. MetricsBehavior
     /// 3. PerformanceBehavior
-    /// 4. AuthorizationBehavior
-    /// 5. CachingBehavior
-    /// 6. ValidationBehavior
-    /// 7. ConcurrencyBehavior
-    /// 8. TransactionBehavior (innermost — wraps the handler only)
+    /// 4. TenantIsolationBehavior
+    /// 5. AuthorizationBehavior
+    /// 6. CachingBehavior
+    /// 7. ValidationBehavior
+    /// 8. ConcurrencyBehavior
+    /// 9. WorkflowInstanceLockBehavior (Workflow module only; no-op for every other request)
+    /// 10. TransactionBehavior (innermost — wraps the handler only)
     /// </remarks>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
@@ -87,10 +96,12 @@ public static class ApplicationServiceRegistration
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(MetricsBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TenantIsolationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ConcurrencyBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(WorkflowInstanceLockBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>));
 
         // Options
@@ -125,7 +136,27 @@ public static class ApplicationServiceRegistration
             .AddObservabilityApplicationServices()
             .AddChecklistsApplicationServices()
             .AddAuditingApplicationServices()
-            .AddSafetyCultureApplicationServices();
+            .AddSafetyCultureApplicationServices()
+            // Phase 5.5 Automation and workflow engine (2026-08-02): brand-new Workflow module
+            // (workflow definitions + runtime engine), additive alongside every module registered
+            // above.
+            .AddWorkflowApplicationServices();
+
+        // Regression audit fix (2026-08-03): these four Application-layer registration extension
+        // methods were fully implemented but never called from here, so their services could
+        // never be resolved (AuditReportFactory/AuditReportContentBuilder, AuditTimeline's
+        // Application services, the Compliance RulesEngine Application services, and the Phase 5
+        // predictive scheduling engine's rule/prediction/optimization services).
+        services
+            .AddAuditReportApplicationServices()
+            .AddAuditTimelineApplicationServices()
+            .AddComplianceRulesEngineApplicationServices()
+            .AddPredictiveSchedulingServices();
+
+        // SafetyPrograms (2026-08-03): thin composition-layer module over the existing
+        // SafetyPolicies/SafetyProcedures/SafetyCulture modules -- see
+        // docs/Phase5/ui-gaps-scoping.md section 8.
+        services.AddSafetyProgramsApplicationServices();
 
         return services;
     }

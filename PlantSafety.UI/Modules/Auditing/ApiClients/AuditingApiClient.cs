@@ -69,4 +69,55 @@ public sealed class AuditingApiClient : SafetyApiClientBase
         var query = $"TenantId={tenantId:D}&From={Uri.EscapeDataString(from.ToString("o"))}&To={Uri.EscapeDataString(to.ToString("o"))}";
         return siteId.HasValue ? $"{query}&SiteId={siteId.Value:D}" : query;
     }
+
+    // ============================================================
+    // Phase 5 §6.1 — AuditTimeline (GetAuditTimelineForEntityQuery)
+    //
+    // NOTE: as of this writing, PlantSafety.Api does not yet expose a V1 controller for the
+    // Auditing.AuditTimeline sub-feature. This client targets the REST surface implied by
+    // GetAuditTimelineForEntityQuery, mirroring the existing sub-feature controller convention
+    // (GET {module}/{subfeature}?EntityType=&EntityId=). Calls degrade gracefully via
+    // ErrorBoundaryComponent until that controller is added.
+    // ============================================================
+
+    /// <summary>Reconstructs the full chronological AuditTimeline for a single entity/aggregate.</summary>
+    public Task<ApiResponseEnvelope<AuditTimelineDto>> GetAuditTimelineAsync(
+        Guid tenantId, string entityType, Guid entityId, CancellationToken cancellationToken = default)
+        => GetAsync<AuditTimelineDto>(
+            $"v1/auditing/audit-timeline?TenantId={tenantId:D}&EntityType={Uri.EscapeDataString(entityType)}&EntityId={entityId:D}",
+            cancellationToken);
+
+    // ============================================================
+    // Phase 5 §6.2 — AuditReport (GenerateAuditReportCommand / GetAuditReportQuery /
+    // GetAuditReportHistoryQuery / GetAuditReportContentQuery)
+    //
+    // NOTE: as of this writing, PlantSafety.Api does not yet expose a V1 controller for the
+    // Auditing.AuditReport sub-feature. This client targets the REST surface implied by the
+    // Application-layer command/query set. Calls degrade gracefully via ErrorBoundaryComponent
+    // until that controller is added.
+    // ============================================================
+
+    /// <summary>Generates a printable/exportable audit report for a target entity.</summary>
+    public Task<ApiResponseEnvelope<AuditReportDto>> GenerateAuditReportAsync(
+        Guid tenantId, GenerateAuditReportRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<GenerateAuditReportRequest, AuditReportDto>(
+            $"v1/auditing/audit-reports?TenantId={tenantId:D}", request, cancellationToken);
+
+    /// <summary>Retrieves a single AuditReport by identity.</summary>
+    public Task<ApiResponseEnvelope<AuditReportDto>> GetAuditReportAsync(
+        Guid tenantId, Guid auditReportId, CancellationToken cancellationToken = default)
+        => GetAsync<AuditReportDto>($"v1/auditing/audit-reports/{auditReportId}?TenantId={tenantId:D}", cancellationToken);
+
+    /// <summary>Retrieves the AuditReport generation history for a target entity, most recent first.</summary>
+    public Task<ApiResponseEnvelope<IReadOnlyList<AuditReportDto>>> GetAuditReportHistoryAsync(
+        Guid tenantId, string targetEntityType, Guid targetEntityId, CancellationToken cancellationToken = default)
+        => GetAsync<IReadOnlyList<AuditReportDto>>(
+            $"v1/auditing/audit-reports/history?TenantId={tenantId:D}&TargetEntityType={Uri.EscapeDataString(targetEntityType)}&TargetEntityId={targetEntityId:D}",
+            cancellationToken);
+
+    /// <summary>Retrieves the rendered byte-stream content of a generated AuditReport, for download.</summary>
+    public Task<ApiResponseEnvelope<AuditReportContentDto>> GetAuditReportContentAsync(
+        Guid tenantId, Guid auditReportId, CancellationToken cancellationToken = default)
+        => GetAsync<AuditReportContentDto>(
+            $"v1/auditing/audit-reports/{auditReportId}/content?TenantId={tenantId:D}", cancellationToken);
 }

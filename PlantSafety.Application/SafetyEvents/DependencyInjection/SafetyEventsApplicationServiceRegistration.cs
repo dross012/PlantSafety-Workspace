@@ -9,6 +9,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement;
 using PlantSafety.Application.Features.SafetyEvents.Mappings.IncidentManagement;
+using PlantSafety.Application.SafetyEvents.SlaMonitoring.Services;
 
 namespace PlantSafety.Application.SafetyEvents.DependencyInjection;
 
@@ -29,6 +30,10 @@ public static class SafetyEventsApplicationServiceRegistration
         // Mapping profiles (explicit, single-instance)
         services.AddSingleton<IncidentToIncidentDtoMappingProfile>();
         services.AddSingleton<IncidentToIncidentSummaryDtoMappingProfile>();
+
+        // 2026-08-03 (Claude Code modular-creation-agent): SLA Monitor engine (UI Gaps Scoping,
+        // IncidentManagement Part 2) -- policy resolver used by the three sla-monitor query handlers.
+        services.AddScoped<SlaPolicyResolver>();
 
         return services;
     }

@@ -73,4 +73,34 @@ public sealed class ComplianceApiClient : SafetyApiClientBase
 
         return $"{path}?{query}";
     }
+
+    // ============================================================
+    // Phase 5 §6.3 — Compliance Rules Engine (EvaluateComplianceCommand / GetComplianceEvaluationQuery /
+    // GetComplianceEvaluationHistoryQuery)
+    //
+    // NOTE: as of this writing, PlantSafety.Api does not yet expose a V1 controller for the
+    // Compliance.RulesEngine sub-feature. This client targets the REST surface implied by the
+    // Application-layer command/query set, mirroring the module's existing
+    // v1/compliance/compliance/* naming convention. Calls degrade gracefully via
+    // ErrorBoundaryComponent until that controller is added.
+    // ============================================================
+
+    /// <summary>Runs the Compliance Rules Engine (Safety/Regulatory/InternalPolicy pipelines) against a target entity.</summary>
+    public Task<ApiResponseEnvelope<ComplianceEvaluationDto>> EvaluateComplianceAsync(
+        Guid tenantId, EvaluateComplianceRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<EvaluateComplianceRequest, ComplianceEvaluationDto>(
+            $"v1/compliance/rules-engine/evaluate?TenantId={tenantId:D}", request, cancellationToken);
+
+    /// <summary>Retrieves a single ComplianceEvaluation run by identity.</summary>
+    public Task<ApiResponseEnvelope<ComplianceEvaluationDto>> GetComplianceEvaluationAsync(
+        Guid tenantId, Guid complianceEvaluationId, CancellationToken cancellationToken = default)
+        => GetAsync<ComplianceEvaluationDto>(
+            $"v1/compliance/rules-engine/evaluations/{complianceEvaluationId}?TenantId={tenantId:D}", cancellationToken);
+
+    /// <summary>Retrieves the ComplianceEvaluation history for a target entity, most recent first.</summary>
+    public Task<ApiResponseEnvelope<IReadOnlyList<ComplianceEvaluationDto>>> GetComplianceEvaluationHistoryAsync(
+        Guid tenantId, string targetEntityType, Guid targetEntityId, CancellationToken cancellationToken = default)
+        => GetAsync<IReadOnlyList<ComplianceEvaluationDto>>(
+            $"v1/compliance/rules-engine/evaluations/history?TenantId={tenantId:D}&TargetEntityType={Uri.EscapeDataString(targetEntityType)}&TargetEntityId={targetEntityId:D}",
+            cancellationToken);
 }

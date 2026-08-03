@@ -70,4 +70,33 @@ public sealed class SafetyProgramDetailDto
 
     /// <summary>Gets the associated program goals/objectives.</summary>
     public IReadOnlyList<string> Goals { get; init; } = [];
+
+    /// <summary>
+    /// Gets the live rollup of related activity in the SafetyPolicies/SafetyProcedures/
+    /// SafetyCulture modules for this program's Category, composed server-side at query time.
+    /// Empty for programs whose Category has no curated composition mapping.
+    /// </summary>
+    public IReadOnlyList<SafetyProgramLinkedActivityDto> LinkedActivity { get; init; } = [];
+}
+
+/// <summary>A single composed rollup section of a safety program's live linked activity.</summary>
+public sealed class SafetyProgramLinkedActivityDto
+{
+    /// <summary>Gets the sibling module this section was composed from.</summary>
+    public string SourceModule { get; init; } = string.Empty;
+
+    /// <summary>Gets the specific sub-domain/query within the source module.</summary>
+    public string SourceCategory { get; init; } = string.Empty;
+
+    /// <summary>Gets the total matching item count, or null when unavailable.</summary>
+    public int? ItemCount { get; init; }
+
+    /// <summary>Gets the count of active items, or null when unavailable.</summary>
+    public int? ActiveItemCount { get; init; }
+
+    /// <summary>Gets a value indicating whether this section's live data was retrieved successfully.</summary>
+    public bool IsAvailable { get; init; }
+
+    /// <summary>Gets a sanitized reason this section is unavailable, if applicable.</summary>
+    public string? UnavailableReason { get; init; }
 }

@@ -59,7 +59,7 @@ public sealed class DocumentManagementState
     /// <summary>Gets the total number of pages.</summary>
     public int TotalPages => _totalPages;
 
-    /// <summary>Gets the currently applied category filter, or null for all categories.</summary>
+    /// <summary>Gets the currently applied document-type ("category") filter, or null for all types.</summary>
     public string? CategoryFilter => _categoryFilter;
 
     /// <summary>Gets the current search text.</summary>

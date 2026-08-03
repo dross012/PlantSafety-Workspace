@@ -36,7 +36,15 @@
 //                  authoritative, testable model of the same invariants and is intended to be the
 //                  target for any future handler wired through full aggregate load/save.
 //                  Additive-only evolution.
+//  Updated:        2026-08-03 -- Added the AssignTechnician/Escalate/AddNote/Resolve lifecycle
+//                  commands (UI Gaps Scoping, IncidentManagement, Part 1) plus a pending
+//                  IncidentManagementTimelineEntry list mirroring the existing DomainEvents
+//                  in-memory pattern, so GetIncidentTimelineQuery can be served from real
+//                  persisted rows rather than reconstructed from the outbox. Additive-only
+//                  evolution.
 // ============================================================================
+using PlantSafety.Domain.SafetyEvents.IncidentManagement.Entities;
+
 namespace PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates;
 
 /// <summary>Aggregate root for the IncidentManagement bounded context.</summary>
@@ -94,6 +102,23 @@ public sealed partial class IncidentManagement
     /// <summary>Identity of the user who created this record (CRUD authorship).</summary>
     public UserId CreatedBy { get; private set; }
 
+    // ---- Lifecycle: Assign/Escalate/Resolve business properties -------------
+
+    /// <summary>Reason recorded for the most recent escalation, if any.</summary>
+    public string? EscalationReason { get; private set; }
+
+    /// <summary>UTC instant of the most recent escalation, if any.</summary>
+    public UtcTimestamp? EscalatedAtUtc { get; private set; }
+
+    /// <summary>Number of times this incident has been escalated.</summary>
+    public int EscalationCount { get; private set; }
+
+    /// <summary>Resolution notes recorded when the incident was resolved, if any.</summary>
+    public string? ResolutionNotes { get; private set; }
+
+    /// <summary>UTC instant the incident was resolved, if any. Persisted to Incident.ClosedAtUtc.</summary>
+    public UtcTimestamp? ResolvedAtUtc { get; private set; }
+
     // ---- Domain Events -----------------------------------------------------
 
     private readonly List<IIncidentManagementDomainEvent> _domainEvents = [];
@@ -101,6 +126,17 @@ public sealed partial class IncidentManagement
     /// <summary>Domain events raised during this unit of work.</summary>
     public IReadOnlyCollection<IIncidentManagementDomainEvent> DomainEvents
         => new ReadOnlyCollection<IIncidentManagementDomainEvent>(_domainEvents);
+
+    // ---- Timeline Entries ----------------------------------------------------
+
+    private readonly List<IncidentManagementTimelineEntry> _pendingTimelineEntries = [];
+
+    /// <summary>
+    /// Timeline entries appended during this unit of work (mirrors <see cref="DomainEvents"/>
+    /// in-memory-then-clear pattern). Persisted by the Infrastructure repository after commit.
+    /// </summary>
+    public IReadOnlyCollection<IncidentManagementTimelineEntry> PendingTimelineEntries
+        => new ReadOnlyCollection<IncidentManagementTimelineEntry>(_pendingTimelineEntries);
 
     // For rehydration only.
     private IncidentManagement() { }
@@ -175,6 +211,13 @@ public sealed partial class IncidentManagement
             CorrelationId: correlationId,
             CausationId:   causationId));
 
+        agg.AddTimelineEntry(
+            timestampUtc: createdAtUtc,
+            actor: actor.ToString(),
+            eventType: "StatusChange",
+            severity: agg.Severity,
+            description: $"Incident reported: {agg.Title}");
+
         return agg;
     }
 
@@ -199,7 +242,12 @@ public sealed partial class IncidentManagement
         UtcTimestamp? archivedAtUtc,
         string? deletionReason,
         UtcTimestamp createdAtUtc,
-        UserId createdBy)
+        UserId createdBy,
+        string? escalationReason = null,
+        UtcTimestamp? escalatedAtUtc = null,
+        int escalationCount = 0,
+        string? resolutionNotes = null,
+        UtcTimestamp? resolvedAtUtc = null)
         => new()
         {
             IncidentManagementId   = incidentManagementId,
@@ -218,6 +266,11 @@ public sealed partial class IncidentManagement
             DeletionReason          = deletionReason,
             CreatedAtUtc            = createdAtUtc,
             CreatedBy               = createdBy,
+            EscalationReason        = escalationReason,
+            EscalatedAtUtc          = escalatedAtUtc,
+            EscalationCount         = escalationCount,
+            ResolutionNotes         = resolutionNotes,
+            ResolvedAtUtc           = resolvedAtUtc,
         };
 
     // ---- Lifecycle: Update ---------------------------------------------------
@@ -258,6 +311,172 @@ public sealed partial class IncidentManagement
             IncidentManagementEventId.New(), IncidentManagementId, nowUtc, actor, correlationId, causationId));
     }
 
+    // ---- Lifecycle: Assign ---------------------------------------------------
+
+    /// <summary>
+    /// (Re)assigns a technician/investigator to the incident. If the incident is still in its
+    /// initial <see cref="IncidentManagementStatus.Reported"/> state, transitions it to
+    /// <see cref="IncidentManagementStatus.Assigned"/>; reassignment on an already-progressed
+    /// incident leaves its current status untouched. Raises
+    /// <see cref="IncidentManagementAssignedEvent"/>.
+    /// </summary>
+    /// <exception cref="IncidentManagementInvalidStatusTransitionException">The incident is Archived (terminal state).</exception>
+    public void AssignTechnician(
+        UserId technicianId,
+        UtcTimestamp nowUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        if (Status == IncidentManagementStatus.Archived)
+            throw new IncidentManagementInvalidStatusTransitionException(
+                IncidentManagementId, Status.ToString(), "Assigned", correlationId, causationId);
+
+        AssignedInvestigatorId = technicianId;
+        if (Status == IncidentManagementStatus.Reported)
+            Status = IncidentManagementStatus.Assigned;
+
+        AddDomainEvent(new IncidentManagementAssignedEvent(
+            IncidentManagementEventId.New(), IncidentManagementId, technicianId, nowUtc, actor, correlationId, causationId));
+
+        AddTimelineEntry(
+            timestampUtc: nowUtc,
+            actor: actor.ToString(),
+            eventType: "StatusChange",
+            severity: Severity,
+            description: $"Technician {technicianId.Value} assigned to incident.");
+    }
+
+    // ---- Lifecycle: Escalate ---------------------------------------------------
+
+    /// <summary>
+    /// Escalates the incident: bumps severity one tier (Minor -&gt; Moderate -&gt; Serious -&gt; Critical,
+    /// saturating at Critical), transitions status to <see cref="IncidentManagementStatus.Escalated"/>,
+    /// and raises <see cref="IncidentManagementEscalatedEvent"/> so downstream notification consumers
+    /// (e.g. supervisor alerting) can react.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="reason"/> is empty.</exception>
+    /// <exception cref="IncidentManagementInvalidStatusTransitionException">The incident is Resolved or Archived.</exception>
+    public void Escalate(
+        string reason,
+        UtcTimestamp nowUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        if (Status is IncidentManagementStatus.Archived or IncidentManagementStatus.Resolved)
+            throw new IncidentManagementInvalidStatusTransitionException(
+                IncidentManagementId, Status.ToString(), "Escalated", correlationId, causationId);
+
+        var normalizedReason = (reason ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedReason))
+            throw new ArgumentException("Reason is required to escalate an incident.", nameof(reason));
+
+        var previousSeverity = Severity;
+        var newSeverity = BumpSeverity(Severity);
+
+        Status = IncidentManagementStatus.Escalated;
+        Severity = newSeverity;
+        EscalationReason = normalizedReason;
+        EscalatedAtUtc = nowUtc;
+        EscalationCount += 1;
+
+        AddDomainEvent(new IncidentManagementEscalatedEvent(
+            IncidentManagementEventId.New(), IncidentManagementId, normalizedReason, previousSeverity, newSeverity,
+            EscalationCount, nowUtc, actor, correlationId, causationId));
+
+        AddTimelineEntry(
+            timestampUtc: nowUtc,
+            actor: actor.ToString(),
+            eventType: "Escalation",
+            severity: newSeverity,
+            description: $"Escalated ({previousSeverity} -> {newSeverity}): {normalizedReason}");
+    }
+
+    // ---- Lifecycle: AddNote ---------------------------------------------------
+
+    /// <summary>
+    /// Appends a technician/operator note to the incident's timeline. Notes do not change
+    /// <see cref="Status"/>. Raises <see cref="IncidentManagementNoteAddedEvent"/>.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="text"/> is empty.</exception>
+    /// <exception cref="IncidentManagementInvalidStatusTransitionException">The incident is Archived (terminal state).</exception>
+    public void AddNote(
+        string text,
+        UtcTimestamp nowUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        if (Status == IncidentManagementStatus.Archived)
+            throw new IncidentManagementInvalidStatusTransitionException(
+                IncidentManagementId, Status.ToString(), "NoteAdded", correlationId, causationId);
+
+        var normalizedText = (text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedText))
+            throw new ArgumentException("Text is required to add a note.", nameof(text));
+
+        var noteId = Guid.NewGuid();
+
+        AddDomainEvent(new IncidentManagementNoteAddedEvent(
+            IncidentManagementEventId.New(), IncidentManagementId, noteId, normalizedText, nowUtc, actor, correlationId, causationId));
+
+        AddTimelineEntry(
+            timestampUtc: nowUtc,
+            actor: actor.ToString(),
+            eventType: "Note",
+            severity: Severity,
+            description: normalizedText);
+    }
+
+    // ---- Lifecycle: Resolve ---------------------------------------------------
+
+    /// <summary>
+    /// Resolves the incident: transitions status to <see cref="IncidentManagementStatus.Resolved"/>,
+    /// records <paramref name="resolutionNotes"/> and <see cref="ResolvedAtUtc"/> (persisted to the
+    /// existing Incident.ClosedAtUtc column). Raises <see cref="IncidentManagementResolvedEvent"/>.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="resolutionNotes"/> is empty.</exception>
+    /// <exception cref="IncidentManagementInvalidStatusTransitionException">The incident is already Resolved or Archived.</exception>
+    public void Resolve(
+        string resolutionNotes,
+        UtcTimestamp nowUtc,
+        PerformedByActor actor,
+        CorrelationId correlationId,
+        CausationId causationId)
+    {
+        if (Status is IncidentManagementStatus.Archived or IncidentManagementStatus.Resolved)
+            throw new IncidentManagementInvalidStatusTransitionException(
+                IncidentManagementId, Status.ToString(), "Resolved", correlationId, causationId);
+
+        var normalizedNotes = (resolutionNotes ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedNotes))
+            throw new ArgumentException("ResolutionNotes is required to resolve an incident.", nameof(resolutionNotes));
+
+        Status = IncidentManagementStatus.Resolved;
+        ResolutionNotes = normalizedNotes;
+        ResolvedAtUtc = nowUtc;
+
+        AddDomainEvent(new IncidentManagementResolvedEvent(
+            IncidentManagementEventId.New(), IncidentManagementId, normalizedNotes, nowUtc, actor, correlationId, causationId));
+
+        AddTimelineEntry(
+            timestampUtc: nowUtc,
+            actor: actor.ToString(),
+            eventType: "Resolution",
+            severity: Severity,
+            description: normalizedNotes);
+    }
+
+    /// <summary>Bumps a free-text severity string one tier: Minor -&gt; Moderate -&gt; Serious -&gt; Critical (saturating).</summary>
+    private static string BumpSeverity(string currentSeverity) => (currentSeverity ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "minor" => "Moderate",
+        "moderate" => "Serious",
+        "serious" => "Critical",
+        _ => "Critical",
+    };
+
     // ---- Lifecycle: Archive ---------------------------------------------------
 
     /// <summary>
@@ -288,6 +507,13 @@ public sealed partial class IncidentManagement
 
         AddDomainEvent(new IncidentManagementArchivedEvent(
             IncidentManagementEventId.New(), IncidentManagementId, nowUtc, normalizedReason, actor, correlationId, causationId));
+
+        AddTimelineEntry(
+            timestampUtc: nowUtc,
+            actor: actor.ToString(),
+            eventType: "StatusChange",
+            severity: Severity,
+            description: $"Archived: {normalizedReason}");
     }
 
     // ---- Helpers -----------------------------------------------------------
@@ -296,4 +522,24 @@ public sealed partial class IncidentManagement
 
     /// <summary>Clears the in-memory event list after dispatch.</summary>
     public void ClearDomainEvents() => _domainEvents.Clear();
+
+    private void AddTimelineEntry(
+        UtcTimestamp timestampUtc,
+        string actor,
+        string eventType,
+        string severity,
+        string description)
+    {
+        _pendingTimelineEntries.Add(new IncidentManagementTimelineEntry(
+            entryId: Guid.NewGuid(),
+            incidentManagementId: IncidentManagementId,
+            timestampUtc: timestampUtc,
+            actor: actor,
+            eventType: eventType,
+            severity: severity,
+            description: description));
+    }
+
+    /// <summary>Clears the in-memory pending timeline entry list after persistence.</summary>
+    public void ClearPendingTimelineEntries() => _pendingTimelineEntries.Clear();
 }

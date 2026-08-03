@@ -31,4 +31,15 @@ public static class InfrastructureConstants
 
     /// <summary>Dead-letter topic suffix.</summary>
     public const string DeadLetterSuffix = "/$DeadLetterQueue";
+
+    /// <summary>
+    /// Default RabbitMQ prefetch count applied bus-wide (see InfrastructureServiceRegistration's
+    /// <c>x.UsingRabbitMq</c> configuration). Bounds how many unacknowledged messages MassTransit
+    /// pulls per receive endpoint, which is this codebase's single chosen mechanism for capping
+    /// consumer parallelism (Handbook §7 Performance &amp; Stress -- Phase 5 §7.2 "parallel
+    /// consumers") -- applied once, centrally, rather than a per-consumer ConcurrentMessageLimit
+    /// scattered across the 17 *ConsumerRegistration.Register(cfg) files, since no per-consumer
+    /// concurrency convention existed previously.
+    /// </summary>
+    public const ushort DefaultRabbitMqPrefetchCount = 16;
 }

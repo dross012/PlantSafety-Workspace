@@ -173,5 +173,55 @@ public sealed class ComplianceState
 
     private static int Clamp(int page, int totalPages) => Math.Max(1, Math.Min(page, totalPages));
 
+    // ============================================================
+    // Phase 5 §6.3 — Compliance Rules Engine
+    // ============================================================
+
+    private ComplianceEvaluationDto? _currentEvaluation;
+    private IReadOnlyList<ComplianceEvaluationDto> _evaluationHistory = [];
+    private bool _isEvaluating;
+    private bool _isLoadingEvaluationHistory;
+    private string? _evaluationError;
+
+    /// <summary>Gets the most recently triggered/viewed ComplianceEvaluation run, or null.</summary>
+    public ComplianceEvaluationDto? CurrentEvaluation => _currentEvaluation;
+
+    /// <summary>Gets the ComplianceEvaluation history for the currently selected target entity.</summary>
+    public IReadOnlyList<ComplianceEvaluationDto> EvaluationHistory => _evaluationHistory;
+
+    /// <summary>Gets a value indicating whether an evaluation run is in progress.</summary>
+    public bool IsEvaluating => _isEvaluating;
+
+    /// <summary>Gets a value indicating whether the evaluation history is loading.</summary>
+    public bool IsLoadingEvaluationHistory => _isLoadingEvaluationHistory;
+
+    /// <summary>Gets a sanitized evaluation action error, or null.</summary>
+    public string? EvaluationError => _evaluationError;
+
+    /// <summary>Marks an evaluation run as in progress.</summary>
+    public void BeginEvaluate() { _isEvaluating = true; _evaluationError = null; NotifyStateChanged(); }
+
+    /// <summary>Applies the freshly completed evaluation and prepends it to the history.</summary>
+    public void SetEvaluationResult(ComplianceEvaluationDto evaluation)
+    {
+        _currentEvaluation = evaluation;
+        _evaluationHistory = new List<ComplianceEvaluationDto> { evaluation }.Concat(_evaluationHistory).ToList();
+        _isEvaluating = false;
+        _evaluationError = null;
+        NotifyStateChanged();
+    }
+
+    /// <summary>Records an evaluation run failure.</summary>
+    public void SetEvaluateError(string sanitizedError) { _isEvaluating = false; _evaluationError = sanitizedError; NotifyStateChanged(); }
+
+    /// <summary>Marks the evaluation history as loading.</summary>
+    public void BeginEvaluationHistoryLoad() { _isLoadingEvaluationHistory = true; _evaluationError = null; NotifyStateChanged(); }
+
+    /// <summary>Applies the freshly loaded evaluation history.</summary>
+    public void SetEvaluationHistory(IReadOnlyList<ComplianceEvaluationDto> history) { _evaluationHistory = history; _isLoadingEvaluationHistory = false; _evaluationError = null; NotifyStateChanged(); }
+
+    /// <summary>Records an evaluation history load failure.</summary>
+    public void SetEvaluationHistoryError(string sanitizedError) { _evaluationHistory = []; _isLoadingEvaluationHistory = false; _evaluationError = sanitizedError; NotifyStateChanged(); }
+
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

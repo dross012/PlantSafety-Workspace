@@ -14,6 +14,8 @@
 
 @inject DocumentManagementState State
 @inject DocumentManagementApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
 @inject NavigationState NavState
 @inject NavigationManager Nav
 
@@ -63,12 +65,11 @@
                                 EmptyMessage="No documents found."
                                 AriaLabel="Documents">
                 <RowTemplate Context="doc">
-                    <td>@doc.Title</td>
-                    <td>@doc.Category</td>
-                    <td>@doc.Version</td>
+                    <td>@doc.FileName</td>
+                    <td>@doc.DocumentType</td>
+                    <td>@doc.SourceSystem</td>
                     <td><StatusIndicatorComponent Status="@MapStatus(doc.Status)" Label="@doc.Status" /></td>
-                    <td>@doc.LastUpdatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
-                    <td>@doc.OwnerName</td>
+                    <td>@doc.SyncedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
                     <td><a href="/modules/document-management/@doc.DocumentId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
                 </RowTemplate>
             </DataGridComponent>
@@ -84,7 +85,7 @@
 </div>
 
 @code {
-    private static readonly string[] _headers = ["Title", "Category", "Version", "Status", "Last Updated", "Owner", "Actions"];
+    private static readonly string[] _headers = ["File Name", "Document Type", "Source System", "Status", "Synced", "Actions"];
 
     protected override void OnInitialized()
     {
@@ -110,7 +111,9 @@
     private async Task GoToPageAsync(int page)
     {
         State.BeginListLoad();
-        var envelope = await ApiClient.GetDocumentsAsync(pageNumber: page, pageSize: 25, categoryFilter: State.CategoryFilter, search: State.SearchText);
+
+        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+        var envelope = await ApiClient.GetDocumentsAsync(tenantId, pageNumber: page, pageSize: 25, categoryFilter: State.CategoryFilter, search: State.SearchText);
 
         if (envelope.IsSuccess)
             State.SetDocuments(envelope.Data!);
@@ -135,10 +138,9 @@
 
     private static string MapStatus(string status) => status.ToLowerInvariant() switch
     {
-        "published" => "Healthy",
-        "underreview" or "under review" or "draft" => "Warning",
-        "expired" => "Critical",
-        "archived" => "Offline",
+        "synced" => "Healthy",
+        "pending" => "Warning",
+        "error" => "Critical",
         _ => "Offline",
     };
 

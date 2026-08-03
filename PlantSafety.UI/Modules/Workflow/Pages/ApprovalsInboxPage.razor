@@ -1,0 +1,176 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-02
+   FILE DESCRIPTION: Workflow Approvals Inbox (Phase 5 §5 — human + machine
+     workflow runtime). Lists every WorkflowInstance currently pending an
+     approval decision from the signed-in actor (by UserId or role
+     membership) via WorkflowApiClient.GetPendingApprovalsAsync, and provides
+     a working inline Approve/Reject action per row (ApproveStepCommand /
+     RejectStepCommand) with an optional notes/reason field. Built entirely
+     from the canonical Shared component library (ErrorBoundaryComponent,
+     LoadingIndicatorComponent, DataGridComponent, StatusIndicatorComponent),
+     following the Modules/Auditing exemplar list-page pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/workflow/approvals"
+
+@inject WorkflowState State
+@inject WorkflowApiClient ApiClient
+@inject NavigationState NavState
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Workflow.ApiClients
+@using PlantSafety.UI.Modules.Workflow.Models
+@using PlantSafety.UI.Modules.Workflow.State
+
+<PageTitle>Workflow Approvals — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Workflow approvals inbox could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingApprovals">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+            <span class="ps-text-muted">Pending decisions for @UserSession.User.DisplayName</span>
+        </div>
+
+        @if (State.ApprovalsError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ApprovalsError</div>
+        }
+
+        @if (State.ActionError is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.ActionError</div>
+        }
+
+        @if (State.IsLoadingApprovals)
+        {
+            <LoadingIndicatorComponent Message="Loading pending approvals…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="WorkflowInstanceDto"
+                                Items="State.PendingApprovals"
+                                Headers="_headers"
+                                KeySelector="i => i.WorkflowInstanceId"
+                                EmptyMessage="No workflow instances are currently awaiting your approval."
+                                AriaLabel="Pending workflow approvals">
+                <RowTemplate Context="instance">
+                    <td>@instance.WorkflowType</td>
+                    <td><StatusIndicatorComponent Status="@MapState(instance.State)" Label="@instance.State" /></td>
+                    <td>@instance.StartedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td class="ps-mono">@instance.WorkflowInstanceId</td>
+                    <td>
+                        @if (State.ActingInstanceId == instance.WorkflowInstanceId)
+                        {
+                            <LoadingIndicatorComponent Message="Submitting…" />
+                        }
+                        else
+                        {
+                            <input class="ps-input ps-input-sm"
+                                   style="width:14rem;display:inline-block;margin-right:4px;"
+                                   placeholder="Notes / reason (optional)"
+                                   value="@GetNotes(instance.WorkflowInstanceId)"
+                                   @onchange="e => SetNotes(instance.WorkflowInstanceId, e.Value?.ToString())" />
+                            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="() => ApproveAsync(instance.WorkflowInstanceId)">
+                                <span class="bi bi-check2" aria-hidden="true"></span> Approve
+                            </button>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => RejectAsync(instance.WorkflowInstanceId)">
+                                <span class="bi bi-x" aria-hidden="true"></span> Reject
+                            </button>
+                            <a href="@InstanceHref(instance.WorkflowInstanceId)" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
+                        }
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Type", "State", "Started", "Instance Id", "Actions"];
+    private readonly Dictionary<Guid, string> _notesByInstance = [];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Workflow Approvals",
+            activeModuleCode: "workflow",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Workflow Approvals" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginApprovalsLoad();
+        var envelope = await ApiClient.GetPendingApprovalsAsync(UserSession.User.UserId, UserSession.User.Roles);
+
+        if (envelope.IsSuccess)
+            State.SetPendingApprovals(envelope.Data ?? []);
+        else if (envelope.IsProblem)
+            State.SetApprovalsError(envelope.Problem!.Detail);
+        else
+            State.SetApprovalsError($"Failed to load pending approvals: {envelope.FaultType}");
+    }
+
+    private string GetNotes(Guid instanceId) => _notesByInstance.TryGetValue(instanceId, out var value) ? value : string.Empty;
+
+    private void SetNotes(Guid instanceId, string? value) => _notesByInstance[instanceId] = value ?? string.Empty;
+
+    private async Task ApproveAsync(Guid instanceId)
+    {
+        State.BeginAction(instanceId);
+        var envelope = await ApiClient.ApproveStepAsync(instanceId, GetNotes(instanceId) is { Length: > 0 } n ? n : null);
+
+        if (envelope.IsSuccess)
+            State.CompleteAction(instanceId);
+        else if (envelope.IsProblem)
+            State.SetActionError(envelope.Problem!.Detail);
+        else
+            State.SetActionError($"Failed to approve workflow step: {envelope.FaultType}");
+    }
+
+    private async Task RejectAsync(Guid instanceId)
+    {
+        State.BeginAction(instanceId);
+        var envelope = await ApiClient.RejectStepAsync(instanceId, GetNotes(instanceId) is { Length: > 0 } n ? n : null);
+
+        if (envelope.IsSuccess)
+            State.CompleteAction(instanceId);
+        else if (envelope.IsProblem)
+            State.SetActionError(envelope.Problem!.Detail);
+        else
+            State.SetActionError($"Failed to reject workflow step: {envelope.FaultType}");
+    }
+
+    private static string InstanceHref(Guid instanceId) => $"/modules/workflow/{instanceId}";
+
+    private static string MapState(string state) => state.ToLowerInvariant() switch
+    {
+        "completed" or "approved" => "Healthy",
+        "inprogress" or "pending" or "escalated" or "retrying" => "Warning",
+        "rejected" or "cancelled" or "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

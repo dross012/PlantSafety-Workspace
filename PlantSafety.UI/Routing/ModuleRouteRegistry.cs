@@ -92,6 +92,7 @@ public static class ModuleRouteRegistry
                 new ModuleRoute { ModuleCode = "safety-programs", Label = "Safety Programs", Href = RouteDefinitions.SafetyProgramsList, IconClass = "bi-shield", Section = "Core Operational", SectionOrder = 16 },
                 new ModuleRoute { ModuleCode = "incident-management", Label = "Incident Management", Href = RouteDefinitions.IncidentManagementList, IconClass = "bi-exclamation-triangle", Section = "Core Operational", SectionOrder = 17 },
                 new ModuleRoute { ModuleCode = "document-management", Label = "Document Management", Href = RouteDefinitions.DocumentManagementList, IconClass = "bi-folder", Section = "Core Operational", SectionOrder = 18 },
+                new ModuleRoute { ModuleCode = "workflow", Label = "Workflow Approvals", Href = RouteDefinitions.WorkflowApprovalsInbox, IconClass = "bi-diagram-2", Section = "Core Operational", SectionOrder = 19 },
             ]
         },
         new ModuleSection
@@ -162,6 +163,7 @@ public static class ModuleRouteRegistry
                 new ModuleRoute { ModuleCode = "scheduling-analytics", Label = "Scheduling Analytics", Href = RouteDefinitions.SchedulingAnalyticsDashboard, IconClass = "bi-calendar-check", Section = "Analytics", SectionOrder = 6 },
                 new ModuleRoute { ModuleCode = "scorecards", Label = "Scorecards", Href = RouteDefinitions.ScorecardsDashboard, IconClass = "bi-trophy", Section = "Analytics", SectionOrder = 7 },
                 new ModuleRoute { ModuleCode = "trend-analysis", Label = "Trend Analysis", Href = RouteDefinitions.TrendAnalysisDashboard, IconClass = "bi-activity", Section = "Analytics", SectionOrder = 8 },
+                new ModuleRoute { ModuleCode = "bi-dashboards", Label = "BI Dashboards", Href = RouteDefinitions.BiDashboards, IconClass = "bi-bar-chart-line", Section = "Analytics", SectionOrder = 9 },
             ]
         },
         new ModuleSection

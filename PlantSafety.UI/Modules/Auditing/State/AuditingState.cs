@@ -79,5 +79,94 @@ public sealed class AuditingState
     /// <summary>Clears the selected audit.</summary>
     public void ClearSelection() { _selectedItem = null; NotifyStateChanged(); }
 
+    // ============================================================
+    // Phase 5 §6.1 — AuditTimeline
+    // ============================================================
+
+    private AuditTimelineDto? _timeline;
+    private bool _isLoadingTimeline;
+    private string? _timelineError;
+
+    /// <summary>Gets the currently loaded AuditTimeline, or null when none is loaded.</summary>
+    public AuditTimelineDto? Timeline => _timeline;
+
+    /// <summary>Gets a value indicating whether the timeline is loading.</summary>
+    public bool IsLoadingTimeline => _isLoadingTimeline;
+
+    /// <summary>Gets a sanitized timeline load error, or null.</summary>
+    public string? TimelineError => _timelineError;
+
+    /// <summary>Marks the timeline as loading.</summary>
+    public void BeginTimelineLoad() { _isLoadingTimeline = true; _timelineError = null; NotifyStateChanged(); }
+
+    /// <summary>Applies the freshly loaded timeline.</summary>
+    public void SetTimeline(AuditTimelineDto timeline) { _timeline = timeline; _isLoadingTimeline = false; _timelineError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a timeline load failure.</summary>
+    public void SetTimelineError(string sanitizedError) { _timelineError = sanitizedError; _isLoadingTimeline = false; NotifyStateChanged(); }
+
+    // ============================================================
+    // Phase 5 §6.2 — AuditReport
+    // ============================================================
+
+    private IReadOnlyList<AuditReportDto> _reportHistory = [];
+    private AuditReportDto? _currentReport;
+    private bool _isLoadingReportHistory;
+    private bool _isGeneratingReport;
+    private bool _isDownloadingReport;
+    private string? _reportError;
+
+    /// <summary>Gets the AuditReport generation history for the currently selected target entity.</summary>
+    public IReadOnlyList<AuditReportDto> ReportHistory => _reportHistory;
+
+    /// <summary>Gets the most recently generated/viewed AuditReport, or null.</summary>
+    public AuditReportDto? CurrentReport => _currentReport;
+
+    /// <summary>Gets a value indicating whether the report history is loading.</summary>
+    public bool IsLoadingReportHistory => _isLoadingReportHistory;
+
+    /// <summary>Gets a value indicating whether a report generation is in progress.</summary>
+    public bool IsGeneratingReport => _isGeneratingReport;
+
+    /// <summary>Gets a value indicating whether a report content download is in progress.</summary>
+    public bool IsDownloadingReport => _isDownloadingReport;
+
+    /// <summary>Gets a sanitized report action error, or null.</summary>
+    public string? ReportError => _reportError;
+
+    /// <summary>Marks the report history as loading.</summary>
+    public void BeginReportHistoryLoad() { _isLoadingReportHistory = true; _reportError = null; NotifyStateChanged(); }
+
+    /// <summary>Applies the freshly loaded report history.</summary>
+    public void SetReportHistory(IReadOnlyList<AuditReportDto> reports) { _reportHistory = reports; _isLoadingReportHistory = false; _reportError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a report history load failure.</summary>
+    public void SetReportHistoryError(string sanitizedError) { _reportHistory = []; _isLoadingReportHistory = false; _reportError = sanitizedError; NotifyStateChanged(); }
+
+    /// <summary>Marks a report generation as in progress.</summary>
+    public void BeginGenerateReport() { _isGeneratingReport = true; _reportError = null; NotifyStateChanged(); }
+
+    /// <summary>Applies the freshly generated report and prepends it to the history.</summary>
+    public void SetGeneratedReport(AuditReportDto report)
+    {
+        _currentReport = report;
+        _reportHistory = new List<AuditReportDto> { report }.Concat(_reportHistory).ToList();
+        _isGeneratingReport = false;
+        _reportError = null;
+        NotifyStateChanged();
+    }
+
+    /// <summary>Records a report generation failure.</summary>
+    public void SetGenerateReportError(string sanitizedError) { _isGeneratingReport = false; _reportError = sanitizedError; NotifyStateChanged(); }
+
+    /// <summary>Marks a report content download as in progress.</summary>
+    public void BeginDownloadReport() { _isDownloadingReport = true; _reportError = null; NotifyStateChanged(); }
+
+    /// <summary>Completes a report content download.</summary>
+    public void CompleteDownloadReport() { _isDownloadingReport = false; _reportError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a report content download failure.</summary>
+    public void SetDownloadReportError(string sanitizedError) { _isDownloadingReport = false; _reportError = sanitizedError; NotifyStateChanged(); }
+
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

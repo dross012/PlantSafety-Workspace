@@ -36,3 +36,41 @@ BEGIN
     ALTER TABLE [Analytics].[Reporting] ADD RowVersion ROWVERSION NOT NULL;
 END
 GO
+
+-- Additive columns backing the report-catalog detail surface (ReportDetailDto) used by the
+-- PlantSafety.UI Reporting module's Report Detail page. Nullable so existing rows remain valid.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Reporting]') AND name = 'Description')
+BEGIN
+    ALTER TABLE [Analytics].[Reporting] ADD Description NVARCHAR(1000) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Reporting]') AND name = 'PeriodStartUtc')
+BEGIN
+    ALTER TABLE [Analytics].[Reporting] ADD PeriodStartUtc DATE NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Reporting]') AND name = 'PeriodEndUtc')
+BEGIN
+    ALTER TABLE [Analytics].[Reporting] ADD PeriodEndUtc DATE NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Reporting]') AND name = 'AvailableFormats')
+BEGIN
+    ALTER TABLE [Analytics].[Reporting] ADD AvailableFormats NVARCHAR(200) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Reporting]') AND name = 'SourceModule')
+BEGIN
+    ALTER TABLE [Analytics].[Reporting] ADD SourceModule NVARCHAR(100) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Analytics].[Reporting]') AND name = 'OwnerName')
+BEGIN
+    ALTER TABLE [Analytics].[Reporting] ADD OwnerName NVARCHAR(200) NULL;
+END
+GO

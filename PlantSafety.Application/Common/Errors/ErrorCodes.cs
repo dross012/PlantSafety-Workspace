@@ -23,6 +23,9 @@ public static class ErrorCodes
     /// <summary>The authenticated user lacks the required permission.</summary>
     public const string Forbidden = "Platform.Auth.Forbidden";
 
+    /// <summary>The request's bound TenantId does not match the server-resolved tenant context (cross-tenant access attempt).</summary>
+    public const string TenantMismatch = "Platform.Auth.TenantMismatch";
+
     /// <summary>One or more input fields failed validation.</summary>
     public const string ValidationFailed = "Platform.Validation.Failed";
 

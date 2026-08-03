@@ -91,6 +91,38 @@ public static class TestDatabaseFactory
     }
 
     /// <summary>
+    /// Creates <c>[System].[CrossModuleDedupKeys]</c>, the business-key dedup ledger backing
+    /// <c>CrossModuleIdempotentConsumerBase.TryExecuteOnceAsync</c> (Phase 6 blocker fix, 2026-08-02
+    /// -- see PlantSafety.Infrastructure\Persistence\Scripts\Tables\CrossModuleDedupKeys.sql for the
+    /// full rationale; mirrored here verbatim since this factory embeds its schema rather than
+    /// executing the on-disk Scripts folder, matching every other ApplyXSchemaAsync method above).
+    /// </summary>
+    public static async Task ApplyCrossModuleDedupSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'System')
+                EXEC('CREATE SCHEMA [System]');
+
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+                           WHERE TABLE_SCHEMA = 'System' AND TABLE_NAME = 'CrossModuleDedupKeys')
+            BEGIN
+                CREATE TABLE [System].[CrossModuleDedupKeys] (
+                    ConsumerName   NVARCHAR(200)    NOT NULL,
+                    BusinessKey    NVARCHAR(400)    NOT NULL,
+                    EventId        UNIQUEIDENTIFIER NOT NULL,
+                    ProcessedAtUtc DATETIME2(3)     NOT NULL CONSTRAINT DF_CrossModuleDedupKeys_ProcessedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CONSTRAINT PK_CrossModuleDedupKeys PRIMARY KEY (ConsumerName, BusinessKey)
+                );
+
+                CREATE INDEX IX_CrossModuleDedupKeys_ProcessedAtUtc
+                    ON [System].[CrossModuleDedupKeys] (ProcessedAtUtc);
+            END;");
+    }
+
+    /// <summary>
     /// Creates the shared, cross-database <c>dbo.AuditLog</c> table and
     /// <c>dbo.usp_SearchAuditLog</c> stored procedure against the Testcontainers
     /// database so that <c>Shared.AuditLogging.Infrastructure.Persistence.AuditLogDapperRepository</c>

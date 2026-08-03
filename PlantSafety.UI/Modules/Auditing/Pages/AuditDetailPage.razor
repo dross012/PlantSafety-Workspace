@@ -57,6 +57,12 @@
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AuditingList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Auditing
                     </button>
+                    <a href="@($"/modules/auditing/timeline/Auditing/{audit.AuditingId}")" class="ps-btn ps-btn-ghost">
+                        <span class="bi bi-clock-history" aria-hidden="true"></span> View Timeline
+                    </a>
+                    <a href="@RouteDefinitions.AuditReports" class="ps-btn ps-btn-ghost">
+                        <span class="bi bi-file-earmark-text" aria-hidden="true"></span> Audit Reports
+                    </a>
                 </div>
             </div>
         }

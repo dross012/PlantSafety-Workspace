@@ -59,3 +59,47 @@ BEGIN
     CREATE NONCLUSTERED INDEX IX_Incident_TenantId_OccurredAtUtc ON [SafetyEvents].[Incident] (TenantId, IncidentOccurredAtUtc, IsDeleted);
 END
 GO
+
+-- ----------------------------------------------------------------------------
+-- 2026-08-03 (Claude Code modular-creation-agent): additive columns backing the new
+-- Assign/Escalate/AddNote/Resolve incident-lifecycle commands (UI Gaps Scoping,
+-- IncidentManagement Part 1). ClosedAtUtc (pre-existing, previously unused drift column) is
+-- repurposed as the Resolve timestamp. Additive-only evolution.
+-- ----------------------------------------------------------------------------
+IF COL_LENGTH('[SafetyEvents].[Incident]', 'EscalationReason') IS NULL
+    ALTER TABLE [SafetyEvents].[Incident] ADD EscalationReason NVARCHAR(1000) NULL;
+GO
+IF COL_LENGTH('[SafetyEvents].[Incident]', 'EscalatedAtUtc') IS NULL
+    ALTER TABLE [SafetyEvents].[Incident] ADD EscalatedAtUtc DATETIME2(3) NULL;
+GO
+IF COL_LENGTH('[SafetyEvents].[Incident]', 'EscalationCount') IS NULL
+    ALTER TABLE [SafetyEvents].[Incident] ADD EscalationCount INT NOT NULL CONSTRAINT DF_Incident_EscalationCount DEFAULT (0);
+GO
+IF COL_LENGTH('[SafetyEvents].[Incident]', 'ResolutionNotes') IS NULL
+    ALTER TABLE [SafetyEvents].[Incident] ADD ResolutionNotes NVARCHAR(2000) NULL;
+GO
+
+-- ----------------------------------------------------------------------------
+-- 2026-08-03: Timeline entry table backing GetIncidentTimelineQuery (v1/safety-events/
+-- incidents/{id}/timeline). Populated by IncidentDapperRepository.PersistPendingTimelineEntriesAsync
+-- from IncidentManagement.PendingTimelineEntries (raised by Create/AssignTechnician/Escalate/
+-- AddNote/Resolve/Archive). Additive-only evolution.
+-- ----------------------------------------------------------------------------
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'IncidentTimelineEntry' AND schema_id = SCHEMA_ID('SafetyEvents'))
+BEGIN
+    CREATE TABLE [SafetyEvents].[IncidentTimelineEntry]
+    (
+        EntryId       UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_IncidentTimelineEntry PRIMARY KEY,
+        IncidentId    UNIQUEIDENTIFIER NOT NULL,
+        TenantId      UNIQUEIDENTIFIER NOT NULL,
+        TimestampUtc  DATETIME2(3)     NOT NULL,
+        Actor         NVARCHAR(200)    NOT NULL,
+        EventType     NVARCHAR(30)     NOT NULL,
+        Severity      NVARCHAR(30)     NOT NULL,
+        Description   NVARCHAR(2000)   NOT NULL
+    );
+
+    CREATE NONCLUSTERED INDEX IX_IncidentTimelineEntry_TenantId_IncidentId_TimestampUtc
+        ON [SafetyEvents].[IncidentTimelineEntry] (TenantId, IncidentId, TimestampUtc);
+END
+GO

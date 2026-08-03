@@ -30,3 +30,20 @@ public sealed record GetReportingRequest(
     Guid?     SiteId,
     DateTime  From,
     DateTime? To);
+
+/// <summary>
+/// Query parameters for retrieving a paginated, optionally type-filtered page of the report
+/// catalog. Backs the PlantSafety.UI Reporting module's Reports List page
+/// (GET /analytics/reporting/reports). TenantId is intentionally NOT bound here -- it is
+/// resolved server-side from the caller's JWT via <see cref="PlantSafety.Api.Context.RequestEnvelopeFactory"/>
+/// so a caller cannot spoof another tenant's data via the query string.
+/// </summary>
+/// <param name="SiteId">Optional site filter. Null returns data for all accessible sites.</param>
+/// <param name="ReportType">Optional report type/category filter (e.g. "Safety"). Null returns all types.</param>
+/// <param name="PageNumber">1-based page number.</param>
+/// <param name="PageSize">Items per page.</param>
+public sealed record ListReportsRequest(
+    Guid?   SiteId,
+    string? ReportType,
+    int     PageNumber = 1,
+    int     PageSize = 25);

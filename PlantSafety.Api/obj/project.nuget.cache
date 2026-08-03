@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "7rJWok4vubc=",
+  "dgSpecHash": "dDrCtn9Y7To=",
   "success": true,
   "projectFilePath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.Api\\PlantSafety.Api.csproj",
   "expectedPackageFiles": [
@@ -86,6 +86,7 @@
     "D:\\NuGetPackages\\polly.core\\8.5.0\\polly.core.8.5.0.nupkg.sha512",
     "D:\\NuGetPackages\\protobuf-net\\3.2.56\\protobuf-net.3.2.56.nupkg.sha512",
     "D:\\NuGetPackages\\protobuf-net.core\\3.2.56\\protobuf-net.core.3.2.56.nupkg.sha512",
+    "D:\\NuGetPackages\\questpdf\\2026.7.2\\questpdf.2026.7.2.nupkg.sha512",
     "D:\\NuGetPackages\\rabbitmq.client\\7.1.2\\rabbitmq.client.7.1.2.nupkg.sha512",
     "D:\\NuGetPackages\\serilog\\4.3.0\\serilog.4.3.0.nupkg.sha512",
     "D:\\NuGetPackages\\serilog.aspnetcore\\10.0.0\\serilog.aspnetcore.10.0.0.nupkg.sha512",
