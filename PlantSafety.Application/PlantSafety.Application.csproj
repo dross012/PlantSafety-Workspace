@@ -33,6 +33,7 @@
          PlantSafety and Reporting both consume the same contract; see
          Shared\AuditLogging\docs\README.md. -->
     <ProjectReference Include="..\..\Shared\AuditLogging\Shared.AuditLogging.Abstractions\Shared.AuditLogging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\Authorization\Shared.Authorization.Abstractions\Shared.Authorization.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

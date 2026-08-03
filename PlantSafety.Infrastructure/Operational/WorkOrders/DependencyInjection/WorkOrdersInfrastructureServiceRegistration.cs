@@ -26,6 +26,10 @@ public static class WorkOrdersInfrastructureServiceRegistration
         services.AddScoped<PlantSafety.Application.Operational.WorkOrders.Repositories.IWorkOrderReadRepository, WorkOrderReadDapperRepository>();
         services.AddScoped<PlantSafety.Application.Operational.WorkOrders.Repositories.IPartInventoryReadRepository, PartInventoryReadDapperRepository>();
 
+        // Phase 6 §3.4 Replay/Rebuild Across Systems (2026-08-03, Eventing & Messaging Agent):
+        // point-in-time WorkOrder state reconstruction directly from [System].[OutboxMessages].
+        services.AddScoped<PlantSafety.Application.Operational.WorkOrders.Repositories.IWorkOrderEventReplayRepository, WorkOrderEventReplayDapperRepository>();
+
         return services;
     }
 }

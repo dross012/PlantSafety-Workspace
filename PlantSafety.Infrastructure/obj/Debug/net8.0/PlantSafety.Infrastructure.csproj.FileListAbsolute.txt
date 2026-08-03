@@ -87,3 +87,6 @@ D:\PlantSafety\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\La
 D:\PlantSafety\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\LatoFont\Lato-Thin.ttf
 D:\PlantSafety\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\LatoFont\Lato-ThinItalic.ttf
 D:\PlantSafety\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\LatoFont\OFL.txt
+D:\PlantSafety\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.Authorization.Abstractions.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.Authorization.Abstractions.pdb
+D:\PlantSafety\source\PlantSafety\PlantSafety.Infrastructure\bin\Debug\net8.0\Shared.Authorization.Abstractions.xml

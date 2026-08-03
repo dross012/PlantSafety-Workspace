@@ -1,0 +1,23 @@
+{
+  "ProductionOrderId": "00000000-0000-0000-0000-0000000000a1",
+  "TenantId": "00000000-0000-0000-0000-0000000000b2",
+  "SiteId": "00000000-0000-0000-0000-0000000000c3",
+  "OrderCode": "PR-001",
+  "ProductionLineId": "00000000-0000-0000-0000-0000000000b2",
+  "ProductionLineName": "Line 1",
+  "AssetId": "00000000-0000-0000-0000-0000000000a1",
+  "Status": "Running",
+  "StartedAtUtc": "2026-08-03T12:00:00Z",
+  "CreatedAtUtc": "2026-08-03T12:00:00Z",
+  "UpdatedAtUtc": "2026-08-03T12:00:00Z",
+  "OperatorName": "A. Chen",
+  "IdealCycleTimeSeconds": 12.5,
+  "GoodUnitCount": 480,
+  "ScrapUnitCount": 6,
+  "DowntimeMinutesTotal": 14,
+  "EndedAtUtc": null,
+  "PredictedCompletionAtUtc": "2026-08-03T12:00:00Z",
+  "PredictedCompletionConfidence": 0.6,
+  "PredictionModelVersion": "2026.1-heuristic",
+  "PredictionGeneratedAtUtc": "2026-08-03T12:00:00Z"
+}

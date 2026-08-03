@@ -70,4 +70,14 @@ public interface IFeatureFlagRepository
     /// <param name="isEnabled">The new IsEnabled value.</param>
     /// <param name="updatedBy">The identity of the caller making the change (from ICurrentUserService), recorded in UpdatedBy.</param>
     Task<FeatureFlagDto> SetEnabledAsync(string databaseKey, string flagName, bool isEnabled, string updatedBy, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Sets (or clears) a single flag's canary-rollout percentage in the given database
+    /// (Phase 6.6, §6.2). A normal, reversible UPDATE, added alongside <see cref="SetEnabledAsync"/>.
+    /// </summary>
+    /// <param name="databaseKey">The logical database key the flag lives in.</param>
+    /// <param name="flagName">The flag to update.</param>
+    /// <param name="rolloutPercentage">The new rollout percentage (0-100), or null to clear it (binary IsEnabled-only behavior).</param>
+    /// <param name="updatedBy">The identity of the caller making the change.</param>
+    Task<FeatureFlagDto> SetRolloutPercentageAsync(string databaseKey, string flagName, int? rolloutPercentage, string updatedBy, CancellationToken cancellationToken);
 }

@@ -7,6 +7,8 @@
 // SchemaVersion: 1
 // Additive-only evolution: new members may be added; no members may be removed or renamed.
 
+using Shared.Authorization.Abstractions.Roles;
+
 namespace PlantSafety.Application.Abstractions.Context;
 
 /// <summary>
@@ -49,4 +51,73 @@ public interface IOperationContext
 
     /// <summary>Gets the UTC timestamp when the root operation began.</summary>
     DateTime OperationStartedAtUtc { get; }
+
+    /// <summary>
+    /// Gets the formalized role context for the current session (Phase 6 §2.4
+    /// "Session Context Hardening"). Carries the resolved <see cref="EnterpriseRole"/>
+    /// tier alongside the raw role-claim strings, so downstream handlers/behaviors do not
+    /// each re-derive the tier from <c>ICurrentUserService.Roles</c> independently.
+    /// </summary>
+    /// <remarks>
+    /// Additive member (SchemaVersion 1 → 2). Added 2026-08-02. Default implementations
+    /// (test doubles via NSubstitute, etc.) resolve this to <see cref="RoleContext.Empty"/>
+    /// automatically; no existing consumer of <see cref="IOperationContext"/> is broken by
+    /// this addition, since it is a new property, not a change to any existing member.
+    /// </remarks>
+    RoleContext RoleContext { get; }
+
+    /// <summary>
+    /// Gets the formalized compliance context for the current session (Phase 6 §2.4
+    /// "Session Context Hardening"). Captures whether the current operation is under a
+    /// specific regulatory scope (e.g. OSHA, ISO 45001, a customer-specific compliance
+    /// program), for compliance-aware behaviors/audit trails to consult without each
+    /// re-deriving it from tenant configuration.
+    /// </summary>
+    /// <remarks>
+    /// Additive member (SchemaVersion 1 → 2). Added 2026-08-02.
+    /// </remarks>
+    ComplianceContext ComplianceContext { get; }
+}
+
+/// <summary>
+/// Formalized role context carried by <see cref="IOperationContext"/>. Additive extension
+/// (Phase 6 §2.4) that resolves the current session's highest-ranked
+/// <see cref="EnterpriseRole"/> alongside the full raw role-claim set, without
+/// replacing <c>ICurrentUserService.Roles</c> (the existing source of truth for raw
+/// role claims).
+/// </summary>
+/// <param name="Roles">The raw role-claim strings held by the current principal.</param>
+/// <param name="HighestRole">
+/// The highest-ranked <see cref="EnterpriseRole"/> resolved from <paramref name="Roles"/>,
+/// or <see langword="null"/> when none of the raw claims match a canonical enterprise role
+/// (e.g. an unauthenticated request, or a role outside the enterprise tier model).
+/// </param>
+public sealed record RoleContext(
+    IReadOnlyList<string> Roles,
+    EnterpriseRole? HighestRole)
+{
+    /// <summary>An empty role context — no roles resolved (e.g. unauthenticated request or non-HTTP context).</summary>
+    public static readonly RoleContext Empty = new(Array.Empty<string>(), null);
+}
+
+/// <summary>
+/// Formalized compliance context carried by <see cref="IOperationContext"/> (Phase 6 §2.4
+/// "Session Context Hardening"). Captures whether the current session/operation is under a
+/// specific regulatory scope.
+/// </summary>
+/// <param name="IsRegulatedSession">
+/// <see langword="true"/> when this operation is subject to a specific regulatory program
+/// (e.g. OSHA-regulated site, ISO 45001-certified tenant); <see langword="false"/> for
+/// standard, non-regulated operations.
+/// </param>
+/// <param name="RegulatoryScope">
+/// The regulatory program/scope identifier (e.g. <c>"OSHA"</c>, <c>"ISO45001"</c>), or
+/// <see langword="null"/> when <paramref name="IsRegulatedSession"/> is <see langword="false"/>.
+/// </param>
+public sealed record ComplianceContext(
+    bool IsRegulatedSession,
+    string? RegulatoryScope)
+{
+    /// <summary>The default, non-regulated compliance context.</summary>
+    public static readonly ComplianceContext None = new(false, null);
 }

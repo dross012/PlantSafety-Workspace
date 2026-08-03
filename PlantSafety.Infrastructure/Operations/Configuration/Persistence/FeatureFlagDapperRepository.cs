@@ -45,7 +45,7 @@ namespace PlantSafety.Infrastructure.Operations.Configuration.Persistence;
 public sealed class FeatureFlagDapperRepository : IFeatureFlagRepository
 {
     private const string SelectAllSql = @"
-SELECT FlagName, IsEnabled, Description, UpdatedUtc, UpdatedBy
+SELECT FlagName, IsEnabled, Description, UpdatedUtc, UpdatedBy, RolloutPercentage
 FROM [System].[FeatureFlag]
 ORDER BY FlagName ASC;";
 
@@ -54,7 +54,15 @@ UPDATE [System].[FeatureFlag]
 SET IsEnabled = @IsEnabled,
     UpdatedUtc = SYSUTCDATETIME(),
     UpdatedBy = @UpdatedBy
-OUTPUT INSERTED.FlagName, INSERTED.IsEnabled, INSERTED.Description, INSERTED.UpdatedUtc, INSERTED.UpdatedBy
+OUTPUT INSERTED.FlagName, INSERTED.IsEnabled, INSERTED.Description, INSERTED.UpdatedUtc, INSERTED.UpdatedBy, INSERTED.RolloutPercentage
+WHERE FlagName = @FlagName;";
+
+    private const string UpdateRolloutPercentageSql = @"
+UPDATE [System].[FeatureFlag]
+SET RolloutPercentage = @RolloutPercentage,
+    UpdatedUtc = SYSUTCDATETIME(),
+    UpdatedBy = @UpdatedBy
+OUTPUT INSERTED.FlagName, INSERTED.IsEnabled, INSERTED.Description, INSERTED.UpdatedUtc, INSERTED.UpdatedBy, INSERTED.RolloutPercentage
 WHERE FlagName = @FlagName;";
 
     private readonly ConfigurationOptions _options;
@@ -136,6 +144,40 @@ WHERE FlagName = @FlagName;";
         }
     }
 
+    /// <inheritdoc/>
+    public async Task<FeatureFlagDto> SetRolloutPercentageAsync(string databaseKey, string flagName, int? rolloutPercentage, string updatedBy, CancellationToken cancellationToken)
+    {
+        if (rolloutPercentage is < 0 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rolloutPercentage), rolloutPercentage, "RolloutPercentage must be between 0 and 100, or null.");
+        }
+
+        var connectionString = ResolveConnectionString(databaseKey);
+
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        try
+        {
+            var row = await connection.QuerySingleOrDefaultAsync<FeatureFlagRow>(
+                new CommandDefinition(
+                    UpdateRolloutPercentageSql,
+                    new { FlagName = flagName, RolloutPercentage = rolloutPercentage, UpdatedBy = updatedBy },
+                    cancellationToken: cancellationToken));
+
+            if (row is null)
+            {
+                throw new NotFoundException("System.FeatureFlag", flagName);
+            }
+
+            return ToDto(databaseKey, row);
+        }
+        catch (SqlException ex)
+        {
+            throw ErrorClassifier.Classify(ex, "System.FeatureFlag.UpdateRolloutPercentage", _logger);
+        }
+    }
+
     private string ResolveConnectionString(string databaseKey)
     {
         if (!_options.DatabaseConnectionStrings.TryGetValue(databaseKey, out var connectionString))
@@ -149,7 +191,7 @@ WHERE FlagName = @FlagName;";
     }
 
     private static FeatureFlagDto ToDto(string databaseKey, FeatureFlagRow row) =>
-        new(databaseKey, row.FlagName, row.IsEnabled, row.Description, row.UpdatedUtc, row.UpdatedBy);
+        new(databaseKey, row.FlagName, row.IsEnabled, row.Description, row.UpdatedUtc, row.UpdatedBy, row.RolloutPercentage);
 
     /// <summary>Raw Dapper projection matching [System].[FeatureFlag]'s selected columns.</summary>
     private sealed class FeatureFlagRow
@@ -159,5 +201,6 @@ WHERE FlagName = @FlagName;";
         public string? Description { get; init; }
         public DateTime UpdatedUtc { get; init; }
         public string UpdatedBy { get; init; } = string.Empty;
+        public int? RolloutPercentage { get; init; }
     }
 }

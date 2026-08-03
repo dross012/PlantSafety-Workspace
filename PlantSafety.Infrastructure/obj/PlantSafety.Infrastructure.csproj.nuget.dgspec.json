@@ -43,6 +43,9 @@
               },
               "D:\\PlantSafety\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Abstractions\\Shared.AuditLogging.Abstractions.csproj": {
                 "projectPath": "D:\\PlantSafety\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Abstractions\\Shared.AuditLogging.Abstractions.csproj"
+              },
+              "D:\\PlantSafety\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions\\Shared.Authorization.Abstractions.csproj": {
+                "projectPath": "D:\\PlantSafety\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions\\Shared.Authorization.Abstractions.csproj"
               }
             }
           }
@@ -282,6 +285,14 @@
           "framework": "net8.0",
           "targetAlias": "net8.0",
           "dependencies": {
+            "Azure.Identity": {
+              "target": "Package",
+              "version": "[1.13.2, )"
+            },
+            "Azure.Security.KeyVault.Secrets": {
+              "target": "Package",
+              "version": "[4.7.0, )"
+            },
             "Azure.Storage.Blobs": {
               "target": "Package",
               "version": "[12.24.0, )"
@@ -310,9 +321,29 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "OpenTelemetry.Exporter.Console": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
+            "OpenTelemetry.Exporter.OpenTelemetryProtocol": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
             "OpenTelemetry.Extensions.Hosting": {
               "target": "Package",
-              "version": "[1.9.0, )"
+              "version": "[1.17.0, )"
+            },
+            "OpenTelemetry.Instrumentation.AspNetCore": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
+            "OpenTelemetry.Instrumentation.Http": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
+            "OpenTelemetry.Instrumentation.SqlClient": {
+              "target": "Package",
+              "version": "[1.17.0, )"
             },
             "Polly": {
               "target": "Package",
@@ -429,6 +460,10 @@
             "Microsoft.Extensions.DependencyInjection": {
               "target": "Package",
               "version": "[10.0.8, )"
+            },
+            "Microsoft.Extensions.Logging.Abstractions": {
+              "target": "Package",
+              "version": "[10.0.9, )"
             },
             "MongoDB.Bson": {
               "target": "Package",
@@ -643,6 +678,89 @@
               "version": "[8.0.0, )"
             }
           },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.29, 8.0.29]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\PlantSafety\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions\\Shared.Authorization.Abstractions.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\PlantSafety\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions\\Shared.Authorization.Abstractions.csproj",
+        "projectName": "Shared.Authorization.Abstractions",
+        "projectPath": "D:\\PlantSafety\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions\\Shared.Authorization.Abstractions.csproj",
+        "packagesPath": "D:\\NuGetPackages",
+        "outputPath": "D:\\PlantSafety\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\dross\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\NugetLocalFeed": {},
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "framework": "net8.0",
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "framework": "net8.0",
+          "targetAlias": "net8.0",
           "imports": [
             "net461",
             "net462",

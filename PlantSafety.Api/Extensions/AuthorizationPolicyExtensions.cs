@@ -78,6 +78,19 @@ public static class AuthorizationPolicyExtensions
         options.AddPolicy(SafetyTierPolicies.Approve, RequireRoles(SafetyRoles.ApproverAndAbove));
         options.AddPolicy(SafetyTierPolicies.Admin,   RequireRoles(SafetyRoles.AdminOnly));
 
+        // ── MFA enforcement (Phase 6 §2.1) ──────────────────────────────────
+        // Checks the standard OIDC "amr" (Authentication Methods References,
+        // RFC 8176) claim for a "mfa" value. Any controller opts in with
+        // [Authorize(Policy = MfaPolicy.RequireMfa)] or the [RequireMfa]
+        // attribute shortcut (PlantSafety.Api.Attributes.RequireMfaAttribute).
+        // This is purely additive: it does not replace or weaken any existing
+        // role/tier policy, it is layered alongside them.
+        options.AddPolicy(MfaPolicy.RequireMfa, policy => policy
+            .RequireAuthenticatedUser()
+            .RequireAssertion(context => context.User.Claims.Any(c =>
+                string.Equals(c.Type, "amr", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(c.Value, "mfa", StringComparison.OrdinalIgnoreCase))));
+
         // ── Every per-module *AuthorizationPolicies class's policy-name
         //    constants, auto-discovered so new modules can never drift out of
         //    registration again ───────────────────────────────────────────────

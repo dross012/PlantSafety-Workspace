@@ -53,6 +53,7 @@ using PlantSafety.Application.Auditing.AuditTimeline.DependencyInjection;
 using PlantSafety.Application.Compliance.RulesEngine.DependencyInjection;
 using PlantSafety.Application.Scheduling.PredictiveScheduling.DependencyInjection;
 using PlantSafety.Application.Operations.DependencyInjection;
+using PlantSafety.Application.Enterprise.EventMesh.DependencyInjection;
 
 namespace PlantSafety.Application.DependencyInjection;
 
@@ -164,6 +165,17 @@ public static class ApplicationServiceRegistration
         // SafetyPolicies/SafetyProcedures/SafetyCulture modules -- see
         // docs/Phase5/ui-gaps-scoping.md section 8.
         services.AddSafetyProgramsApplicationServices();
+
+        // Phase 6.6 Enterprise Deployment & Release Architecture (2026-08-03), §6.2 Blue/Green
+        // + Canary + Tenant Rollout: deterministic tenant-rollout evaluator layered on top of
+        // the existing Operations.Configuration feature-flag system's new RolloutPercentage
+        // column. Singleton: pure, stateless, side-effect-free (SHA-256 hash computation only).
+        services.AddSingleton<Common.Rollout.ITenantRolloutPolicy, Common.Rollout.FeatureRolloutEvaluator>();
+
+        // Phase 6 §3 Enterprise Event Mesh (2026-08-03, Eventing & Messaging Agent): cross-SYSTEM
+        // (platform <-> external ERP/MES/CMMS) event exchange -- inbound translators + the
+        // event-upgrade pipeline. See PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh.
+        services.AddEnterpriseEventMeshApplicationServices();
 
         return services;
     }

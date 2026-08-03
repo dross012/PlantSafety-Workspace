@@ -49,6 +49,12 @@ public interface IApplicationLogger
 /// </summary>
 public sealed record OperationLogEnvelope
 {
+    /// <summary>
+    /// Gets the log schema version (Handbook §2.33 Canonical Log Schema Versioning Rule).
+    /// MUST be a string, MUST appear first, and MUST evolve additively.
+    /// </summary>
+    public string SchemaVersion { get; init; } = "2026.1";
+
     /// <summary>Gets the operation name in canonical <c>Module.Operation</c> format.</summary>
     public required string OperationName { get; init; }
 

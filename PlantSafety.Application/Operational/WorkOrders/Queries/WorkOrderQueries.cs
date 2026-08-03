@@ -59,6 +59,14 @@ public sealed record GetMachineHistoryQuery(Guid TenantId, Guid MachineId, int P
 public sealed record GetTechnicianWorkloadQuery(Guid TenantId, int PageNumber, int PageSize)
     : IRequest<Result<PaginatedResult<TechnicianWorkloadDto>>>;
 
+/// <summary>
+/// Phase 6 §3.4 Replay/Rebuild Across Systems: reconstructs a WorkOrder's state purely by replaying
+/// its <c>[System].[OutboxMessages]</c> domain-event history, optionally cut off at
+/// <paramref name="AsOfUtc"/> for point-in-time reconstruction (omit for "as of now").
+/// </summary>
+public sealed record RebuildWorkOrderTimelineQuery(Guid TenantId, Guid WorkOrderId, DateTime? AsOfUtc = null)
+    : IRequest<Result<WorkOrderRebuiltStateDto>>;
+
 /// <summary>Retrieves the parts inventory list.</summary>
 public sealed record ListPartsInventoryQuery(Guid TenantId, int PageNumber, int PageSize)
     : IRequest<Result<PaginatedResult<PartInventoryDto>>>;

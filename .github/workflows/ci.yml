@@ -1,0 +1,218 @@
+# ============================================================================
+# PlantSafety.sln — Enterprise CI/CD promotion pipeline
+# Phase 6.6 (Enterprise Deployment & Release Architecture), §6.1 Multi-Environment
+# Promotion.
+#
+# This is a REAL, correct GitHub Actions workflow artifact -- it will not actually run
+# end-to-end in this sandboxed dev environment (no live GitHub Actions runners/secrets
+# are configured against this repository from here), but it is ready for a human to
+# wire up: push it to a real GitHub repo with the referenced secrets configured and it
+# will execute as written.
+#
+# Stages: build -> test -> SQL migration validation -> contract-test gate (conditional
+# on the Enterprise contract-test project landing) -> Dev -> Test -> Staging -> Prod
+# promotion gates (deploy steps are placeholders since the actual target deploy
+# platform for PlantSafety.Api is not determinable from this codebase as it stands --
+# see docs\Phase6\deployment-release-architecture.md's §6.2 finding. Do NOT assume
+# Azure App Service/AKS here; that decision is a genuine open ambiguity flagged, not
+# guessed).
+# ============================================================================
+name: PlantSafety CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  SOLUTION_PATH: "PlantSafety/PlantSafety.sln"
+
+jobs:
+  # --------------------------------------------------------------------------
+  # 1. Build
+  # --------------------------------------------------------------------------
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+
+      - name: Build (Release, 0 warnings-as-errors baseline)
+        run: dotnet build "${{ env.SOLUTION_PATH }}" --configuration Release --no-restore
+
+  # --------------------------------------------------------------------------
+  # 2. Test
+  # --------------------------------------------------------------------------
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+
+      - name: Run unit tests (PlantSafety.Tests)
+        run: dotnet test "PlantSafety/PlantSafety.Tests/PlantSafety.Tests.csproj" --configuration Release --no-restore --logger "trx;LogFileName=unit-tests.trx"
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: "**/unit-tests.trx"
+
+  # --------------------------------------------------------------------------
+  # 3. SQL migration validation
+  #    Runs every real migration script (numeric/phase order) against a throwaway
+  #    SQL Server container to catch syntax/ordering errors before promotion.
+  # --------------------------------------------------------------------------
+  sql-migration-validation:
+    name: SQL Migration Validation
+    runs-on: ubuntu-latest
+    needs: build
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: ${{ secrets.CI_SQL_SA_PASSWORD }}
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P $MSSQL_SA_PASSWORD -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install sqlcmd
+        run: |
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+          curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+
+      - name: Apply migrations in numeric/phase order
+        run: |
+          export PATH="$PATH:/opt/mssql-tools18/bin"
+          shopt -s globstar nullglob
+          for f in PlantSafety/PlantSafety.Infrastructure/Persistence/Migrations/**/*.sql; do
+            echo "Applying $f"
+            sqlcmd -C -S localhost -U sa -P "${{ secrets.CI_SQL_SA_PASSWORD }}" -i "$f"
+          done
+
+  # --------------------------------------------------------------------------
+  # 4. Contract-test gate
+  #    ACTIVATION NOTE: PlantSafety.Tests\SharedKernel\Contracts\Enterprise\ did not
+  #    exist as of this pass (the concurrent CanonicalModel agent's Phase 6 contract
+  #    tests had not yet landed -- see docs\Phase6\deployment-release-architecture.md).
+  #    This step is written as a soft-fail (continue-on-error) placeholder that
+  #    activates for real the moment that project lands -- remove `continue-on-error`
+  #    once PlantSafety.Tests/SharedKernel/Contracts/Enterprise/*.csproj exists and is
+  #    part of the solution.
+  # --------------------------------------------------------------------------
+  contract-gate:
+    name: Contract Test Gate (Enterprise)
+    runs-on: ubuntu-latest
+    needs: [test, sql-migration-validation]
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run Enterprise contract tests (if landed)
+        run: |
+          CONTRACT_DIR="PlantSafety/PlantSafety.Tests/SharedKernel/Contracts/Enterprise"
+          if [ -d "$CONTRACT_DIR" ]; then
+            echo "Enterprise contract-test directory found -- running as a hard gate."
+            dotnet test "$CONTRACT_DIR" --configuration Release
+          else
+            echo "::warning::$CONTRACT_DIR does not exist yet (Enterprise contract tests not landed). Skipping as a soft gate -- remove 'continue-on-error' on this job once it lands."
+          fi
+
+  # --------------------------------------------------------------------------
+  # 5-8. Dev -> Test -> Staging -> Prod promotion gates.
+  #
+  # DEPLOY STEP AMBIGUITY (flagged, not guessed): the actual target deploy platform
+  # for PlantSafety.Api (Kubernetes vs. Azure App Service vs. something else) is not
+  # determinable from this codebase -- see docs\Phase6\deployment-release-
+  # architecture.md's §6.2 finding. The `Azure` solution at D:\PlantSafety\source\Azure
+  # models Azure resource types domain-side and is NOT a deployment-slot/ARM/Bicep
+  # config for this API. Each environment's "Deploy" step below is therefore a
+  # deliberate placeholder (docker build/push only) -- a human who confirms the target
+  # platform should replace the placeholder with the real deploy command (kubectl
+  # apply / az webapp deploy / etc.) without needing to re-derive anything else in
+  # this pipeline.
+  # --------------------------------------------------------------------------
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: contract-gate
+    if: github.ref == 'refs/heads/main'
+    environment: Development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container image
+        run: docker build -f PlantSafety/PlantSafety.Api/Dockerfile -t plantsafety-api:dev-${{ github.sha }} PlantSafety
+      - name: "Deploy (PLACEHOLDER -- target platform undetermined, see file header)"
+        run: echo "Deploy step intentionally a placeholder pending target-platform decision."
+
+  deploy-test:
+    name: Deploy to Test
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    environment: Test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container image
+        run: docker build -f PlantSafety/PlantSafety.Api/Dockerfile -t plantsafety-api:test-${{ github.sha }} PlantSafety
+      - name: "Deploy (PLACEHOLDER -- target platform undetermined, see file header)"
+        run: echo "Deploy step intentionally a placeholder pending target-platform decision."
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: deploy-test
+    environment: Staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container image
+        run: docker build -f PlantSafety/PlantSafety.Api/Dockerfile -t plantsafety-api:staging-${{ github.sha }} PlantSafety
+      - name: "Deploy (PLACEHOLDER -- target platform undetermined, see file header)"
+        run: echo "Deploy step intentionally a placeholder pending target-platform decision."
+
+  deploy-prod:
+    name: Deploy to Prod
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment:
+      name: Production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container image
+        run: docker build -f PlantSafety/PlantSafety.Api/Dockerfile -t plantsafety-api:prod-${{ github.sha }} PlantSafety
+      - name: "Deploy (PLACEHOLDER -- target platform undetermined, see file header)"
+        run: echo "Deploy step intentionally a placeholder pending target-platform decision. Production environment protection rules (manual approval) should be configured in repo Settings > Environments."

@@ -35,9 +35,14 @@ public sealed class ControllerAuthorizationTierTests
 {
     /// <summary>
     /// Controllers reviewed and confirmed to legitimately allow anonymous access:
-    /// PlatformV1/V2Controller (version/health info, no Safety data) and
+    /// PlatformV1/V2Controller (version/health info, no Safety data),
     /// WebhookReceiverV1Controller (authenticates external callers via a webhook
-    /// signature, not a JWT bearer token — see WebhookAuthorizationPolicies.cs).
+    /// signature, not a JWT bearer token — see WebhookAuthorizationPolicies.cs),
+    /// EnterpriseEventMeshV1Controller (Phase 6 inbound ERP/MES/CMMS/HR/Vendor event-mesh
+    /// webhook) and SecretRotationWebhookV1Controller (Phase 6 Key Vault rotation
+    /// notification webhook) — both machine-to-machine endpoints authenticated via
+    /// ApiKeyAuthFilter (a shared API-key header check), the same "not a JWT bearer
+    /// token" pattern already reviewed and accepted for WebhookReceiverV1Controller.
     /// Any new [AllowAnonymous] controller not on this list fails the test, forcing
     /// a deliberate, reviewed addition rather than silent anonymous-endpoint drift.
     /// </summary>
@@ -46,6 +51,8 @@ public sealed class ControllerAuthorizationTierTests
         "PlatformV1Controller",
         "PlatformV2Controller",
         "WebhookReceiverV1Controller",
+        "EnterpriseEventMeshV1Controller",
+        "SecretRotationWebhookV1Controller",
     };
 
     private static IAuthorizationPolicyProvider BuildPolicyProvider()

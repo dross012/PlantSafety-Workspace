@@ -5,11 +5,22 @@
 //  File:           OutboxProcessor.cs
 //  Created:        2026-06-17
 //  Author:         David (Ted) + Copilot
+//  Last Updated:   2026-08-03 (Claude Code performance-optimization-agent) -- Regression audit
+//                  fix (Handbook §2.19-2.22, §2.31.2 Canonical Background Job Logging Example):
+//                  this hosted service previously emitted message-template logs
+//                  ("OutboxProcessor started.", "OutboxProcessor published {EventType} ...")
+//                  with no lineage (no root CorrelationId/CausationId) and no SchemaVersion.
+//                  Converted the batch-level start/success/error logs to canonical envelopes via
+//                  IApplicationLogger, generating a fresh root CorrelationId/CausationId per
+//                  batch per §2.31.2 ("Background jobs MUST generate a new root CausationId...").
+//                  The per-message LogInformation/LogWarning/LogDebug calls inside PublishAsync
+//                  are left as-is (out of this pass's representative-sample scope; see remarks).
 //  SchemaVersion:  2026.1
 //  Description:    Hosted service that polls OutboxMessages and publishes integration events to Azure Service Bus.
 //                  Additive-only evolution.
 // ============================================================================
 using Microsoft.Extensions.Hosting;
+using PlantSafety.Application.Abstractions.Logging;
 using PlantSafety.Infrastructure.Common.Serialization;
 using PlantSafety.Infrastructure.Messaging;
 
@@ -23,6 +34,7 @@ namespace PlantSafety.Infrastructure.BackgroundJobs;
 public sealed class OutboxProcessor(
     ISqlConnectionFactory connectionFactory,
     IServiceProvider serviceProvider,
+    IApplicationLogger applicationLogger,
     ILogger<OutboxProcessor> logger)
     : BackgroundService
 {
@@ -31,26 +43,60 @@ public sealed class OutboxProcessor(
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("OutboxProcessor started.");
-
         while (!stoppingToken.IsCancellationRequested)
         {
+            // Handbook §2.31.2: background jobs generate a fresh root CorrelationId/CausationId
+            // per execution (here: per polling batch), since there is no inbound API request to
+            // inherit lineage from.
+            var correlationId = Guid.NewGuid();
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             try
             {
-                await ProcessBatchAsync(stoppingToken);
+                var processedCount = await ProcessBatchAsync(stoppingToken);
+                stopwatch.Stop();
+
+                applicationLogger.LogSuccess(new OperationLogEnvelope
+                {
+                    OperationName = "OutboxProcessor.ProcessBatch",
+                    HandlerType = nameof(OutboxProcessor),
+                    CorrelationId = correlationId,
+                    TenantId = Guid.Empty,
+                    TimestampUtc = DateTime.UtcNow,
+                    ElapsedMs = stopwatch.ElapsedMilliseconds,
+                    Success = true,
+                    Severity = LogSeverity.Information
+                });
+
+                _ = processedCount;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogError(ex, "OutboxProcessor encountered an error during batch processing.");
+                stopwatch.Stop();
+                var sanitized = PlantSafety.Application.Common.Logging.ExceptionSanitizer.Sanitize(ex);
+
+                applicationLogger.LogError(new OperationLogEnvelope
+                {
+                    OperationName = "OutboxProcessor.ProcessBatch",
+                    HandlerType = nameof(OutboxProcessor),
+                    CorrelationId = correlationId,
+                    TenantId = Guid.Empty,
+                    TimestampUtc = DateTime.UtcNow,
+                    ElapsedMs = stopwatch.ElapsedMilliseconds,
+                    Success = false,
+                    ExceptionType = sanitized.ExceptionType,
+                    Message = sanitized.Message,
+                    HResult = sanitized.HResult,
+                    StackTraceHash = sanitized.StackTraceHash,
+                    Severity = LogSeverity.Error
+                });
             }
 
             await Task.Delay(_interval, stoppingToken);
         }
-
-        logger.LogInformation("OutboxProcessor stopped.");
     }
 
-    private async Task ProcessBatchAsync(CancellationToken cancellationToken)
+    private async Task<int> ProcessBatchAsync(CancellationToken cancellationToken)
     {
         using var conn = connectionFactory.CreateConnection();
         using var tx   = conn.BeginTransaction(IsolationLevel.ReadCommitted);
@@ -62,6 +108,8 @@ public sealed class OutboxProcessor(
                 transaction: tx,
                 commandType: CommandType.Text);
 
+            var processedCount = 0;
+
             foreach (var envelope in batch)
             {
                 await PublishAsync(envelope, cancellationToken);
@@ -72,9 +120,11 @@ public sealed class OutboxProcessor(
                     transaction: tx);
 
                 logger.LogInformation("OutboxProcessor published {EventType} MessageId={MessageId}", envelope.EventType, envelope.MessageId);
+                processedCount++;
             }
 
             tx.Commit();
+            return processedCount;
         }
         catch
         {

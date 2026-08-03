@@ -42,3 +42,6 @@ D:\PlantSafety\source\PlantSafety\PlantSafety.Application\obj\Debug\net8.0\refin
 D:\PlantSafety\source\PlantSafety\PlantSafety.Application\obj\Debug\net8.0\PlantSafety.Application.xml
 D:\PlantSafety\source\PlantSafety\PlantSafety.Application\obj\Debug\net8.0\PlantSafety.Application.pdb
 D:\PlantSafety\source\PlantSafety\PlantSafety.Application\obj\Debug\net8.0\ref\PlantSafety.Application.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.Application\bin\Debug\net8.0\Shared.Authorization.Abstractions.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.Application\bin\Debug\net8.0\Shared.Authorization.Abstractions.pdb
+D:\PlantSafety\source\PlantSafety\PlantSafety.Application\bin\Debug\net8.0\Shared.Authorization.Abstractions.xml

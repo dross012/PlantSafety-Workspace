@@ -11,6 +11,7 @@ using MediatR;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using PlantSafety.Application.Abstractions.Context;
+using PlantSafety.Application.Abstractions.Logging;
 using PlantSafety.Application.Behaviors.Performance;
 
 namespace PlantSafety.Tests.Application.Pipeline;
@@ -22,10 +23,10 @@ public sealed class PerformanceBehaviorTests : UnitTestBase
     [Fact]
     public async Task Handle_ShouldCallNext()
     {
-        var logger = NullLogger<PerformanceBehavior<TestCommand, Unit>>();
+        var applicationLogger = Substitute.For<IApplicationLogger>();
         var operationContext = Substitute.For<IOperationContext>();
         var options = Options.Create(new PerformanceOptions());
-        var behavior = new PerformanceBehavior<TestCommand, Unit>(logger, operationContext, options);
+        var behavior = new PerformanceBehavior<TestCommand, Unit>(applicationLogger, operationContext, options);
         var next = Substitute.For<RequestHandlerDelegate<Unit>>();
         next.Invoke().Returns(Unit.Value);
 

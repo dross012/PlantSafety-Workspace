@@ -33,6 +33,7 @@
 
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using PlantSafety.Api.Context;
 using PlantSafety.Api.Filters;
 using PlantSafety.Api.HealthChecks;
@@ -102,7 +103,8 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        var authenticationBuilder = services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
                 options.Authority = configuration["AzureAd:Authority"];
@@ -110,6 +112,37 @@ public static class ServiceCollectionExtensions
                 options.TokenValidationParameters.ValidateLifetime = true;
                 options.TokenValidationParameters.ClockSkew = TimeSpan.FromSeconds(30);
             });
+
+        // ── SSO / OpenID Connect (Phase 6 §2.1) ─────────────────────────────
+        // Additive: JwtBearer remains the default scheme (bearer-token API
+        // callers are unaffected). The "Sso:OpenIdConnect" section is
+        // configuration-driven and, per this codebase's established
+        // "optional, gracefully degrading" convention (see
+        // Database:ReadConnectionString), is UNSET by default — no real
+        // external IdP/SSO tenant exists in this environment. The scheme is
+        // only registered when an Authority is actually configured, so an
+        // unconfigured environment behaves exactly as it did before this
+        // change (no OIDC challenge scheme added, no startup failure).
+        var ssoAuthority = configuration["Sso:OpenIdConnect:Authority"];
+        if (!string.IsNullOrWhiteSpace(ssoAuthority))
+        {
+            authenticationBuilder.AddOpenIdConnect("OpenIdConnect", options =>
+            {
+                options.Authority = ssoAuthority;
+                options.ClientId = configuration["Sso:OpenIdConnect:ClientId"];
+                options.ClientSecret = configuration["Sso:OpenIdConnect:ClientSecret"];
+                options.ResponseType = "code";
+                options.UsePkce = true;
+                options.SaveTokens = true;
+                options.GetClaimsFromUserInfoEndpoint = true;
+
+                var audience = configuration["Sso:OpenIdConnect:Audience"];
+                if (!string.IsNullOrWhiteSpace(audience))
+                {
+                    options.TokenValidationParameters.ValidAudience = audience;
+                }
+            });
+        }
 
         return services;
     }
@@ -137,11 +170,17 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Phase 6.6 (§6.4 Disaster Recovery): formalized RPO/RTO targets, bound here so
+        // BackupRpoHealthCheck can resolve IOptions<RpoRtoOptions>.
+        services.Configure<PlantSafety.Infrastructure.Operations.Backup.Options.RpoRtoOptions>(
+            configuration.GetSection(PlantSafety.Infrastructure.Operations.Backup.Options.RpoRtoOptions.SectionName));
+
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
             .AddCheck<RedisHealthCheck>("redis", tags: ["ready"])
             .AddCheck<ServiceBusHealthCheck>("servicebus", tags: ["ready"])
-            .AddCheck<SchemaVersionHealthCheck>("schema-version", tags: ["ready"]);
+            .AddCheck<SchemaVersionHealthCheck>("schema-version", tags: ["ready"])
+            .AddCheck<BackupRpoHealthCheck>("backup-rpo", tags: ["ready"]);
 
         return services;
     }

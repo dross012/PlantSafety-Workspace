@@ -1,0 +1,19 @@
+{
+  "RiskEventId": "00000000-0000-0000-0000-0000000000a1",
+  "TenantId": "00000000-0000-0000-0000-0000000000b2",
+  "SiteId": "00000000-0000-0000-0000-0000000000c3",
+  "RiskTitle": "Pinch point on Conveyor B",
+  "Category": "High",
+  "Location": "Building 2, Zone A",
+  "HazardSource": "Mechanical",
+  "Status": "Scored",
+  "CreatedAtUtc": "2026-08-03T12:00:00Z",
+  "Priority": "P2",
+  "CurrentScoreSeverity": 4,
+  "CurrentScoreLikelihood": 3,
+  "ResidualScoreSeverity": null,
+  "ResidualScoreLikelihood": null,
+  "ControlMeasureCount": 1,
+  "ReviewCadenceCode": "Monthly",
+  "LastReviewedAtUtc": null
+}

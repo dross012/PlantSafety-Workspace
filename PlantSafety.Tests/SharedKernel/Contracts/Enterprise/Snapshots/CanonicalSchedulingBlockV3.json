@@ -1,0 +1,21 @@
+{
+  "SchedulingBlockId": "00000000-0000-0000-0000-0000000000a1",
+  "TenantId": "00000000-0000-0000-0000-0000000000b2",
+  "SiteId": "00000000-0000-0000-0000-0000000000c3",
+  "OptimizationRunId": "00000000-0000-0000-0000-0000000000b2",
+  "TaskId": "00000000-0000-0000-0000-0000000000c3",
+  "ResourceId": "00000000-0000-0000-0000-0000000000a1",
+  "Status": "Completed",
+  "StartUtc": "2026-08-03T12:00:00Z",
+  "EndUtc": "2026-08-03T12:00:00Z",
+  "CreatedAtUtc": "2026-08-03T12:00:00Z",
+  "EffectivePriorityWeight": 0.75,
+  "Objective": "MinimizeDowntime",
+  "SelectedStrategyName": "GeneticAlgorithm",
+  "RunScore": 0.88,
+  "PredictedConflictLikelihood": 0.15,
+  "PredictedDuration": "01:30:00",
+  "RecommendedWindowScore": 0.91,
+  "PredictionModelVersion": "2026.1-heuristic",
+  "PredictionGeneratedAtUtc": "2026-08-03T12:00:00Z"
+}

@@ -21,8 +21,10 @@
 //
 // ============================================================================
 
+using System.Security.Claims;
 using PlantSafety.Api.CrossDomain;
 using PlantSafety.Application.Abstractions.Context;
+using Shared.Authorization.Abstractions.Roles;
 
 namespace PlantSafety.Api.Context;
 
@@ -80,4 +82,49 @@ public sealed class OperationContextAccessor : IOperationContext
 
     /// <inheritdoc/>
     public DateTime OperationStartedAtUtc => _operationStartedAtUtc;
+
+    /// <inheritdoc/>
+    public RoleContext RoleContext
+    {
+        get
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated != true)
+            {
+                return RoleContext.Empty;
+            }
+
+            var roleClaimValues = user.FindAll(ClaimTypes.Role)
+                .Concat(user.FindAll("role"))
+                .Select(c => c.Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var highestRole = RoleInheritanceResolver.ResolveHighestRole(roleClaimValues);
+
+            return new RoleContext(roleClaimValues, highestRole);
+        }
+    }
+
+    /// <inheritdoc/>
+    public ComplianceContext ComplianceContext
+    {
+        get
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            var regulatoryScope = user?.FindFirst(ComplianceScopeClaimType)?.Value;
+
+            return string.IsNullOrWhiteSpace(regulatoryScope)
+                ? ComplianceContext.None
+                : new ComplianceContext(IsRegulatedSession: true, RegulatoryScope: regulatoryScope);
+        }
+    }
+
+    /// <summary>
+    /// Claim type carrying the current session's regulatory scope, when the identity
+    /// provider or tenant configuration asserts one (e.g. <c>"OSHA"</c>, <c>"ISO45001"</c>).
+    /// Absent by default — most sessions are non-regulated, matching this codebase's
+    /// established graceful-degrade convention for optional context.
+    /// </summary>
+    private const string ComplianceScopeClaimType = "compliance_scope";
 }

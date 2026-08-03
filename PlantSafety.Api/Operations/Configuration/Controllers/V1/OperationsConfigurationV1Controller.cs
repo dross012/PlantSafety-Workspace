@@ -80,4 +80,28 @@ public sealed class OperationsConfigurationV1Controller : ControllerBase
 
         return Ok(ApiResponse<FeatureFlagDto>.Ok(result.Value, CorrelationId));
     }
+
+    /// <summary>
+    /// Sets (or clears) a single feature flag's canary-rollout percentage (Phase 6.6, §6.2
+    /// Blue/Green + Canary + Tenant Rollout). Combine with IFeatureFlagRepository's existing
+    /// IsEnabled switch and PlantSafety.Application.Common.Rollout.ITenantRolloutPolicy to
+    /// decide per-tenant rollout-wave membership.
+    /// </summary>
+    [HttpPut("{databaseKey}/feature-flags/{flagName}/rollout-percentage")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
+    [ProducesResponseType(typeof(ApiResponse<FeatureFlagDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<FeatureFlagDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetFeatureFlagRolloutPercentageAsync(
+        [FromRoute] string databaseKey,
+        [FromRoute] string flagName,
+        [FromBody] SetFeatureFlagRolloutPercentageRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new SetFeatureFlagRolloutPercentageCommand(databaseKey, flagName, request.RolloutPercentage), cancellationToken);
+
+        if (result.IsFailure)
+            return BadRequest(ApiResponse<FeatureFlagDto>.Fail(result.Error.Message, CorrelationId));
+
+        return Ok(ApiResponse<FeatureFlagDto>.Ok(result.Value, CorrelationId));
+    }
 }

@@ -23,6 +23,7 @@
     <Folder Include="Common\Constants\" />
     <Folder Include="Common\Exceptions\" />
     <Folder Include="Common\Logging\" />
+    <Folder Include="Common\Secrets\" />
     <Folder Include="Common\Mapping\" />
     <Folder Include="Common\Middleware\" />
     <Folder Include="Common\Extensions\" />
@@ -221,10 +222,35 @@
     <PackageReference Include="QuestPDF" Version="2026.7.2" />
     <PackageReference Include="StackExchange.Redis" Version="2.13.1" />
     <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
+    <!-- OpenTelemetry: previously OpenTelemetry.Extensions.Hosting was referenced with ZERO
+         AddOpenTelemetry()/WithTracing() call anywhere in the solution: a dead package
+         reference (Handbook Phase 6 §5.1 Distributed Tracing gap, closed 2026-08-03). The three
+         instrumentation packages below cover ASP.NET Core request spans, outbound HttpClient
+         calls, and the underlying SqlClient connections Dapper issues (Dapper itself has no
+         ActivitySource, but Microsoft.Data.SqlClient's own diagnostics does). Console exporter is
+         always available for local/dev visibility; the OTLP exporter is wired but only activated
+         when "OpenTelemetry:OtlpEndpoint" is configured (opt-in, no hardcoded collector). -->
+    <!-- Bumped from the pre-existing 1.9.0 pin (2026-08-03): OpenTelemetry.Exporter.
+         OpenTelemetryProtocol 1.9.0 has a known moderate-severity advisory
+         (GHSA-4625-4j76-fww9); 1.17.0 is the latest coherent set across all six packages and
+         resolves it. -->
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.17.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.17.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.24.0" />
+    <!-- Azure.Security.KeyVault.Secrets + Azure.Identity: Phase 6.6 enterprise secrets
+         management (AzureKeyVaultSecretsProvider). NEW dependency added by this pass;
+         flag for review. DefaultAzureCredential (Azure.Identity) is used for
+         vault authentication; no client secret/certificate is hardcoded anywhere.
+         Cannot be exercised against a real vault in this sandboxed dev environment;
+         see Common\Secrets\ for the honest fail-loud behavior when unconfigured. -->
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.7.0" />
+    <PackageReference Include="Azure.Identity" Version="1.13.2" />
   </ItemGroup>
 
   <ItemGroup>

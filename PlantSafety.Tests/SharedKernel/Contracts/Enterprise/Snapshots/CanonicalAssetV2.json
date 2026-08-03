@@ -1,0 +1,13 @@
+{
+  "AssetId": "00000000-0000-0000-0000-0000000000a1",
+  "TenantId": "00000000-0000-0000-0000-0000000000b2",
+  "SiteId": "00000000-0000-0000-0000-0000000000c3",
+  "AssetName": "Conveyor B",
+  "AssetType": "Conveyor",
+  "Status": "Operational",
+  "CreatedAtUtc": "2026-08-03T12:00:00Z",
+  "UpdatedAtUtc": "2026-08-03T12:00:00Z",
+  "SerialNumber": "SN-12345",
+  "LastServicedAtUtc": "2026-08-03T12:00:00Z",
+  "LastServicedBy": "00000000-0000-0000-0000-0000000000c3"
+}

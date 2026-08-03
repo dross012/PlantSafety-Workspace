@@ -125,6 +125,21 @@ public sealed class WorkOrdersV1Controller : ControllerBase
     }
 
     /// <summary>
+    /// Phase 6 §3.4 Replay/Rebuild Across Systems: reconstructs a work order's state purely by
+    /// replaying its <c>[System].[OutboxMessages]</c> event history, optionally as of a supplied
+    /// point in time.
+    /// </summary>
+    [HttpGet("work-orders/{workOrderId:guid}/rebuild")]
+    [ProducesResponseType(typeof(ApiResponse<WorkOrderRebuiltStateDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<WorkOrderRebuiltStateDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RebuildWorkOrderTimelineAsync(Guid workOrderId, [FromQuery] DateTime? asOfUtc = null, CancellationToken cancellationToken = default)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var result = await _sender.Send(new RebuildWorkOrderTimelineQuery(env.TenantId, workOrderId, asOfUtc), cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>
     /// Reuse point: retrieves fresh predictive maintenance insights for a work order's target
     /// machine, delegating to the real Operational.PredictiveMaintenance module. Never cached.
     /// </summary>

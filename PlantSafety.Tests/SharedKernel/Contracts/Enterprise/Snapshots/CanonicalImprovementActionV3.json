@@ -1,0 +1,16 @@
+{
+  "ImprovementActionId": "00000000-0000-0000-0000-0000000000a1",
+  "TenantId": "00000000-0000-0000-0000-0000000000b2",
+  "SourceEventId": "00000000-0000-0000-0000-0000000000c3",
+  "SourceEventType": "Incident",
+  "Title": "Install machine guard",
+  "Description": "Install a fixed guard on Conveyor B pinch point.",
+  "ActionType": "Corrective",
+  "Priority": "High",
+  "Status": "InProgress",
+  "AssignedToWorkerId": "00000000-0000-0000-0000-0000000000b2",
+  "DueAtUtc": "2026-08-03T12:00:00Z",
+  "CreatedAtUtc": "2026-08-03T12:00:00Z",
+  "CompletedAtUtc": null,
+  "IsPredictedOverdue": false
+}

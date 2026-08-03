@@ -318,3 +318,44 @@ public sealed record MaintenancePredictiveInsightsDto
     /// <summary>UTC timestamp the insight was generated.</summary>
     public required DateTimeOffset GeneratedAtUtc { get; init; }
 }
+
+/// <summary>
+/// Point-in-time (or current) WorkOrder state reconstructed purely by replaying its
+/// <c>[System].[OutboxMessages]</c>-recorded domain-event history (Phase 6 §3.4 Replay/Rebuild
+/// Across Systems). Mirrors the chronological-composition pattern established by
+/// <c>PlantSafety.Domain.Auditing.AuditTimeline.Services.AuditTimelineCompositionService</c> for the
+/// Phase 5 audit timeline, applied here to WorkOrder lifecycle rebuild.
+/// </summary>
+public sealed record WorkOrderRebuiltStateDto
+{
+    /// <summary>Identity of the rebuilt WorkOrder.</summary>
+    public required Guid WorkOrderId { get; init; }
+
+    /// <summary>UTC timestamp state was reconstructed as-of (the latest replayed event's OccurredAtUtc if no cutoff was supplied).</summary>
+    public required DateTimeOffset AsOfUtc { get; init; }
+
+    /// <summary>Reconstructed lifecycle status after replaying every event up to <see cref="AsOfUtc"/>.</summary>
+    public required string Status { get; init; }
+
+    /// <summary>Reconstructed creation timestamp, if a WorkOrderCreated event was replayed.</summary>
+    public DateTimeOffset? CreatedAtUtc { get; init; }
+
+    /// <summary>Last assigned technician identifier reconstructed from replayed events, if any.</summary>
+    public Guid? LastAssignedTechnicianId { get; init; }
+
+    /// <summary>Completion notes reconstructed from the replayed WorkOrderCompleted event, if any.</summary>
+    public string? CompletionNotes { get; init; }
+
+    /// <summary>The full ordered sequence of replayed events that produced this reconstructed state.</summary>
+    public required IReadOnlyList<WorkOrderRebuiltTimelineEntryDto> ReplayedEvents { get; init; }
+}
+
+/// <summary>A single replayed event contributing to a <see cref="WorkOrderRebuiltStateDto"/>.</summary>
+public sealed record WorkOrderRebuiltTimelineEntryDto
+{
+    /// <summary>The Outbox EventType discriminator (e.g. "WorkOrderCompleted").</summary>
+    public required string EventType { get; init; }
+
+    /// <summary>UTC timestamp the event occurred.</summary>
+    public required DateTimeOffset OccurredAtUtc { get; init; }
+}

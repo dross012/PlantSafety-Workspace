@@ -10,6 +10,8 @@
 using MediatR;
 using NSubstitute;
 using PlantSafety.Application.Abstractions.Context;
+using PlantSafety.Application.Abstractions.CurrentUser;
+using PlantSafety.Application.Abstractions.Logging;
 using PlantSafety.Application.Behaviors.Logging;
 
 namespace PlantSafety.Tests.Application.Pipeline;
@@ -20,11 +22,18 @@ public sealed class LoggingBehaviorTests : UnitTestBase
 
     private static IOperationContext StubOperationContext() => Substitute.For<IOperationContext>();
 
+    private static ICurrentUserService StubCurrentUserService()
+    {
+        var stub = Substitute.For<ICurrentUserService>();
+        stub.IsAuthenticated.Returns(false);
+        return stub;
+    }
+
     [Fact]
     public async Task Handle_ShouldCallNext()
     {
-        var logger = NullLogger<LoggingBehavior<TestCommand, Unit>>();
-        var behavior = new LoggingBehavior<TestCommand, Unit>(logger, StubOperationContext());
+        var applicationLogger = Substitute.For<IApplicationLogger>();
+        var behavior = new LoggingBehavior<TestCommand, Unit>(applicationLogger, StubOperationContext(), StubCurrentUserService());
         var next = Substitute.For<RequestHandlerDelegate<Unit>>();
         next.Invoke().Returns(Unit.Value);
 
@@ -36,8 +45,8 @@ public sealed class LoggingBehaviorTests : UnitTestBase
     [Fact]
     public async Task Handle_ShouldReturnNextResult()
     {
-        var logger = NullLogger<LoggingBehavior<TestCommand, Unit>>();
-        var behavior = new LoggingBehavior<TestCommand, Unit>(logger, StubOperationContext());
+        var applicationLogger = Substitute.For<IApplicationLogger>();
+        var behavior = new LoggingBehavior<TestCommand, Unit>(applicationLogger, StubOperationContext(), StubCurrentUserService());
         var next = Substitute.For<RequestHandlerDelegate<Unit>>();
         next.Invoke().Returns(Unit.Value);
 

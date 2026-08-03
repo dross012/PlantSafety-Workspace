@@ -3,7 +3,12 @@
 // Project: PlantSafety.Api
 // Author: David (Ted)
 // Created: 2026-06-12
-// Last Updated: 2026-06-12
+// Last Updated: 2026-08-03 (Claude Code performance-optimization-agent) -- Regression audit fix
+//   (Handbook §2.19-2.23, §2.30 Canonical Logging Code Examples): this middleware previously
+//   logged the raw exception via a message template ("Unhandled exception. Path: {Path}, ...")
+//   instead of a single sanitized structured error envelope, had no SchemaVersion field, and did
+//   not include TraceId/SpanId/TenantId lineage. Converted to emit a canonical error envelope via
+//   IApplicationLogger + ExceptionSanitizer (never the raw stack trace -- only StackTraceHash).
 // Description: Global exception handling middleware that maps unhandled exceptions
 //              to RFC 7807 ProblemDetails responses without leaking stack traces.
 // ============================================================================
@@ -14,9 +19,9 @@
 //   preferred mechanism for known business outcomes — exceptions here are truly unexpected.
 // - Exception details are NEVER written to the response body to prevent information leakage.
 //   The CorrelationId in the response allows operators to correlate the response to the
-//   full structured log entry (which does contain the exception detail).
-// - Logging the exception at Error level occurs here. Infrastructure's Serilog pipeline
-//   enriches the log entry with CorrelationId, TenantId, and RequestPath automatically.
+//   full structured log entry (which does contain the sanitized exception detail).
+// - Logs a single structured error envelope (never a message template) via IApplicationLogger,
+//   sanitized via ExceptionSanitizer -- StackTraceHash only, never the raw stack trace.
 // - See Architecture Specification §4.10 (Global Exception Handling).
 //
 // Rationale:
@@ -31,7 +36,10 @@
 
 using System.Text.Json;
 using PlantSafety.Api.Models;
+using PlantSafety.Application.Abstractions.Context;
+using PlantSafety.Application.Abstractions.Logging;
 using PlantSafety.Application.Common.Errors;
+using PlantSafety.Application.Common.Logging;
 
 namespace PlantSafety.Api.Middleware;
 
@@ -42,7 +50,6 @@ namespace PlantSafety.Api.Middleware;
 public sealed class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -54,11 +61,9 @@ public sealed class ExceptionHandlingMiddleware
     /// Initializes a new instance of <see cref="ExceptionHandlingMiddleware"/>.
     /// </summary>
     /// <param name="next">The next middleware delegate in the pipeline.</param>
-    /// <param name="logger">The logger instance for recording unhandled exceptions.</param>
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(RequestDelegate next)
     {
         _next = next;
-        _logger = logger;
     }
 
     /// <summary>
@@ -66,7 +71,9 @@ public sealed class ExceptionHandlingMiddleware
     /// to RFC 7807 ProblemDetails responses with HTTP 500 status.
     /// </summary>
     /// <param name="context">The current <see cref="HttpContext"/>.</param>
-    public async Task InvokeAsync(HttpContext context)
+    /// <param name="applicationLogger">The canonical structured-envelope logger.</param>
+    /// <param name="operationContext">The current operation context carrying correlation lineage.</param>
+    public async Task InvokeAsync(HttpContext context, IApplicationLogger applicationLogger, IOperationContext operationContext)
     {
         try
         {
@@ -74,14 +81,30 @@ public sealed class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            var correlationId = context.Items[CorrelationIdMiddleware.ItemsKey]?.ToString()
-                                ?? context.TraceIdentifier;
+            var correlationId = operationContext.CorrelationId != Guid.Empty
+                ? operationContext.CorrelationId.ToString()
+                : context.TraceIdentifier;
 
-            _logger.LogError(
-                ex,
-                "Unhandled exception. Path: {Path}, CorrelationId: {CorrelationId}",
-                context.Request.Path,
-                correlationId);
+            var sanitized = ExceptionSanitizer.Sanitize(ex);
+
+            applicationLogger.LogError(new OperationLogEnvelope
+            {
+                OperationName = "Api.UnhandledException",
+                HandlerType = context.Request.Path.Value,
+                CorrelationId = operationContext.CorrelationId,
+                CausationId = operationContext.CausationId,
+                RequestId = operationContext.RequestId,
+                TraceId = operationContext.TraceId,
+                SpanId = operationContext.SpanId,
+                TenantId = operationContext.TenantId,
+                TimestampUtc = DateTime.UtcNow,
+                Success = false,
+                ExceptionType = sanitized.ExceptionType,
+                Message = sanitized.Message,
+                HResult = sanitized.HResult,
+                StackTraceHash = sanitized.StackTraceHash,
+                Severity = sanitized.Severity == "Warning" ? LogSeverity.Warning : LogSeverity.Error
+            });
 
             await WriteErrorResponseAsync(context, ex, correlationId);
         }

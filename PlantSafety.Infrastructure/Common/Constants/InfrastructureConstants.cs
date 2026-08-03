@@ -33,6 +33,16 @@ public static class InfrastructureConstants
     public const string DeadLetterSuffix = "/$DeadLetterQueue";
 
     /// <summary>
+    /// RequestMetricsCaptureService drain interval in seconds (Handbook Phase 6 §5.3
+    /// PlatformHealthDashboard). Bulk-flushes ChannelRequestMetricsRecorder's bounded channel into
+    /// [PlatformHealth].[RequestMetricEvent] on this cadence.
+    /// </summary>
+    public const int RequestMetricsFlushIntervalSeconds = 5;
+
+    /// <summary>Maximum samples drained from the request-metrics channel per flush cycle.</summary>
+    public const int RequestMetricsMaxBatchSize = 500;
+
+    /// <summary>
     /// Default RabbitMQ prefetch count applied bus-wide (see InfrastructureServiceRegistration's
     /// <c>x.UsingRabbitMq</c> configuration). Bounds how many unacknowledged messages MassTransit
     /// pulls per receive endpoint, which is this codebase's single chosen mechanism for capping

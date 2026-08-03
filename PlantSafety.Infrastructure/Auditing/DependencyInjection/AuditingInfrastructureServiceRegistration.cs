@@ -36,6 +36,10 @@ using PlantSafety.Infrastructure.Auditing.AuditEngagement.QualityControl.Persist
 using PlantSafety.Infrastructure.Auditing.AuditEngagement.RegulatoryCompliance.Persistence;
 using PlantSafety.Infrastructure.Auditing.AuditEngagement.Systems.Persistence;
 using PlantSafety.Infrastructure.Auditing.AuditFinding.Persistence;
+using PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Repositories;
+using PlantSafety.Infrastructure.Auditing.ComplianceMonitoring.PermissionUsage.Persistence;
+using PlantSafety.Application.Auditing.ComplianceMonitoring.DataLineage.Repositories;
+using PlantSafety.Infrastructure.Auditing.ComplianceMonitoring.DataLineage.Persistence;
 
 namespace PlantSafety.Infrastructure.Auditing.DependencyInjection;
 
@@ -48,6 +52,12 @@ public static class AuditingInfrastructureServiceRegistration
         // Domain aggregate repositories
         services.AddScoped<IAuditEngagementRepository, AuditEngagementDapperRepository>();
         services.AddScoped<Domain.Auditing.AuditFinding.Interfaces.IAuditFindingRepository, AuditFindingDapperRepository>();
+
+        // Phase 6 §5.4 Compliance Monitoring (2026-08-03): access-log/permission-usage capture
+        // (fed by AuthorizationBehavior) and cross-module data-lineage reconstruction (composed
+        // from the EXISTING Outbox + DeadLetterEvents infrastructure, not a new parallel system).
+        services.AddScoped<IPermissionUsageLogRepository, PermissionUsageLogDapperRepository>();
+        services.AddScoped<IDataLineageRepository, DataLineageDapperRepository>();
 
         // Application discipline read repositories
         services.AddScoped<IEfficiencyRepository, EfficiencyDapperRepository>();

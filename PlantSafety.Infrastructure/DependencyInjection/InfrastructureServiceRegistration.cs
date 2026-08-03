@@ -27,6 +27,8 @@ using PlantSafety.Infrastructure.Financials.Persistence;
 using PlantSafety.Infrastructure.Financials.Services;
 using PlantSafety.Application.Abstractions.CurrentUser;
 using PlantSafety.Application.Abstractions.Security;
+using PlantSafety.Application.Abstractions.Identity;
+using PlantSafety.Application.Abstractions.Authentication;
 using PlantSafety.Infrastructure.Identity;
 using PlantSafety.Infrastructure.Messaging.Publishers;
 using PlantSafety.Infrastructure.Messaging.Consumers.OperationalSafety;
@@ -48,6 +50,8 @@ using PlantSafety.Infrastructure.Messaging.Consumers.AiSafetyIntelligence;
 using PlantSafety.Infrastructure.Messaging.Consumers.CrossModuleOrchestration;
 using PlantSafety.Infrastructure.Messaging.Consumers.DeadLetter;
 using PlantSafety.Infrastructure.Messaging.DeadLetter;
+using PlantSafety.Infrastructure.Messaging.EnterpriseMesh;
+using PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh;
 using PlantSafety.Application.Messaging.Repositories;
 using PlantSafety.Infrastructure.OperationalSafety.Alerts.Interfaces;
 using PlantSafety.Infrastructure.OperationalSafety.Alerts.Repositories;
@@ -115,6 +119,7 @@ using Shared.AuditLogging.Infrastructure.DependencyInjection;
 using Shared.EventBus.Infrastructure.DependencyInjection;
 using PlantSafety.Application.Operations.Archival.Repositories;
 using PlantSafety.Infrastructure.Operations.Archival.Options;
+using PlantSafety.Infrastructure.Common.Secrets;
 using PlantSafety.Infrastructure.Operations.Archival.Persistence;
 using PlantSafety.Application.Operations.Configuration.Repositories;
 using PlantSafety.Infrastructure.Operations.Configuration.Options;
@@ -187,6 +192,8 @@ using PlantSafety.Infrastructure.OperationalSafety.DependencyInjection;
 using PlantSafety.Infrastructure.EnterpriseFabric.DependencyInjection;
 using PlantSafety.Infrastructure.Workflow.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.UnifiedModel.DependencyInjection;
+using PlantSafety.Infrastructure.Analytics.PlatformHealthDashboard.DependencyInjection;
+using PlantSafety.Infrastructure.Observability.Tracing;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -214,6 +221,12 @@ public static class InfrastructureServiceRegistration
         // DI validation error.
         services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+
+        // Canonical structured logging (Handbook §2.19-2.22): IApplicationLogger previously had
+        // zero implementation and zero consumers anywhere in the solution (a dead abstraction).
+        // Registered here so LoggingBehavior and other envelope-emitting call sites can resolve it.
+        services.AddScoped<PlantSafety.Application.Abstractions.Logging.IApplicationLogger,
+            PlantSafety.Infrastructure.Common.Logging.ApplicationLogger>();
 
         // Distributed locking (Phase 6 pre-requisite, 2026-08-02): SQL Server sp_getapplock-backed
         // IDistributedLockProvider protecting concurrent/racing state mutation of the Workflow
@@ -287,6 +300,29 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IPermissionService, PermissionService>();
 
+        // Tenant federation (Phase 6 §2.2) — external IdP tenant/org claim -> internal
+        // TenantId mapping. Configuration-driven, gracefully no-ops (see
+        // ConfigurationExternalIdentityProviderMapping.IsFederationConfigured) when the
+        // "ExternalIdentityProviders" section is empty, which it is by default in this
+        // environment (no real external IdP/SSO tenant is configured here).
+        services.Configure<ExternalIdentityProviderOptions>(
+            configuration.GetSection(ExternalIdentityProviderOptions.SectionName));
+        services.AddScoped<IExternalIdentityProviderMapping, ConfigurationExternalIdentityProviderMapping>();
+
+        // SAML2 SSO (Phase 6 §2.1) — deliberate "bring your own SAML library" extension
+        // seam. No SAML2 package is referenced anywhere in this solution; see
+        // UnconfiguredSamlAuthenticationProvider's remarks for how to wire in a real
+        // implementation without touching any other layer.
+        services.AddScoped<ISamlAuthenticationProvider, UnconfiguredSamlAuthenticationProvider>();
+
+        // Partner identity mapping (Phase 6 §2.2) — registered as a Singleton because
+        // InMemoryPartnerIdentityMappingRepository's backing store must survive across
+        // the per-request Scoped lifetime (a mapping registered by one request must be
+        // resolvable by a later request). See that class's remarks for the documented
+        // "not yet SQL-backed" limitation and extension seam.
+        services.AddSingleton<PlantSafety.Domain.Identity.Repositories.IPartnerIdentityMappingRepository,
+            PlantSafety.Infrastructure.Identity.InMemoryPartnerIdentityMappingRepository>();
+
         // File storage
         // BlobServiceClient was previously unregistered (a real DI gap, closed here). Local dev
         // defaults to the well-known Azurite emulator connection string (publicly documented by
@@ -302,6 +338,81 @@ public static class InfrastructureServiceRegistration
             return new BlobServiceClient(connectionString);
         });
         services.AddSingleton<IBlobStorageService, AzureBlobStorageService>();
+
+        // Phase 6 §3.2 Enterprise Event Mesh -- outbound ERP/MES publishers (2026-08-03). No live
+        // ERP/MES credentials exist in this environment: EnterpriseEventMeshOptions defaults every
+        // endpoint to an empty string, and HttpExternalSystemPublisher gracefully no-ops (logs, does
+        // not fail) whenever its configured endpoint is unset -- same "optional, gracefully
+        // degrading" convention as BlobStorageOptions/AzureBlobStorageService above.
+        services.Configure<EnterpriseEventMeshOptions>(configuration.GetSection(EnterpriseEventMeshOptions.SectionName));
+        services.AddHttpClient("EnterpriseEventMesh.Erp", (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+        services.AddHttpClient("EnterpriseEventMesh.Mes", (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+        services.AddSingleton<IExternalSystemPublisher>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Erp");
+            return new HttpExternalSystemPublisher(
+                EnterpriseSourceSystem.Erp, opts.ErpEndpointUrl, client,
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+        });
+        services.AddSingleton<IExternalSystemPublisher>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Mes");
+            return new HttpExternalSystemPublisher(
+                EnterpriseSourceSystem.Mes, opts.MesEndpointUrl, client,
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+        });
+
+        // Phase 6 §1 Enterprise System Integrations (2026-08-03): outbound CMMS/HR/Vendor
+        // publishers, same gracefully-degrading HTTP pattern as the ERP/MES publishers above.
+        services.AddHttpClient("EnterpriseEventMesh.Cmms", (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+        services.AddHttpClient("EnterpriseEventMesh.Hr", (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+        services.AddHttpClient("EnterpriseEventMesh.Vendor", (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+        services.AddSingleton<IExternalSystemPublisher>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Cmms");
+            return new HttpExternalSystemPublisher(
+                EnterpriseSourceSystem.Cmms, opts.CmmsEndpointUrl, client,
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+        });
+        services.AddSingleton<IExternalSystemPublisher>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Hr");
+            return new HttpExternalSystemPublisher(
+                EnterpriseSourceSystem.Hr, opts.HrEndpointUrl, client,
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+        });
+        services.AddSingleton<IExternalSystemPublisher>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<EnterpriseEventMeshOptions>>().Value;
+            var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Vendor");
+            return new HttpExternalSystemPublisher(
+                EnterpriseSourceSystem.Vendor, opts.VendorEndpointUrl, client,
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+        });
 
         // Search
         services.AddScoped<ISearchService, AzureSearchService>();
@@ -340,6 +451,12 @@ public static class InfrastructureServiceRegistration
             // RiskManagement<->ContinuousImprovement, and Intelligence<->everything. See
             // CrossModuleOrchestrationConsumerRegistration for the full consumer list.
             CrossModuleOrchestrationConsumerRegistration.Register(x);
+
+            // Phase 6 §3 Enterprise Event Mesh (2026-08-03): cross-SYSTEM (platform <-> external
+            // ERP/MES) outbound propagation wiring point. See EnterpriseEventMeshConsumerRegistration
+            // and PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh for the envelope/publisher
+            // abstractions.
+            EnterpriseEventMeshConsumerRegistration.Register(x);
 
             // Phase 6 blocker fix (2026-08-02): the single, message-type-agnostic dead-letter
             // fault sink -- see DeadLetterFaultConsumer<TMessage> remarks for why an open generic
@@ -553,6 +670,35 @@ public static class InfrastructureServiceRegistration
         services.Configure<ConfigurationOptions>(configuration.GetSection(ConfigurationOptions.SectionName));
         services.AddScoped<IFeatureFlagRepository, FeatureFlagDapperRepository>();
 
+        // Operations — Enterprise Secrets Management (Phase 6.6, §6.3). ISecretsProvider is
+        // the ONLY type application code should ever resolve -- the concrete provider
+        // (AzureKeyVaultSecretsProvider vs. ConfigurationSecretsProvider) is selected here,
+        // based on an explicit "Secrets:Provider" override if present, else environment
+        // (Production -> AzureKeyVault, everything else -> Configuration), and always wrapped
+        // in AuditingSecretsProviderDecorator so every retrieval is logged (name + outcome
+        // only, never the value). ConfigurationSecretsProvider itself throws in its own
+        // constructor if ever resolved while IHostEnvironment.IsProduction() is true, as a
+        // second, provider-level guard independent of this selection logic.
+        services.Configure<SecretsProviderOptions>(configuration.GetSection(SecretsProviderOptions.SectionName));
+        services.AddSingleton<AzureKeyVaultSecretsProvider>();
+        services.AddScoped<ConfigurationSecretsProvider>();
+        services.AddScoped<ISecretsProvider>(sp =>
+        {
+            var env = sp.GetRequiredService<Microsoft.Extensions.Hosting.IHostEnvironment>();
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SecretsProviderOptions>>().Value;
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<AuditingSecretsProviderDecorator>>();
+
+            var providerName = string.IsNullOrWhiteSpace(options.Provider)
+                ? (env.IsProduction() ? "AzureKeyVault" : "Configuration")
+                : options.Provider;
+
+            ISecretsProvider inner = providerName == "AzureKeyVault"
+                ? sp.GetRequiredService<AzureKeyVaultSecretsProvider>()
+                : sp.GetRequiredService<ConfigurationSecretsProvider>();
+
+            return new AuditingSecretsProviderDecorator(inner, logger);
+        });
+
         // Operations — System Health (Step 10/10, final roadmap deliverable: unified rollup
         // dashboard over Backup/SchemaGuard/Monitoring/Archival/AuditViewer/Configuration via
         // MediatR ISender fan-out, plus the two genuinely new pieces here -- SQL Server
@@ -677,6 +823,17 @@ public static class InfrastructureServiceRegistration
             .AddHealthChecksRepositories()
             .AddFinancialsRepositories();
 
+        // Phase 6 §1 Enterprise System Integrations (2026-08-03): the Machines reference-data
+        // ingestion seam (inbound ERP asset-master sync -- see IMachineAssetReferenceDataIngestor's
+        // own header for why this is not a fabricated CrossDomain "command") and the Enterprise
+        // ERP cost-center-mapping reference-data repository.
+        services.AddScoped<
+            PlantSafety.Application.CrossDomain.Machines.Ingestion.IMachineAssetReferenceDataIngestor,
+            PlantSafety.Infrastructure.CrossDomain.Machines.Persistence.MachineAssetReferenceDataDapperIngestor>();
+        services.AddScoped<
+            PlantSafety.Application.Enterprise.Integrations.Erp.CostCenters.ICostCenterMappingRepository,
+            PlantSafety.Infrastructure.Enterprise.Integrations.Erp.Persistence.CostCenterMappingDapperRepository>();
+
         // Phase 4 full build-out (2026-08-02): previously-bare/anemic DDD aggregates
         // PlanningProjects.Project and Intelligence.AIInvestigations. Project is a brand-new
         // aggregate root (PlanningProjects had only the ProjectMilestone child entity before this
@@ -711,6 +868,19 @@ public static class InfrastructureServiceRegistration
         // unified-analytics-model BI dashboard repositories (Scheduling/Production/Maintenance/
         // Risk/ContinuousImprovement/Audit) could never be resolved. Closes the gap.
         services.AddAnalyticsUnifiedModelDashboardInfrastructure();
+
+        // Phase 6 §5.3 Metrics & Dashboards (2026-08-03): PlatformHealthDashboard -- request
+        // throughput/latency-percentile/error-rate KPIs (new [PlatformHealth].[RequestMetricEvent]
+        // capture pipeline) composed with the EXISTING dead-letter/event-bus health infrastructure
+        // (IDeadLetterEventRepository, already registered above) at the Application-layer handler.
+        services.AddPlatformHealthDashboardInfrastructure();
+
+        // Phase 6 §5.1 Distributed Tracing (2026-08-03): OpenTelemetry.Extensions.Hosting was
+        // referenced in this project's .csproj but had ZERO AddOpenTelemetry()/WithTracing() call
+        // anywhere in the solution -- a dead package reference. Wires real ASP.NET Core/
+        // HttpClient/SqlClient span instrumentation so TraceId/SpanId (already read from
+        // Activity.Current by OperationContextAccessor) correlate to an actual exported trace.
+        services.AddPlantSafetyTracing(configuration);
 
         return services;
     }

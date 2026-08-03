@@ -114,6 +114,10 @@
               "target": "Package",
               "version": "[8.0.27, )"
             },
+            "Microsoft.AspNetCore.Authentication.OpenIdConnect": {
+              "target": "Package",
+              "version": "[8.0.27, )"
+            },
             "Microsoft.AspNetCore.Mvc.NewtonsoftJson": {
               "target": "Package",
               "version": "[8.0.27, )"
@@ -243,6 +247,9 @@
               },
               "D:\\PlantSafety\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Abstractions\\Shared.AuditLogging.Abstractions.csproj": {
                 "projectPath": "D:\\PlantSafety\\source\\Shared\\AuditLogging\\Shared.AuditLogging.Abstractions\\Shared.AuditLogging.Abstractions.csproj"
+              },
+              "D:\\PlantSafety\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions\\Shared.Authorization.Abstractions.csproj": {
+                "projectPath": "D:\\PlantSafety\\source\\Shared\\Authorization\\Shared.Authorization.Abstractions\\Shared.Authorization.Abstractions.csproj"
               }
             }
           }
@@ -482,6 +489,14 @@
           "framework": "net8.0",
           "targetAlias": "net8.0",
           "dependencies": {
+            "Azure.Identity": {
+              "target": "Package",
+              "version": "[1.13.2, )"
+            },
+            "Azure.Security.KeyVault.Secrets": {
+              "target": "Package",
+              "version": "[4.7.0, )"
+            },
             "Azure.Storage.Blobs": {
               "target": "Package",
               "version": "[12.24.0, )"
@@ -510,9 +525,29 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "OpenTelemetry.Exporter.Console": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
+            "OpenTelemetry.Exporter.OpenTelemetryProtocol": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
             "OpenTelemetry.Extensions.Hosting": {
               "target": "Package",
-              "version": "[1.9.0, )"
+              "version": "[1.17.0, )"
+            },
+            "OpenTelemetry.Instrumentation.AspNetCore": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
+            "OpenTelemetry.Instrumentation.Http": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
+            "OpenTelemetry.Instrumentation.SqlClient": {
+              "target": "Package",
+              "version": "[1.17.0, )"
             },
             "Polly": {
               "target": "Package",
@@ -629,6 +664,10 @@
             "Microsoft.Extensions.DependencyInjection": {
               "target": "Package",
               "version": "[10.0.8, )"
+            },
+            "Microsoft.Extensions.Logging.Abstractions": {
+              "target": "Package",
+              "version": "[10.0.9, )"
             },
             "MongoDB.Bson": {
               "target": "Package",

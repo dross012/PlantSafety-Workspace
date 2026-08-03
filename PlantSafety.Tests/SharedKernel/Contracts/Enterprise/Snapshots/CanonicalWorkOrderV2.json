@@ -1,0 +1,23 @@
+{
+  "WorkOrderId": "00000000-0000-0000-0000-0000000000a1",
+  "TenantId": "00000000-0000-0000-0000-0000000000b2",
+  "SiteId": "00000000-0000-0000-0000-0000000000c3",
+  "WorkOrderCode": "WO-001",
+  "AssetId": "00000000-0000-0000-0000-0000000000a1",
+  "AssetCode": "M-001",
+  "Priority": "High",
+  "Description": "Replace bearing",
+  "Status": "Assigned",
+  "DueAtUtc": "2026-08-03T12:00:00Z",
+  "CreatedAtUtc": "2026-08-03T12:00:00Z",
+  "UpdatedAtUtc": "2026-08-03T12:00:00Z",
+  "TechnicianId": "00000000-0000-0000-0000-0000000000b2",
+  "TechnicianName": "J. Rivera",
+  "AssignedAtUtc": "2026-08-03T12:00:00Z",
+  "StartedAtUtc": null,
+  "OnHoldAtUtc": null,
+  "CompletedAtUtc": null,
+  "CompletionNotes": null,
+  "CancelledAtUtc": null,
+  "CancelledReason": null
+}

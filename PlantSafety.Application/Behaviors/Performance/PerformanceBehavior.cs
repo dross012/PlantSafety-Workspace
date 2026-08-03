@@ -1,17 +1,21 @@
 // AUTHOR: PlantSafety Platform Team
 // CREATED: 2026-06-17
+// LAST UPDATED: 2026-08-03 (Claude Code performance-optimization-agent) -- Regression audit fix
+//   (Handbook §2.19-2.22, Performance & Stress Manual): the slow-request warning previously used
+//   a message template ("SlowRequest | RequestType=... | ...") instead of a single structured
+//   envelope object, and had no SchemaVersion field. Converted to emit via IApplicationLogger.
 // FILE DESCRIPTION: MediatR pipeline behavior that measures request execution time and emits
 //   a structured warning when requests exceed the configured SLA threshold.
 //   Executes SECOND in the pipeline: Logging → Performance → Validation → Transaction → Handler.
 //   Default threshold: 500ms for commands, 200ms for queries.
-// SchemaVersion: 1
+// SchemaVersion: 2026.1
 // Additive-only evolution: threshold and fields may be added; no behavior may be removed destructively.
 
 using System.Diagnostics;
 using MediatR;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PlantSafety.Application.Abstractions.Context;
+using PlantSafety.Application.Abstractions.Logging;
 using PlantSafety.Application.Common.Constants;
 
 namespace PlantSafety.Application.Behaviors.Performance;
@@ -26,22 +30,22 @@ namespace PlantSafety.Application.Behaviors.Performance;
 public sealed class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
-    private readonly ILogger<PerformanceBehavior<TRequest, TResponse>> _logger;
+    private readonly IApplicationLogger _applicationLogger;
     private readonly IOperationContext _operationContext;
     private readonly PerformanceOptions _options;
 
     /// <summary>
     /// Initializes a new instance of <see cref="PerformanceBehavior{TRequest,TResponse}"/>.
     /// </summary>
-    /// <param name="logger">The structured logger.</param>
+    /// <param name="applicationLogger">The canonical structured-envelope logger.</param>
     /// <param name="operationContext">The current operation context carrying correlation lineage.</param>
     /// <param name="options">Configuration options for the performance behavior.</param>
     public PerformanceBehavior(
-        ILogger<PerformanceBehavior<TRequest, TResponse>> logger,
+        IApplicationLogger applicationLogger,
         IOperationContext operationContext,
         IOptions<PerformanceOptions> options)
     {
-        _logger = logger;
+        _applicationLogger = applicationLogger;
         _operationContext = operationContext;
         _options = options.Value;
     }
@@ -61,13 +65,21 @@ public sealed class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior
 
         if (stopwatch.ElapsedMilliseconds > _options.SlowRequestThresholdMs)
         {
-            _logger.LogWarning(
-                "SlowRequest | RequestType={RequestType} | ElapsedMs={ElapsedMs} | ThresholdMs={ThresholdMs} | CorrelationId={CorrelationId} | TraceId={TraceId}",
-                typeof(TRequest).Name,
-                stopwatch.ElapsedMilliseconds,
-                _options.SlowRequestThresholdMs,
-                _operationContext.CorrelationId,
-                _operationContext.TraceId);
+            _applicationLogger.LogWarning(new OperationLogEnvelope
+            {
+                OperationName = typeof(TRequest).Name,
+                HandlerType = typeof(TRequest).Name,
+                CorrelationId = _operationContext.CorrelationId,
+                CausationId = _operationContext.CausationId,
+                RequestId = _operationContext.RequestId,
+                TraceId = _operationContext.TraceId,
+                SpanId = _operationContext.SpanId,
+                TenantId = _operationContext.TenantId,
+                TimestampUtc = DateTime.UtcNow,
+                ElapsedMs = stopwatch.ElapsedMilliseconds,
+                Success = true,
+                Severity = LogSeverity.Warning
+            });
         }
 
         return response;
