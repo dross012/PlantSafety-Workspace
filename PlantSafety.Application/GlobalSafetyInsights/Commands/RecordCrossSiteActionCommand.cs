@@ -25,6 +25,7 @@ namespace PlantSafety.Application.GlobalSafetyInsights.Commands;
 /// <param name="CorrelationId">Correlation identifier propagated from the triggering event.</param>
 /// <param name="CausationId">Causation identifier propagated from the triggering event.</param>
 /// <param name="RegionCode">The region the action was resolved/routed in, if known.</param>
+/// <param name="WorkflowInstanceId">The approval-chain WorkflowInstance gating this action, if one was started.</param>
 public sealed record RecordCrossSiteActionCommand(
     Guid TenantId,
     IReadOnlyList<Guid> AffectedSiteIds,
@@ -33,4 +34,5 @@ public sealed record RecordCrossSiteActionCommand(
     Guid? InitiatedByUserId,
     Guid CorrelationId,
     Guid CausationId,
-    string? RegionCode = null) : IRequest<Result>;
+    string? RegionCode = null,
+    Guid? WorkflowInstanceId = null) : IRequest<Result>;

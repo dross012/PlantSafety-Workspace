@@ -27,6 +27,7 @@ public interface IGlobalSafetyActionAuditRepository
         Guid? initiatedByUserId,
         DateTime recordedAtUtc,
         string? regionCode,
+        Guid? workflowInstanceId,
         CancellationToken cancellationToken);
 
     /// <summary>

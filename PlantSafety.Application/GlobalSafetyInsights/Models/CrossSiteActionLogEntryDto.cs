@@ -38,4 +38,11 @@ public sealed record CrossSiteActionLogEntryDto
 
     /// <summary>The region the action was resolved/routed in, if known.</summary>
     public string? RegionCode { get; init; }
+
+    /// <summary>
+    /// The Workflow.WorkflowInstance started to gate this action behind approval, if the coordinated
+    /// action required one (see MultiSiteActionRouter.TryStartApprovalWorkflowAsync); <see langword="null"/>
+    /// when the action executed immediately without an approval chain.
+    /// </summary>
+    public Guid? WorkflowInstanceId { get; init; }
 }

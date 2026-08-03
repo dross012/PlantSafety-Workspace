@@ -213,4 +213,7 @@ public sealed class CrossSiteActionLogEntryDto
 
     /// <summary>Gets the UTC instant the action was recorded.</summary>
     public DateTime RecordedAtUtc { get; init; }
+
+    /// <summary>Gets the region the action was resolved/routed in, if known.</summary>
+    public string? RegionCode { get; init; }
 }

@@ -30,7 +30,8 @@ BEGIN
         Description,
         InitiatedByUserId,
         RecordedAtUtc,
-        RegionCode
+        RegionCode,
+        WorkflowInstanceId
     FROM [GlobalSafetyInsights].[CrossSiteActionLog]
     WHERE TenantId = @TenantId
       AND RecordedAtUtc >= @FromUtc

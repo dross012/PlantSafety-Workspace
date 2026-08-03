@@ -21,7 +21,8 @@ CREATE OR ALTER PROCEDURE [GlobalSafetyInsights].[usp_CrossSiteActionLog_Insert]
     @Description          NVARCHAR(2000) = NULL,
     @InitiatedByUserId    UNIQUEIDENTIFIER = NULL,
     @RecordedAtUtc        DATETIME2(3),
-    @RegionCode           NVARCHAR(20) = NULL
+    @RegionCode           NVARCHAR(20) = NULL,
+    @WorkflowInstanceId   UNIQUEIDENTIFIER = NULL
 AS
 SET NOCOUNT ON;
 BEGIN
@@ -29,12 +30,12 @@ BEGIN
         INSERT INTO [GlobalSafetyInsights].[CrossSiteActionLog]
         (
             CrossSiteActionLogId, TenantId, AffectedSiteIdsJson, ActionType, Description,
-            InitiatedByUserId, RecordedAtUtc, RegionCode
+            InitiatedByUserId, RecordedAtUtc, RegionCode, WorkflowInstanceId
         )
         VALUES
         (
             @CrossSiteActionLogId, @TenantId, @AffectedSiteIdsJson, @ActionType, @Description,
-            @InitiatedByUserId, @RecordedAtUtc, @RegionCode
+            @InitiatedByUserId, @RecordedAtUtc, @RegionCode, @WorkflowInstanceId
         );
 
         BEGIN TRY

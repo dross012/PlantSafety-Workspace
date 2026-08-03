@@ -41220,8 +41220,9 @@
             <param name="CorrelationId">Correlation identifier propagated from the triggering event.</param>
             <param name="CausationId">Causation identifier propagated from the triggering event.</param>
             <param name="RegionCode">The region the action was resolved/routed in, if known.</param>
+            <param name="WorkflowInstanceId">The approval-chain WorkflowInstance gating this action, if one was started.</param>
         </member>
-        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.Guid,System.Guid,System.String)">
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.Guid,System.Guid,System.String,System.Nullable{System.Guid})">
             <summary>Records a cross-site coordinated action into the GlobalSafetyInsights audit trail.</summary>
             <param name="TenantId">Tenant identifier.</param>
             <param name="AffectedSiteIds">Sites affected by the action.</param>
@@ -41231,6 +41232,7 @@
             <param name="CorrelationId">Correlation identifier propagated from the triggering event.</param>
             <param name="CausationId">Causation identifier propagated from the triggering event.</param>
             <param name="RegionCode">The region the action was resolved/routed in, if known.</param>
+            <param name="WorkflowInstanceId">The approval-chain WorkflowInstance gating this action, if one was started.</param>
         </member>
         <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.TenantId">
             <summary>Tenant identifier.</summary>
@@ -41255,6 +41257,9 @@
         </member>
         <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.RegionCode">
             <summary>The region the action was resolved/routed in, if known.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.WorkflowInstanceId">
+            <summary>The approval-chain WorkflowInstance gating this action, if one was started.</summary>
         </member>
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand">
             <summary>Rolls out a Corrective/Preventive Action at each of a set of affected sites, as part of a governed cross-site coordinated action.</summary>
@@ -41966,6 +41971,13 @@
         <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.RegionCode">
             <summary>The region the action was resolved/routed in, if known.</summary>
         </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.WorkflowInstanceId">
+            <summary>
+            The Workflow.WorkflowInstance started to gate this action behind approval, if the coordinated
+            action required one (see MultiSiteActionRouter.TryStartApprovalWorkflowAsync); <see langword="null"/>
+            when the action executed immediately without an approval chain.
+            </summary>
+        </member>
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto">
             <summary>A single site/region/machine-family risk score, projected for the dashboard.</summary>
         </member>
@@ -42202,7 +42214,7 @@
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository">
             <summary>Append-only audit ledger for cross-site coordinated actions.</summary>
         </member>
-        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository.RecordAsync(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.DateTime,System.String,System.Threading.CancellationToken)">
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository.RecordAsync(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.DateTime,System.String,System.Nullable{System.Guid},System.Threading.CancellationToken)">
             <summary>Records a cross-site action into the audit ledger.</summary>
         </member>
         <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository.ListAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">

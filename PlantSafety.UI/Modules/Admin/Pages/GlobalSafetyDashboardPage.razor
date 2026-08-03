@@ -133,12 +133,30 @@
                 @* ── Region Heatmap ───────────────────────────────────────────────── *@
                 @if (_activeTab == 2)
                 {
-                    <CardComponent Title="Region/Site/Machine-Family Risk Heatmap">
+                    <CardComponent Title="Region Heatmap — Risk Level by Region">
                         <DataGridComponent TItem="GlobalSafetyRiskScoreDetailDto"
-                                            Items="@(State.Detail?.RiskScores.OrderByDescending(r => r.Score).ToList() ?? [])"
+                                            Items="RegionRiskScores"
                                             Headers="_riskHeaders"
-                                            EmptyMessage="No risk scores recorded in the latest snapshot."
-                                            AriaLabel="Risk heatmap">
+                                            EmptyMessage="No region-scoped risk scores recorded in the latest snapshot."
+                                            AriaLabel="Region heatmap">
+                            <RowTemplate Context="row">
+                                <td>@row.ScopeType</td>
+                                <td>@row.ScopeKey</td>
+                                <td>@row.Severity</td>
+                                <td>@row.Likelihood</td>
+                                <td>@row.Score</td>
+                                <td><SeverityBadgeComponent Severity="@row.RiskLevel" /></td>
+                                <td>@row.SourceRiskCount</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+
+                    <CardComponent Title="Multi-Site Risk Score Visualization — By Site &amp; Machine Family">
+                        <DataGridComponent TItem="GlobalSafetyRiskScoreDetailDto"
+                                            Items="SiteAndMachineFamilyRiskScores"
+                                            Headers="_riskHeaders"
+                                            EmptyMessage="No site/machine-family risk scores recorded in the latest snapshot."
+                                            AriaLabel="Multi-site risk score visualization">
                             <RowTemplate Context="row">
                                 <td>@row.ScopeType</td>
                                 <td>@row.ScopeKey</td>
@@ -176,6 +194,16 @@
                                 }
                             </select>
                         </div>
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="timeline-region">Region</label>
+                            <select id="timeline-region" @bind="_timelineRegionFilter">
+                                <option value="">All</option>
+                                @foreach (var region in _regions)
+                                {
+                                    <option value="@region">@region</option>
+                                }
+                            </select>
+                        </div>
                     </CardComponent>
 
                     <CardComponent Title="Cross-Site Incident/Action Timeline">
@@ -188,6 +216,7 @@
                             <RowTemplate Context="row">
                                 <td>@row.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
                                 <td>@row.ActionType</td>
+                                <td>@(row.RegionCode ?? "—")</td>
                                 <td>@row.AffectedSiteIds.Count</td>
                                 <td>@row.Description</td>
                                 <td>@(row.InitiatedByUserId?.ToString() ?? "System")</td>
@@ -208,6 +237,7 @@
                                             AriaLabel="Corrective action tracker">
                             <RowTemplate Context="row">
                                 <td>@row.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@(row.RegionCode ?? "—")</td>
                                 <td>@row.AffectedSiteIds.Count site(s)</td>
                                 <td>@row.Description</td>
                                 <td>@(row.InitiatedByUserId?.ToString() ?? "System")</td>
@@ -229,14 +259,15 @@
     private static readonly string[] _anomalyHeaders = ["Scope", "Kind", "Severity", "Deviation Magnitude", "Message", "Detected"];
     private static readonly string[] _recommendationHeaders = ["Priority", "Category", "Description", "Target"];
     private static readonly string[] _riskHeaders = ["Scope Type", "Scope Key", "Severity", "Likelihood", "Score", "Risk Level", "Source Risks"];
-    private static readonly string[] _timelineHeaders = ["Recorded", "Action Type", "Affected Sites", "Description", "Initiated By"];
-    private static readonly string[] _correctiveHeaders = ["Recorded", "Affected Sites", "Description", "Initiated By"];
+    private static readonly string[] _timelineHeaders = ["Recorded", "Action Type", "Region", "Affected Sites", "Description", "Initiated By"];
+    private static readonly string[] _correctiveHeaders = ["Recorded", "Region", "Affected Sites", "Description", "Initiated By"];
 
     private int _activeTab;
     private DateOnly _filterStart = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-90));
     private DateOnly _filterEnd = DateOnly.FromDateTime(DateTime.UtcNow);
     private string _timelineActionTypeFilter = string.Empty;
     private string _timelineSiteFilter = string.Empty;
+    private string _timelineRegionFilter = string.Empty;
 
     private IReadOnlyList<string> _actionTypes =>
         (State.CrossSiteActions.Select(e => e.ActionType).Distinct().OrderBy(t => t)).ToList();
@@ -244,14 +275,25 @@
     private IReadOnlyList<string> _affectedSites =>
         (State.CrossSiteActions.SelectMany(e => e.AffectedSiteIds).Select(s => s.ToString()).Distinct().OrderBy(s => s)).ToList();
 
+    private IReadOnlyList<string> _regions =>
+        (State.CrossSiteActions.Select(e => e.RegionCode).Where(r => !string.IsNullOrEmpty(r)).Distinct().OrderBy(r => r)).ToList()!;
+
     private IReadOnlyList<CrossSiteActionLogEntryDto> FilteredTimelineEntries => State.CrossSiteActions
         .Where(e => string.IsNullOrEmpty(_timelineActionTypeFilter) || e.ActionType == _timelineActionTypeFilter)
         .Where(e => string.IsNullOrEmpty(_timelineSiteFilter) || e.AffectedSiteIds.Any(s => s.ToString() == _timelineSiteFilter))
+        .Where(e => string.IsNullOrEmpty(_timelineRegionFilter) || e.RegionCode == _timelineRegionFilter)
         .ToList();
 
     private IReadOnlyList<CrossSiteActionLogEntryDto> CorrectiveActionEntries => State.CrossSiteActions
         .Where(e => e.ActionType == "CorrectiveActionRollout")
         .ToList();
+
+    private IReadOnlyList<GlobalSafetyRiskScoreDetailDto> RegionRiskScores =>
+        (State.Detail?.RiskScores.Where(r => r.ScopeType == "Region").OrderByDescending(r => r.Score) ?? Enumerable.Empty<GlobalSafetyRiskScoreDetailDto>()).ToList();
+
+    private IReadOnlyList<GlobalSafetyRiskScoreDetailDto> SiteAndMachineFamilyRiskScores =>
+        (State.Detail?.RiskScores.Where(r => r.ScopeType is "Site" or "MachineFamily")
+            .OrderBy(r => r.ScopeType).ThenByDescending(r => r.Score) ?? Enumerable.Empty<GlobalSafetyRiskScoreDetailDto>()).ToList();
 
     protected override void OnInitialized()
     {

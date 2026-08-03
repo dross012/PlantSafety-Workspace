@@ -55,7 +55,8 @@ public sealed class CrossSiteActionConsumer(
             InitiatedByUserId: evt.InitiatedByUserId,
             CorrelationId: evt.CorrelationId.Value,
             CausationId: evt.CausationId.Value,
-            RegionCode: string.IsNullOrEmpty(evt.RegionCode) ? null : evt.RegionCode);
+            RegionCode: string.IsNullOrEmpty(evt.RegionCode) ? null : evt.RegionCode,
+            WorkflowInstanceId: evt.WorkflowInstanceId);
 
         // RecordCrossSiteActionCommand returns the non-generic Result (void command), which does
         // not fit CrossModuleIdempotentConsumerBase.DispatchAsync<TResponse>'s Result<TResponse>

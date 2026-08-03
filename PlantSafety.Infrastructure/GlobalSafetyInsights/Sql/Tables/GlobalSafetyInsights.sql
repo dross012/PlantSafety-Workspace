@@ -68,7 +68,8 @@ BEGIN
         Description           NVARCHAR(2000)   NULL,
         InitiatedByUserId     UNIQUEIDENTIFIER NULL,
         RecordedAtUtc         DATETIME2(3)     NOT NULL,
-        RegionCode            NVARCHAR(20)     NULL
+        RegionCode            NVARCHAR(20)     NULL,
+        WorkflowInstanceId    UNIQUEIDENTIFIER NULL
     );
 
     CREATE NONCLUSTERED INDEX IX_GlobalSafetyInsights_CrossSiteActionLog_TenantId_RecordedAtUtc
@@ -83,5 +84,36 @@ IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CrossSiteActionLog' AND schema
    AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[GlobalSafetyInsights].[CrossSiteActionLog]') AND name = 'RegionCode')
 BEGIN
     ALTER TABLE [GlobalSafetyInsights].[CrossSiteActionLog] ADD RegionCode NVARCHAR(20) NULL;
+END
+GO
+
+-- Phase 8 SQL alignment pass fix (2026-08-03): MultiSiteActionRouter.TryStartApprovalWorkflowAsync
+-- starts a real Workflow.WorkflowInstance for every "requires approval" coordinated action (see
+-- Domain.Workflow.Interfaces.IWorkflowInstanceFactory/IWorkflowInstanceRepository usage) and the
+-- resulting WorkflowInstanceId was only ever surfaced via ILogger and the transient
+-- MultiSiteActionRouteResult -- never persisted, so a coordinated action's approval-chain lineage
+-- was unrecoverable from the audit ledger once the process log rolled over. Plain nullable
+-- indexed column (no FK), matching this codebase's established convention for cross-module/
+-- cross-schema Guid references (e.g. RiskMgmt.Risk.TenantId, GlobalSafetyInsights.*.TenantId are
+-- never FK-constrained to Tenancy.Tenant either -- FK constraints in this codebase are reserved
+-- for same-schema parent/child relationships, e.g. Workflow.WorkflowInstance.WorkflowDefinitionId
+-- -> Workflow.WorkflowDefinition). Additive column for pre-existing deployments that already ran
+-- the CREATE TABLE block above.
+IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CrossSiteActionLog' AND schema_id = SCHEMA_ID('GlobalSafetyInsights'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[GlobalSafetyInsights].[CrossSiteActionLog]') AND name = 'WorkflowInstanceId')
+BEGIN
+    ALTER TABLE [GlobalSafetyInsights].[CrossSiteActionLog] ADD WorkflowInstanceId UNIQUEIDENTIFIER NULL;
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_GlobalSafetyInsights_CrossSiteActionLog_WorkflowInstanceId'
+      AND object_id = OBJECT_ID('[GlobalSafetyInsights].[CrossSiteActionLog]')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX IX_GlobalSafetyInsights_CrossSiteActionLog_WorkflowInstanceId
+        ON [GlobalSafetyInsights].[CrossSiteActionLog] (WorkflowInstanceId)
+        WHERE WorkflowInstanceId IS NOT NULL;
 END
 GO

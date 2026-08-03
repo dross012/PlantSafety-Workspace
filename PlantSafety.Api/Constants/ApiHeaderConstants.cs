@@ -38,10 +38,24 @@ public static class ApiHeaderConstants
     public const string CorrelationId = "X-Correlation-ID";
 
     /// <summary>
-    /// Tenant identifier header. Optional override — TenantId is normally resolved
-    /// from the JWT <c>tenantId</c> claim by TenantResolutionMiddleware.
+    /// Tenant identifier header. Honored ONLY as an impersonation override — see
+    /// <see cref="ImpersonationSessionId"/> and <see cref="Middleware.TenantResolutionMiddleware"/>.
+    /// TenantId is otherwise always resolved from the JWT <c>tenantId</c> claim. This header is
+    /// never trusted on its own: it is ignored unless accompanied by a valid, unexpired
+    /// <see cref="ImpersonationSessionId"/> header naming a session that (a) belongs to the
+    /// authenticated caller, (b) was started by a caller holding Platform.Admin, and (c) is bound
+    /// to this exact tenant. Never a spoofable header-only tenant switch.
     /// </summary>
     public const string TenantId = "X-Tenant-ID";
+
+    /// <summary>
+    /// Impersonation session identifier header. Required alongside <see cref="TenantId"/> for
+    /// <see cref="Middleware.TenantResolutionMiddleware"/> to honor a tenant-impersonation
+    /// override; the header names a real, server-side session record (see
+    /// <c>PlantSafety.Application.Support.Impersonation</c>) that is looked up and validated on
+    /// every request, never trusted as a bare claim.
+    /// </summary>
+    public const string ImpersonationSessionId = "X-Impersonation-Session-Id";
 
     /// <summary>
     /// API key header for service-to-service authentication.

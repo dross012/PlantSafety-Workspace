@@ -126,7 +126,7 @@ public sealed class MultiSiteActionRouter(
 
             await AuditAsync(request, decision.EligibleSiteIds, actorId, correlationId, causationId, region,
                 actionTypeSuffix: workflowInstanceId is not null ? "PendingApproval" : "PendingApprovalNoWorkflowDefinition",
-                cancellationToken);
+                workflowInstanceId, cancellationToken);
 
             return Result<MultiSiteActionRouteResult>.Success(new MultiSiteActionRouteResult(
                 decision.EligibleSiteIds, decision.IneligibleSites, RequiresApproval: true, Executed: false,
@@ -137,7 +137,7 @@ public sealed class MultiSiteActionRouter(
         var (dispatchSucceeded, dispatchError) = await DispatchAsync(request, decision.EligibleSiteIds, actorId, cancellationToken);
 
         // Step 4: audit + event mesh.
-        await AuditAsync(request, decision.EligibleSiteIds, actorId, correlationId, causationId, region, actionTypeSuffix: null, cancellationToken);
+        await AuditAsync(request, decision.EligibleSiteIds, actorId, correlationId, causationId, region, actionTypeSuffix: null, workflowInstanceId: null, cancellationToken);
 
         return Result<MultiSiteActionRouteResult>.Success(new MultiSiteActionRouteResult(
             decision.EligibleSiteIds, decision.IneligibleSites, RequiresApproval: false, Executed: true,
@@ -258,6 +258,7 @@ public sealed class MultiSiteActionRouter(
         CausationId causationId,
         Region region,
         string? actionTypeSuffix,
+        Guid? workflowInstanceId,
         CancellationToken cancellationToken)
     {
         var actionType = actionTypeSuffix is null ? request.ActionType.ToString() : $"{request.ActionType}.{actionTypeSuffix}";
@@ -267,7 +268,7 @@ public sealed class MultiSiteActionRouter(
             GlobalSafetyInsightsEventId.New(), request.TenantId, region.Code, primarySiteId, eligibleSiteIds,
             actionType, request.Description, request.InitiatedByUserId, UtcTimestamp.Now(),
             request.InitiatedByUserId.HasValue ? PerformedByActor.User(UserId.FromGuid(actorId)) : PerformedByActor.System(),
-            correlationId, causationId);
+            correlationId, causationId, workflowInstanceId);
 
         // The idempotent CrossSiteActionConsumer (Phase 8 §4) is the sole authoritative writer of
         // the audit ledger -- it dispatches RecordCrossSiteActionCommand itself once this event is

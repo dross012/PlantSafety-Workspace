@@ -32,7 +32,8 @@ public sealed record CrossSiteActionEvent(
     UtcTimestamp                InitiatedAtUtc,
     PerformedByActor            Actor,
     CorrelationId               CorrelationId,
-    CausationId                 CausationId
+    CausationId                 CausationId,
+    Guid?                       WorkflowInstanceId = null
 ) : IGlobalSafetyInsightsDomainEvent
 {
     /// <inheritdoc/>

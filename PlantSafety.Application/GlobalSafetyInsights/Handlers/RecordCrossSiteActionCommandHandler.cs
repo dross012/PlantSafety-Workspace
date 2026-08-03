@@ -45,7 +45,7 @@ public sealed class RecordCrossSiteActionCommandHandler : IRequestHandler<Record
         {
             await _auditRepository.RecordAsync(
                 request.TenantId, request.AffectedSiteIds, request.ActionType, request.Description,
-                request.InitiatedByUserId, DateTime.UtcNow, request.RegionCode, cancellationToken);
+                request.InitiatedByUserId, DateTime.UtcNow, request.RegionCode, request.WorkflowInstanceId, cancellationToken);
 
             _logger.LogInformation(
                 "RecordCrossSiteAction: recorded '{ActionType}' affecting {SiteCount} site(s) for Tenant {TenantId}.",

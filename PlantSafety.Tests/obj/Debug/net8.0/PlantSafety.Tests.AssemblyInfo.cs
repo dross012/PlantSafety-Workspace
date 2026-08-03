@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PlantSafety.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b345881f82c954e93e7c45ae2b7fa0bda0f9ef01")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9fd7ecf57694c50344811e963644be6f20dbac69")]
 [assembly: System.Reflection.AssemblyProductAttribute("PlantSafety.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PlantSafety.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

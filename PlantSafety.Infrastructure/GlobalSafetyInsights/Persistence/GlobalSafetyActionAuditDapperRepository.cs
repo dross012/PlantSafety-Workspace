@@ -23,7 +23,7 @@ public sealed class GlobalSafetyActionAuditDapperRepository(
     /// <inheritdoc/>
     public async Task RecordAsync(
         Guid tenantId, IReadOnlyList<Guid> affectedSiteIds, string actionType, string description,
-        Guid? initiatedByUserId, DateTime recordedAtUtc, string? regionCode, CancellationToken cancellationToken)
+        Guid? initiatedByUserId, DateTime recordedAtUtc, string? regionCode, Guid? workflowInstanceId, CancellationToken cancellationToken)
     {
         logger.LogDebug("Recording CrossSiteAction '{ActionType}' for Tenant {TenantId}", actionType, tenantId);
 
@@ -36,6 +36,7 @@ public sealed class GlobalSafetyActionAuditDapperRepository(
             .AddGuid("InitiatedByUserId", initiatedByUserId)
             .AddDateTime("RecordedAtUtc", recordedAtUtc)
             .AddString("RegionCode", regionCode, 20)
+            .AddGuid("WorkflowInstanceId", workflowInstanceId)
             .Build();
 
         using var conn = connectionFactory.CreateConnection();
@@ -67,6 +68,7 @@ public sealed class GlobalSafetyActionAuditDapperRepository(
             InitiatedByUserId = row.InitiatedByUserId,
             RecordedAtUtc = row.RecordedAtUtc,
             RegionCode = row.RegionCode,
+            WorkflowInstanceId = row.WorkflowInstanceId,
         }).ToList();
     }
 
@@ -81,5 +83,6 @@ public sealed class GlobalSafetyActionAuditDapperRepository(
         public Guid? InitiatedByUserId { get; init; }
         public required DateTime RecordedAtUtc { get; init; }
         public string? RegionCode { get; init; }
+        public Guid? WorkflowInstanceId { get; init; }
     }
 }
