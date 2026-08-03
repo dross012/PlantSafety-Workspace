@@ -41158,6 +41158,1069 @@
         <member name="M:PlantSafety.Application.Financials.Validation.CreateFinancialRecordCommandValidator.#ctor">
             <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Financials.Commands.CreateFinancialRecordCommand"/>.</summary>
         </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand">
+            <summary>
+            Runs the full GlobalSafetyInsights compute pipeline for the given tenant/sites/window and
+            persists a new snapshot.
+            </summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="SiteIds">Sites covered by this computation.</param>
+            <param name="WindowStartUtc">Inclusive UTC start of the analysis window.</param>
+            <param name="WindowEndUtc">Inclusive UTC end of the analysis window.</param>
+            <param name="Telemetry">Already-normalized telemetry records (produced by IGlobalSafetyTelemetryNormalizer at the consumer boundary).</param>
+            <param name="ActorUserId">User that triggered this computation, if a human-initiated recompute; <see langword="null"/> for system-triggered (event-driven) computation.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering event/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering event/request.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.DateTime,System.DateTime,System.Collections.Generic.IReadOnlyList{PlantSafety.Domain.GlobalSafetyInsights.ValueObjects.SafetyTelemetryEvent},System.Nullable{System.Guid},System.Guid,System.Guid)">
+            <summary>
+            Runs the full GlobalSafetyInsights compute pipeline for the given tenant/sites/window and
+            persists a new snapshot.
+            </summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="SiteIds">Sites covered by this computation.</param>
+            <param name="WindowStartUtc">Inclusive UTC start of the analysis window.</param>
+            <param name="WindowEndUtc">Inclusive UTC end of the analysis window.</param>
+            <param name="Telemetry">Already-normalized telemetry records (produced by IGlobalSafetyTelemetryNormalizer at the consumer boundary).</param>
+            <param name="ActorUserId">User that triggered this computation, if a human-initiated recompute; <see langword="null"/> for system-triggered (event-driven) computation.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering event/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering event/request.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.SiteIds">
+            <summary>Sites covered by this computation.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.WindowStartUtc">
+            <summary>Inclusive UTC start of the analysis window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.WindowEndUtc">
+            <summary>Inclusive UTC end of the analysis window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.Telemetry">
+            <summary>Already-normalized telemetry records (produced by IGlobalSafetyTelemetryNormalizer at the consumer boundary).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.ActorUserId">
+            <summary>User that triggered this computation, if a human-initiated recompute; <see langword="null"/> for system-triggered (event-driven) computation.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.CorrelationId">
+            <summary>Correlation identifier propagated from the triggering event/request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand.CausationId">
+            <summary>Causation identifier propagated from the triggering event/request.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand">
+            <summary>Records a cross-site coordinated action into the GlobalSafetyInsights audit trail.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites affected by the action.</param>
+            <param name="ActionType">Short discriminator for the kind of action (e.g. "CorrectiveActionRollout").</param>
+            <param name="Description">Human-readable description of the action.</param>
+            <param name="InitiatedByUserId">User that initiated the action, if known.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering event.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering event.</param>
+            <param name="RegionCode">The region the action was resolved/routed in, if known.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.Guid,System.Guid,System.String)">
+            <summary>Records a cross-site coordinated action into the GlobalSafetyInsights audit trail.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites affected by the action.</param>
+            <param name="ActionType">Short discriminator for the kind of action (e.g. "CorrectiveActionRollout").</param>
+            <param name="Description">Human-readable description of the action.</param>
+            <param name="InitiatedByUserId">User that initiated the action, if known.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering event.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering event.</param>
+            <param name="RegionCode">The region the action was resolved/routed in, if known.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.AffectedSiteIds">
+            <summary>Sites affected by the action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.ActionType">
+            <summary>Short discriminator for the kind of action (e.g. "CorrectiveActionRollout").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.Description">
+            <summary>Human-readable description of the action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.InitiatedByUserId">
+            <summary>User that initiated the action, if known.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.CorrelationId">
+            <summary>Correlation identifier propagated from the triggering event.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.CausationId">
+            <summary>Causation identifier propagated from the triggering event.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.RegionCode">
+            <summary>The region the action was resolved/routed in, if known.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand">
+            <summary>Rolls out a Corrective/Preventive Action at each of a set of affected sites, as part of a governed cross-site coordinated action.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites the corrective action must be rolled out to (already policy-eligible; see MultiSiteActionRouter).</param>
+            <param name="Title">Short title for the corrective action. Max 200 characters.</param>
+            <param name="Description">Description of the corrective action to be performed at each site.</param>
+            <param name="Priority">Priority classification (Low, Medium, High, Critical).</param>
+            <param name="SourceEventId">Identifier of the triggering source event (e.g. the GlobalSafetyInsights snapshot).</param>
+            <param name="SourceEventType">Type discriminator of the triggering source event (e.g. "GlobalSafetyAnomaly").</param>
+            <param name="DueAtUtc">UTC instant the corrective action is due at every affected site.</param>
+            <param name="AssignedToWorkerId">Worker assigned to implement the corrective action at every affected site (a per-site placeholder assignment -- real per-site routing to a site's safety manager is a follow-on enhancement once a Site aggregate/roster exists).</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.String,System.Guid,System.String,System.DateTimeOffset,System.Guid,System.Nullable{System.Guid},System.Guid,System.Guid)">
+            <summary>Rolls out a Corrective/Preventive Action at each of a set of affected sites, as part of a governed cross-site coordinated action.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites the corrective action must be rolled out to (already policy-eligible; see MultiSiteActionRouter).</param>
+            <param name="Title">Short title for the corrective action. Max 200 characters.</param>
+            <param name="Description">Description of the corrective action to be performed at each site.</param>
+            <param name="Priority">Priority classification (Low, Medium, High, Critical).</param>
+            <param name="SourceEventId">Identifier of the triggering source event (e.g. the GlobalSafetyInsights snapshot).</param>
+            <param name="SourceEventType">Type discriminator of the triggering source event (e.g. "GlobalSafetyAnomaly").</param>
+            <param name="DueAtUtc">UTC instant the corrective action is due at every affected site.</param>
+            <param name="AssignedToWorkerId">Worker assigned to implement the corrective action at every affected site (a per-site placeholder assignment -- real per-site routing to a site's safety manager is a follow-on enhancement once a Site aggregate/roster exists).</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.AffectedSiteIds">
+            <summary>Sites the corrective action must be rolled out to (already policy-eligible; see MultiSiteActionRouter).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.Title">
+            <summary>Short title for the corrective action. Max 200 characters.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.Description">
+            <summary>Description of the corrective action to be performed at each site.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.Priority">
+            <summary>Priority classification (Low, Medium, High, Critical).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.SourceEventId">
+            <summary>Identifier of the triggering source event (e.g. the GlobalSafetyInsights snapshot).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.SourceEventType">
+            <summary>Type discriminator of the triggering source event (e.g. "GlobalSafetyAnomaly").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.DueAtUtc">
+            <summary>UTC instant the corrective action is due at every affected site.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.AssignedToWorkerId">
+            <summary>Worker assigned to implement the corrective action at every affected site (a per-site placeholder assignment -- real per-site routing to a site's safety manager is a follow-on enhancement once a Site aggregate/roster exists).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.InitiatedByUserId">
+            <summary>User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.CorrelationId">
+            <summary>Correlation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.CausationId">
+            <summary>Causation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome">
+            <summary>Per-site outcome of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand"/>.</summary>
+            <param name="SiteId">The site this outcome pertains to.</param>
+            <param name="Success">Whether the dispatch to ContinuousImprovement.CAPA succeeded for this site.</param>
+            <param name="CorrectiveActionId">The newly created CorrectiveAction's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.Success"/> is <see langword="true"/>.</param>
+            <param name="ErrorMessage">Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.Success"/> is <see langword="false"/>.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.#ctor(System.Guid,System.Boolean,System.Nullable{System.Guid},System.String)">
+            <summary>Per-site outcome of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand"/>.</summary>
+            <param name="SiteId">The site this outcome pertains to.</param>
+            <param name="Success">Whether the dispatch to ContinuousImprovement.CAPA succeeded for this site.</param>
+            <param name="CorrectiveActionId">The newly created CorrectiveAction's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.Success"/> is <see langword="true"/>.</param>
+            <param name="ErrorMessage">Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.Success"/> is <see langword="false"/>.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.SiteId">
+            <summary>The site this outcome pertains to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.Success">
+            <summary>Whether the dispatch to ContinuousImprovement.CAPA succeeded for this site.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.CorrectiveActionId">
+            <summary>The newly created CorrectiveAction's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.Success"/> is <see langword="true"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.ErrorMessage">
+            <summary>Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome.Success"/> is <see langword="false"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionResult">
+            <summary>Result of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand"/> execution.</summary>
+            <param name="Outcomes">One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.AffectedSiteIds"/>.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionResult.#ctor(System.Collections.Generic.IReadOnlyList{PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionSiteOutcome})">
+            <summary>Result of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand"/> execution.</summary>
+            <param name="Outcomes">One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.AffectedSiteIds"/>.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionResult.Outcomes">
+            <summary>One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand.AffectedSiteIds"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionResult.AllSucceeded">
+            <summary><see langword="true"/> when every affected site's corrective action was successfully created.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand">
+            <summary>Escalates (or creates) an Incident record at each of a set of affected sites, as part of a governed cross-site coordinated action.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites the escalation must be routed to (already policy-eligible; see MultiSiteActionRouter).</param>
+            <param name="Reason">Human-readable reason for the escalation, recorded on every touched/created Incident.</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.Nullable{System.Guid},System.Guid,System.Guid)">
+            <summary>Escalates (or creates) an Incident record at each of a set of affected sites, as part of a governed cross-site coordinated action.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites the escalation must be routed to (already policy-eligible; see MultiSiteActionRouter).</param>
+            <param name="Reason">Human-readable reason for the escalation, recorded on every touched/created Incident.</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.AffectedSiteIds">
+            <summary>Sites the escalation must be routed to (already policy-eligible; see MultiSiteActionRouter).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.Reason">
+            <summary>Human-readable reason for the escalation, recorded on every touched/created Incident.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.InitiatedByUserId">
+            <summary>User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.CorrelationId">
+            <summary>Correlation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.CausationId">
+            <summary>Causation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome">
+            <summary>Per-site outcome of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand"/>.</summary>
+            <param name="SiteId">The site this outcome pertains to.</param>
+            <param name="Success">Whether the dispatch to SafetyEvents.IncidentManagement succeeded for this site.</param>
+            <param name="IncidentId">The escalated or newly created Incident's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.Success"/> is <see langword="true"/>.</param>
+            <param name="Action">"Escalated" when an existing open Incident was escalated, "Created" when a new cross-site-flagged Incident was created.</param>
+            <param name="ErrorMessage">Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.Success"/> is <see langword="false"/>.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.#ctor(System.Guid,System.Boolean,System.Nullable{System.Guid},System.String,System.String)">
+            <summary>Per-site outcome of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand"/>.</summary>
+            <param name="SiteId">The site this outcome pertains to.</param>
+            <param name="Success">Whether the dispatch to SafetyEvents.IncidentManagement succeeded for this site.</param>
+            <param name="IncidentId">The escalated or newly created Incident's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.Success"/> is <see langword="true"/>.</param>
+            <param name="Action">"Escalated" when an existing open Incident was escalated, "Created" when a new cross-site-flagged Incident was created.</param>
+            <param name="ErrorMessage">Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.Success"/> is <see langword="false"/>.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.SiteId">
+            <summary>The site this outcome pertains to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.Success">
+            <summary>Whether the dispatch to SafetyEvents.IncidentManagement succeeded for this site.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.IncidentId">
+            <summary>The escalated or newly created Incident's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.Success"/> is <see langword="true"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.Action">
+            <summary>"Escalated" when an existing open Incident was escalated, "Created" when a new cross-site-flagged Incident was created.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.ErrorMessage">
+            <summary>Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome.Success"/> is <see langword="false"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationResult">
+            <summary>Result of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand"/> execution.</summary>
+            <param name="Outcomes">One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.AffectedSiteIds"/>.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationResult.#ctor(System.Collections.Generic.IReadOnlyList{PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentSiteOutcome})">
+            <summary>Result of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand"/> execution.</summary>
+            <param name="Outcomes">One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.AffectedSiteIds"/>.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationResult.Outcomes">
+            <summary>One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand.AffectedSiteIds"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationResult.AllSucceeded">
+            <summary><see langword="true"/> when every affected site was successfully escalated/created.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand">
+            <summary>Propagates a lockout/tagout action across a set of affected sites, as part of a governed cross-site coordinated action.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites the lockout propagation was requested for (already policy-eligible; see MultiSiteActionRouter).</param>
+            <param name="Reason">Human-readable reason for the lockout propagation.</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.Nullable{System.Guid},System.Guid,System.Guid)">
+            <summary>Propagates a lockout/tagout action across a set of affected sites, as part of a governed cross-site coordinated action.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites the lockout propagation was requested for (already policy-eligible; see MultiSiteActionRouter).</param>
+            <param name="Reason">Human-readable reason for the lockout propagation.</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand.AffectedSiteIds">
+            <summary>Sites the lockout propagation was requested for (already policy-eligible; see MultiSiteActionRouter).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand.Reason">
+            <summary>Human-readable reason for the lockout propagation.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand.InitiatedByUserId">
+            <summary>User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand.CorrelationId">
+            <summary>Correlation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand.CausationId">
+            <summary>Causation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationResult">
+            <summary>Result of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand"/> execution.</summary>
+            <param name="AttemptedSiteIds">Sites the propagation was attempted for.</param>
+            <param name="ModuleIntegrationAvailable">
+            Always <see langword="false"/> today -- Operational.LockoutTagout has no write command surface
+            to dispatch to (see file remarks). Kept as an explicit field (rather than only a Result.Failure)
+            so dashboards/tests can distinguish "genuinely too thin to integrate" from a transient error.
+            </param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationResult.#ctor(System.Collections.Generic.IReadOnlyList{System.Guid},System.Boolean)">
+            <summary>Result of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand"/> execution.</summary>
+            <param name="AttemptedSiteIds">Sites the propagation was attempted for.</param>
+            <param name="ModuleIntegrationAvailable">
+            Always <see langword="false"/> today -- Operational.LockoutTagout has no write command surface
+            to dispatch to (see file remarks). Kept as an explicit field (rather than only a Result.Failure)
+            so dashboards/tests can distinguish "genuinely too thin to integrate" from a transient error.
+            </param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationResult.AttemptedSiteIds">
+            <summary>Sites the propagation was attempted for.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationResult.ModuleIntegrationAvailable">
+            <summary>
+            Always <see langword="false"/> today -- Operational.LockoutTagout has no write command surface
+            to dispatch to (see file remarks). Kept as an explicit field (rather than only a Result.Failure)
+            so dashboards/tests can distinguish "genuinely too thin to integrate" from a transient error.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand">
+            <summary>Coordinates a maintenance response (WorkOrder creation) across a set of affected sites, as part of a governed cross-site coordinated action.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites the maintenance coordination must be routed to (already policy-eligible; see MultiSiteActionRouter).</param>
+            <param name="MachineId">Identifier of the machine/equipment family targeted by this coordinated maintenance response.</param>
+            <param name="MachineCode">Human-readable machine code (format M-###).</param>
+            <param name="Priority">Priority classification (Low, Medium, High, Critical).</param>
+            <param name="Description">Description of the work to be performed at each affected site.</param>
+            <param name="DueAtUtc">UTC instant the work order is due at every affected site.</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.Guid,System.String,System.String,System.String,System.DateTime,System.Nullable{System.Guid},System.Guid,System.Guid)">
+            <summary>Coordinates a maintenance response (WorkOrder creation) across a set of affected sites, as part of a governed cross-site coordinated action.</summary>
+            <param name="TenantId">Tenant identifier.</param>
+            <param name="AffectedSiteIds">Sites the maintenance coordination must be routed to (already policy-eligible; see MultiSiteActionRouter).</param>
+            <param name="MachineId">Identifier of the machine/equipment family targeted by this coordinated maintenance response.</param>
+            <param name="MachineCode">Human-readable machine code (format M-###).</param>
+            <param name="Priority">Priority classification (Low, Medium, High, Critical).</param>
+            <param name="Description">Description of the work to be performed at each affected site.</param>
+            <param name="DueAtUtc">UTC instant the work order is due at every affected site.</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.AffectedSiteIds">
+            <summary>Sites the maintenance coordination must be routed to (already policy-eligible; see MultiSiteActionRouter).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.MachineId">
+            <summary>Identifier of the machine/equipment family targeted by this coordinated maintenance response.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.MachineCode">
+            <summary>Human-readable machine code (format M-###).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.Priority">
+            <summary>Priority classification (Low, Medium, High, Critical).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.Description">
+            <summary>Description of the work to be performed at each affected site.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.DueAtUtc">
+            <summary>UTC instant the work order is due at every affected site.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.InitiatedByUserId">
+            <summary>User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.CorrelationId">
+            <summary>Correlation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.CausationId">
+            <summary>Causation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome">
+            <summary>Per-site outcome of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand"/>.</summary>
+            <param name="SiteId">The site this outcome pertains to.</param>
+            <param name="Success">Whether the dispatch to Operational.WorkOrders succeeded for this site.</param>
+            <param name="WorkOrderId">The newly created WorkOrder's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.Success"/> is <see langword="true"/>.</param>
+            <param name="ErrorMessage">Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.Success"/> is <see langword="false"/>.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.#ctor(System.Guid,System.Boolean,System.Nullable{System.Guid},System.String)">
+            <summary>Per-site outcome of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand"/>.</summary>
+            <param name="SiteId">The site this outcome pertains to.</param>
+            <param name="Success">Whether the dispatch to Operational.WorkOrders succeeded for this site.</param>
+            <param name="WorkOrderId">The newly created WorkOrder's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.Success"/> is <see langword="true"/>.</param>
+            <param name="ErrorMessage">Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.Success"/> is <see langword="false"/>.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.SiteId">
+            <summary>The site this outcome pertains to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.Success">
+            <summary>Whether the dispatch to Operational.WorkOrders succeeded for this site.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.WorkOrderId">
+            <summary>The newly created WorkOrder's identity, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.Success"/> is <see langword="true"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.ErrorMessage">
+            <summary>Sanitized failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome.Success"/> is <see langword="false"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationResult">
+            <summary>Result of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand"/> execution.</summary>
+            <param name="Outcomes">One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.AffectedSiteIds"/>.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationResult.#ctor(System.Collections.Generic.IReadOnlyList{PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationSiteOutcome})">
+            <summary>Result of a <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand"/> execution.</summary>
+            <param name="Outcomes">One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.AffectedSiteIds"/>.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationResult.Outcomes">
+            <summary>One outcome per entry in <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand.AffectedSiteIds"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationResult.AllSucceeded">
+            <summary><see langword="true"/> when every affected site's WorkOrder was successfully created.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.IGlobalSafetyAnomalyEscalationReactor">
+            <summary>Reacts to a freshly computed snapshot's detected anomalies, auto-escalating the ones that cross the policy's severity threshold.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.IGlobalSafetyAnomalyEscalationReactor.ReactAsync(PlantSafety.Domain.GlobalSafetyInsights.Aggregates.GlobalSafetyInsightsAggregate,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Evaluates every anomaly on <paramref name="aggregate"/> and routes an auto-escalation for each that crosses the threshold.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.GlobalSafetyAnomalyEscalationReactor">
+            <inheritdoc cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.IGlobalSafetyAnomalyEscalationReactor"/>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.GlobalSafetyAnomalyEscalationReactor.#ctor(PlantSafety.Domain.GlobalSafetyInsights.Coordination.Policies.IMultiSiteSafetyPolicy,PlantSafety.Application.GlobalSafetyInsights.Coordination.IMultiSiteActionRouter,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Coordination.GlobalSafetyAnomalyEscalationReactor})">
+            <inheritdoc cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.IGlobalSafetyAnomalyEscalationReactor"/>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.GlobalSafetyAnomalyEscalationReactor.ReactAsync(PlantSafety.Domain.GlobalSafetyInsights.Aggregates.GlobalSafetyInsightsAggregate,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteCorrectiveActionCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand"/>.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteCorrectiveActionCommandHandler.SystemUserId">
+            <summary>Well-known system-actor UserId used when no human initiated the coordinated action.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteCorrectiveActionCommandHandler.#ctor(MediatR.ISender,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteCorrectiveActionCommandHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteCorrectiveActionCommandHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteIncidentEscalationCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand"/>.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteIncidentEscalationCommandHandler.SystemUserId">
+            <summary>Well-known system-actor UserId used when no human initiated the coordinated action.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteIncidentEscalationCommandHandler.OpenStatuses">
+            <summary>Incident statuses considered "open" (eligible for escalation rather than requiring a new record).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteIncidentEscalationCommandHandler.#ctor(MediatR.ISender,PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement.IIncidentReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteIncidentEscalationCommandHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteIncidentEscalationCommandHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteIncidentEscalationCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteLockoutPropagationCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteLockoutPropagationCommandHandler.#ctor(Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteLockoutPropagationCommandHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteLockoutPropagationCommandHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteLockoutPropagationCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteMaintenanceCoordinationCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand"/>.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteMaintenanceCoordinationCommandHandler.SystemUserId">
+            <summary>Well-known system-actor UserId used when no human initiated the coordinated action.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteMaintenanceCoordinationCommandHandler.#ctor(MediatR.ISender,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteMaintenanceCoordinationCommandHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Handlers.CrossSiteMaintenanceCoordinationCommandHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteMaintenanceCoordinationCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest">
+            <summary>Request to route a governed coordinated action across a set of candidate sites.</summary>
+            <param name="TenantId">Tenant issuing the coordinated action.</param>
+            <param name="CandidateSiteIds">Sites proposed to participate in the action.</param>
+            <param name="ActionType">The kind of coordinated action.</param>
+            <param name="Description">Human-readable description of the action, recorded to the audit trail and (if applicable) surfaced on the approval workflow.</param>
+            <param name="TenantExcludedSiteIds">Sites the tenant has explicitly excluded from cross-site coordination, if configured.</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+            <param name="IncidentEscalationReason">Reason used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.IncidentEscalation"/>.</param>
+            <param name="LockoutPropagationReason">Reason used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.LockoutPropagation"/>.</param>
+            <param name="CorrectiveAction">Payload used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.CorrectiveActionRollout"/>.</param>
+            <param name="MaintenanceCoordination">Payload used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.MaintenanceCoordination"/>.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.#ctor(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType,System.String,System.Collections.Generic.IReadOnlyList{System.Guid},System.Nullable{System.Guid},System.Guid,System.Guid,System.String,System.String,PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload,PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteMaintenanceCoordinationPayload)">
+            <summary>Request to route a governed coordinated action across a set of candidate sites.</summary>
+            <param name="TenantId">Tenant issuing the coordinated action.</param>
+            <param name="CandidateSiteIds">Sites proposed to participate in the action.</param>
+            <param name="ActionType">The kind of coordinated action.</param>
+            <param name="Description">Human-readable description of the action, recorded to the audit trail and (if applicable) surfaced on the approval workflow.</param>
+            <param name="TenantExcludedSiteIds">Sites the tenant has explicitly excluded from cross-site coordination, if configured.</param>
+            <param name="InitiatedByUserId">User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</param>
+            <param name="CorrelationId">Correlation identifier propagated from the triggering anomaly/request.</param>
+            <param name="CausationId">Causation identifier propagated from the triggering anomaly/request.</param>
+            <param name="IncidentEscalationReason">Reason used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.IncidentEscalation"/>.</param>
+            <param name="LockoutPropagationReason">Reason used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.LockoutPropagation"/>.</param>
+            <param name="CorrectiveAction">Payload used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.CorrectiveActionRollout"/>.</param>
+            <param name="MaintenanceCoordination">Payload used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.MaintenanceCoordination"/>.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.TenantId">
+            <summary>Tenant issuing the coordinated action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.CandidateSiteIds">
+            <summary>Sites proposed to participate in the action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.ActionType">
+            <summary>The kind of coordinated action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.Description">
+            <summary>Human-readable description of the action, recorded to the audit trail and (if applicable) surfaced on the approval workflow.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.TenantExcludedSiteIds">
+            <summary>Sites the tenant has explicitly excluded from cross-site coordination, if configured.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.InitiatedByUserId">
+            <summary>User that initiated the coordinated action, if human-triggered; <see langword="null"/> for a system-triggered (auto-escalated) action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.CorrelationId">
+            <summary>Correlation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.CausationId">
+            <summary>Causation identifier propagated from the triggering anomaly/request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.IncidentEscalationReason">
+            <summary>Reason used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.IncidentEscalation"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.LockoutPropagationReason">
+            <summary>Reason used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.LockoutPropagation"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.CorrectiveAction">
+            <summary>Payload used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.CorrectiveActionRollout"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest.MaintenanceCoordination">
+            <summary>Payload used when <paramref name="ActionType"/> is <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.MaintenanceCoordination"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload">
+            <summary>Payload required to dispatch a <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.CorrectiveActionRollout"/> action.</summary>
+            <param name="Title">Short title for the corrective action.</param>
+            <param name="Priority">Priority classification.</param>
+            <param name="SourceEventId">Identifier of the triggering source event.</param>
+            <param name="SourceEventType">Type discriminator of the triggering source event.</param>
+            <param name="DueAtUtc">UTC instant the corrective action is due.</param>
+            <param name="AssignedToWorkerId">Worker assigned to implement the corrective action.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload.#ctor(System.String,System.String,System.Guid,System.String,System.DateTimeOffset,System.Guid)">
+            <summary>Payload required to dispatch a <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.CorrectiveActionRollout"/> action.</summary>
+            <param name="Title">Short title for the corrective action.</param>
+            <param name="Priority">Priority classification.</param>
+            <param name="SourceEventId">Identifier of the triggering source event.</param>
+            <param name="SourceEventType">Type discriminator of the triggering source event.</param>
+            <param name="DueAtUtc">UTC instant the corrective action is due.</param>
+            <param name="AssignedToWorkerId">Worker assigned to implement the corrective action.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload.Title">
+            <summary>Short title for the corrective action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload.Priority">
+            <summary>Priority classification.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload.SourceEventId">
+            <summary>Identifier of the triggering source event.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload.SourceEventType">
+            <summary>Type discriminator of the triggering source event.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload.DueAtUtc">
+            <summary>UTC instant the corrective action is due.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteCorrectiveActionPayload.AssignedToWorkerId">
+            <summary>Worker assigned to implement the corrective action.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteMaintenanceCoordinationPayload">
+            <summary>Payload required to dispatch a <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.MaintenanceCoordination"/> action.</summary>
+            <param name="MachineId">Identifier of the targeted machine/equipment family.</param>
+            <param name="MachineCode">Human-readable machine code.</param>
+            <param name="Priority">Priority classification.</param>
+            <param name="DueAtUtc">UTC instant the work order is due.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteMaintenanceCoordinationPayload.#ctor(System.Guid,System.String,System.String,System.DateTime)">
+            <summary>Payload required to dispatch a <see cref="F:PlantSafety.Domain.GlobalSafetyInsights.Coordination.Enums.CrossSiteActionType.MaintenanceCoordination"/> action.</summary>
+            <param name="MachineId">Identifier of the targeted machine/equipment family.</param>
+            <param name="MachineCode">Human-readable machine code.</param>
+            <param name="Priority">Priority classification.</param>
+            <param name="DueAtUtc">UTC instant the work order is due.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteMaintenanceCoordinationPayload.MachineId">
+            <summary>Identifier of the targeted machine/equipment family.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteMaintenanceCoordinationPayload.MachineCode">
+            <summary>Human-readable machine code.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteMaintenanceCoordinationPayload.Priority">
+            <summary>Priority classification.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.CrossSiteMaintenanceCoordinationPayload.DueAtUtc">
+            <summary>UTC instant the work order is due.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult">
+            <summary>Outcome of <see cref="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.RouteAsync(PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest,System.Threading.CancellationToken)"/>.</summary>
+            <param name="EligibleSiteIds">Sites the action was (or, pending approval, will be) routed to.</param>
+            <param name="IneligibleSites">Candidate sites excluded by policy, with reasons.</param>
+            <param name="RequiresApproval">Whether the action required an approval chain before it could execute.</param>
+            <param name="Executed">
+            <see langword="true"/> when the action's site-level commands were dispatched immediately;
+            <see langword="false"/> when the action is pending approval (a WorkflowInstance was started, or
+            -- if no approval WorkflowDefinition is configured for the tenant -- the action was recorded as
+            pending-approval without automatic execution).
+            </param>
+            <param name="DispatchSucceeded">Whether the dispatch to the target site-level module(s) succeeded, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.Executed"/> is <see langword="true"/>.</param>
+            <param name="DispatchErrorMessage">Sanitized dispatch failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.DispatchSucceeded"/> is <see langword="false"/>.</param>
+            <param name="WorkflowInstanceId">The started approval WorkflowInstance's identity, when an approval WorkflowDefinition was found and <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.RequiresApproval"/> is <see langword="true"/>.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.#ctor(System.Collections.Generic.IReadOnlyList{System.Guid},System.Collections.Generic.IReadOnlyList{PlantSafety.Domain.GlobalSafetyInsights.Coordination.Policies.IneligibleSite},System.Boolean,System.Boolean,System.Boolean,System.String,System.Nullable{System.Guid})">
+            <summary>Outcome of <see cref="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.RouteAsync(PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest,System.Threading.CancellationToken)"/>.</summary>
+            <param name="EligibleSiteIds">Sites the action was (or, pending approval, will be) routed to.</param>
+            <param name="IneligibleSites">Candidate sites excluded by policy, with reasons.</param>
+            <param name="RequiresApproval">Whether the action required an approval chain before it could execute.</param>
+            <param name="Executed">
+            <see langword="true"/> when the action's site-level commands were dispatched immediately;
+            <see langword="false"/> when the action is pending approval (a WorkflowInstance was started, or
+            -- if no approval WorkflowDefinition is configured for the tenant -- the action was recorded as
+            pending-approval without automatic execution).
+            </param>
+            <param name="DispatchSucceeded">Whether the dispatch to the target site-level module(s) succeeded, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.Executed"/> is <see langword="true"/>.</param>
+            <param name="DispatchErrorMessage">Sanitized dispatch failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.DispatchSucceeded"/> is <see langword="false"/>.</param>
+            <param name="WorkflowInstanceId">The started approval WorkflowInstance's identity, when an approval WorkflowDefinition was found and <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.RequiresApproval"/> is <see langword="true"/>.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.EligibleSiteIds">
+            <summary>Sites the action was (or, pending approval, will be) routed to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.IneligibleSites">
+            <summary>Candidate sites excluded by policy, with reasons.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.RequiresApproval">
+            <summary>Whether the action required an approval chain before it could execute.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.Executed">
+            <summary>
+            <see langword="true"/> when the action's site-level commands were dispatched immediately;
+            <see langword="false"/> when the action is pending approval (a WorkflowInstance was started, or
+            -- if no approval WorkflowDefinition is configured for the tenant -- the action was recorded as
+            pending-approval without automatic execution).
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.DispatchSucceeded">
+            <summary>Whether the dispatch to the target site-level module(s) succeeded, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.Executed"/> is <see langword="true"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.DispatchErrorMessage">
+            <summary>Sanitized dispatch failure reason, when <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.DispatchSucceeded"/> is <see langword="false"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.WorkflowInstanceId">
+            <summary>The started approval WorkflowInstance's identity, when an approval WorkflowDefinition was found and <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRouteResult.RequiresApproval"/> is <see langword="true"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.IMultiSiteActionRouter">
+            <summary>Real orchestration point for the Multi-Site Coordination workflow: validate, decide, route, audit.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.IMultiSiteActionRouter.RouteAsync(PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest,System.Threading.CancellationToken)">
+            <summary>Validates, decides eligibility/approval, and routes (or defers pending approval) a coordinated action.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter">
+            <inheritdoc cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.IMultiSiteActionRouter"/>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.#ctor(PlantSafety.Application.Enterprise.MultiRegion.ITenantRegionRouter,PlantSafety.Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer,PlantSafety.Domain.GlobalSafetyInsights.Coordination.Policies.IMultiSiteSafetyPolicy,MediatR.ISender,PlantSafety.Application.GlobalSafetyInsights.Coordination.Publishers.ICrossSiteActionEventPublisher,PlantSafety.Domain.Workflow.Interfaces.IWorkflowDefinitionRepository,PlantSafety.Domain.Workflow.Interfaces.IWorkflowInstanceFactory,PlantSafety.Domain.Workflow.Interfaces.IWorkflowInstanceRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter})">
+            <inheritdoc cref="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.IMultiSiteActionRouter"/>
+        </member>
+        <member name="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.ApprovalWorkflowDefinitionName">
+            <summary>
+            Well-known name of the tenant-configured WorkflowDefinition (WorkflowType.Approval) used to
+            gate cross-site coordinated actions that require approval. A tenant that has not configured
+            a WorkflowDefinition with this name has no approval chain available -- see remarks on
+            <see cref="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.RouteAsync(PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest,System.Threading.CancellationToken)"/> for the honest fallback behavior in that case.
+            </summary>
+        </member>
+        <member name="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.SystemUserId">
+            <summary>Well-known system-actor UserId used when no human initiated the coordinated action.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.RouteAsync(PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Publishers.ICrossSiteActionEventPublisher">
+            <summary>Publishes a <see cref="T:PlantSafety.Domain.GlobalSafetyInsights.Events.CrossSiteActionEvent"/> onto the real internal event mesh.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.Publishers.ICrossSiteActionEventPublisher.PublishAsync(PlantSafety.Domain.GlobalSafetyInsights.Events.CrossSiteActionEvent,System.Threading.CancellationToken)">
+            <summary>Publishes <paramref name="evt"/>, respecting data residency, so CrossSiteActionConsumer can record it into the audit ledger.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.DependencyInjection.GlobalSafetyInsightsApplicationServiceRegistration">
+            <summary>Registers Application-layer services for the GlobalSafetyInsights module.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.DependencyInjection.GlobalSafetyInsightsApplicationServiceRegistration.AddGlobalSafetyInsightsApplicationServices(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+            <summary>Adds GlobalSafetyInsights domain-service singletons to the service collection.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Handlers.ComputeGlobalSafetyInsightsCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand"/>.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.GlobalSafetyInsights.Handlers.ComputeGlobalSafetyInsightsCommandHandler.SystemUserId">
+            <summary>Well-known system-actor UserId used for CRUD authorship on system/event-driven (non-human) computations.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.ComputeGlobalSafetyInsightsCommandHandler.#ctor(PlantSafety.Domain.GlobalSafetyInsights.Interfaces.IGlobalSafetyTelemetryNormalizer,PlantSafety.Domain.GlobalSafetyInsights.Interfaces.IGlobalSafetyKpiEngine,PlantSafety.Domain.GlobalSafetyInsights.Interfaces.IGlobalSafetyAnomalyDetector,PlantSafety.Domain.GlobalSafetyInsights.Interfaces.IGlobalSafetyRiskScorer,PlantSafety.Domain.GlobalSafetyInsights.Services.GlobalSafetyRecommendationComposer,PlantSafety.Domain.GlobalSafetyInsights.Interfaces.IGlobalSafetyInsightsRepository,PlantSafety.Domain.RiskManagement.Interfaces.IRiskRepository,PlantSafety.Application.Enterprise.MultiRegion.ITenantRegionRouter,PlantSafety.Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer,PlantSafety.Application.GlobalSafetyInsights.Publishers.IGlobalSafetyInsightsPublisher,PlantSafety.Application.GlobalSafetyInsights.Coordination.IGlobalSafetyAnomalyEscalationReactor,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Handlers.ComputeGlobalSafetyInsightsCommandHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.ComputeGlobalSafetyInsightsCommandHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Commands.ComputeGlobalSafetyInsightsCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Handlers.ComputeGlobalSafetyInsightsCommandHandler.AllScoredRisksSpecification">
+            <summary>Trivial specification selecting every scored Risk record for a tenant (risk scoring is a cross-cutting rollup, not filtered by any single Risk attribute).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetCrossSiteActionHistoryQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetCrossSiteActionHistoryQueryHandler.#ctor(PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Handlers.GetCrossSiteActionHistoryQueryHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetCrossSiteActionHistoryQueryHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetGlobalSafetyInsightsDetailQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetGlobalSafetyInsightsDetailQueryHandler.#ctor(PlantSafety.Domain.GlobalSafetyInsights.Interfaces.IGlobalSafetyInsightsRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Handlers.GetGlobalSafetyInsightsDetailQueryHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetGlobalSafetyInsightsDetailQueryHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetGlobalSafetyInsightsQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetGlobalSafetyInsightsQueryHandler.#ctor(PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyInsightsReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Handlers.GetGlobalSafetyInsightsQueryHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.GetGlobalSafetyInsightsQueryHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Handlers.RecordCrossSiteActionCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.RecordCrossSiteActionCommandHandler.#ctor(PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.GlobalSafetyInsights.Handlers.RecordCrossSiteActionCommandHandler})">
+            <summary>Initializes dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Handlers.RecordCrossSiteActionCommandHandler.Handle(PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto">
+            <summary>A single cross-site coordinated-action audit ledger entry.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.CrossSiteActionLogId">
+            <summary>Audit ledger entry identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.AffectedSiteIds">
+            <summary>Every site affected by this coordinated action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.ActionType">
+            <summary>Discriminator for the kind of coordinated action (e.g. "CorrectiveActionRollout", "IncidentEscalation").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.Description">
+            <summary>Human-readable description of the action.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.InitiatedByUserId">
+            <summary>Identity of the user who initiated the action, if any.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.RecordedAtUtc">
+            <summary>UTC instant the action was recorded.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.RegionCode">
+            <summary>The region the action was resolved/routed in, if known.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto">
+            <summary>A single site/region/machine-family risk score, projected for the dashboard.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto.ScopeType">
+            <summary>Which dimension this score was aggregated over ("Site", "Region", "MachineFamily").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto.ScopeKey">
+            <summary>Identity of the scope (SiteId, Region code, or machine family name).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto.Severity">
+            <summary>Severity rating (1-5) of the aggregated risk score.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto.Likelihood">
+            <summary>Likelihood rating (1-5) of the aggregated risk score.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto.Score">
+            <summary>Computed Severity x Likelihood score.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto.RiskLevel">
+            <summary>Qualitative risk banding ("Low", "Medium", "High", "Critical").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto.SourceRiskCount">
+            <summary>Number of underlying Risk records this score was averaged over.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyAnomalyDetailDto">
+            <summary>A single detected cross-site/systemic anomaly, projected for the dashboard.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyAnomalyDetailDto.Kind">
+            <summary>Category of the anomaly (e.g. "CrossSiteIncidentSpike").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyAnomalyDetailDto.SiteId">
+            <summary>Site the anomaly pertains to, or null when it spans a region/machine family.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyAnomalyDetailDto.MachineFamily">
+            <summary>Machine family the anomaly pertains to, when applicable.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyAnomalyDetailDto.DeviationMagnitude">
+            <summary>Statistical magnitude of the deviation (z-score or deviation ratio, per Kind).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyAnomalyDetailDto.Message">
+            <summary>Human-readable explanation of the anomaly.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyAnomalyDetailDto.DetectedAtUtc">
+            <summary>UTC instant the anomaly was detected.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRecommendationDetailDto">
+            <summary>A single structured safety recommendation, projected for the dashboard.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRecommendationDetailDto.Priority">
+            <summary>Urgency of this recommendation ("Low", "Medium", "High", "Critical").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRecommendationDetailDto.Category">
+            <summary>Short machine-readable category.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRecommendationDetailDto.Description">
+            <summary>Human-readable recommendation description.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRecommendationDetailDto.TargetSiteId">
+            <summary>Site this recommendation targets, or null when it targets the whole region/network.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRecommendationDetailDto.RelatedAnomalyKind">
+            <summary>Kind of anomaly this recommendation was derived from, if any.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto">
+            <summary>Full detail projection of the most recently computed GlobalSafetyInsights snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.GlobalSafetyInsightsId">
+            <summary>Snapshot identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.RegionCode">
+            <summary>Region code this snapshot was computed for.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.SiteIds">
+            <summary>Sites covered by this snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.WindowStartUtc">
+            <summary>Inclusive UTC start of the analysis window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.WindowEndUtc">
+            <summary>Inclusive UTC end of the analysis window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.Trir">
+            <summary>Total Recordable Incident Rate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.Ltir">
+            <summary>Lost Time Incident Rate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.ExposureRate">
+            <summary>Mean worker exposure-level score across the window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.IncidentDensity">
+            <summary>Incidents per site per day across the window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.MachineStateIncidentCorrelation">
+            <summary>Pearson correlation between degraded machine-state observations and incidents.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.RiskScores">
+            <summary>Every per-site/region/machine-family risk score in this snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.Anomalies">
+            <summary>Every anomaly detected in this snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.Recommendations">
+            <summary>Every structured recommendation surfaced with this snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsDetailDto.ComputedAtUtc">
+            <summary>UTC instant this snapshot was computed.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto">
+            <summary>Read-model projection of a single computed GlobalSafetyInsights snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.GlobalSafetyInsightsId">
+            <summary>Snapshot identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.TenantId">
+            <summary>Tenant identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.RegionCode">
+            <summary>Region code this snapshot was computed for.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.SiteIds">
+            <summary>Sites covered by this snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.WindowStartUtc">
+            <summary>Inclusive UTC start of the analysis window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.WindowEndUtc">
+            <summary>Inclusive UTC end of the analysis window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.Trir">
+            <summary>Total Recordable Incident Rate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.Ltir">
+            <summary>Lost Time Incident Rate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.ExposureRate">
+            <summary>Mean worker exposure-level score across the window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.IncidentDensity">
+            <summary>Incidents per site per day across the window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.MachineStateIncidentCorrelation">
+            <summary>Pearson correlation between degraded machine-state observations and incidents, per site.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.AnomalyCount">
+            <summary>Number of anomalies detected in this snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.RecommendationCount">
+            <summary>Number of structured recommendations surfaced with this snapshot.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto.ComputedAtUtc">
+            <summary>UTC instant this snapshot was computed.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Publishers.IGlobalSafetyInsightsPublisher">
+            <summary>Publishes the dashboard-facing GlobalSafetyInsights mesh events for a freshly computed snapshot.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Publishers.IGlobalSafetyInsightsPublisher.PublishAsync(PlantSafety.Domain.GlobalSafetyInsights.Aggregates.GlobalSafetyInsightsAggregate,System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Publishes one GlobalSafetyKpiSnapshotEvent and one GlobalSafetyAnomalyEvent per detected
+            anomaly for the given freshly computed <paramref name="aggregate"/>, respecting data
+            residency and tenant-region routing.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery">
+            <summary>Lists cross-site coordinated-action audit entries for <paramref name="TenantId"/> within [<paramref name="From"/>, <paramref name="To"/>].</summary>
+            <param name="TenantId">Tenant identifier resolved server-side from the operation context.</param>
+            <param name="From">Inclusive UTC start of the date range.</param>
+            <param name="To">Inclusive UTC end of the date range.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery.#ctor(System.Guid,System.DateTime,System.DateTime)">
+            <summary>Lists cross-site coordinated-action audit entries for <paramref name="TenantId"/> within [<paramref name="From"/>, <paramref name="To"/>].</summary>
+            <param name="TenantId">Tenant identifier resolved server-side from the operation context.</param>
+            <param name="From">Inclusive UTC start of the date range.</param>
+            <param name="To">Inclusive UTC end of the date range.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery.TenantId">
+            <summary>Tenant identifier resolved server-side from the operation context.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery.From">
+            <summary>Inclusive UTC start of the date range.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery.To">
+            <summary>Inclusive UTC end of the date range.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery">
+            <summary>Retrieves the full detail of the most recently computed GlobalSafetyInsights snapshot for <paramref name="TenantId"/>.</summary>
+            <param name="TenantId">Tenant identifier resolved server-side from the operation context.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery.#ctor(System.Guid)">
+            <summary>Retrieves the full detail of the most recently computed GlobalSafetyInsights snapshot for <paramref name="TenantId"/>.</summary>
+            <param name="TenantId">Tenant identifier resolved server-side from the operation context.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery.TenantId">
+            <summary>Tenant identifier resolved server-side from the operation context.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery">
+            <summary>
+            Retrieves the most recently computed GlobalSafetyInsights snapshot for
+            <paramref name="TenantId"/>, plus its computation history within [<paramref name="From"/>,
+            <paramref name="To"/>].
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="From">Inclusive start of the history date range (UTC).</param>
+            <param name="To">Inclusive end of the history date range (UTC).</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery.#ctor(System.Guid,System.DateTime,System.DateTime)">
+            <summary>
+            Retrieves the most recently computed GlobalSafetyInsights snapshot for
+            <paramref name="TenantId"/>, plus its computation history within [<paramref name="From"/>,
+            <paramref name="To"/>].
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="From">Inclusive start of the history date range (UTC).</param>
+            <param name="To">Inclusive end of the history date range (UTC).</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery.From">
+            <summary>Inclusive start of the history date range (UTC).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery.To">
+            <summary>Inclusive end of the history date range (UTC).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GlobalSafetyInsightsQueryResult">
+            <summary>Result envelope for <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Queries.GlobalSafetyInsightsQueryResult.#ctor(System.Guid,System.DateTime,PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto})">
+            <summary>Result envelope for <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository">
+            <summary>Append-only audit ledger for cross-site coordinated actions.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository.RecordAsync(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.DateTime,System.String,System.Threading.CancellationToken)">
+            <summary>Records a cross-site action into the audit ledger.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository.ListAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Lists cross-site action audit entries for a tenant within [<paramref name="from"/>,
+            <paramref name="to"/>], most recent first -- backs the Global Safety Dashboard's
+            corrective-action tracker / incident-timeline widgets (Phase 8 §5).
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyInsightsReadRepository">
+            <summary>Read-only repository for GlobalSafetyInsights data. Implemented in the Infrastructure layer.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyInsightsReadRepository.GetLatestAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the most recently computed snapshot for the given tenant, or <see langword="null"/> if none exists.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyInsightsReadRepository.GetHistoryAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>Returns every snapshot for the given tenant within the given UTC date range, most recent first.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Governance.Commands.ActivateGovernanceCommand">
             <summary>Activates a Governance record (Created -&gt; Active).</summary>
         </member>

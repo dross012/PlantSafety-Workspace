@@ -197,6 +197,8 @@ using PlantSafety.Infrastructure.Analytics.UnifiedModel.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.PlatformHealthDashboard.DependencyInjection;
 using PlantSafety.Infrastructure.Observability.Tracing;
 using PlantSafety.Infrastructure.Billing.DependencyInjection;
+using PlantSafety.Infrastructure.GlobalSafetyInsights.DependencyInjection;
+using PlantSafety.Infrastructure.GlobalSafetyInsights.Messaging.Consumers;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -468,6 +470,12 @@ public static class InfrastructureServiceRegistration
             // RiskManagement<->ContinuousImprovement, and Intelligence<->everything. See
             // CrossModuleOrchestrationConsumerRegistration for the full consumer list.
             CrossModuleOrchestrationConsumerRegistration.Register(x);
+
+            // Phase 8 §4 Multi-Site Safety Intelligence Network -- Event Mesh Extensions
+            // (2026-08-03): GlobalSafetyTelemetryConsumer/CrossSiteActionConsumer, the real
+            // internal cross-site event-mesh wiring points (distinct from the Phase 6 §3
+            // Enterprise Event Mesh registered below, which is cross-SYSTEM/external).
+            GlobalSafetyInsightsConsumerRegistration.Register(x);
 
             // Phase 6 §3 Enterprise Event Mesh (2026-08-03): cross-SYSTEM (platform <-> external
             // ERP/MES) outbound propagation wiring point. See EnterpriseEventMeshConsumerRegistration
@@ -944,6 +952,10 @@ public static class InfrastructureServiceRegistration
         // snapshot persistence, invoice persistence, tenant storage-usage provider, and the
         // payment-gateway extension seam (UnconfiguredPaymentProcessor by default).
         services.AddBillingInfrastructure();
+
+        // Phase 8 §2/§4 Multi-Site Safety Intelligence Network (2026-08-03): GlobalSafetyInsights
+        // Dapper repositories (write/read/audit-ledger) and the dashboard-facing mesh publisher.
+        services.AddGlobalSafetyInsightsInfrastructure();
 
         return services;
     }

@@ -57,6 +57,7 @@ using PlantSafety.Application.Enterprise.EventMesh.DependencyInjection;
 using PlantSafety.Application.Tenancy.Tenant.DependencyInjection;
 using PlantSafety.Application.Billing.DependencyInjection;
 using PlantSafety.Application.Support.Impersonation.DependencyInjection;
+using PlantSafety.Application.GlobalSafetyInsights.DependencyInjection;
 
 namespace PlantSafety.Application.DependencyInjection;
 
@@ -230,6 +231,12 @@ public static class ApplicationServiceRegistration
         // start/end/query. See SupportApplicationServiceRegistration remarks for why this method
         // is currently a no-op beyond the assembly-wide MediatR scan.
         services.AddSupportApplicationServices();
+
+        // Phase 8 §2/§4 Multi-Site Safety Intelligence Network (2026-08-03): GlobalSafetyInsights
+        // domain-service singletons (Normalizer/KpiEngine/AnomalyDetector/RiskScorer/
+        // RecommendationComposer/Factory). Command/query handlers are auto-registered via the
+        // assembly-wide MediatR scan above.
+        services.AddGlobalSafetyInsightsApplicationServices();
 
         return services;
     }

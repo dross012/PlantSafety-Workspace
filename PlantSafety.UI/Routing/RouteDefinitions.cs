@@ -51,6 +51,9 @@ public static class RouteDefinitions
     /// <summary>Admin Portal per-tenant user management (list/create). Requires {tenantId} route parameter.</summary>
     public const string AdminTenantUsers = "/admin/tenants/{tenantId}/users";
 
+    /// <summary>Admin/Executive Global Safety Dashboard (Phase 8 §5 Multi-Site Safety Intelligence Network).</summary>
+    public const string AdminGlobalSafetyDashboard = "/admin/global-safety-dashboard";
+
     // ── Sub Menu (Section landing pages) ─────────────────────────────────────
 
     /// <summary>Core Operational sub menu.</summary>

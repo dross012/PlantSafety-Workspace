@@ -86,6 +86,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.Admin.State.SupportConsoleState>();
         builder.Services.AddSingleton<Modules.Admin.State.UserManagementState>();
         builder.Services.AddSingleton<Modules.Admin.State.TenantFeatureFlagsState>();
+        builder.Services.AddSingleton<Modules.Admin.State.GlobalSafetyDashboardState>();
 
         // ── Module State Containers ────────────────────────────────────────────
         builder.Services.AddSingleton<Modules.Alerts.State.AlertsState>();
@@ -232,6 +233,7 @@ public static class MauiProgram
         RegisterApiClient<Modules.Admin.ApiClients.ImpersonationApiClient>(builder, "impersonation");
         RegisterApiClient<Modules.Admin.ApiClients.ComplianceMonitoringApiClient>(builder, "compliance-monitoring");
         RegisterApiClient<Modules.Admin.ApiClients.UserManagementApiClient>(builder, "user-management");
+        RegisterApiClient<Modules.Admin.ApiClients.GlobalSafetyDashboardApiClient>(builder, "global-safety-dashboard");
         RegisterApiClient<Modules.AiGovernance.ApiClients.AiGovernanceApiClient>(builder, "ai-governance");
         RegisterApiClient<Modules.AiInvestigation.ApiClients.AiInvestigationApiClient>(builder, "ai-investigation");
         RegisterApiClient<Modules.AiTraining.ApiClients.AiTrainingApiClient>(builder, "ai-training");

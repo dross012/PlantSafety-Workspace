@@ -1,0 +1,325 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Admin/Executive Global Safety Dashboard (Phase 8 §5 Multi-Site Safety
+     Intelligence Network). Platform-admin/executive-only page composing the real
+     GlobalSafetyDashboardV1Controller endpoints: cross-site KPI summary, anomaly-map,
+     region-heatmap, incident-timeline (cross-site action stream), and corrective-action
+     tracker widgets. Every number displayed traces to a real query result field -- no
+     fabricated widget data. Follows the exact Modules/BiDashboards + Modules/Admin
+     tab/state/apiclient pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/global-safety-dashboard"
+
+@inject GlobalSafetyDashboardState State
+@inject GlobalSafetyDashboardApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+@using PlantSafety.UI.Modules.Admin.State
+
+<PageTitle>Global Safety Dashboard — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Global Safety Dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <CardComponent Title="Filters">
+            <DateRangePickerComponent StartDate="_filterStart" EndDate="_filterEnd" RangeChanged="OnFilterChangedAsync" />
+        </CardComponent>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading global safety intelligence…" />
+        }
+        else
+        {
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChanged" AriaLabel="Global Safety Dashboard sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @* ── Cross-Site KPIs ─────────────────────────────────────────────── *@
+                @if (_activeTab == 0)
+                {
+                    @if (State.Summary?.Latest is { } latest)
+                    {
+                        <div class="ps-kpi-row">
+                            <CardComponent Title="TRIR" Subtitle="@latest.Trir.ToString("N2")" />
+                            <CardComponent Title="LTIR" Subtitle="@latest.Ltir.ToString("N2")" />
+                            <CardComponent Title="Exposure Rate" Subtitle="@latest.ExposureRate.ToString("N1")" />
+                            <CardComponent Title="Incident Density" Subtitle="@latest.IncidentDensity.ToString("N3")" />
+                            <CardComponent Title="Machine-State/Incident Correlation" Subtitle="@latest.MachineStateIncidentCorrelation.ToString("N2")" />
+                            <CardComponent Title="Anomalies" Subtitle="@latest.AnomalyCount.ToString()" />
+                            <CardComponent Title="Recommendations" Subtitle="@latest.RecommendationCount.ToString()" />
+                            <CardComponent Title="Sites Covered" Subtitle="@latest.SiteIds.Count.ToString()" />
+                        </div>
+                        <p class="ps-text-muted">
+                            Region @latest.RegionCode — window @latest.WindowStartUtc.ToString("yyyy-MM-dd") to
+                            @latest.WindowEndUtc.ToString("yyyy-MM-dd") UTC, computed @latest.ComputedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC.
+                        </p>
+                    }
+                    else
+                    {
+                        <CardComponent Title="Cross-Site KPIs"><p class="ps-chart-empty">No GlobalSafetyInsights snapshot has been computed yet.</p></CardComponent>
+                    }
+
+                    <CardComponent Title="Snapshot History">
+                        <DataGridComponent TItem="GlobalSafetyInsightsItemDto"
+                                            Items="State.Summary?.History ?? Array.Empty<GlobalSafetyInsightsItemDto>()"
+                                            Headers="_historyHeaders"
+                                            KeySelector="h => h.GlobalSafetyInsightsId"
+                                            EmptyMessage="No snapshots found for the selected range."
+                                            AriaLabel="Snapshot history">
+                            <RowTemplate Context="row">
+                                <td>@row.ComputedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@row.RegionCode</td>
+                                <td>@row.SiteIds.Count</td>
+                                <td>@row.Trir.ToString("N2")</td>
+                                <td>@row.Ltir.ToString("N2")</td>
+                                <td>@row.AnomalyCount</td>
+                                <td>@row.RecommendationCount</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+                @* ── Anomaly Map ──────────────────────────────────────────────────── *@
+                @if (_activeTab == 1)
+                {
+                    <CardComponent Title="Anomaly Map — Sites/Scopes with Active Anomalies">
+                        <DataGridComponent TItem="GlobalSafetyAnomalyDetailDto"
+                                            Items="State.Detail?.Anomalies ?? Array.Empty<GlobalSafetyAnomalyDetailDto>()"
+                                            Headers="_anomalyHeaders"
+                                            EmptyMessage="No anomalies detected in the latest snapshot."
+                                            AriaLabel="Anomaly map">
+                            <RowTemplate Context="row">
+                                <td>@(row.SiteId?.ToString() ?? row.MachineFamily ?? "Network-wide")</td>
+                                <td>@row.Kind</td>
+                                <td><SeverityBadgeComponent Severity="@SeverityForMagnitude(row.DeviationMagnitude)" /></td>
+                                <td>@row.DeviationMagnitude.ToString("N2")</td>
+                                <td>@row.Message</td>
+                                <td>@row.DetectedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+
+                    <CardComponent Title="Structured Recommendations">
+                        <DataGridComponent TItem="GlobalSafetyRecommendationDetailDto"
+                                            Items="State.Detail?.Recommendations ?? Array.Empty<GlobalSafetyRecommendationDetailDto>()"
+                                            Headers="_recommendationHeaders"
+                                            EmptyMessage="No recommendations surfaced with the latest snapshot."
+                                            AriaLabel="Structured recommendations">
+                            <RowTemplate Context="row">
+                                <td><SeverityBadgeComponent Severity="@row.Priority" /></td>
+                                <td>@row.Category</td>
+                                <td>@row.Description</td>
+                                <td>@(row.TargetSiteId?.ToString() ?? "Region/Network")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+                @* ── Region Heatmap ───────────────────────────────────────────────── *@
+                @if (_activeTab == 2)
+                {
+                    <CardComponent Title="Region/Site/Machine-Family Risk Heatmap">
+                        <DataGridComponent TItem="GlobalSafetyRiskScoreDetailDto"
+                                            Items="@(State.Detail?.RiskScores.OrderByDescending(r => r.Score).ToList() ?? [])"
+                                            Headers="_riskHeaders"
+                                            EmptyMessage="No risk scores recorded in the latest snapshot."
+                                            AriaLabel="Risk heatmap">
+                            <RowTemplate Context="row">
+                                <td>@row.ScopeType</td>
+                                <td>@row.ScopeKey</td>
+                                <td>@row.Severity</td>
+                                <td>@row.Likelihood</td>
+                                <td>@row.Score</td>
+                                <td><SeverityBadgeComponent Severity="@row.RiskLevel" /></td>
+                                <td>@row.SourceRiskCount</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+                @* ── Incident Timeline (cross-site action stream) ────────────────── *@
+                @if (_activeTab == 3)
+                {
+                    <CardComponent Title="Filters">
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="timeline-action-type">Action Type</label>
+                            <select id="timeline-action-type" @bind="_timelineActionTypeFilter">
+                                <option value="">All</option>
+                                @foreach (var type in _actionTypes)
+                                {
+                                    <option value="@type">@type</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="timeline-site">Site</label>
+                            <select id="timeline-site" @bind="_timelineSiteFilter">
+                                <option value="">All</option>
+                                @foreach (var site in _affectedSites)
+                                {
+                                    <option value="@site">@site</option>
+                                }
+                            </select>
+                        </div>
+                    </CardComponent>
+
+                    <CardComponent Title="Cross-Site Incident/Action Timeline">
+                        <DataGridComponent TItem="CrossSiteActionLogEntryDto"
+                                            Items="FilteredTimelineEntries"
+                                            Headers="_timelineHeaders"
+                                            KeySelector="e => e.CrossSiteActionLogId"
+                                            EmptyMessage="No cross-site actions recorded for the selected filters/range."
+                                            AriaLabel="Cross-site incident/action timeline">
+                            <RowTemplate Context="row">
+                                <td>@row.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@row.ActionType</td>
+                                <td>@row.AffectedSiteIds.Count</td>
+                                <td>@row.Description</td>
+                                <td>@(row.InitiatedByUserId?.ToString() ?? "System")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+                @* ── Corrective Action Tracker ────────────────────────────────────── *@
+                @if (_activeTab == 4)
+                {
+                    <CardComponent Title="Corrective Action Rollouts — Cross-Site Status">
+                        <DataGridComponent TItem="CrossSiteActionLogEntryDto"
+                                            Items="CorrectiveActionEntries"
+                                            Headers="_correctiveHeaders"
+                                            KeySelector="e => e.CrossSiteActionLogId"
+                                            EmptyMessage="No corrective-action rollouts recorded for the selected range."
+                                            AriaLabel="Corrective action tracker">
+                            <RowTemplate Context="row">
+                                <td>@row.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@row.AffectedSiteIds.Count site(s)</td>
+                                <td>@row.Description</td>
+                                <td>@(row.InitiatedByUserId?.ToString() ?? "System")</td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    </CardComponent>
+                }
+
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabLabels = ["Cross-Site KPIs", "Anomaly Map", "Region Heatmap", "Incident Timeline", "Corrective Actions"];
+    private static readonly string[] _historyHeaders = ["Computed", "Region", "Sites", "TRIR", "LTIR", "Anomalies", "Recommendations"];
+    private static readonly string[] _anomalyHeaders = ["Scope", "Kind", "Severity", "Deviation Magnitude", "Message", "Detected"];
+    private static readonly string[] _recommendationHeaders = ["Priority", "Category", "Description", "Target"];
+    private static readonly string[] _riskHeaders = ["Scope Type", "Scope Key", "Severity", "Likelihood", "Score", "Risk Level", "Source Risks"];
+    private static readonly string[] _timelineHeaders = ["Recorded", "Action Type", "Affected Sites", "Description", "Initiated By"];
+    private static readonly string[] _correctiveHeaders = ["Recorded", "Affected Sites", "Description", "Initiated By"];
+
+    private int _activeTab;
+    private DateOnly _filterStart = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-90));
+    private DateOnly _filterEnd = DateOnly.FromDateTime(DateTime.UtcNow);
+    private string _timelineActionTypeFilter = string.Empty;
+    private string _timelineSiteFilter = string.Empty;
+
+    private IReadOnlyList<string> _actionTypes =>
+        (State.CrossSiteActions.Select(e => e.ActionType).Distinct().OrderBy(t => t)).ToList();
+
+    private IReadOnlyList<string> _affectedSites =>
+        (State.CrossSiteActions.SelectMany(e => e.AffectedSiteIds).Select(s => s.ToString()).Distinct().OrderBy(s => s)).ToList();
+
+    private IReadOnlyList<CrossSiteActionLogEntryDto> FilteredTimelineEntries => State.CrossSiteActions
+        .Where(e => string.IsNullOrEmpty(_timelineActionTypeFilter) || e.ActionType == _timelineActionTypeFilter)
+        .Where(e => string.IsNullOrEmpty(_timelineSiteFilter) || e.AffectedSiteIds.Any(s => s.ToString() == _timelineSiteFilter))
+        .ToList();
+
+    private IReadOnlyList<CrossSiteActionLogEntryDto> CorrectiveActionEntries => State.CrossSiteActions
+        .Where(e => e.ActionType == "CorrectiveActionRollout")
+        .ToList();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Global Safety Dashboard",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Support Console", Href = RouteDefinitions.AdminSupportConsole },
+                new BreadcrumbItem { Label = "Global Safety Dashboard" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await LoadAsync();
+    }
+
+    private Task OnTabChanged(int index)
+    {
+        _activeTab = index;
+        return Task.CompletedTask;
+    }
+
+    private Task OnFilterChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        _filterStart = range.Start;
+        _filterEnd = range.End;
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var fromUtc = _filterStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var toUtc = _filterEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var summaryEnvelope = await ApiClient.GetSummaryAsync(fromUtc, toUtc);
+        var detailEnvelope = await ApiClient.GetDetailAsync();
+        var actionsEnvelope = await ApiClient.ListCrossSiteActionsAsync(fromUtc, toUtc);
+
+        if (!summaryEnvelope.IsSuccess)
+        {
+            State.SetError(DescribeFailure(summaryEnvelope));
+            return;
+        }
+
+        var detail = detailEnvelope.IsSuccess ? detailEnvelope.Data : null;
+        var actions = actionsEnvelope.IsSuccess ? actionsEnvelope.Data! : [];
+
+        State.SetData(summaryEnvelope.Data, detail, actions);
+    }
+
+    private static string SeverityForMagnitude(double magnitude) => Math.Abs(magnitude) switch
+    {
+        >= 3.0 => "Critical",
+        >= 2.0 => "High",
+        >= 1.0 => "Medium",
+        _ => "Low",
+    };
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load: {envelope.FaultType}";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}
