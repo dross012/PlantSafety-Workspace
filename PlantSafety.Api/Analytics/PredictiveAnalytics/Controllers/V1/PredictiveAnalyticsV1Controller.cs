@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: PredictiveAnalyticsV1Controller.cs
 // Project: PlantSafety.Api
 // Author: David (Ted)
@@ -18,6 +18,7 @@
 //
 // ============================================================================
 
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Analytics.PredictiveAnalytics.Contracts.Requests;
 using PlantSafety.Api.Analytics.PredictiveAnalytics.Contracts.Responses;
 using PlantSafety.Api.Analytics.PredictiveAnalytics.Authorization;
@@ -34,10 +35,15 @@ namespace PlantSafety.Api.Analytics.PredictiveAnalytics.Controllers.V1;
 public sealed class PredictiveAnalyticsV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="PredictiveAnalyticsV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public PredictiveAnalyticsV1Controller(ISender sender) => _sender = sender;
+    public PredictiveAnalyticsV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns PredictiveAnalytics data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -56,10 +62,10 @@ public sealed class PredictiveAnalyticsV1Controller : ControllerBase
         [FromQuery] GetPredictiveAnalyticsRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetPredictiveAnalyticsQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetPredictiveAnalyticsQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

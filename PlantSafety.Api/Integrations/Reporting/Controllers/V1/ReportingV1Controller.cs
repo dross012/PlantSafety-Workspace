@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: ReportingV1Controller.cs
 // Project: PlantSafety.Api
 // Author: David (Ted)
@@ -18,6 +18,7 @@
 //
 // ============================================================================
 
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Integrations.Reporting.Contracts.Requests;
 using PlantSafety.Api.Integrations.Reporting.Contracts.Responses;
 using PlantSafety.Api.Integrations.Reporting.Authorization;
@@ -34,10 +35,15 @@ namespace PlantSafety.Api.Integrations.Reporting.Controllers.V1;
 public sealed class ReportingV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="ReportingV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public ReportingV1Controller(ISender sender) => _sender = sender;
+    public ReportingV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns Integrations.Reporting data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -56,10 +62,10 @@ public sealed class ReportingV1Controller : ControllerBase
         [FromQuery] GetReportingRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetReportingQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetReportingQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

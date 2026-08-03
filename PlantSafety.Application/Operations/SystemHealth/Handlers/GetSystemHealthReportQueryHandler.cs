@@ -1,11 +1,15 @@
 // AUTHOR: PlantSafety Platform Team
 // CREATED: 2026-07-20
 // FILE DESCRIPTION: Handler for GetSystemHealthReportQuery. Fans out in parallel to every
-//   other Operations.* module's existing MediatR queries (via ISender) plus the new
+//   sibling Operations.* submodule's SharedKernel IReportSectionProvider<,> (resolved via DI --
+//   see Handbook Part IX §9.3.2 "Modules May Only Communicate via Public Contracts") plus the
 //   ISystemHealthRepository (DB version, Task Scheduler status) and a pure Assembly read
 //   (app version). Each section is independently resilient: a failing sub-query is logged
 //   and surfaced as an unavailable section rather than failing the whole report -- this is
 //   a monitoring rollup, so one broken data source must degrade gracefully.
+//   2026-08-03: replaced every direct ISender.Send(<SiblingModuleQuery>) cross-module dispatch
+//   with the sibling submodule's IReportSectionProvider<,> contract, resolved through DI
+//   (structural refactor only -- output shape/data unchanged).
 // SchemaVersion: 1
 
 using System;
@@ -18,20 +22,17 @@ using System.Threading.Tasks;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
+using PlantSafety.SharedKernel.Contracts.ReadModelComposition;
 using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Common.Results;
+using PlantSafety.Application.Operations.Archival.Contracts;
 using PlantSafety.Application.Operations.Archival.Models;
-using PlantSafety.Application.Operations.Archival.Queries;
-using PlantSafety.Application.Operations.AuditViewer.Queries;
-using Shared.AuditLogging.Abstractions.Models;
+using PlantSafety.Application.Operations.AuditViewer.Contracts;
 using PlantSafety.Application.Operations.Backup.Models;
-using PlantSafety.Application.Operations.Backup.Queries;
 using PlantSafety.Application.Operations.Configuration.Models;
-using PlantSafety.Application.Operations.Configuration.Queries;
+using PlantSafety.Application.Operations.Monitoring.Contracts;
 using PlantSafety.Application.Operations.Monitoring.Models;
-using PlantSafety.Application.Operations.Monitoring.Queries;
 using PlantSafety.Application.Operations.SchemaGuard.Models;
-using PlantSafety.Application.Operations.SchemaGuard.Queries;
 using PlantSafety.Application.Operations.SystemHealth.Models;
 using PlantSafety.Application.Operations.SystemHealth.Queries;
 using PlantSafety.Application.Operations.SystemHealth.Repositories;
@@ -47,17 +48,38 @@ public sealed class GetSystemHealthReportQueryHandler : IRequestHandler<GetSyste
     /// <summary>The primary tenant database's Query Store key, used for the DB-performance half of the monitoring summary.</summary>
     private const string PrimaryDatabaseKey = "CoreDB";
 
-    private readonly ISender _sender;
+    private readonly IReportSectionProvider<NoSectionRequest, IReadOnlyList<BackupHealthDto>> _backupHealthProvider;
+    private readonly IReportSectionProvider<NoSectionRequest, IReadOnlyList<SchemaDatabaseHealthDto>> _schemaHealthProvider;
+    private readonly IReportSectionProvider<NoSectionRequest, DatabaseHealthReportDto> _databaseHealthProvider;
+    private readonly IReportSectionProvider<ErrorLogSectionRequest, IReadOnlyList<ErrorLogItemDto>> _errorLogProvider;
+    private readonly IReportSectionProvider<QueryPerformanceSectionRequest, IReadOnlyList<QueryPerformanceItemDto>> _queryPerformanceProvider;
+    private readonly IReportSectionProvider<PurgeStatusSectionRequest, IReadOnlyList<ArchivalJobDto>> _purgeStatusProvider;
+    private readonly IReportSectionProvider<RecentAuditActivitySectionRequest, int> _recentAuditActivityProvider;
+    private readonly IReportSectionProvider<NoSectionRequest, IReadOnlyList<FeatureFlagDto>> _featureFlagsProvider;
     private readonly ISystemHealthRepository _repository;
     private readonly ILogger<GetSystemHealthReportQueryHandler> _logger;
 
     /// <summary>Initialises dependencies.</summary>
     public GetSystemHealthReportQueryHandler(
-        ISender sender,
+        IReportSectionProvider<NoSectionRequest, IReadOnlyList<BackupHealthDto>> backupHealthProvider,
+        IReportSectionProvider<NoSectionRequest, IReadOnlyList<SchemaDatabaseHealthDto>> schemaHealthProvider,
+        IReportSectionProvider<NoSectionRequest, DatabaseHealthReportDto> databaseHealthProvider,
+        IReportSectionProvider<ErrorLogSectionRequest, IReadOnlyList<ErrorLogItemDto>> errorLogProvider,
+        IReportSectionProvider<QueryPerformanceSectionRequest, IReadOnlyList<QueryPerformanceItemDto>> queryPerformanceProvider,
+        IReportSectionProvider<PurgeStatusSectionRequest, IReadOnlyList<ArchivalJobDto>> purgeStatusProvider,
+        IReportSectionProvider<RecentAuditActivitySectionRequest, int> recentAuditActivityProvider,
+        IReportSectionProvider<NoSectionRequest, IReadOnlyList<FeatureFlagDto>> featureFlagsProvider,
         ISystemHealthRepository repository,
         ILogger<GetSystemHealthReportQueryHandler> logger)
     {
-        _sender = sender;
+        _backupHealthProvider = backupHealthProvider;
+        _schemaHealthProvider = schemaHealthProvider;
+        _databaseHealthProvider = databaseHealthProvider;
+        _errorLogProvider = errorLogProvider;
+        _queryPerformanceProvider = queryPerformanceProvider;
+        _purgeStatusProvider = purgeStatusProvider;
+        _recentAuditActivityProvider = recentAuditActivityProvider;
+        _featureFlagsProvider = featureFlagsProvider;
         _repository = repository;
         _logger = logger;
     }
@@ -68,23 +90,23 @@ public sealed class GetSystemHealthReportQueryHandler : IRequestHandler<GetSyste
         try
         {
             var backupTask = RunResultSectionAsync(
-                "BackupHealth", () => _sender.Send(new GetBackupHealthQuery(), cancellationToken));
+                "BackupHealth", () => _backupHealthProvider.GetSectionAsync(NoSectionRequest.Instance, cancellationToken));
 
             var schemaTask = RunResultSectionAsync(
-                "SchemaHealth", () => _sender.Send(new GetSchemaHealthQuery(), cancellationToken));
+                "SchemaHealth", () => _schemaHealthProvider.GetSectionAsync(NoSectionRequest.Instance, cancellationToken));
 
             var databaseHealthTask = RunResultSectionAsync(
-                "DatabaseHealth", () => _sender.Send(new GetDatabaseHealthReportQuery(), cancellationToken));
+                "DatabaseHealth", () => _databaseHealthProvider.GetSectionAsync(NoSectionRequest.Instance, cancellationToken));
 
             var monitoringSummaryTask = BuildMonitoringSummaryAsync(cancellationToken);
 
             var purgeStatusTask = RunResultSectionAsync(
-                "PurgeStatus", () => _sender.Send(new GetPurgeStatusQuery(Zone: null), cancellationToken));
+                "PurgeStatus", () => _purgeStatusProvider.GetSectionAsync(new PurgeStatusSectionRequest(Zone: null), cancellationToken));
 
             var auditActivityTask = BuildRecentAuditActivityAsync(cancellationToken);
 
             var featureFlagsTask = RunResultSectionAsync(
-                "FeatureFlags", () => _sender.Send(new GetAllFeatureFlagsQuery(), cancellationToken));
+                "FeatureFlags", () => _featureFlagsProvider.GetSectionAsync(NoSectionRequest.Instance, cancellationToken));
 
             var taskSchedulerTask = RunRepositorySectionAsync(
                 "TaskSchedulerJobs", () => _repository.GetTaskSchedulerStatusAsync(cancellationToken));
@@ -143,8 +165,8 @@ public sealed class GetSystemHealthReportQueryHandler : IRequestHandler<GetSyste
         {
             var sinceUtc = DateTime.UtcNow.AddHours(-24);
 
-            var errorsTask = _sender.Send(new GetErrorLogQuery(MinSeverity: null, SinceUtc: sinceUtc, Top: 25), cancellationToken);
-            var performanceTask = _sender.Send(new GetQueryPerformanceQuery(PrimaryDatabaseKey, Top: 5), cancellationToken);
+            var errorsTask = _errorLogProvider.GetSectionAsync(new ErrorLogSectionRequest(MinSeverity: null, SinceUtc: sinceUtc, Top: 25), cancellationToken);
+            var performanceTask = _queryPerformanceProvider.GetSectionAsync(new QueryPerformanceSectionRequest(PrimaryDatabaseKey, Top: 5), cancellationToken);
 
             await Task.WhenAll(errorsTask, performanceTask);
 
@@ -182,14 +204,15 @@ public sealed class GetSystemHealthReportQueryHandler : IRequestHandler<GetSyste
 
     /// <summary>
     /// Retrieves the count of AuditLog rows written in the last 24 hours via
-    /// Operations.AuditViewer's SearchAuditLogQuery (PageSize=1 -- only TotalCount is needed).
+    /// Operations.AuditViewer's RecentAuditActivitySectionProvider (backed by SearchAuditLogQuery
+    /// with PageSize=1 -- only TotalCount is needed).
     /// </summary>
     private async Task<SystemHealthSectionDto<int>> BuildRecentAuditActivityAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var criteria = new AuditLogSearchCriteria(FromUtc: DateTime.UtcNow.AddHours(-24), PageSize: 1);
-            var result = await _sender.Send(new SearchAuditLogQuery(criteria), cancellationToken);
+            var result = await _recentAuditActivityProvider.GetSectionAsync(
+                new RecentAuditActivitySectionRequest(DateTime.UtcNow.AddHours(-24)), cancellationToken);
 
             if (result.IsFailure)
             {
@@ -198,7 +221,7 @@ public sealed class GetSystemHealthReportQueryHandler : IRequestHandler<GetSyste
                 return SystemHealthSectionDto<int>.Unavailable(result.Error.Message);
             }
 
-            return SystemHealthSectionDto<int>.Available(result.Value.TotalCount);
+            return SystemHealthSectionDto<int>.Available(result.Value);
         }
         catch (Exception ex)
         {
@@ -207,8 +230,9 @@ public sealed class GetSystemHealthReportQueryHandler : IRequestHandler<GetSyste
         }
     }
 
-    /// <summary>Runs a single ISender.Send call, mapping its Result&lt;T&gt; outcome into a resilient section.</summary>
-    private async Task<SystemHealthSectionDto<T>> RunResultSectionAsync<T>(string sectionName, Func<Task<Result<T>>> query)
+    /// <summary>Runs a single IReportSectionProvider call, mapping its Result&lt;T&gt; outcome into a resilient section.</summary>
+    private async Task<SystemHealthSectionDto<T>> RunResultSectionAsync<T>(
+        string sectionName, Func<Task<PlantSafety.SharedKernel.Primitives.Results.Result<T>>> query)
     {
         try
         {

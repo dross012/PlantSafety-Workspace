@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: PreventiveMaintenanceV1Controller.cs
 // Project: PlantSafety.Api
 // Author: David (Ted)
@@ -72,10 +72,10 @@ public sealed class PreventiveMaintenanceV1Controller : ControllerBase
         [FromQuery] GetPreventiveMaintenanceRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetPreventiveMaintenanceQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetPreventiveMaintenanceQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

@@ -38,9 +38,6 @@ namespace PlantSafety.Api.Models.Exports;
 /// </summary>
 public sealed class ExportRequest
 {
-    /// <summary>Gets or sets the tenant identifier for which data will be exported.</summary>
-    public Guid TenantId { get; set; }
-
     /// <summary>
     /// Gets or sets the optional site identifier.
     /// When <c>null</c>, data for all sites within the tenant is exported.

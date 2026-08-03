@@ -21,12 +21,10 @@
 namespace PlantSafety.Api.Compliance.Permits.Electrical.Contracts.Requests;
 
 /// <summary>Query parameters for retrieving Electrical data.</summary>
-/// <param name="TenantId">Tenant identifier resolved from JWT claims by TenantResolutionMiddleware.</param>
 /// <param name="SiteId">Optional site filter. Null returns data for all accessible sites.</param>
 /// <param name="From">Inclusive start of the date range (UTC).</param>
 /// <param name="To">Inclusive end of the date range (UTC). Defaults to UtcNow when not supplied.</param>
 public sealed record GetElectricalRequest(
-    Guid      TenantId,
     Guid?     SiteId,
     DateTime  From,
     DateTime? To);

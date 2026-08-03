@@ -18,6 +18,7 @@
 //
 // ============================================================================
 
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Compliance.Permits.ConfinedSpace.Contracts.Requests;
 using PlantSafety.Api.Compliance.Permits.ConfinedSpace.Contracts.Responses;
 using PlantSafety.Api.Compliance.Permits.ConfinedSpace.Authorization;
@@ -34,10 +35,19 @@ namespace PlantSafety.Api.Compliance.Permits.ConfinedSpace.Controllers.V1;
 public sealed class ConfinedSpaceV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="ConfinedSpaceV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public ConfinedSpaceV1Controller(ISender sender) => _sender = sender;
+    /// <param name="envelopeFactory">
+    /// Resolves the trusted, server-side TenantId from the authenticated JWT claims
+    /// (Zero-Trust tenant isolation -- never trust a client-supplied TenantId).
+    /// </param>
+    public ConfinedSpaceV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns ConfinedSpace data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -56,10 +66,10 @@ public sealed class ConfinedSpaceV1Controller : ControllerBase
         [FromQuery] GetConfinedSpaceRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetConfinedSpaceQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetConfinedSpaceQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

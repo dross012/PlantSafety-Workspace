@@ -1,16 +1,21 @@
 // AUTHOR: PlantSafety Platform Team
 // CREATED: 2026-08-02
 // FILE DESCRIPTION: Handler for GenerateAuditReportCommand. Auto-populates the Timeline section
-//   via GetAuditTimelineForEntityQuery (through ISender, mirroring GetSystemHealthReportQuery's
-//   established precedent for handler-to-handler composition), composes the five canonical
-//   sections via the Domain-layer AuditReportContentBuilder, drafts the AuditReport aggregate,
-//   selects the matching IAuditReportRenderer for the requested format, renders and persists the
-//   byte-stream content, then marks the aggregate Generated or Failed accordingly.
+//   via AuditTimeline's IReportSectionProvider<AuditTimelineSectionRequest, AuditTimelineDto>
+//   (Handbook Part IX §9.3.2 -- resolved through DI as a public read-model contract, never
+//   dispatched as a cross-module Query through ISender), composes the five canonical sections via
+//   the Domain-layer AuditReportContentBuilder, drafts the AuditReport aggregate, selects the
+//   matching IAuditReportRenderer for the requested format, renders and persists the byte-stream
+//   content, then marks the aggregate Generated or Failed accordingly.
+//   2026-08-03: replaced the direct GetAuditTimelineForEntityQuery/ISender dispatch into the
+//   sibling AuditTimeline submodule with the SharedKernel cross-module read-model composition
+//   contract (structural refactor only -- output shape/data unchanged).
 // SchemaVersion: 1
 
 using System.Text.Json;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using PlantSafety.SharedKernel.Contracts.ReadModelComposition;
 using PlantSafety.SharedKernel.Identifiers;
 using PlantSafety.SharedKernel.Primitives.ValueTypes;
 using PlantSafety.Domain.Auditing.AuditReport.Enums;
@@ -22,14 +27,15 @@ using PlantSafety.Application.Auditing.AuditReport.Abstractions;
 using PlantSafety.Application.Auditing.AuditReport.Mapping;
 using PlantSafety.Application.Auditing.AuditReport.Models;
 using PlantSafety.Application.Auditing.AuditReport.Repositories;
-using PlantSafety.Application.Auditing.AuditTimeline.Queries;
+using PlantSafety.Application.Auditing.AuditTimeline.Contracts;
+using PlantSafety.Application.Auditing.AuditTimeline.Models;
 
 namespace PlantSafety.Application.Auditing.AuditReport.Commands;
 
 /// <summary>Handles <see cref="GenerateAuditReportCommand"/>.</summary>
 public sealed class GenerateAuditReportCommandHandler : IRequestHandler<GenerateAuditReportCommand, Result<AuditReportDto>>
 {
-    private readonly ISender _sender;
+    private readonly IReportSectionProvider<AuditTimelineSectionRequest, AuditTimelineDto> _timelineSectionProvider;
     private readonly IAuditReportFactory _factory;
     private readonly AuditReportContentBuilder _contentBuilder;
     private readonly IAuditReportRepository _repository;
@@ -39,7 +45,7 @@ public sealed class GenerateAuditReportCommandHandler : IRequestHandler<Generate
 
     /// <summary>Initialises dependencies.</summary>
     public GenerateAuditReportCommandHandler(
-        ISender sender,
+        IReportSectionProvider<AuditTimelineSectionRequest, AuditTimelineDto> timelineSectionProvider,
         IAuditReportFactory factory,
         AuditReportContentBuilder contentBuilder,
         IAuditReportRepository repository,
@@ -47,7 +53,7 @@ public sealed class GenerateAuditReportCommandHandler : IRequestHandler<Generate
         IAuditReportContentStore contentStore,
         ILogger<GenerateAuditReportCommandHandler> logger)
     {
-        _sender = sender;
+        _timelineSectionProvider = timelineSectionProvider;
         _factory = factory;
         _contentBuilder = contentBuilder;
         _repository = repository;
@@ -78,8 +84,8 @@ public sealed class GenerateAuditReportCommandHandler : IRequestHandler<Generate
                     Guid.NewGuid()));
             }
 
-            var timelineResult = await _sender.Send(
-                new GetAuditTimelineForEntityQuery(request.TenantId, request.TargetEntityType, request.TargetEntityId), cancellationToken);
+            var timelineResult = await _timelineSectionProvider.GetSectionAsync(
+                new AuditTimelineSectionRequest(request.TenantId, request.TargetEntityType, request.TargetEntityId), cancellationToken);
 
             var timelineJson = timelineResult.IsSuccess
                 ? JsonSerializer.Serialize(timelineResult.Value)

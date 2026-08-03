@@ -8765,7 +8765,7 @@
         <member name="T:PlantSafety.Application.Auditing.AuditReport.Commands.GenerateAuditReportCommandHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Auditing.AuditReport.Commands.GenerateAuditReportCommand"/>.</summary>
         </member>
-        <member name="M:PlantSafety.Application.Auditing.AuditReport.Commands.GenerateAuditReportCommandHandler.#ctor(MediatR.ISender,PlantSafety.Domain.Auditing.AuditReport.Interfaces.IAuditReportFactory,PlantSafety.Domain.Auditing.AuditReport.Services.AuditReportContentBuilder,PlantSafety.Domain.Auditing.AuditReport.Interfaces.IAuditReportRepository,System.Collections.Generic.IEnumerable{PlantSafety.Application.Auditing.AuditReport.Abstractions.IAuditReportRenderer},PlantSafety.Application.Auditing.AuditReport.Repositories.IAuditReportContentStore,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Auditing.AuditReport.Commands.GenerateAuditReportCommandHandler})">
+        <member name="M:PlantSafety.Application.Auditing.AuditReport.Commands.GenerateAuditReportCommandHandler.#ctor(PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionRequest,PlantSafety.Application.Auditing.AuditTimeline.Models.AuditTimelineDto},PlantSafety.Domain.Auditing.AuditReport.Interfaces.IAuditReportFactory,PlantSafety.Domain.Auditing.AuditReport.Services.AuditReportContentBuilder,PlantSafety.Domain.Auditing.AuditReport.Interfaces.IAuditReportRepository,System.Collections.Generic.IEnumerable{PlantSafety.Application.Auditing.AuditReport.Abstractions.IAuditReportRenderer},PlantSafety.Application.Auditing.AuditReport.Repositories.IAuditReportContentStore,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Auditing.AuditReport.Commands.GenerateAuditReportCommandHandler})">
             <summary>Initialises dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Auditing.AuditReport.Commands.GenerateAuditReportCommandHandler.Handle(PlantSafety.Application.Auditing.AuditReport.Commands.GenerateAuditReportCommand,System.Threading.CancellationToken)">
@@ -9067,6 +9067,48 @@
         </member>
         <member name="M:PlantSafety.Application.Auditing.AuditTimeline.Commands.RecordConcurrencyConflictCommandHandler.Handle(PlantSafety.Application.Auditing.AuditTimeline.Commands.RecordConcurrencyConflictCommand,System.Threading.CancellationToken)">
             <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionProvider">
+            <summary>
+            AuditTimeline's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing the composed AuditTimeline read-model as a public cross-module contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionProvider.GetSectionAsync(PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionRequest">
+            <summary>
+            Deterministic request envelope scoping an AuditTimeline read-model section to a single
+            tenant/entity, for composition into another submodule's aggregate report (e.g. AuditReport).
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="EntityType">Type discriminator of the entity (e.g. "Risk", "Permit", "AuditFinding").</param>
+            <param name="EntityId">Identity of the entity.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionRequest.#ctor(System.Guid,System.String,System.Guid)">
+            <summary>
+            Deterministic request envelope scoping an AuditTimeline read-model section to a single
+            tenant/entity, for composition into another submodule's aggregate report (e.g. AuditReport).
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="EntityType">Type discriminator of the entity (e.g. "Risk", "Permit", "AuditFinding").</param>
+            <param name="EntityId">Identity of the entity.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionRequest.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionRequest.EntityType">
+            <summary>Type discriminator of the entity (e.g. "Risk", "Permit", "AuditFinding").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.AuditTimeline.Contracts.AuditTimelineSectionRequest.EntityId">
+            <summary>Identity of the entity.</summary>
         </member>
         <member name="T:PlantSafety.Application.Auditing.AuditTimeline.DependencyInjection.AuditTimelineApplicationServiceRegistration">
             <summary>Extension methods to register AuditTimeline Application-layer services.</summary>
@@ -48829,6 +48871,809 @@
         <member name="M:PlantSafety.Application.Operational.PreventiveMaintenance.Validation.SchedulePreventiveMaintenanceTaskCommandValidator.#ctor">
             <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Operational.PreventiveMaintenance.Commands.SchedulePreventiveMaintenanceTaskCommand"/>.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand">
+            <summary>Adds a Batch to an in-progress ProductionRun.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.String,System.String,System.Guid)">
+            <summary>Adds a Batch to an in-progress ProductionRun.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Operational#ProductionTracking#Commands#AddProductionBatchResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchResult">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand"/> execution.</summary>
+            <param name="BatchId">Identity of the newly added batch.</param>
+            <param name="ProductionRunId">Identity of the ProductionRun the batch was added to.</param>
+            <param name="BatchCode">Human-readable batch code.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchResult.#ctor(System.Guid,System.Guid,System.String)">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand"/> execution.</summary>
+            <param name="BatchId">Identity of the newly added batch.</param>
+            <param name="ProductionRunId">Identity of the ProductionRun the batch was added to.</param>
+            <param name="BatchCode">Human-readable batch code.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchResult.BatchId">
+            <summary>Identity of the newly added batch.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchResult.ProductionRunId">
+            <summary>Identity of the ProductionRun the batch was added to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchResult.BatchCode">
+            <summary>Human-readable batch code.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommandHandler.#ctor(PlantSafety.Domain.Operational.ProductionTracking.Interfaces.IProductionRunRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommandHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommandHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand">
+            <summary>Ends an in-progress ProductionRun (Completed or Failed).</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.Boolean,System.Guid)">
+            <summary>Ends an in-progress ProductionRun (Completed or Failed).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Operational#ProductionTracking#Commands#ProductionRunStatusResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunStatusResult">
+            <summary>Shared result payload for ProductionRun commands that only need to echo back the resulting identity/status.</summary>
+            <param name="ProductionRunId">Identity of the affected ProductionRun aggregate.</param>
+            <param name="Status">Lifecycle status after the command executed.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunStatusResult.#ctor(System.Guid,System.String)">
+            <summary>Shared result payload for ProductionRun commands that only need to echo back the resulting identity/status.</summary>
+            <param name="ProductionRunId">Identity of the affected ProductionRun aggregate.</param>
+            <param name="Status">Lifecycle status after the command executed.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunStatusResult.ProductionRunId">
+            <summary>Identity of the affected ProductionRun aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunStatusResult.Status">
+            <summary>Lifecycle status after the command executed.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommandHandler.#ctor(PlantSafety.Domain.Operational.ProductionTracking.Interfaces.IProductionRunRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommandHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommandHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand">
+            <summary>Registers a new ProductionLine master-data record.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="LineCode">Human-readable line code (format LINE-###).</param>
+            <param name="LineName">Line display name.</param>
+            <param name="RequestedByUserId">Identity of the user registering the line.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.#ctor(System.Guid,System.Guid,System.Guid,System.DateTime,System.String,System.Guid,System.Nullable{System.Guid},System.String,System.String,System.Guid)">
+            <summary>Registers a new ProductionLine master-data record.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="LineCode">Human-readable line code (format LINE-###).</param>
+            <param name="LineName">Line display name.</param>
+            <param name="RequestedByUserId">Identity of the user registering the line.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.CommandId">
+            <summary>Unique identifier for this command instance (Uuid7).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.CorrelationId">
+            <summary>Operation-group correlation identifier, constant across the whole request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.CausationId">
+            <summary>Identifier of the immediate parent command or event. Null only for root operations.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.RequestedAtUtc">
+            <summary>UTC instant the command was issued, generated once at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.ApiVersionToken">
+            <summary>API version token the request was issued under.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.SiteId">
+            <summary>Optional site scope. Null applies tenant-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.LineCode">
+            <summary>Human-readable line code (format LINE-###).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.LineName">
+            <summary>Line display name.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.RequestedByUserId">
+            <summary>Identity of the user registering the line.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.ActorId">
+            <summary>Identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Operational#ProductionTracking#Commands#CreateProductionLineResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineResult">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand"/> execution.</summary>
+            <param name="ProductionLineId">Identity of the newly registered ProductionLine aggregate.</param>
+            <param name="LineCode">Human-readable line code.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineResult.#ctor(System.Guid,System.String)">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand"/> execution.</summary>
+            <param name="ProductionLineId">Identity of the newly registered ProductionLine aggregate.</param>
+            <param name="LineCode">Human-readable line code.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineResult.ProductionLineId">
+            <summary>Identity of the newly registered ProductionLine aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineResult.LineCode">
+            <summary>Human-readable line code.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommandHandler.#ctor(PlantSafety.Domain.Operational.ProductionTracking.Interfaces.IProductionLineRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommandHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommandHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand">
+            <summary>Records a timeline event against an in-progress ProductionRun.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand.#ctor(System.Guid,System.Guid,System.Guid,System.Guid,System.Guid,System.String,System.String,System.Boolean,System.String,System.Double,System.Int32,System.Int32,System.Guid)">
+            <summary>Records a timeline event against an in-progress ProductionRun.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand.RequestedAtUtc">
+            <summary>Gets the UTC timestamp when this command was created at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand.ApiVersionToken">
+            <summary>Gets the API version token to enforce backward-compatible evolution.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand.ActorId">
+            <summary>Gets the identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Operational#ProductionTracking#Commands#ProductionRunEventResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand.ETag">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunEventResult">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand"/> execution.</summary>
+            <param name="ProductionRunId">Identity of the affected ProductionRun aggregate.</param>
+            <param name="GoodUnitCount">Running total of good units after this event.</param>
+            <param name="ScrapUnitCount">Running total of scrapped units after this event.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunEventResult.#ctor(System.Guid,System.Int32,System.Int32)">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand"/> execution.</summary>
+            <param name="ProductionRunId">Identity of the affected ProductionRun aggregate.</param>
+            <param name="GoodUnitCount">Running total of good units after this event.</param>
+            <param name="ScrapUnitCount">Running total of scrapped units after this event.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunEventResult.ProductionRunId">
+            <summary>Identity of the affected ProductionRun aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunEventResult.GoodUnitCount">
+            <summary>Running total of good units after this event.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.ProductionRunEventResult.ScrapUnitCount">
+            <summary>Running total of scrapped units after this event.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommandHandler.#ctor(PlantSafety.Domain.Operational.ProductionTracking.Interfaces.IProductionRunRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommandHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommandHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand">
+            <summary>Starts a new ProductionRun.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand.#ctor(System.Guid,System.Guid,System.Guid,System.DateTime,System.String,System.Guid,System.Nullable{System.Guid},System.String,System.Guid,System.String,System.Guid,System.String,System.Double,System.Guid)">
+            <summary>Starts a new ProductionRun.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand.ActorId">
+            <summary>Identifier of the actor who initiated the command.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Operational#ProductionTracking#Commands#StartProductionRunResult}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunResult">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand"/> execution.</summary>
+            <param name="ProductionRunId">Identity of the newly started ProductionRun aggregate.</param>
+            <param name="RunCode">Human-readable run code.</param>
+            <param name="Status">Lifecycle status of the newly started run.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunResult.#ctor(System.Guid,System.String,System.String)">
+            <summary>Result of a successful <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand"/> execution.</summary>
+            <param name="ProductionRunId">Identity of the newly started ProductionRun aggregate.</param>
+            <param name="RunCode">Human-readable run code.</param>
+            <param name="Status">Lifecycle status of the newly started run.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunResult.ProductionRunId">
+            <summary>Identity of the newly started ProductionRun aggregate.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunResult.RunCode">
+            <summary>Human-readable run code.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunResult.Status">
+            <summary>Lifecycle status of the newly started run.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommandHandler.#ctor(PlantSafety.Domain.Operational.ProductionTracking.Interfaces.IProductionRunRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommandHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommandHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetThroughputSummaryQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetThroughputSummaryQuery"/> by aggregating active runs' real telemetry-derived throughput via <see cref="!:ThroughputCalculator"/>-equivalent math.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetThroughputSummaryQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetThroughputSummaryQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetThroughputSummaryQuery"/> by aggregating active runs' real telemetry-derived throughput via <see cref="!:ThroughputCalculator"/>-equivalent math.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetThroughputSummaryQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetThroughputSummaryQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetBottleneckSummaryQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetBottleneckSummaryQuery"/> by reusing the real <see cref="T:PlantSafety.Domain.Observability.Telemetry.Services.TelemetryAnomalyDetector"/> via <see cref="T:PlantSafety.Application.Observability.Telemetry.ProductionTelemetryStreamProcessor"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetBottleneckSummaryQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetBottleneckSummaryQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetBottleneckSummaryQuery"/> by reusing the real <see cref="T:PlantSafety.Domain.Observability.Telemetry.Services.TelemetryAnomalyDetector"/> via <see cref="T:PlantSafety.Application.Observability.Telemetry.ProductionTelemetryStreamProcessor"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetBottleneckSummaryQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetBottleneckSummaryQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunKpisQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunKpisQuery"/> by composing the real <see cref="T:PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiEngine"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunKpisQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunKpisQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunKpisQuery"/> by composing the real <see cref="T:PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiEngine"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunKpisQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunKpisQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetPlantKpisQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetPlantKpisQuery"/> by composing the real <see cref="T:PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiEngine"/> over every active run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetPlantKpisQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetPlantKpisQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetPlantKpisQuery"/> by composing the real <see cref="T:PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiEngine"/> over every active run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetPlantKpisQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetPlantKpisQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.AggregatedKpiInput">
+            <summary>
+            Internal aggregate KPI-input shape spanning every currently active ProductionRun, used only by
+            <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetPlantKpisQueryHandler"/>.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.AggregatedKpiInput.#ctor(System.TimeSpan,System.TimeSpan,System.Double,System.Int32,System.Int32,System.Int32,System.Int32,System.TimeSpan,System.Double)">
+            <summary>
+            Internal aggregate KPI-input shape spanning every currently active ProductionRun, used only by
+            <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetPlantKpisQueryHandler"/>.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper">
+            <summary>
+            Maps persisted <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto"/> read-model rows onto the real Phase 5 KPI
+            engine's/telemetry anomaly detector's input value objects. Pure mapping -- no KPI/anomaly math
+            lives here; it all delegates to <see cref="T:PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiEngine"/>/<see cref="T:PlantSafety.Domain.Observability.Telemetry.Services.TelemetryAnomalyDetector"/>.
+            </summary>
+        </member>
+        <member name="F:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.OeeTarget">
+            <summary>Platform-standard OEE target (world-class benchmark), pending per-line configuration.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.YieldTarget">
+            <summary>Platform-standard Yield target, pending per-product configuration.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.ScrapRateTarget">
+            <summary>Platform-standard Scrap Rate target, pending per-product configuration.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.MtbfTarget">
+            <summary>Platform-standard MTBF target (30 days), pending per-asset-class configuration.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.MttrTarget">
+            <summary>Platform-standard MTTR target, pending per-asset-class configuration.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.BaselineScrapRate">
+            <summary>Baseline scrap rate used for quality-drift anomaly detection, pending per-product configuration.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.ElapsedSince(PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto,System.DateTime)">
+            <summary>Returns the elapsed duration of a run, treating an active (unended) run as elapsed-to-now.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.ToTelemetryBatch(PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto)">
+            <summary>Converts a single run's inputs into a <see cref="T:PlantSafety.Application.Observability.Telemetry.MachineTelemetryBatch"/> for the real telemetry stream processor.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.ComputeSnapshot(PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiEngine,PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto,System.DateTime)">
+            <summary>Builds the five KPI engine input VOs for a single run and computes its <see cref="T:PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiSnapshot"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.AggregateAcrossRuns(System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto},System.DateTime)">
+            <summary>Aggregates KPI inputs across every currently active ProductionRun for the plant-wide KPI dashboard.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.ComputeSnapshotFromAggregate(PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiEngine,PlantSafety.Application.Operational.ProductionTracking.Handlers.AggregatedKpiInput)">
+            <summary>Computes the plant-wide <see cref="T:PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiSnapshot"/> from a pre-aggregated fleet input.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.ToKpiTiles(PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiSnapshot,System.Double)">
+            <summary>Maps a computed <see cref="T:PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiSnapshot"/> onto the UI-facing <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Models.KpiTileDto"/> tile set.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ProductionKpiInputMapper.EmptyKpiTiles">
+            <summary>Returns a zero-valued tile set for when no active runs exist (avoids a divide-by-zero KPI snapshot).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.ListActiveProductionRunsQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.ListActiveProductionRunsQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ListActiveProductionRunsQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.ListActiveProductionRunsQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.ListActiveProductionRunsQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ListActiveProductionRunsQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.ListActiveProductionRunsQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunSummaryQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunSummaryQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunSummaryQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunSummaryQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunSummaryQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunSummaryQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunSummaryQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunMetadataQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunMetadataQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunMetadataQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunMetadataQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunMetadataQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunMetadataQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunMetadataQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunTimelineQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunTimelineQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunTimelineQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunTimelineQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunTimelineQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunTimelineQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunTimelineQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunBatchesQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunBatchesQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunBatchesQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunBatchesQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunBatchesQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunBatchesQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunBatchesQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunEventsQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunEventsQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunEventsQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunEventsQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunEventsQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetRunEventsQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunEventsQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.ListProductionBatchesQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.ListProductionBatchesQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ListProductionBatchesQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.ListProductionBatchesQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.ListProductionBatchesQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.ListProductionBatchesQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.ListProductionBatchesQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetProductionTimelineQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetProductionTimelineQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetProductionTimelineQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetProductionTimelineQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetProductionTimelineQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetProductionTimelineQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetProductionTimelineQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetEventHistoryQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetEventHistoryQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetEventHistoryQueryHandler.#ctor(PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operational.ProductionTracking.Handlers.GetEventHistoryQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetEventHistoryQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Handlers.GetEventHistoryQueryHandler.Handle(PlantSafety.Application.Operational.ProductionTracking.Queries.GetEventHistoryQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.RunDowntimeEventRow">
+            <summary>A single recorded downtime interval for a ProductionRun's machine.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunDowntimeEventRow.ReasonCode">
+            <summary>Machine-readable downtime reason code.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunDowntimeEventRow.StartUtc">
+            <summary>UTC instant the downtime began.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunDowntimeEventRow.EndUtc">
+            <summary>UTC instant the downtime ended, or null when still ongoing.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunDowntimeEventRow.IsPlanned">
+            <summary>Whether the downtime was pre-scheduled.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto">
+            <summary>Raw KPI/telemetry inputs for a single ProductionRun, sourced from persisted run data.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.RunId">
+            <summary>Run identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.RunCode">
+            <summary>Run code, for display.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.MachineId">
+            <summary>Machine identifier driving this run's telemetry.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.StartedAtUtc">
+            <summary>UTC instant the run started.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.EndedAtUtc">
+            <summary>UTC instant the run ended, or null while still active (elapsed computed against "now").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.GoodUnitCount">
+            <summary>Cumulative good units produced.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.ScrapUnitCount">
+            <summary>Cumulative scrapped units.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.IdealCycleTimeSeconds">
+            <summary>Rated ideal cycle time (seconds).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.DowntimeMinutesTotal">
+            <summary>Cumulative downtime minutes recorded against this run.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunKpiInputDto.DowntimeEvents">
+            <summary>Recorded downtime events for this run (feeds TelemetryAnomalyDetector.DetectDowntimeFrequencyAnomaly).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.ThroughputSummaryDto">
+            <summary>Throughput Summary card (current/target/efficiency).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ThroughputSummaryDto.CurrentThroughput">
+            <summary>Current throughput in units/hour, summed across active runs.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ThroughputSummaryDto.TargetThroughput">
+            <summary>Target throughput in units/hour, derived from each active run's rated ideal cycle time.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ThroughputSummaryDto.EfficiencyPercent">
+            <summary>Efficiency percentage (actual/target), 0-100+.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ThroughputSummaryDto.TrendDirection">
+            <summary>Trend direction (Increasing, Decreasing, Stable).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.BottleneckSummaryDto">
+            <summary>Bottleneck Summary card (active bottlenecks + severity). Reuse point: computed via the real Observability.Telemetry.TelemetryAnomalyDetector.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BottleneckSummaryDto.ActiveBottlenecks">
+            <summary>Count of active bottleneck anomalies (cycle-time degradation + downtime frequency spikes) across active runs.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BottleneckSummaryDto.Severity">
+            <summary>Highest current bottleneck severity (High, Medium, Low, None).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunRowDto">
+            <summary>Single row in the Active Production Runs table.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunRowDto.RunId">
+            <summary>Run identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunRowDto.RunCode">
+            <summary>Human-readable run code (format PR-###).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunRowDto.Line">
+            <summary>Production line name.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunRowDto.StartUtc">
+            <summary>Run start time (UTC).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunRowDto.Status">
+            <summary>Run status (Running, Paused, Completed, Failed, Pending).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.ProductionRunRowDto.Throughput">
+            <summary>Current throughput in units/hour.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.RunSummaryDto">
+            <summary>Run Summary panel header.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunSummaryDto.RunId">
+            <summary>Run identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunSummaryDto.RunCode">
+            <summary>Human-readable run code.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunSummaryDto.Status">
+            <summary>Run status.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunSummaryDto.Throughput">
+            <summary>Current throughput in units/hour.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunSummaryDto.TrendDirection">
+            <summary>Throughput trend direction.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.RunMetadataDto">
+            <summary>Run Metadata panel.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunMetadataDto.Line">
+            <summary>Production line name.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunMetadataDto.StartUtc">
+            <summary>Run start time (UTC).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.RunMetadataDto.Operator">
+            <summary>Operator display name.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.TimelineEventDto">
+            <summary>Single chronological timeline event row.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.TimelineEventDto.EventId">
+            <summary>Event identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.TimelineEventDto.TimestampUtc">
+            <summary>Event timestamp (UTC).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.TimelineEventDto.EventType">
+            <summary>Event type (Start, Step, Pause, Error, Resume, Complete).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.TimelineEventDto.Description">
+            <summary>Description of the event.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.TimelineEventDto.RunId">
+            <summary>Related production run identifier.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.BatchRowDto">
+            <summary>Single row in the Batch List table.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BatchRowDto.BatchId">
+            <summary>Batch identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BatchRowDto.BatchCode">
+            <summary>Human-readable batch code (format B-###).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BatchRowDto.RunId">
+            <summary>Associated run identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BatchRowDto.RunCode">
+            <summary>Associated run code.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BatchRowDto.Line">
+            <summary>Production line name.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BatchRowDto.Status">
+            <summary>Batch status (Active, Completed, Failed, Pending).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.BatchRowDto.StartUtc">
+            <summary>Batch start time (UTC).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.KpiTileDto">
+            <summary>
+            Single KPI tile (value + target + status). Reuse point: Value is computed by the real
+            PlantSafety.Application.Analytics.Dashboard.Kpi.ProductionKpiEngine, not reimplemented here.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.KpiTileDto.MetricName">
+            <summary>KPI metric name (Throughput, OEE, MTBF, MTTR, Yield, Scrap Rate).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.KpiTileDto.Value">
+            <summary>Current KPI value.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.KpiTileDto.Target">
+            <summary>KPI target value.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.KpiTileDto.Unit">
+            <summary>Unit of measure (e.g. "units/hr", "%", "hours").</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.KpiTileDto.Status">
+            <summary>KPI status relative to target (Met, Warning, Missed).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Models.EventRowDto">
+            <summary>Single row in the Production Event History log.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.EventRowDto.EventId">
+            <summary>Event identifier.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.EventRowDto.TimestampUtc">
+            <summary>Event timestamp (UTC).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.EventRowDto.RunCode">
+            <summary>Related run code.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.EventRowDto.RunId">
+            <summary>Related run identifier, for drilldown.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.EventRowDto.EventType">
+            <summary>Event type.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operational.ProductionTracking.Models.EventRowDto.Description">
+            <summary>Description of the event.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetThroughputSummaryQuery">
+            <summary>Retrieves the Throughput Summary card.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetThroughputSummaryQuery.#ctor(System.Guid)">
+            <summary>Retrieves the Throughput Summary card.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetBottleneckSummaryQuery">
+            <summary>Retrieves the Bottleneck Summary card. Reuse point: composed via the real Observability.Telemetry.TelemetryAnomalyDetector.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetBottleneckSummaryQuery.#ctor(System.Guid)">
+            <summary>Retrieves the Bottleneck Summary card. Reuse point: composed via the real Observability.Telemetry.TelemetryAnomalyDetector.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.ListActiveProductionRunsQuery">
+            <summary>Retrieves a paginated page of active production runs.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.ListActiveProductionRunsQuery.#ctor(System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves a paginated page of active production runs.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunSummaryQuery">
+            <summary>Retrieves the Run Summary panel for a single run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunSummaryQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves the Run Summary panel for a single run.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunMetadataQuery">
+            <summary>Retrieves the Metadata panel for a single run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunMetadataQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves the Metadata panel for a single run.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunTimelineQuery">
+            <summary>Retrieves the chronological timeline for a single run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunTimelineQuery.#ctor(System.Guid,System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves the chronological timeline for a single run.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunBatchesQuery">
+            <summary>Retrieves the batches produced by a single run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunBatchesQuery.#ctor(System.Guid,System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves the batches produced by a single run.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunKpisQuery">
+            <summary>Retrieves the KPI tiles for a single run. Reuse point: composed via the real Analytics.Dashboard.Kpi.ProductionKpiEngine.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunKpisQuery.#ctor(System.Guid,System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves the KPI tiles for a single run. Reuse point: composed via the real Analytics.Dashboard.Kpi.ProductionKpiEngine.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunEventsQuery">
+            <summary>Retrieves the event log for a single run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetRunEventsQuery.#ctor(System.Guid,System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves the event log for a single run.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.ListProductionBatchesQuery">
+            <summary>Retrieves a paginated page of batches across all runs.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.ListProductionBatchesQuery.#ctor(System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves a paginated page of batches across all runs.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetPlantKpisQuery">
+            <summary>Retrieves plant-wide KPI tiles for the KPI Dashboard page. Reuse point: composed via the real Analytics.Dashboard.Kpi.ProductionKpiEngine.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetPlantKpisQuery.#ctor(System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves plant-wide KPI tiles for the KPI Dashboard page. Reuse point: composed via the real Analytics.Dashboard.Kpi.ProductionKpiEngine.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetProductionTimelineQuery">
+            <summary>Retrieves the plant-wide chronological production timeline.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetProductionTimelineQuery.#ctor(System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves the plant-wide chronological production timeline.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Queries.GetEventHistoryQuery">
+            <summary>Retrieves the searchable/filterable production event history log.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Queries.GetEventHistoryQuery.#ctor(System.Guid,System.Int32,System.Int32)">
+            <summary>Retrieves the searchable/filterable production event history log.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository">
+            <summary>Read-only repository for the ProductionTracking module's query surface. Implemented in the Infrastructure layer.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetActiveRunKpiInputsAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the raw KPI inputs for every currently active (Running/Paused) run, for the Throughput/Bottleneck summary cards and the plant-wide KPI dashboard.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.ListActiveRunsAsync(System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Returns a paginated page of active production runs.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetRunSummaryAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the Run Summary panel header for a single run, or null if not found.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetRunMetadataAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the Run Metadata panel for a single run, or null if not found.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetRunTimelineAsync(System.Guid,System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Returns the chronological timeline for a single run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetRunBatchesAsync(System.Guid,System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Returns the batches produced by a single run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetRunKpiInputAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the raw KPI inputs for a single run, or null if not found.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetRunEventsAsync(System.Guid,System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Returns the event log for a single run.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.ListBatchesAsync(System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Returns a paginated page of batches across all runs.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetProductionTimelineAsync(System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Returns the plant-wide chronological production timeline.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Repositories.IProductionTrackingReadRepository.GetEventHistoryAsync(System.Guid,System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>Returns the searchable/filterable production event history log.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Validation.CreateProductionLineCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Validation.CreateProductionLineCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CreateProductionLineCommand"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Validation.StartProductionRunCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Validation.StartProductionRunCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.StartProductionRunCommand"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Validation.RecordProductionRunEventCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Validation.RecordProductionRunEventCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.RecordProductionRunEventCommand"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Validation.AddProductionBatchCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Validation.AddProductionBatchCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.AddProductionBatchCommand"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operational.ProductionTracking.Validation.CompleteProductionRunCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operational.ProductionTracking.Validation.CompleteProductionRunCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Operational.ProductionTracking.Commands.CompleteProductionRunCommand"/>.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Operational.Queries.ExportOperationalQuery">
             <summary>Generates an Operational data export in the requested format and returns a presigned download URL.</summary>
             <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
@@ -50494,6 +51339,43 @@
             <summary>Gets the identifier of the actor who initiated the command.
             Placeholder: no dedicated actor field exists on this command; defaults to <see cref="F:System.Guid.Empty"/>.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionProvider">
+            <summary>
+            Operations.Archival's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing recent purge run history as a public cross-module read-model contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionProvider.GetSectionAsync(PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionRequest">
+            <summary>
+            Deterministic request envelope scoping a purge-run-history read-model section, for composition
+            into another submodule's aggregate report (e.g. Operations.SystemHealth).
+            </summary>
+            <param name="Zone">Optional exact Archival.TierPolicy.Zone filter. Null returns all zones.</param>
+            <param name="Top">Maximum number of rows to return. Defaults to 50.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionRequest.#ctor(System.String,System.Int32)">
+            <summary>
+            Deterministic request envelope scoping a purge-run-history read-model section, for composition
+            into another submodule's aggregate report (e.g. Operations.SystemHealth).
+            </summary>
+            <param name="Zone">Optional exact Archival.TierPolicy.Zone filter. Null returns all zones.</param>
+            <param name="Top">Maximum number of rows to return. Defaults to 50.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionRequest.Zone">
+            <summary>Optional exact Archival.TierPolicy.Zone filter. Null returns all zones.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionRequest.Top">
+            <summary>Maximum number of rows to return. Defaults to 50.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Operations.Archival.Handlers.GetPurgeStatusQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Operations.Archival.Queries.GetPurgeStatusQuery"/>.</summary>
         </member>
@@ -50697,6 +51579,39 @@
             module).
             </summary>
         </member>
+        <member name="T:PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionProvider">
+            <summary>
+            Operations.AuditViewer's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/>
+            implementation, exposing a recent-activity row count as a public cross-module read-model
+            contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionProvider.GetSectionAsync(PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionRequest">
+            <summary>
+            Deterministic request envelope scoping a "recent AuditLog activity count" read-model section,
+            for composition into another submodule's aggregate report (e.g. Operations.SystemHealth).
+            </summary>
+            <param name="SinceUtc">Inclusive lower bound on ChangeTime (UTC) for the count.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionRequest.#ctor(System.DateTime)">
+            <summary>
+            Deterministic request envelope scoping a "recent AuditLog activity count" read-model section,
+            for composition into another submodule's aggregate report (e.g. Operations.SystemHealth).
+            </summary>
+            <param name="SinceUtc">Inclusive lower bound on ChangeTime (UTC) for the count.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionRequest.SinceUtc">
+            <summary>Inclusive lower bound on ChangeTime (UTC) for the count.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Operations.AuditViewer.Handlers.SearchAuditLogQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Operations.AuditViewer.Queries.SearchAuditLogQuery"/>.</summary>
         </member>
@@ -50784,6 +51699,21 @@
         <member name="P:PlantSafety.Application.Operations.Backup.Commands.TriggerBackupCommand.ActorId">
             <summary>Gets the identifier of the actor who initiated the command.
             Placeholder: no dedicated actor field exists on this command; defaults to <see cref="F:System.Guid.Empty"/>.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.Backup.Contracts.BackupHealthSectionProvider">
+            <summary>
+            Operations.Backup's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing derived backup-health status as a public cross-module read-model contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Backup.Contracts.BackupHealthSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Backup.Contracts.BackupHealthSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Backup.Contracts.BackupHealthSectionProvider.GetSectionAsync(PlantSafety.SharedKernel.Contracts.ReadModelComposition.NoSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
         </member>
         <member name="T:PlantSafety.Application.Operations.Backup.Handlers.GetBackupHealthQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Operations.Backup.Queries.GetBackupHealthQuery"/>.</summary>
@@ -51124,6 +52054,21 @@
             <summary>Gets the identifier of the actor who initiated the command.
             Placeholder: no dedicated actor field exists on this command; defaults to <see cref="F:System.Guid.Empty"/>.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Operations.Configuration.Contracts.FeatureFlagsSectionProvider">
+            <summary>
+            Operations.Configuration's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/>
+            implementation, exposing every known feature flag as a public cross-module read-model contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Configuration.Contracts.FeatureFlagsSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Configuration.Contracts.FeatureFlagsSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Configuration.Contracts.FeatureFlagsSectionProvider.GetSectionAsync(PlantSafety.SharedKernel.Contracts.ReadModelComposition.NoSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.Operations.Configuration.Handlers.GetAllFeatureFlagsQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Operations.Configuration.Queries.GetAllFeatureFlagsQuery"/>.</summary>
         </member>
@@ -51245,6 +52190,118 @@
             <param name="flagName">The flag to toggle.</param>
             <param name="isEnabled">The new IsEnabled value.</param>
             <param name="updatedBy">The identity of the caller making the change (from ICurrentUserService), recorded in UpdatedBy.</param>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.DependencyInjection.OperationsReadModelCompositionServiceRegistration">
+            <summary>
+            Extension methods to register every Operations.* submodule's cross-module read-model
+            composition provider.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.DependencyInjection.OperationsReadModelCompositionServiceRegistration.AddOperationsReadModelCompositionServices(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+            <summary>
+            Registers every Operations.* <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/>
+            implementation used by the Operations.SystemHealth rollup report.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.Monitoring.Contracts.DatabaseHealthSectionProvider">
+            <summary>
+            Operations.Monitoring's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing the aggregated /health/ready readiness report as a public cross-module read-model
+            contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Monitoring.Contracts.DatabaseHealthSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.DatabaseHealthSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Monitoring.Contracts.DatabaseHealthSectionProvider.GetSectionAsync(PlantSafety.SharedKernel.Contracts.ReadModelComposition.NoSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionProvider">
+            <summary>
+            Operations.Monitoring's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing recent ErrorLog rows as a public cross-module read-model contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionProvider.GetSectionAsync(PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionRequest">
+            <summary>
+            Deterministic request envelope scoping an ErrorLog read-model section, for composition into
+            another submodule's aggregate report (e.g. Operations.SystemHealth).
+            </summary>
+            <param name="MinSeverity">Optional minimum ErrorSeverity (inclusive). Null returns all severities.</param>
+            <param name="SinceUtc">Optional lower bound on ErrorDate (inclusive). Null returns all history.</param>
+            <param name="Top">Page size. Defaults to 50.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionRequest.#ctor(System.Nullable{System.Int32},System.Nullable{System.DateTime},System.Int32)">
+            <summary>
+            Deterministic request envelope scoping an ErrorLog read-model section, for composition into
+            another submodule's aggregate report (e.g. Operations.SystemHealth).
+            </summary>
+            <param name="MinSeverity">Optional minimum ErrorSeverity (inclusive). Null returns all severities.</param>
+            <param name="SinceUtc">Optional lower bound on ErrorDate (inclusive). Null returns all history.</param>
+            <param name="Top">Page size. Defaults to 50.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionRequest.MinSeverity">
+            <summary>Optional minimum ErrorSeverity (inclusive). Null returns all severities.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionRequest.SinceUtc">
+            <summary>Optional lower bound on ErrorDate (inclusive). Null returns all history.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionRequest.Top">
+            <summary>Page size. Defaults to 50.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionProvider">
+            <summary>
+            Operations.Monitoring's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing top queries by average CPU time as a public cross-module read-model contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionProvider.GetSectionAsync(PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionRequest">
+            <summary>
+            Deterministic request envelope scoping a Query Store performance read-model section, for
+            composition into another submodule's aggregate report (e.g. Operations.SystemHealth).
+            </summary>
+            <param name="DatabaseKey">Logical database key (see MonitoringOptions.DatabaseConnectionStrings), e.g. "CoreDB".</param>
+            <param name="Top">Maximum number of rows to return. Defaults to 20.</param>
+            <param name="LookbackHours">How far back to look, in hours. Defaults to 24.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionRequest.#ctor(System.String,System.Int32,System.Int32)">
+            <summary>
+            Deterministic request envelope scoping a Query Store performance read-model section, for
+            composition into another submodule's aggregate report (e.g. Operations.SystemHealth).
+            </summary>
+            <param name="DatabaseKey">Logical database key (see MonitoringOptions.DatabaseConnectionStrings), e.g. "CoreDB".</param>
+            <param name="Top">Maximum number of rows to return. Defaults to 20.</param>
+            <param name="LookbackHours">How far back to look, in hours. Defaults to 24.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionRequest.DatabaseKey">
+            <summary>Logical database key (see MonitoringOptions.DatabaseConnectionStrings), e.g. "CoreDB".</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionRequest.Top">
+            <summary>Maximum number of rows to return. Defaults to 20.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionRequest.LookbackHours">
+            <summary>How far back to look, in hours. Defaults to 24.</summary>
         </member>
         <member name="T:PlantSafety.Application.Operations.Monitoring.Handlers.GetDatabaseHealthReportQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Operations.Monitoring.Queries.GetDatabaseHealthReportQuery"/>.</summary>
@@ -51631,6 +52688,22 @@
             built-in "system_health" Extended Events session's ring_buffer target, newest first.
             </summary>
         </member>
+        <member name="T:PlantSafety.Application.Operations.SchemaGuard.Contracts.SchemaHealthSectionProvider">
+            <summary>
+            Operations.SchemaGuard's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/>
+            implementation, exposing per-database schema-drift status as a public cross-module read-model
+            contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.SchemaGuard.Contracts.SchemaHealthSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Operations.SchemaGuard.Contracts.SchemaHealthSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Operations.SchemaGuard.Contracts.SchemaHealthSectionProvider.GetSectionAsync(PlantSafety.SharedKernel.Contracts.ReadModelComposition.NoSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.Operations.SchemaGuard.Handlers.GetMigrationInstructionsQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Operations.SchemaGuard.Queries.GetMigrationInstructionsQuery"/>.</summary>
         </member>
@@ -51767,7 +52840,7 @@
         <member name="F:PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler.PrimaryDatabaseKey">
             <summary>The primary tenant database's Query Store key, used for the DB-performance half of the monitoring summary.</summary>
         </member>
-        <member name="M:PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler.#ctor(MediatR.ISender,PlantSafety.Application.Operations.SystemHealth.Repositories.ISystemHealthRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler})">
+        <member name="M:PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler.#ctor(PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.SharedKernel.Contracts.ReadModelComposition.NoSectionRequest,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Operations.Backup.Models.BackupHealthDto}},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.SharedKernel.Contracts.ReadModelComposition.NoSectionRequest,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Operations.SchemaGuard.Models.SchemaDatabaseHealthDto}},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.SharedKernel.Contracts.ReadModelComposition.NoSectionRequest,PlantSafety.Application.Operations.Monitoring.Models.DatabaseHealthReportDto},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.Application.Operations.Monitoring.Contracts.ErrorLogSectionRequest,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Operations.Monitoring.Models.ErrorLogItemDto}},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.Application.Operations.Monitoring.Contracts.QueryPerformanceSectionRequest,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Operations.Monitoring.Models.QueryPerformanceItemDto}},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.Application.Operations.Archival.Contracts.PurgeStatusSectionRequest,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Operations.Archival.Models.ArchivalJobDto}},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.Application.Operations.AuditViewer.Contracts.RecentAuditActivitySectionRequest,System.Int32},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.SharedKernel.Contracts.ReadModelComposition.NoSectionRequest,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Operations.Configuration.Models.FeatureFlagDto}},PlantSafety.Application.Operations.SystemHealth.Repositories.ISystemHealthRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler})">
             <summary>Initialises dependencies.</summary>
         </member>
         <member name="M:PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler.Handle(PlantSafety.Application.Operations.SystemHealth.Queries.GetSystemHealthReportQuery,System.Threading.CancellationToken)">
@@ -51783,11 +52856,12 @@
         <member name="M:PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler.BuildRecentAuditActivityAsync(System.Threading.CancellationToken)">
             <summary>
             Retrieves the count of AuditLog rows written in the last 24 hours via
-            Operations.AuditViewer's SearchAuditLogQuery (PageSize=1 -- only TotalCount is needed).
+            Operations.AuditViewer's RecentAuditActivitySectionProvider (backed by SearchAuditLogQuery
+            with PageSize=1 -- only TotalCount is needed).
             </summary>
         </member>
-        <member name="M:PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler.RunResultSectionAsync``1(System.String,System.Func{System.Threading.Tasks.Task{PlantSafety.Application.Common.Results.Result{``0}}})">
-            <summary>Runs a single ISender.Send call, mapping its Result&lt;T&gt; outcome into a resilient section.</summary>
+        <member name="M:PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler.RunResultSectionAsync``1(System.String,System.Func{System.Threading.Tasks.Task{PlantSafety.SharedKernel.Primitives.Results.Result{``0}}})">
+            <summary>Runs a single IReportSectionProvider call, mapping its Result&lt;T&gt; outcome into a resilient section.</summary>
         </member>
         <member name="M:PlantSafety.Application.Operations.SystemHealth.Handlers.GetSystemHealthReportQueryHandler.RunRepositorySectionAsync``1(System.String,System.Func{System.Threading.Tasks.Task{``0}})">
             <summary>Runs a single repository call (not wrapped in Result&lt;T&gt;), mapping exceptions into a resilient section.</summary>
@@ -66560,6 +67634,100 @@
             tenant.
             </summary>
         </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand">
+            <summary>Runs the predictive scheduling optimization pipeline and persists the resulting OptimizationRun.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="Tasks">Candidate tasks competing for placement in this run.</param>
+            <param name="Availability">Declared resource availability windows for this run.</param>
+            <param name="ObjectiveCode">Name of the <see cref="T:PlantSafety.Domain.Scheduling.PredictiveScheduling.Enums.OptimizationObjective"/> value to optimize for.</param>
+            <param name="RequestedByUserId">
+            Identity of the user who requested the run, or <see langword="null"/> for a system/cross-module
+            -triggered run (e.g. the reprioritization orchestrator's automated reoptimization).
+            </param>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.#ctor(System.Guid,System.Guid,System.Guid,System.DateTime,System.String,System.Guid,System.Nullable{System.Guid},System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto},System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ResourceAvailabilityWindowInputDto},System.String,System.Nullable{System.Guid})">
+            <summary>Runs the predictive scheduling optimization pipeline and persists the resulting OptimizationRun.</summary>
+            <param name="CommandId">Unique identifier for this command instance (Uuid7).</param>
+            <param name="CorrelationId">Operation-group correlation identifier, constant across the whole request.</param>
+            <param name="CausationId">Identifier of the immediate parent command or event. Null only for root operations.</param>
+            <param name="RequestedAtUtc">UTC instant the command was issued, generated once at the API boundary.</param>
+            <param name="ApiVersionToken">API version token the request was issued under.</param>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null applies tenant-wide.</param>
+            <param name="Tasks">Candidate tasks competing for placement in this run.</param>
+            <param name="Availability">Declared resource availability windows for this run.</param>
+            <param name="ObjectiveCode">Name of the <see cref="T:PlantSafety.Domain.Scheduling.PredictiveScheduling.Enums.OptimizationObjective"/> value to optimize for.</param>
+            <param name="RequestedByUserId">
+            Identity of the user who requested the run, or <see langword="null"/> for a system/cross-module
+            -triggered run (e.g. the reprioritization orchestrator's automated reoptimization).
+            </param>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.CommandId">
+            <summary>Unique identifier for this command instance (Uuid7).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.CorrelationId">
+            <summary>Operation-group correlation identifier, constant across the whole request.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.CausationId">
+            <summary>Identifier of the immediate parent command or event. Null only for root operations.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.RequestedAtUtc">
+            <summary>UTC instant the command was issued, generated once at the API boundary.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.ApiVersionToken">
+            <summary>API version token the request was issued under.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.SiteId">
+            <summary>Optional site scope. Null applies tenant-wide.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.Tasks">
+            <summary>Candidate tasks competing for placement in this run.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.Availability">
+            <summary>Declared resource availability windows for this run.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.ObjectiveCode">
+            <summary>Name of the <see cref="T:PlantSafety.Domain.Scheduling.PredictiveScheduling.Enums.OptimizationObjective"/> value to optimize for.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.RequestedByUserId">
+            <summary>
+            Identity of the user who requested the run, or <see langword="null"/> for a system/cross-module
+            -triggered run (e.g. the reprioritization orchestrator's automated reoptimization).
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.PlantSafety#Application#Abstractions#Messaging#ICommand{PlantSafety#Application#Common#Results#Result{PlantSafety#Application#Scheduling#PredictiveScheduling#Models#OptimizationRunDto}}#CausationId">
+            <inheritdoc cref="P:PlantSafety.Application.Abstractions.Messaging.ICommand`1.CausationId" />
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.ActorId">
+            <summary>
+            Gets the identifier of the actor who initiated the command. System/cross-module-triggered
+            runs (<see cref="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.RequestedByUserId"/> is <see langword="null"/>) report <see cref="F:System.Guid.Empty"/>.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand.FromDto(System.Guid,System.Nullable{System.Guid},System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto},System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ResourceAvailabilityWindowInputDto},System.String,System.Nullable{System.Guid},System.Nullable{System.Guid},System.Nullable{System.Guid},System.String)">
+            <summary>Builds a <see cref="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand"/> from raw, untrusted transport values.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommandHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommandHandler.#ctor(PlantSafety.Domain.Scheduling.PredictiveScheduling.Interfaces.IOptimizationRunFactory,PlantSafety.Domain.Scheduling.PredictiveScheduling.Interfaces.IOptimizationRunRepository,PlantSafety.Application.Scheduling.PredictiveScheduling.Optimization.MultiObjectiveScheduleOptimizer,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommandHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommandHandler.Handle(PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommandHandler.ToDto(PlantSafety.Domain.Scheduling.PredictiveScheduling.Aggregates.OptimizationRun)">
+            <summary>Projects a fully-hydrated <see cref="T:PlantSafety.Domain.Scheduling.PredictiveScheduling.Aggregates.OptimizationRun"/> into its read-model DTO.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.DependencyInjection.PredictiveSchedulingServiceRegistration">
             <summary>Extension methods to register the predictive scheduling engine's Application-layer services.</summary>
         </member>
@@ -66569,6 +67737,185 @@
             predictive scheduling engine (Phase 5, Section 1). MediatR handlers/validators are
             auto-registered via assembly scan.
             </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Handlers.GetOptimizationRunByIdQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunByIdQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Handlers.GetOptimizationRunByIdQueryHandler.#ctor(PlantSafety.Application.Scheduling.PredictiveScheduling.Repositories.IOptimizationRunReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Scheduling.PredictiveScheduling.Handlers.GetOptimizationRunByIdQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Handlers.GetOptimizationRunByIdQueryHandler.Handle(PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunByIdQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Handlers.GetOptimizationRunHistoryQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Handlers.GetOptimizationRunHistoryQueryHandler.#ctor(PlantSafety.Application.Scheduling.PredictiveScheduling.Repositories.IOptimizationRunReadRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Scheduling.PredictiveScheduling.Handlers.GetOptimizationRunHistoryQueryHandler})">
+            <summary>Initialises dependencies.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Handlers.GetOptimizationRunHistoryQueryHandler.Handle(PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto">
+            <summary>Caller-supplied input for a single schedulable task competing for placement in an optimization run.</summary>
+            <param name="TaskId">Identity of the task (mirrors the source aggregate identifier, e.g. a PMScheduling/WorkOrderPriority record).</param>
+            <param name="Description">Free-text label describing the source work item.</param>
+            <param name="EstimatedDurationMinutes">Estimated duration required to complete the task, in minutes.</param>
+            <param name="EarliestStartUtc">Earliest UTC instant at which the task may begin.</param>
+            <param name="LatestFinishUtc">Latest UTC instant by which the task must finish.</param>
+            <param name="BasePriorityWeight">Base priority weight before dynamic adjustment (higher schedules first).</param>
+            <param name="RequiredCrewSize">Number of crew members required to execute the task concurrently.</param>
+            <param name="RequiredMachineId">Identifier of the machine the task must be performed on, if machine-bound.</param>
+            <param name="RequiredCrewId">Identifier of the crew/team the task must be performed by, if crew-bound.</param>
+            <param name="IsSafetyCritical">True when the task involves hazard isolation, lockout/tagout, or another safety-critical procedure.</param>
+            <param name="IsOverdue">True when the source work item is already flagged overdue.</param>
+            <param name="DeferralCount">Number of times this task has previously slipped/been rescheduled.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.#ctor(System.Guid,System.String,System.Int32,System.DateTime,System.DateTime,System.Double,System.Int32,System.Nullable{System.Guid},System.Nullable{System.Guid},System.Boolean,System.Boolean,System.Int32)">
+            <summary>Caller-supplied input for a single schedulable task competing for placement in an optimization run.</summary>
+            <param name="TaskId">Identity of the task (mirrors the source aggregate identifier, e.g. a PMScheduling/WorkOrderPriority record).</param>
+            <param name="Description">Free-text label describing the source work item.</param>
+            <param name="EstimatedDurationMinutes">Estimated duration required to complete the task, in minutes.</param>
+            <param name="EarliestStartUtc">Earliest UTC instant at which the task may begin.</param>
+            <param name="LatestFinishUtc">Latest UTC instant by which the task must finish.</param>
+            <param name="BasePriorityWeight">Base priority weight before dynamic adjustment (higher schedules first).</param>
+            <param name="RequiredCrewSize">Number of crew members required to execute the task concurrently.</param>
+            <param name="RequiredMachineId">Identifier of the machine the task must be performed on, if machine-bound.</param>
+            <param name="RequiredCrewId">Identifier of the crew/team the task must be performed by, if crew-bound.</param>
+            <param name="IsSafetyCritical">True when the task involves hazard isolation, lockout/tagout, or another safety-critical procedure.</param>
+            <param name="IsOverdue">True when the source work item is already flagged overdue.</param>
+            <param name="DeferralCount">Number of times this task has previously slipped/been rescheduled.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.TaskId">
+            <summary>Identity of the task (mirrors the source aggregate identifier, e.g. a PMScheduling/WorkOrderPriority record).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.Description">
+            <summary>Free-text label describing the source work item.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.EstimatedDurationMinutes">
+            <summary>Estimated duration required to complete the task, in minutes.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.EarliestStartUtc">
+            <summary>Earliest UTC instant at which the task may begin.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.LatestFinishUtc">
+            <summary>Latest UTC instant by which the task must finish.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.BasePriorityWeight">
+            <summary>Base priority weight before dynamic adjustment (higher schedules first).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.RequiredCrewSize">
+            <summary>Number of crew members required to execute the task concurrently.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.RequiredMachineId">
+            <summary>Identifier of the machine the task must be performed on, if machine-bound.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.RequiredCrewId">
+            <summary>Identifier of the crew/team the task must be performed by, if crew-bound.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.IsSafetyCritical">
+            <summary>True when the task involves hazard isolation, lockout/tagout, or another safety-critical procedure.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.IsOverdue">
+            <summary>True when the source work item is already flagged overdue.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.SchedulableTaskInputDto.DeferralCount">
+            <summary>Number of times this task has previously slipped/been rescheduled.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ResourceAvailabilityWindowInputDto">
+            <summary>Caller-supplied input for a single resource availability window offered to an optimization run.</summary>
+            <param name="ResourceId">Identity of the resource this window belongs to.</param>
+            <param name="StartUtc">UTC start of the availability window.</param>
+            <param name="EndUtc">UTC end of the availability window.</param>
+            <param name="Capacity">Maximum concurrent task count the resource can support within this window.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ResourceAvailabilityWindowInputDto.#ctor(System.Guid,System.DateTime,System.DateTime,System.Int32)">
+            <summary>Caller-supplied input for a single resource availability window offered to an optimization run.</summary>
+            <param name="ResourceId">Identity of the resource this window belongs to.</param>
+            <param name="StartUtc">UTC start of the availability window.</param>
+            <param name="EndUtc">UTC end of the availability window.</param>
+            <param name="Capacity">Maximum concurrent task count the resource can support within this window.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ResourceAvailabilityWindowInputDto.ResourceId">
+            <summary>Identity of the resource this window belongs to.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ResourceAvailabilityWindowInputDto.StartUtc">
+            <summary>UTC start of the availability window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ResourceAvailabilityWindowInputDto.EndUtc">
+            <summary>UTC end of the availability window.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ResourceAvailabilityWindowInputDto.Capacity">
+            <summary>Maximum concurrent task count the resource can support within this window.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ScheduleAssignmentDto">
+            <summary>Read-model DTO for a single task-to-resource placement produced by an optimization run.</summary>
+            <param name="TaskId">Identity of the placed task.</param>
+            <param name="ResourceId">Identity of the resource the task is placed against.</param>
+            <param name="StartUtc">UTC instant the task is planned to start.</param>
+            <param name="EndUtc">UTC instant the task is planned to finish.</param>
+            <param name="EffectivePriorityWeight">Composite priority weight used to order this assignment relative to others.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ScheduleAssignmentDto.#ctor(System.Guid,System.Guid,System.DateTime,System.DateTime,System.Double)">
+            <summary>Read-model DTO for a single task-to-resource placement produced by an optimization run.</summary>
+            <param name="TaskId">Identity of the placed task.</param>
+            <param name="ResourceId">Identity of the resource the task is placed against.</param>
+            <param name="StartUtc">UTC instant the task is planned to start.</param>
+            <param name="EndUtc">UTC instant the task is planned to finish.</param>
+            <param name="EffectivePriorityWeight">Composite priority weight used to order this assignment relative to others.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ScheduleAssignmentDto.TaskId">
+            <summary>Identity of the placed task.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ScheduleAssignmentDto.ResourceId">
+            <summary>Identity of the resource the task is placed against.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ScheduleAssignmentDto.StartUtc">
+            <summary>UTC instant the task is planned to start.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ScheduleAssignmentDto.EndUtc">
+            <summary>UTC instant the task is planned to finish.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ScheduleAssignmentDto.EffectivePriorityWeight">
+            <summary>Composite priority weight used to order this assignment relative to others.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ConstraintViolationDto">
+            <summary>Read-model DTO for a single constraint rule violation tolerated by an optimization run's result.</summary>
+            <param name="RuleName">Stable machine-readable name of the rule that raised the violation.</param>
+            <param name="Severity">Severity classification code (Info/Warning/Blocking).</param>
+            <param name="Message">Human-readable explanation of the violation.</param>
+            <param name="TaskId">Identity of the task the violation pertains to.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ConstraintViolationDto.#ctor(System.String,System.String,System.String,System.Guid)">
+            <summary>Read-model DTO for a single constraint rule violation tolerated by an optimization run's result.</summary>
+            <param name="RuleName">Stable machine-readable name of the rule that raised the violation.</param>
+            <param name="Severity">Severity classification code (Info/Warning/Blocking).</param>
+            <param name="Message">Human-readable explanation of the violation.</param>
+            <param name="TaskId">Identity of the task the violation pertains to.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ConstraintViolationDto.RuleName">
+            <summary>Stable machine-readable name of the rule that raised the violation.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ConstraintViolationDto.Severity">
+            <summary>Severity classification code (Info/Warning/Blocking).</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ConstraintViolationDto.Message">
+            <summary>Human-readable explanation of the violation.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ConstraintViolationDto.TaskId">
+            <summary>Identity of the task the violation pertains to.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.OptimizationRunDto">
+            <summary>Full read-model DTO for a single OptimizationRun.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.OptimizationRunDto.#ctor(System.Guid,System.Guid,System.Nullable{System.Guid},System.String,System.String,System.String,System.Nullable{System.Double},System.Int32,System.Int32,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ScheduleAssignmentDto},System.Collections.Generic.IReadOnlyList{System.Guid},System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Scheduling.PredictiveScheduling.Models.ConstraintViolationDto},System.String,System.DateTime,System.Nullable{System.DateTime},System.Nullable{System.Guid},System.Guid)">
+            <summary>Full read-model DTO for a single OptimizationRun.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.OptimizationRunSummaryDto">
+            <summary>Lightweight read-model DTO for a single OptimizationRun, used by the history/list query.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Models.OptimizationRunSummaryDto.#ctor(System.Guid,System.String,System.String,System.String,System.Nullable{System.Double},System.Int32,System.Int32,System.DateTime,System.Nullable{System.DateTime})">
+            <summary>Lightweight read-model DTO for a single OptimizationRun, used by the history/list query.</summary>
         </member>
         <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Optimization.ConstraintSatisfactionStrategy">
             <summary>
@@ -66789,6 +68136,75 @@
             that identified this task as a corrective action: increments the deferral count so it competes
             more strongly for scarce resource windows.
             </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunByIdQuery">
+            <summary>Retrieves a single OptimizationRun read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="OptimizationRunId">Identity of the OptimizationRun record to retrieve.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunByIdQuery.#ctor(System.Guid,System.Guid)">
+            <summary>Retrieves a single OptimizationRun read-model record by identity.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="OptimizationRunId">Identity of the OptimizationRun record to retrieve.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunByIdQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunByIdQuery.OptimizationRunId">
+            <summary>Identity of the OptimizationRun record to retrieve.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery">
+            <summary>Retrieves the OptimizationRun history for a tenant/site scope and date range.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null returns data for all accessible sites.</param>
+            <param name="FromUtc">Inclusive start of the request date range (UTC). Defaults to 30 days before now.</param>
+            <param name="ToUtc">Inclusive end of the request date range (UTC). Defaults to now.</param>
+            <param name="StatusCode">Optional <see cref="T:PlantSafety.Domain.Scheduling.PredictiveScheduling.Enums.OptimizationRunStatus"/> filter.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery.#ctor(System.Guid,System.Nullable{System.Guid},System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.String)">
+            <summary>Retrieves the OptimizationRun history for a tenant/site scope and date range.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="SiteId">Optional site scope. Null returns data for all accessible sites.</param>
+            <param name="FromUtc">Inclusive start of the request date range (UTC). Defaults to 30 days before now.</param>
+            <param name="ToUtc">Inclusive end of the request date range (UTC). Defaults to now.</param>
+            <param name="StatusCode">Optional <see cref="T:PlantSafety.Domain.Scheduling.PredictiveScheduling.Enums.OptimizationRunStatus"/> filter.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery.SiteId">
+            <summary>Optional site scope. Null returns data for all accessible sites.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery.FromUtc">
+            <summary>Inclusive start of the request date range (UTC). Defaults to 30 days before now.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery.ToUtc">
+            <summary>Inclusive end of the request date range (UTC). Defaults to now.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Scheduling.PredictiveScheduling.Queries.GetOptimizationRunHistoryQuery.StatusCode">
+            <summary>Optional <see cref="T:PlantSafety.Domain.Scheduling.PredictiveScheduling.Enums.OptimizationRunStatus"/> filter.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Repositories.IOptimizationRunReadRepository">
+            <summary>Read-only repository for OptimizationRun read-model data. Implemented in the Infrastructure layer.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Repositories.IOptimizationRunReadRepository.GetByIdAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the OptimizationRun read-model record for the given identity, scoped to the given
+            tenant, or <see langword="null"/> if not found or if the record belongs to a different
+            tenant.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Repositories.IOptimizationRunReadRepository.ListHistoryAsync(System.Guid,System.Nullable{System.Guid},System.DateTime,System.DateTime,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Returns OptimizationRun summary records for the given tenant, optionally scoped to a site,
+            filtered to the given inclusive UTC request date range and/or status code, most-recent first.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Validation.RequestOptimizationRunCommandValidator">
+            <summary>Validates <see cref="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Scheduling.PredictiveScheduling.Validation.RequestOptimizationRunCommandValidator.#ctor">
+            <summary>Defines validation rules for <see cref="T:PlantSafety.Application.Scheduling.PredictiveScheduling.Commands.RequestOptimizationRunCommand"/>.</summary>
         </member>
         <member name="T:PlantSafety.Application.Scheduling.Rollup.DependencyInjection.SchedulingRollupApplicationServiceRegistration">
             <summary>

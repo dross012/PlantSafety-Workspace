@@ -61,7 +61,7 @@ public sealed class ComplianceExportV1Controller : Controllers.BaseApiController
         CancellationToken          ct)
     {
         var query  = new PlantSafety.Application.Compliance.Queries.ExportComplianceQuery(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             (int)request.Format,
             request.From,

@@ -31,14 +31,26 @@
 //                  MachineProcessMonitoringId (the anomaly occurrence's business identity -- distinct
 //                  from the message envelope's own EventId, which IdempotentConsumerBase already
 //                  covers), scoped by a matching distributed lock. Additive-only evolution.
+//
+//                  2026-08-03 UPDATE (Phase 6 PredictiveScheduling full build-out): the
+//                  PredictiveScheduling module now has a real persistence layer
+//                  (OptimizationRun aggregate / RequestOptimizationRunCommand), so this consumer no
+//                  longer only logs the reprioritization outcome and discards it -- it now also
+//                  dispatches RequestOptimizationRunCommand with the reprioritized task, which runs
+//                  the real MultiObjectiveScheduleOptimizer and persists an auditable OptimizationRun
+//                  record of the reprioritization-triggered optimization decision. The DataLake
+//                  activity write is retained for Intelligence/Analytics' existing feed.
 // ============================================================================
 using MediatR;
 using Microsoft.Extensions.Logging;
 using PlantSafety.SharedKernel.Primitives.ValueTypes;
 using PlantSafety.SharedKernel.Abstractions.Concurrency;
 using PlantSafety.Application.Intelligence.DataLake.Commands;
+using PlantSafety.Application.Scheduling.PredictiveScheduling.Commands;
+using PlantSafety.Application.Scheduling.PredictiveScheduling.Models;
 using PlantSafety.Application.Scheduling.PredictiveScheduling.Orchestration;
 using PlantSafety.Domain.Observability.MachineProcessMonitoring.Events;
+using PlantSafety.Domain.Scheduling.PredictiveScheduling.Enums;
 using PlantSafety.Domain.Scheduling.PredictiveScheduling.Services;
 using PlantSafety.Domain.Scheduling.PredictiveScheduling.ValueObjects;
 using PlantSafety.Domain.Scheduling.PredictiveScheduling.ValueObjects.Ids;
@@ -108,6 +120,46 @@ public sealed class ProductionAnomalyReprioritizationConsumer(
             eventId: evt.EventId.Value,
             sideEffect: async () =>
             {
+                // Persist the reprioritization-triggered optimization decision as a durable,
+                // queryable OptimizationRun -- runs the real MultiObjectiveScheduleOptimizer over
+                // the reprioritized task rather than merely logging the outcome and discarding it.
+                var updatedTask = outcome.UpdatedTask;
+                var optimizationRunCommand = RequestOptimizationRunCommand.FromDto(
+                    tenantId: tenantId,
+                    siteId: null,
+                    tasks:
+                    [
+                        new SchedulableTaskInputDto(
+                            TaskId: updatedTask.TaskId.Value,
+                            Description: updatedTask.Description,
+                            EstimatedDurationMinutes: (int)Math.Ceiling(updatedTask.EstimatedDuration.TotalMinutes),
+                            EarliestStartUtc: updatedTask.EarliestStartUtc.Value,
+                            LatestFinishUtc: updatedTask.LatestFinishUtc.Value,
+                            BasePriorityWeight: outcome.NewWeight,
+                            RequiredCrewSize: updatedTask.RequiredCrewSize,
+                            RequiredMachineId: updatedTask.RequiredMachineId?.Value,
+                            RequiredCrewId: updatedTask.RequiredCrewId?.Value,
+                            IsSafetyCritical: updatedTask.IsSafetyCritical,
+                            IsOverdue: updatedTask.IsOverdue,
+                            DeferralCount: updatedTask.DeferralCount),
+                    ],
+                    availability:
+                    [
+                        new ResourceAvailabilityWindowInputDto(
+                            ResourceId: updatedTask.RequiredMachineId?.Value ?? SchedulingResourceId.New().Value,
+                            StartUtc: asOfUtc.Value,
+                            EndUtc: asOfUtc.Value.Add(DefaultTaskWindow),
+                            Capacity: 1),
+                    ],
+                    objectiveCode: nameof(OptimizationObjective.MaximizeSafetyMargin),
+                    requestedByUserId: null,
+                    correlationId: evt.CorrelationId.Value,
+                    causationId: evt.EventId.Value);
+
+                await DispatchAsync(optimizationRunCommand,
+                    $"RequestOptimizationRunCommand for reprioritization outcome ({evt.MachineProcessMonitoringId})",
+                    cancellationToken);
+
                 var command = new CreateDataLakeActivityCommand(
                     CommandId: Guid.NewGuid(),
                     CorrelationId: evt.CorrelationId.Value,

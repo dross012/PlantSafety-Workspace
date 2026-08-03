@@ -39,7 +39,6 @@ namespace PlantSafety.Api.Models.Bulk;
 /// Request body model for PlantSafety.Api bulk operation endpoints.
 /// Bound via <c>[FromBody]</c> on <c>PUT .../bulk</c> and <c>POST .../bulk</c> actions.
 /// </summary>
-/// <param name="TenantId">The tenant context for this bulk operation.</param>
 /// <param name="SiteId">Optional site scope. When <c>null</c>, applies tenant-wide.</param>
 /// <param name="ResourceIds">
 /// The identifiers of the resources to operate on. Maximum 500 per request.
@@ -53,7 +52,6 @@ namespace PlantSafety.Api.Models.Bulk;
 /// (e.g. <c>{ "AssignedToUserId": "..." }</c> for a Reassign operation).
 /// </param>
 public sealed record BulkOperationRequest(
-    Guid TenantId,
     Guid? SiteId,
     [property: MaxLength(500)] IReadOnlyList<Guid> ResourceIds,
     [property: MinLength(1), MaxLength(64)] string Operation,

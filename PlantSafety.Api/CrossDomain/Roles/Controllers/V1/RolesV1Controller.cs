@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: RolesV1Controller.cs
 // Project: PlantSafety.Api
 // Author: David (Ted)
@@ -18,6 +18,7 @@
 //
 // ============================================================================
 
+using PlantSafety.Api.Context;
 using PlantSafety.Api.CrossDomain.Roles.Contracts.Requests;
 using PlantSafety.Api.CrossDomain.Roles.Contracts.Responses;
 using PlantSafety.Api.CrossDomain.Roles.Authorization;
@@ -34,10 +35,15 @@ namespace PlantSafety.Api.CrossDomain.Roles.Controllers.V1;
 public sealed class RolesV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="RolesV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public RolesV1Controller(ISender sender) => _sender = sender;
+    public RolesV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns Roles data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -56,10 +62,10 @@ public sealed class RolesV1Controller : ControllerBase
         [FromQuery] GetRolesRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetRolesQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetRolesQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

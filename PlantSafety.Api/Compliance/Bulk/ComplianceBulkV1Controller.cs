@@ -57,7 +57,7 @@ public sealed class ComplianceBulkV1Controller : Controllers.BaseApiController
         CancellationToken               ct)
     {
         var command = new PlantSafety.Application.Compliance.Commands.BulkUpdateComplianceCommand(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             request.ResourceIds,
             request.Operation,
@@ -85,7 +85,7 @@ public sealed class ComplianceBulkV1Controller : Controllers.BaseApiController
         CancellationToken               ct)
     {
         var command = new PlantSafety.Application.Compliance.Commands.BulkUpdateComplianceCommand(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             request.ResourceIds,
             "Approve",
@@ -113,7 +113,7 @@ public sealed class ComplianceBulkV1Controller : Controllers.BaseApiController
         CancellationToken               ct)
     {
         var command = new PlantSafety.Application.Compliance.Commands.BulkUpdateComplianceCommand(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             request.ResourceIds,
             "Reassign",

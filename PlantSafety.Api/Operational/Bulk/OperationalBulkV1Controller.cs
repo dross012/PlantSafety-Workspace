@@ -72,7 +72,7 @@ public sealed class OperationalBulkV1Controller : Controllers.BaseApiController
         CancellationToken    ct)
     {
         var command = new PlantSafety.Application.Operational.Commands.BulkUpdateOperationalCommand(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             request.ResourceIds,
             operation,

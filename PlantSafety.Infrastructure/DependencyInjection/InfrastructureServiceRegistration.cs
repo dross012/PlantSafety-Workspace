@@ -163,6 +163,7 @@ using PlantSafety.Infrastructure.Compliance.Compliance.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.PredictiveMaintenance.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.PreventiveMaintenance.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.WorkOrders.DependencyInjection;
+using PlantSafety.Infrastructure.Operational.ProductionTracking.DependencyInjection;
 using PlantSafety.Infrastructure.Features.DependencyInjection;
 using PlantSafety.Infrastructure.Integrations.DependencyInjection;
 using PlantSafety.Infrastructure.Operational.DependencyInjection;
@@ -593,6 +594,7 @@ public static class InfrastructureServiceRegistration
             .AddPredictiveMaintenanceInfrastructure()
             .AddPreventiveMaintenanceTaskInfrastructure()
             .AddWorkOrdersInfrastructure()
+            .AddProductionTrackingInfrastructure()
             .AddObservabilityInfrastructure()
             .AddChecklistsInfrastructure()
             .AddAuditingInfrastructure()

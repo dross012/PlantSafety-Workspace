@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: AITrainingV1Controller.cs
 // Project: PlantSafety.Api
 // Author: PlantSafety Platform Team
@@ -17,6 +17,7 @@
 // - Add [OutputCache(PolicyName = ...)] attributes when tenant-scoped cache policies are wired in ServiceCollectionExtensions.
 //
 // ============================================================================
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Intelligence.AITraining.Contracts.Requests;
 using PlantSafety.Api.Intelligence.AITraining.Contracts.Responses;
 using PlantSafety.Api.Intelligence.AITraining.Authorization;
@@ -33,10 +34,15 @@ namespace PlantSafety.Api.Intelligence.AITraining.Controllers.V1;
 public sealed class AITrainingV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="AITrainingV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public AITrainingV1Controller(ISender sender) => _sender = sender;
+    public AITrainingV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns AITraining data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -55,10 +61,10 @@ public sealed class AITrainingV1Controller : ControllerBase
         [FromQuery] GetAITrainingRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetAITrainingQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetAITrainingQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

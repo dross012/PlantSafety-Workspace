@@ -51,7 +51,7 @@ public sealed class ContinuousImprovementExportV1Controller : Controllers.BaseAp
         CancellationToken         ct)
     {
         var query  = new PlantSafety.Application.ContinuousImprovement.Queries.ExportContinuousImprovementQuery(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             (int)request.Format,
             request.From,

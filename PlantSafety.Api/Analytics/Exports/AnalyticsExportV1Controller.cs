@@ -59,7 +59,7 @@ public sealed class AnalyticsExportV1Controller : Controllers.BaseApiController
         CancellationToken         ct)
     {
         var query  = new PlantSafety.Application.Analytics.Queries.ExportAnalyticsQuery(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             (int)request.Format,
             request.From,

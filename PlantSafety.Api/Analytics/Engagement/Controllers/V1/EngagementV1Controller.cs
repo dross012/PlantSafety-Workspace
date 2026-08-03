@@ -18,6 +18,7 @@
 //
 // ============================================================================
 
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Analytics.Engagement.Contracts.Requests;
 using PlantSafety.Api.Analytics.Engagement.Contracts.Responses;
 using PlantSafety.Api.Analytics.Engagement.Authorization;
@@ -34,10 +35,15 @@ namespace PlantSafety.Api.Analytics.Engagement.Controllers.V1;
 public sealed class EngagementV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="EngagementV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public EngagementV1Controller(ISender sender) => _sender = sender;
+    public EngagementV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns Engagement analytics data for the resolved tenant and optional site.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -56,10 +62,10 @@ public sealed class EngagementV1Controller : ControllerBase
         [FromQuery] GetEngagementRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetEngagementQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetEngagementQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

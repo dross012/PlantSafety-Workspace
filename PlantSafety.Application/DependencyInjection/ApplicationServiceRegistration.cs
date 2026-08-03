@@ -52,6 +52,7 @@ using PlantSafety.Application.Auditing.AuditReport.DependencyInjection;
 using PlantSafety.Application.Auditing.AuditTimeline.DependencyInjection;
 using PlantSafety.Application.Compliance.RulesEngine.DependencyInjection;
 using PlantSafety.Application.Scheduling.PredictiveScheduling.DependencyInjection;
+using PlantSafety.Application.Operations.DependencyInjection;
 
 namespace PlantSafety.Application.DependencyInjection;
 
@@ -152,6 +153,12 @@ public static class ApplicationServiceRegistration
             .AddAuditTimelineApplicationServices()
             .AddComplianceRulesEngineApplicationServices()
             .AddPredictiveSchedulingServices();
+
+        // Cross-module read-model composition providers (2026-08-03): registers every
+        // Operations.* submodule's IReportSectionProvider<,> implementation, resolved via DI by
+        // Operations.SystemHealth's rollup handler instead of dispatching sibling submodules'
+        // Queries directly through ISender (Handbook Part IX §9.3.2).
+        services.AddOperationsReadModelCompositionServices();
 
         // SafetyPrograms (2026-08-03): thin composition-layer module over the existing
         // SafetyPolicies/SafetyProcedures/SafetyCulture modules -- see

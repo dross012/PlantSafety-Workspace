@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: DocumentsV1Controller.cs
 // Project: PlantSafety.Api
 // Author: David (Ted)
@@ -18,6 +18,7 @@
 //
 // ============================================================================
 
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Integrations.Documents.Contracts.Requests;
 using PlantSafety.Api.Integrations.Documents.Contracts.Responses;
 using PlantSafety.Api.Integrations.Documents.Authorization;
@@ -36,10 +37,15 @@ namespace PlantSafety.Api.Integrations.Documents.Controllers.V1;
 public sealed class DocumentsV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="DocumentsV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public DocumentsV1Controller(ISender sender) => _sender = sender;
+    public DocumentsV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns Integrations.Documents data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -58,10 +64,10 @@ public sealed class DocumentsV1Controller : ControllerBase
         [FromQuery] GetDocumentsRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetDocumentsQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetDocumentsQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)
@@ -93,11 +99,11 @@ public sealed class DocumentsV1Controller : ControllerBase
         [FromQuery] ListDocumentsRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
         var query = new ListDocumentsQuery(
-            request.TenantId, request.SiteId, request.Category, request.Search, request.PageNumber, request.PageSize);
+            env.TenantId, request.SiteId, request.Category, request.Search, request.PageNumber, request.PageSize);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)
@@ -108,7 +114,6 @@ public sealed class DocumentsV1Controller : ControllerBase
 
     /// <summary>Returns the detail for a single Integrations.Documents record by id.</summary>
     /// <param name="documentId">The synced document record identifier.</param>
-    /// <param name="tenantId">Tenant identifier resolved from JWT claims by TenantResolutionMiddleware.</param>
     /// <param name="cancellationToken">Request cancellation token.</param>
     /// <returns>Standardised <see cref="ApiResponse{T}"/> wrapping the Integrations.Documents detail record.</returns>
     /// <response code="200">Document returned successfully.</response>
@@ -122,13 +127,12 @@ public sealed class DocumentsV1Controller : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<DocumentsItemDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(
         Guid documentId,
-        [FromQuery] Guid tenantId,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query = new GetDocumentByIdQuery(tenantId, documentId);
+        var query = new GetDocumentByIdQuery(env.TenantId, documentId);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

@@ -87,7 +87,7 @@ public sealed class SafetyEventsBulkV1Controller : Controllers.BaseApiController
         CancellationToken       ct)
     {
         var command = new PlantSafety.Application.SafetyEvents.Commands.BulkUpdateSafetyEventsCommand(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             request.ResourceIds,
             operation,

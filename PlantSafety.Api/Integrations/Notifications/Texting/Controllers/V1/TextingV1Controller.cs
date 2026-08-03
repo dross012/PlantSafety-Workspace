@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: TextingV1Controller.cs
 // Project: PlantSafety.Api
 // Author: PlantSafety Platform Team
@@ -17,6 +17,7 @@
 // - Add [OutputCache(PolicyName = ...)] attributes when tenant-scoped cache policies are wired in ServiceCollectionExtensions.
 //
 // ============================================================================
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Integrations.Notifications.Texting.Contracts.Requests;
 using PlantSafety.Api.Integrations.Notifications.Texting.Contracts.Responses;
 using PlantSafety.Api.Integrations.Notifications.Texting.Authorization;
@@ -33,10 +34,15 @@ namespace PlantSafety.Api.Integrations.Notifications.Texting.Controllers.V1;
 public sealed class TextingV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="TextingV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public TextingV1Controller(ISender sender) => _sender = sender;
+    public TextingV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns Texting data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -55,10 +61,10 @@ public sealed class TextingV1Controller : ControllerBase
         [FromQuery] GetTextingRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetTextingQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetTextingQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

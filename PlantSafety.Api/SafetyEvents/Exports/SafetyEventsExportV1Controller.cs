@@ -59,7 +59,7 @@ public sealed class SafetyEventsExportV1Controller : Controllers.BaseApiControll
         CancellationToken          ct)
     {
         var query  = new PlantSafety.Application.SafetyEvents.Queries.ExportSafetyEventsQuery(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             (int)request.Format,
             request.From,

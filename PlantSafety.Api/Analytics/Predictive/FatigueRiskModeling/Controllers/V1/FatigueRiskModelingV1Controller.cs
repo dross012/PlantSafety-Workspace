@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: FatigueRiskModelingV1Controller.cs
 // Project: PlantSafety.Api
 // Author: David (Ted)
@@ -18,6 +18,7 @@
 //
 // ============================================================================
 
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Analytics.Predictive.FatigueRiskModeling.Contracts.Requests;
 using PlantSafety.Api.Analytics.Predictive.FatigueRiskModeling.Contracts.Responses;
 using PlantSafety.Api.Analytics.Predictive.FatigueRiskModeling.Authorization;
@@ -34,10 +35,15 @@ namespace PlantSafety.Api.Analytics.Predictive.FatigueRiskModeling.Controllers.V
 public sealed class FatigueRiskModelingV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="FatigueRiskModelingV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public FatigueRiskModelingV1Controller(ISender sender) => _sender = sender;
+    public FatigueRiskModelingV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns FatigueRiskModeling data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -56,10 +62,10 @@ public sealed class FatigueRiskModelingV1Controller : ControllerBase
         [FromQuery] GetFatigueRiskModelingRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetFatigueRiskModelingQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetFatigueRiskModelingQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

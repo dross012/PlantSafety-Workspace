@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: IncidentManagementV1Controller.cs
 // Project: PlantSafety.Api
 // Author: David (Ted)
@@ -18,6 +18,7 @@
 //
 // ============================================================================
 
+using PlantSafety.Api.Context;
 using PlantSafety.Api.SafetyEvents.IncidentManagement.Contracts.Requests;
 using PlantSafety.Api.SafetyEvents.IncidentManagement.Contracts.Responses;
 using PlantSafety.Api.SafetyEvents.IncidentManagement.Authorization;
@@ -34,10 +35,15 @@ namespace PlantSafety.Api.SafetyEvents.IncidentManagement.Controllers.V1;
 public sealed class IncidentManagementV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="IncidentManagementV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public IncidentManagementV1Controller(ISender sender) => _sender = sender;
+    public IncidentManagementV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns IncidentManagement data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -56,10 +62,10 @@ public sealed class IncidentManagementV1Controller : ControllerBase
         [FromQuery] GetIncidentManagementRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetIncidentManagementQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetIncidentManagementQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

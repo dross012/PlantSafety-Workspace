@@ -53,7 +53,7 @@ public sealed class OperationalExportV1Controller : Controllers.BaseApiControlle
         CancellationToken         ct)
     {
         var query  = new PlantSafety.Application.Operational.Queries.ExportOperationalQuery(
-            request.TenantId,
+            TenantId,
             request.SiteId,
             (int)request.Format,
             request.From,

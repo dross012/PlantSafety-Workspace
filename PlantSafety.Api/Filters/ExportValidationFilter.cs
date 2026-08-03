@@ -68,9 +68,6 @@ public sealed class ExportValidationFilter : IActionFilter
 
         var errors = new Dictionary<string, string[]>();
 
-        if (request.TenantId == Guid.Empty)
-            errors["TenantId"] = ["TenantId must be a non-empty GUID."];
-
         if (request.From.HasValue && request.To.HasValue && request.From >= request.To)
             errors["From"] = ["From must be earlier than To."];
 
@@ -103,8 +100,8 @@ public sealed class ExportValidationFilter : IActionFilter
         if (request.MaxRecords > MaxRecordsCap)
         {
             _logger.LogInformation(
-                "MaxRecords {Requested} clamped to {Cap} for TenantId={TenantId}",
-                request.MaxRecords, MaxRecordsCap, request.TenantId);
+                "MaxRecords {Requested} clamped to {Cap}",
+                request.MaxRecords, MaxRecordsCap);
             request.MaxRecords = MaxRecordsCap;
         }
     }

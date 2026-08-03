@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: InternalV1Controller.cs
 // Project: PlantSafety.Api
 // Author: PlantSafety Platform Team
@@ -17,6 +17,7 @@
 // - Add [OutputCache(PolicyName = ...)] attributes when tenant-scoped cache policies are wired in ServiceCollectionExtensions.
 //
 // ============================================================================
+using PlantSafety.Api.Context;
 using PlantSafety.Api.Integrations.Notifications.Internal.Contracts.Requests;
 using PlantSafety.Api.Integrations.Notifications.Internal.Contracts.Responses;
 using PlantSafety.Api.Integrations.Notifications.Internal.Authorization;
@@ -33,10 +34,15 @@ namespace PlantSafety.Api.Integrations.Notifications.Internal.Controllers.V1;
 public sealed class InternalV1Controller : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly RequestEnvelopeFactory _envelopeFactory;
 
     /// <summary>Initialises a new instance of <see cref="InternalV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
-    public InternalV1Controller(ISender sender) => _sender = sender;
+    public InternalV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
+    {
+        _sender = sender;
+        _envelopeFactory = envelopeFactory;
+    }
 
     /// <summary>Returns Internal data for the resolved tenant.</summary>
     /// <param name="request">Query parameters bound from the query string.</param>
@@ -55,10 +61,10 @@ public sealed class InternalV1Controller : ControllerBase
         [FromQuery] GetInternalRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetInternalQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetInternalQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

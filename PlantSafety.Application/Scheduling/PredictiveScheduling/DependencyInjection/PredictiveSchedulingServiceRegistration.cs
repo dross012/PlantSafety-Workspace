@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using PlantSafety.Domain.Analytics.PredictiveAnalytics.Predictors;
 using PlantSafety.Domain.Intelligence.PredictiveSafety.Predictors;
 using PlantSafety.Domain.Scheduling.PredictiveScheduling.Services;
+using PlantSafety.Domain.Scheduling.PredictiveScheduling.Factories;
+using PlantSafety.Domain.Scheduling.PredictiveScheduling.Interfaces;
 using PlantSafety.Application.Scheduling.PredictiveScheduling.Optimization;
 using PlantSafety.Application.Scheduling.PredictiveScheduling.Orchestration;
 
@@ -42,6 +44,10 @@ public static class PredictiveSchedulingServiceRegistration
 
         // Event-driven reprioritization orchestration.
         services.AddSingleton<SchedulingReprioritizationOrchestrator>();
+
+        // OptimizationRun aggregate factory (Phase 6 full build-out: durable, queryable
+        // optimization-run persistence -- see RequestOptimizationRunCommandHandler).
+        services.AddScoped<IOptimizationRunFactory, OptimizationRunFactory>();
 
         return services;
     }

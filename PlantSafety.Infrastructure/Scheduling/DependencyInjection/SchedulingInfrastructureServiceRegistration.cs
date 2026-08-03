@@ -17,6 +17,7 @@ using PlantSafety.Infrastructure.Scheduling.EmergencyDrillPlanning.Persistence;
 using PlantSafety.Infrastructure.Scheduling.HazardIsolationSequencing.Persistence;
 using PlantSafety.Infrastructure.Scheduling.ShiftFatigue.Persistence;
 using PlantSafety.Infrastructure.Scheduling.WorkOrderPriority.Persistence;
+using PlantSafety.Infrastructure.Scheduling.PredictiveScheduling.Persistence;
 using PlantSafety.Application.Scheduling.Commands;
 using PlantSafety.Infrastructure.Scheduling.Commands.Persistence;
 
@@ -39,6 +40,12 @@ public static class SchedulingInfrastructureServiceRegistration
         services.AddScoped<PlantSafety.Domain.Scheduling.WorkOrderPriority.Interfaces.IWorkOrderPriorityRepository, WorkOrderPriorityDapperRepository>();
         services.AddScoped<PlantSafety.Application.Scheduling.WorkOrderPriority.Repositories.IWorkOrderPriorityRepository, WorkOrderPriorityReadDapperRepository>();
         services.AddScoped<ISchedulingBulkRepository, SchedulingBulkDapperRepository>();
+
+        // Phase 6 full build-out: OptimizationRun aggregate persistence (was previously a pure
+        // stateless computation engine with no persistence layer -- see PredictiveScheduling
+        // module header comments).
+        services.AddScoped<PlantSafety.Domain.Scheduling.PredictiveScheduling.Interfaces.IOptimizationRunRepository, OptimizationRunDapperRepository>();
+        services.AddScoped<PlantSafety.Application.Scheduling.PredictiveScheduling.Repositories.IOptimizationRunReadRepository, OptimizationRunReadDapperRepository>();
 
         return services;
     }

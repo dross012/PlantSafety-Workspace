@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // File: ReportingV1Controller.cs
 // Project: PlantSafety.Api
 // Author: David (Ted)
@@ -43,10 +43,10 @@ public sealed class ReportingV1Controller : ControllerBase
     /// <summary>Initialises a new instance of <see cref="ReportingV1Controller"/>.</summary>
     /// <param name="sender">MediatR sender for Application layer dispatch.</param>
     /// <param name="envelopeFactory">
-    /// Builds the canonical query envelope fields (incl. server-resolved TenantId) for the
-    /// report-catalog endpoints added 2026-08-03. The pre-existing <see cref="GetAsync"/>
-    /// action intentionally continues to bind TenantId from the query string per its original
-    /// contract; not changed here to avoid an unreviewed breaking change to that endpoint.
+    /// Builds the canonical query envelope fields (incl. server-resolved TenantId), used by every
+    /// action in this controller including <see cref="GetAsync"/> (converted 2026-08-03, API
+    /// Contract Validation Agent platform-wide TenantId-DTO cleanup) so no action binds TenantId
+    /// from client-supplied request DTOs.
     /// </param>
     public ReportingV1Controller(ISender sender, RequestEnvelopeFactory envelopeFactory)
     {
@@ -71,10 +71,10 @@ public sealed class ReportingV1Controller : ControllerBase
         [FromQuery] GetReportingRequest request,
         CancellationToken cancellationToken)
     {
-        var correlationId = HttpContext.Items[PlantSafety.Api.Middleware.CorrelationIdMiddleware.ItemsKey]?.ToString()
-                            ?? string.Empty;
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var correlationId = env.CorrelationId.ToString();
 
-        var query  = new GetReportingQuery(request.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
+        var query  = new GetReportingQuery(env.TenantId, request.SiteId, request.From, request.To ?? DateTime.UtcNow);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)

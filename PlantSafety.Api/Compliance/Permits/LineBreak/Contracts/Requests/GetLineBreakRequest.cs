@@ -21,12 +21,10 @@
 namespace PlantSafety.Api.Compliance.Permits.LineBreak.Contracts.Requests;
 
 /// <summary>Query parameters for retrieving LineBreak data.</summary>
-/// <param name="TenantId">Tenant identifier resolved from JWT claims by TenantResolutionMiddleware.</param>
 /// <param name="SiteId">Optional site filter. Null returns data for all accessible sites.</param>
 /// <param name="From">Inclusive start of the date range (UTC).</param>
 /// <param name="To">Inclusive end of the date range (UTC). Defaults to UtcNow when not supplied.</param>
 public sealed record GetLineBreakRequest(
-    Guid      TenantId,
     Guid?     SiteId,
     DateTime  From,
     DateTime? To);
