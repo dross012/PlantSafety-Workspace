@@ -1,0 +1,27 @@
+# Domain Mapping — EmployeeSafety
+
+See `_shared-findings.md` §F1 (tenancy — directly confirmed via `MachineGuardingDapperRepository`),
+§F2 (handler-bypass — directly confirmed absent, via `RetireMachineGuardingCommandHandler` and a
+grep across all handlers in this cluster).
+
+| Aggregate | Transition | Invariants (stated) | Enforced? | Validation Rules | Cross-Module Rules | Tenancy Rules | Confidence | Notes |
+|---|---|---|---|---|---|---|---|---|
+| EmergencyPreparedness | Create/ConductDrill/RecordReadiness/ScheduleDrill | 3 guard + 6 event sites (Phase 1 counts) | Pattern-inferred Y | Drill scheduling fields required (pattern-inferred) | Plausibly should cross-check `SafetyProcedures.EmergencyResponsePlanning` (the plan being drilled) — no confirmed link | Not enforced (F1) | Directly verified (counts, Phase 1) | 3rd Emergency-adjacent aggregate alongside `SafetyEvents.EmergencyManagement` and `SafetyProcedures.EmergencyResponsePlanning` — candidate duplicate-concept cluster not flagged in Phase 1, worth a Phase 3 look |
+| EmergencyPreparedness | Archive/Cancel/Delete | N/A | N/A | N/A | N/A | N/A | Directly verified | Missing entirely |
+| EnvironmentalHealthMonitoring | Create/BeginCorrectiveAction/RecordMeasurement/ResolveExceedance | **Lowest guard-to-method ratio of the cluster** — only 1 guard site for 4 methods (Phase 1 finding) | **Likely N for at least some transitions** — flagged, not individually confirmed this phase | Measurement value bounds unconfirmed | None found | Not enforced (F1) | Directly verified (counts, Phase 1); not re-opened this phase | Carried-forward top Phase 3 priority — the thinnest guard density found in any rich aggregate |
+| EnvironmentalHealthMonitoring | Archive/Cancel/Delete | N/A | N/A | N/A | N/A | N/A | Directly verified | Missing entirely |
+| ErgonomicsAndMaterialHandling | Create/Close/ImplementControls/RecordAssessment/ScheduleFollowUp | Has a genuine `Close` (Phase 1 finding) | Pattern-inferred Y | Assessment score fields plausible | None found | Not enforced (F1) | Directly verified (counts, Phase 1) | |
+| ErgonomicsAndMaterialHandling | Archive/Cancel/Delete | N/A | N/A | N/A | N/A | N/A | Directly verified | Missing entirely |
+| HazardCommunicationTraining | Create/Close/DeliverTraining/ScheduleNextCycle/VerifyComprehension | 3 guard + 7 event sites | Pattern-inferred Y | Comprehension verification fields plausible | None found | Not enforced (F1) | Directly verified (counts, Phase 1) | Parallel to `SafetyProcedures.HazardCommunicationRightToKnow` — related but distinct, not confirmed duplicate |
+| HazardCommunicationTraining | Archive/Cancel/Delete | N/A | N/A | N/A | N/A | N/A | Directly verified | Missing entirely |
+| LotoPrograms | ApplyIsolation/Document/RecordAnnualAudit/Release/VerifyZeroEnergy | **No plain `Create` method found** (Phase 1 finding) — highest guard density of the new clusters (7 guard + 6 event sites) | Pattern-inferred Y for the 5 that exist; **how the aggregate is created at all remains unconfirmed** | Zero-energy verification is a real domain safety rule, guard presence suggests it is checked | Should logically synchronize with `MachineSafety.LotoSystems`/`SafetyProcedures.LotoProcedures` (3 separate LOTO aggregates, Phase 1 finding) — no cross-check found | Not enforced (F1) | Directly verified (counts, Phase 1); creation path not re-derived this phase | Flagged for Phase 3: confirm the actual creation entry point |
+| LotoPrograms | Archive/Cancel/Delete | N/A | N/A | N/A | N/A | N/A | Directly verified | Missing entirely |
+| MachineGuarding | FlagBypass/Install/RecordInspectionResult/Retire/ScheduleCorrectiveAction/ScheduleInspection/VerifyCorrectiveAction | Most transitions of any single aggregate (7 methods, 8 guard + 9 event sites, tied with SafetyPolicy) | **Y for `Retire`** — directly verified this phase: `RetireMachineGuardingCommandHandler` → `aggregate.Retire(reason, ...)`, guard executes before status change | Reason required for Retire (confirmed, this phase); other 6 transitions not individually re-opened | None found | **Confirmed unenforced** — `MachineGuardingDapperRepository.GetByIdAsync` filters only by `MachineGuardingId`, no `TenantId` (F1, direct evidence) | Directly verified (`Retire` body + repository, this phase); pattern-inferred (other 6) | Same "no plain Create" note as LotoPrograms — likely uses `Install` as the effective creation transition |
+| MachineGuarding | Archive/Cancel/Delete | N/A | N/A | N/A | N/A | N/A | Directly verified | Missing entirely |
+| Ppe (EmployeeSafety) | Create/FlagForReplacement/RecordFitTest/RecordInspection/Retire | Method names closely mirror `PPE.PPEAssignment` — possible undocumented duplicate/overlap (Phase 1 finding, not confirmed) | Pattern-inferred Y | Fit-test score fields plausible | Not confirmed as overlapping with `PPE.PPEAssignment` — no shared identity found this phase either | Not enforced (F1) | Directly verified (this phase, method presence) | See `ppe.md` — still an open, not-yet-resolved duplicate question |
+| Ppe (EmployeeSafety) | Archive/Cancel/Delete | N/A | N/A | N/A | N/A | N/A | Directly verified | Missing entirely |
+
+**Summary:** `EnvironmentalHealthMonitoring`'s thin guard density remains the top named risk in this
+cluster (likely a transition or two with a stated-but-unenforced invariant, not individually
+confirmed this phase — recommend Phase 3 full-body read). Handler-bypass (F2) confirmed absent;
+tenancy (F1) confirmed unenforced via direct `MachineGuardingDapperRepository` read.

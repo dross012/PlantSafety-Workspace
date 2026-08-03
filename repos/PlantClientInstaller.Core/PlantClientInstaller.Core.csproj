@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Payload\Database\Seed\" />
+    <Folder Include="Payload\Database\Schema\" />
+    <Folder Include="Payload\Deployment\" />
+    <Folder Include="Payload\Packages\" />
+    <Folder Include="Payload\Services\" />
+    <Folder Include="Tools\" />
+    <Folder Include="Rollback\" />
+    <Folder Include="Payload\Modules\" />
+    <Folder Include="Payload\Drivers\" />
+    <Folder Include="Payload\SqlExpress\" />
+    <Folder Include="Upgrade\ClientApp\" />
+    <Folder Include="Upgrade\Modules\" />
+    <Folder Include="Upgrade\Config\" />
+    <Folder Include="Upgrade\Database\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\Downloads\SQL2022-SSEI-Expr.exe" Link="Payload\SqlExpress\SQL2022-SSEI-Expr.exe" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="7.0.0" />
+  </ItemGroup>
+
+</Project>

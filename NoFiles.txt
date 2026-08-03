@@ -1,0 +1,2267 @@
+﻿
+source
+├── .claude
+├── Azure
+│   ├── build
+│   ├── Compute.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── OpenApi
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── Compute.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── Compute.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── Compute.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Extensions
+│   │   ├── Fakes
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   ├── Telemetry
+│   │   └── Validators
+│   ├── Compute.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   └── Utilities
+│   ├── Compute.Tests
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Snapshots
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── Data.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── OpenApi
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── Data.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── Data.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── Data.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Extensions
+│   │   ├── Fakes
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   ├── Telemetry
+│   │   └── Validators
+│   ├── Data.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   └── Utilities
+│   ├── Data.Tests
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Snapshots
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── docs
+│   ├── Eventing.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── OpenApi
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── Eventing.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── Eventing.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── Eventing.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Extensions
+│   │   ├── Fakes
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   ├── Telemetry
+│   │   └── Validators
+│   ├── Eventing.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   └── Utilities
+│   ├── Eventing.Tests
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Snapshots
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── Identity.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── OpenApi
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── Identity.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── Identity.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── Identity.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Extensions
+│   │   ├── Fakes
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   ├── Telemetry
+│   │   └── Validators
+│   ├── Identity.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   └── Utilities
+│   ├── Identity.Tests
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Snapshots
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── ML.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── OpenApi
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── ML.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── ML.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── ML.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Extensions
+│   │   ├── Fakes
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   ├── Telemetry
+│   │   └── Validators
+│   ├── ML.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   └── Utilities
+│   ├── ML.Tests
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Snapshots
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── Networking.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── OpenApi
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── Networking.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── Networking.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── Networking.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Extensions
+│   │   ├── Fakes
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   ├── Telemetry
+│   │   └── Validators
+│   ├── Networking.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   └── Utilities
+│   ├── Networking.Tests
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Snapshots
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── Observability.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── OpenApi
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── Observability.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── Enums
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── Observability.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── Observability.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Extensions
+│   │   ├── Fakes
+│   │   ├── HealthChecks
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   ├── Telemetry
+│   │   └── Validators
+│   ├── Observability.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   └── Utilities
+│   ├── Observability.Tests
+│   │   ├── bin
+│   │   ├── obj
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── Security.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── Security.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── Security.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── Security.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   └── Telemetry
+│   ├── Security.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   └── Utilities
+│   ├── Security.Tests
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Fakes
+│   │   ├── obj
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── src
+│   ├── Storage.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── deploy
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── pipelines
+│   │   ├── Properties
+│   │   └── Validators
+│   ├── Storage.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── CommandHandlers
+│   │   ├── Commands
+│   │   ├── DTOs
+│   │   ├── EventHandlers
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── Mappers
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Queries
+│   │   ├── QueryHandlers
+│   │   ├── Services
+│   │   └── Validators
+│   ├── Storage.Domain
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Constants
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Services
+│   │   └── ValueObjects
+│   ├── Storage.Infrastructure
+│   │   ├── bin
+│   │   ├── Clients
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Diagnostics
+│   │   ├── Fakes
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Resilience
+│   │   ├── Resources
+│   │   ├── Security
+│   │   ├── Services
+│   │   ├── Telemetry
+│   │   └── Validators
+│   ├── Storage.IntegrationTests
+│   │   ├── bin
+│   │   ├── Compatibility
+│   │   ├── Contracts
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Scenario
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── TestData
+│   │   └── Utilities
+│   ├── Storage.Tests
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Fakes
+│   │   ├── obj
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── tests
+│   ├── tools
+│   └── _datalake_tests_extracted
+│       ├── docProps
+│       ├── word
+│       └── _rels
+├── DataLake
+│   ├── bin
+│   │   └── Debug
+│   ├── build
+│   ├── DataLake.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   └── Properties
+│   ├── DataLake.Application
+│   │   ├── Archival
+│   │   ├── bin
+│   │   ├── Consumption
+│   │   ├── DataContracts
+│   │   ├── DataQuality
+│   │   ├── DependencyInjection
+│   │   ├── Governance
+│   │   ├── Ingestion
+│   │   ├── Integration
+│   │   ├── MetadataCatalog
+│   │   ├── obj
+│   │   ├── Processing
+│   │   ├── Schema
+│   │   └── Shared
+│   ├── DataLake.Domain
+│   │   ├── Archival
+│   │   ├── bin
+│   │   ├── Consumption
+│   │   ├── DataContracts
+│   │   ├── DataQuality
+│   │   ├── Governance
+│   │   ├── Ingestion
+│   │   ├── Integration
+│   │   ├── MetadataCatalog
+│   │   ├── obj
+│   │   ├── Processing
+│   │   ├── Schema
+│   │   └── Shared
+│   ├── DataLake.Infrastructure
+│   │   ├── Azure
+│   │   ├── bin
+│   │   ├── Caching
+│   │   ├── Configuration
+│   │   ├── DependencyInjection
+│   │   ├── Engines
+│   │   ├── Exceptions
+│   │   ├── HealthChecks
+│   │   ├── Ingestion
+│   │   ├── Messaging
+│   │   ├── obj
+│   │   ├── Observability
+│   │   ├── Outbox
+│   │   ├── Persistence
+│   │   ├── Processing
+│   │   ├── Shared
+│   │   └── Storage
+│   ├── DataLake.IntegrationTests
+│   │   ├── bin
+│   │   ├── Chaos
+│   │   ├── Contract
+│   │   ├── DataIntegration
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── Mutation
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Stubs
+│   │   ├── SyntheticData
+│   │   ├── TestData
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── DataLake.Metadata
+│   │   ├── bin
+│   │   ├── Catalog
+│   │   ├── Contracts
+│   │   ├── obj
+│   │   ├── Schema
+│   │   ├── Shared
+│   │   └── Types
+│   ├── DataLake.Rules
+│   │   ├── Archival
+│   │   ├── bin
+│   │   ├── Consumption
+│   │   ├── Contract
+│   │   ├── Contracts
+│   │   ├── Governance
+│   │   ├── Ingestion
+│   │   ├── Metadata
+│   │   ├── Ml
+│   │   ├── obj
+│   │   ├── Partitioning
+│   │   ├── Performance
+│   │   ├── Processing
+│   │   ├── Quality
+│   │   ├── Reliability
+│   │   ├── Retention
+│   │   ├── Schema
+│   │   ├── Security
+│   │   ├── Shared
+│   │   ├── Testing
+│   │   ├── Validators
+│   │   ├── Zone
+│   │   └── Zones
+│   ├── DataLake.Tests
+│   │   ├── bin
+│   │   ├── Chaos
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── Mocks
+│   │   ├── Mutation
+│   │   ├── obj
+│   │   ├── Snapshots
+│   │   ├── Stubs
+│   │   ├── SyntheticData
+│   │   ├── TestData
+│   │   ├── Unit
+│   │   └── Utilities
+│   ├── docs
+│   ├── obj
+│   │   └── Debug
+│   ├── src
+│   ├── tests
+│   └── tools
+├── Diagnostics
+│   ├── build
+│   ├── Diagnostics.IntegrationTests
+│   │   ├── Aggregation
+│   │   ├── Baseline
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── CLI
+│   │   ├── CommonAssertions
+│   │   ├── Compatibility
+│   │   ├── EndToEnd
+│   │   ├── Engine
+│   │   ├── EngineState
+│   │   ├── Fakes
+│   │   ├── Fixtures
+│   │   ├── Formatters
+│   │   ├── Fuzzing
+│   │   ├── GoldenFiles
+│   │   ├── Metadata
+│   │   ├── MultiTenant
+│   │   ├── obj
+│   │   ├── Observability
+│   │   ├── Performance
+│   │   ├── Pipelines
+│   │   ├── ProviderHealth
+│   │   ├── ProviderIsolation
+│   │   ├── Providers
+│   │   ├── Regression
+│   │   ├── Replay
+│   │   ├── Rules
+│   │   ├── RuleSets
+│   │   ├── Schema
+│   │   ├── Security
+│   │   ├── Serialization
+│   │   ├── Setup
+│   │   ├── Sinks
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── Telemetry
+│   │   └── Utilities
+│   ├── Diagnostics.Sql
+│   │   ├── bin
+│   │   ├── Functions
+│   │   ├── Indexes
+│   │   ├── obj
+│   │   ├── StoredProcedures
+│   │   ├── Tables
+│   │   ├── Triggers
+│   │   └── Views
+│   ├── Diagnostics.Sql.Tests
+│   │   ├── bin
+│   │   ├── DeploymentOrder
+│   │   ├── NamingConventions
+│   │   ├── obj
+│   │   ├── ScriptInventory
+│   │   ├── StoredProcedureMatrix
+│   │   └── Utilities
+│   ├── Diagnostics.Tests
+│   │   ├── bin
+│   │   ├── Core
+│   │   ├── Engine
+│   │   ├── Formatters
+│   │   ├── obj
+│   │   ├── Providers
+│   │   ├── Rules
+│   │   ├── RuleSets
+│   │   ├── Sinks
+│   │   └── TestSupport
+│   ├── Diagnostics.UI
+│   │   ├── bin
+│   │   ├── Components
+│   │   ├── Infrastructure
+│   │   ├── Models
+│   │   ├── Modules
+│   │   ├── obj
+│   │   ├── Platforms
+│   │   ├── Properties
+│   │   ├── Resources
+│   │   ├── Routing
+│   │   ├── State
+│   │   └── wwwroot
+│   ├── docs
+│   ├── Safety.Diagnostics
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Core
+│   │   ├── Engine
+│   │   ├── Formatters
+│   │   ├── obj
+│   │   ├── Providers
+│   │   ├── Rules
+│   │   ├── RuleSets
+│   │   ├── Shared
+│   │   └── Sinks
+│   ├── src
+│   ├── tests
+│   └── tools
+├── docs
+│   ├── handoff
+│   ├── ingestion
+│   │   ├── events
+│   │   ├── gaps
+│   │   ├── lifecycle-coverage
+│   │   ├── module-flow
+│   │   ├── recommendations
+│   │   ├── security
+│   │   └── shape-audit
+│   └── lifecycle
+│       ├── command-handler-map
+│       ├── domain-mapping
+│       ├── event-map
+│       ├── gaps
+│       ├── module-inventory
+│       ├── recommendations
+│       ├── remediation
+│       ├── rule-enforcement
+│       ├── security
+│       └── sql-shape
+├── ExportImport
+│   ├── bin
+│   │   └── Debug
+│   ├── build
+│   ├── docs
+│   ├── ExportImport.Application
+│   │   ├── bin
+│   │   ├── Commands
+│   │   ├── Dtos
+│   │   ├── Handlers
+│   │   ├── Mapping
+│   │   ├── obj
+│   │   ├── Queries
+│   │   ├── Services
+│   │   ├── Shared
+│   │   └── Validators
+│   ├── ExportImport.Domain
+│   │   ├── Aggregates
+│   │   ├── bin
+│   │   ├── Entities
+│   │   ├── Enums
+│   │   ├── Events
+│   │   ├── obj
+│   │   ├── Policies
+│   │   ├── Shared
+│   │   └── ValueObjects
+│   ├── ExportImport.Infrastructure
+│   │   ├── Adapters
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Files
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   └── Shared
+│   ├── ExportImport.Integration
+│   │   ├── bin
+│   │   ├── Consumers
+│   │   ├── Events
+│   │   ├── obj
+│   │   └── Publishers
+│   ├── ExportImport.Observability
+│   │   ├── bin
+│   │   ├── Logs
+│   │   ├── Metrics
+│   │   ├── obj
+│   │   └── Traces
+│   ├── ExportImport.Tests
+│   │   ├── bin
+│   │   ├── E2E
+│   │   ├── Functional
+│   │   ├── Integration
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Pipeline
+│   │   ├── Regression
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── TestDoubles
+│   │   └── Unit
+│   ├── obj
+│   │   └── Debug
+│   ├── src
+│   ├── tests
+│   └── tools
+├── Intelligence
+│   ├── build
+│   ├── docs
+│   ├── Intelligence.Api
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Contracts
+│   │   ├── Controllers
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── Mappings
+│   │   ├── Middleware
+│   │   ├── obj
+│   │   ├── Properties
+│   │   ├── Results
+│   │   ├── Routing
+│   │   └── Versioning
+│   ├── Intelligence.Application
+│   │   ├── AIInvestigations
+│   │   ├── AITraining
+│   │   ├── bin
+│   │   ├── DataLake
+│   │   ├── FeatureEngineering
+│   │   ├── ModelRegistry
+│   │   ├── obj
+│   │   ├── PredictiveSafety
+│   │   └── Shared
+│   ├── Intelligence.Azure
+│   │   ├── .safety
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── DataLake
+│   │   ├── Eventing
+│   │   ├── Extensions
+│   │   ├── Identity
+│   │   ├── KeyVault
+│   │   ├── ML
+│   │   ├── Monitoring
+│   │   ├── obj
+│   │   ├── Pipelines
+│   │   └── Storage
+│   ├── Intelligence.Domain
+│   │   ├── AIInvestigations
+│   │   ├── AITraining
+│   │   ├── bin
+│   │   ├── DataLake
+│   │   ├── FeatureEngineering
+│   │   ├── ModelRegistry
+│   │   ├── obj
+│   │   ├── PredictiveSafety
+│   │   └── Shared
+│   ├── Intelligence.Governance
+│   │   ├── Approvals
+│   │   ├── Audit
+│   │   ├── Bias
+│   │   ├── bin
+│   │   ├── Compliance
+│   │   ├── Configuration
+│   │   ├── Definitions
+│   │   ├── Drift
+│   │   ├── Extensions
+│   │   ├── Monitoring
+│   │   ├── obj
+│   │   ├── Review
+│   │   └── Risk
+│   ├── Intelligence.Infrastructure
+│   │   ├── .safety
+│   │   ├── bin
+│   │   ├── DataLake
+│   │   ├── FeatureStore
+│   │   ├── MachineLearning
+│   │   ├── Messaging
+│   │   ├── obj
+│   │   ├── Persistence
+│   │   ├── Pipelines
+│   │   └── Shared
+│   ├── Intelligence.IntegrationTests
+│   │   ├── .safety
+│   │   ├── AIInvestigations
+│   │   ├── AITraining
+│   │   ├── bin
+│   │   ├── CrossModule
+│   │   ├── DataIntegration
+│   │   ├── DataLake
+│   │   ├── ErrorEnvelope
+│   │   ├── Events
+│   │   ├── FeatureEngineering
+│   │   ├── Infrastructure
+│   │   ├── ModelRegistry
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Pipeline
+│   │   ├── PredictiveSafety
+│   │   ├── Regression
+│   │   ├── Resilience
+│   │   ├── Security
+│   │   ├── Shared
+│   │   ├── Smoke
+│   │   └── Stress
+│   ├── Intelligence.Metadata
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Debug
+│   │   ├── Definitions
+│   │   ├── Diffing
+│   │   ├── Enrichment
+│   │   ├── Extensions
+│   │   ├── Lifecycle
+│   │   ├── Lineage
+│   │   ├── Normalization
+│   │   ├── obj
+│   │   ├── Schemas
+│   │   ├── Search
+│   │   ├── Serialization
+│   │   ├── Storage
+│   │   └── Validation
+│   ├── Intelligence.ML
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Datasets
+│   │   ├── Evaluation
+│   │   ├── Extensions
+│   │   ├── Features
+│   │   ├── Models
+│   │   ├── Monitoring
+│   │   ├── Notebooks
+│   │   ├── obj
+│   │   ├── Pipelines
+│   │   ├── Training
+│   │   ├── Tuning
+│   │   └── Utilities
+│   ├── Intelligence.Pipelines
+│   │   ├── Batch
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Definitions
+│   │   ├── Execution
+│   │   ├── Extensions
+│   │   ├── FeatureEngineering
+│   │   ├── Ingestion
+│   │   ├── Integration
+│   │   ├── Metadata
+│   │   ├── Monitoring
+│   │   ├── obj
+│   │   ├── Orchestration
+│   │   ├── Scheduling
+│   │   ├── Stages
+│   │   ├── Storage
+│   │   ├── Streaming
+│   │   ├── Transformation
+│   │   └── Utilities
+│   ├── Intelligence.SafetyAI
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── Explainability
+│   │   ├── Extensions
+│   │   ├── Governance
+│   │   ├── Integrations
+│   │   ├── Investigations
+│   │   ├── obj
+│   │   ├── Optimization
+│   │   ├── PredictiveSafety
+│   │   ├── Reasoning
+│   │   ├── Training
+│   │   └── Utilities
+│   ├── Intelligence.Tests
+│   │   ├── AIInvestigations
+│   │   ├── AITraining
+│   │   ├── Application
+│   │   ├── bin
+│   │   ├── DataLake
+│   │   ├── FeatureEngineering
+│   │   ├── ModelRegistry
+│   │   ├── obj
+│   │   ├── PredictiveSafety
+│   │   └── Shared
+│   ├── src
+│   ├── tests
+│   └── tools
+├── PlantSafety
+│   ├── .claude
+│   │   └── worktrees
+│   ├── build
+│   ├── docs
+│   │   ├── architecture
+│   │   ├── database
+│   │   ├── migration
+│   │   └── reference
+│   ├── Intelligence.Domain
+│   │   ├── AIInvestigations
+│   │   ├── AITraining
+│   │   ├── DataLake
+│   │   ├── FeatureEngineering
+│   │   ├── ModelRegistry
+│   │   ├── PredictiveSafety
+│   │   └── Shared
+│   ├── obj
+│   │   └── Debug
+│   ├── PlantSafety.AcceptanceTests
+│   │   ├── Alerts
+│   │   ├── bin
+│   │   └── obj
+│   ├── PlantSafety.Api
+│   │   ├── AccidentManagement
+│   │   ├── Alerts
+│   │   ├── Analytics
+│   │   ├── Attributes
+│   │   ├── Auditing
+│   │   ├── bin
+│   │   ├── Checklists
+│   │   ├── Common
+│   │   ├── Compliance
+│   │   ├── Configuration
+│   │   ├── Constants
+│   │   ├── Context
+│   │   ├── ContinuousImprovement
+│   │   ├── ContractorSafety
+│   │   ├── Controllers
+│   │   ├── Conventions
+│   │   ├── CrossDomain
+│   │   ├── Dashboards
+│   │   ├── EmployeeSafety
+│   │   ├── Endpoints
+│   │   ├── Extensions
+│   │   ├── Features
+│   │   ├── Filters
+│   │   ├── Financials
+│   │   ├── HealthChecks
+│   │   ├── Integrations
+│   │   ├── Intelligence
+│   │   ├── MachineSafety
+│   │   ├── Middleware
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Observability
+│   │   ├── OpenApi
+│   │   ├── Operational
+│   │   ├── Operations
+│   │   ├── OutputCache
+│   │   ├── PermitToWork
+│   │   ├── PlanningProjects
+│   │   ├── PPE
+│   │   ├── Properties
+│   │   ├── Realtime
+│   │   ├── RiskManagement
+│   │   ├── SafetyCulture
+│   │   ├── SafetyEvents
+│   │   ├── SafetyPolicies
+│   │   ├── SafetyProcedures
+│   │   ├── Scheduling
+│   │   ├── Scorecards
+│   │   └── Webhooks
+│   ├── PlantSafety.Application
+│   │   ├── Abstractions
+│   │   ├── AccidentManagement
+│   │   ├── Alerts
+│   │   ├── Analytics
+│   │   ├── Auditing
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── Checklists
+│   │   ├── Common
+│   │   ├── Compliance
+│   │   ├── ContinuousImprovement
+│   │   ├── ContractorSafety
+│   │   ├── Contracts
+│   │   ├── CrossDomain
+│   │   ├── Dashboards
+│   │   ├── DependencyInjection
+│   │   ├── EmployeeSafety
+│   │   ├── EnterpriseFabric
+│   │   ├── Features
+│   │   ├── Financials
+│   │   ├── HealthChecks
+│   │   ├── Integrations
+│   │   ├── Intelligence
+│   │   ├── MachineSafety
+│   │   ├── obj
+│   │   ├── Observability
+│   │   ├── Operational
+│   │   ├── Operations
+│   │   ├── PermitToWork
+│   │   ├── PlanningProjects
+│   │   ├── PPE
+│   │   ├── RiskManagement
+│   │   ├── SafetyCulture
+│   │   ├── SafetyEvents
+│   │   ├── SafetyPolicies
+│   │   ├── SafetyProcedures
+│   │   ├── Scheduling
+│   │   ├── Scorecards
+│   │   └── Validation
+│   ├── PlantSafety.CompatibilityTests
+│   │   ├── ApiContracts
+│   │   ├── bin
+│   │   └── obj
+│   ├── PlantSafety.DataIntegrationTests
+│   │   ├── bin
+│   │   ├── Identifiers
+│   │   ├── obj
+│   │   ├── StoredProcedures
+│   │   └── Support
+│   ├── PlantSafety.Domain
+│   │   ├── AccidentManagement
+│   │   ├── AiGovernance
+│   │   ├── AiSafetyIntelligence
+│   │   ├── Alerts
+│   │   ├── Analytics
+│   │   ├── Auditing
+│   │   ├── bin
+│   │   ├── Checklists
+│   │   ├── Common
+│   │   ├── Compliance
+│   │   ├── ContinuousImprovement
+│   │   ├── ContractorSafety
+│   │   ├── ContractorVisitor
+│   │   ├── CrossDomain
+│   │   ├── Dashboards
+│   │   ├── DigitalTwin
+│   │   ├── EmployeeSafety
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── Financials
+│   │   ├── Governance
+│   │   ├── HumanFactors
+│   │   ├── Intelligence
+│   │   ├── MachineSafety
+│   │   ├── obj
+│   │   ├── Observability
+│   │   ├── Operational
+│   │   ├── OperationalSafety
+│   │   ├── PermitToWork
+│   │   ├── PlanningProjects
+│   │   ├── PPE
+│   │   ├── ProcessManagement
+│   │   ├── RiskManagement
+│   │   ├── SafetyCulture
+│   │   ├── SafetyEvents
+│   │   ├── SafetyPolicies
+│   │   ├── SafetyProcedures
+│   │   ├── Scheduling
+│   │   ├── Scorecards
+│   │   ├── Sustainability
+│   │   └── WorkerWellBeing
+│   ├── PlantSafety.Infrastructure
+│   │   ├── AccidentManagement
+│   │   ├── AiGovernance
+│   │   ├── AiSafetyIntelligence
+│   │   ├── Alerts
+│   │   ├── Analytics
+│   │   ├── Auditing
+│   │   ├── BackgroundJobs
+│   │   ├── bin
+│   │   ├── Caching
+│   │   ├── Checklists
+│   │   ├── Common
+│   │   ├── Compliance
+│   │   ├── ContinuousImprovement
+│   │   ├── ContractorSafety
+│   │   ├── ContractorVisitor
+│   │   ├── CrossDomain
+│   │   ├── Dashboards
+│   │   ├── DependencyInjection
+│   │   ├── DigitalTwin
+│   │   ├── EmployeeSafety
+│   │   ├── EnterpriseFabric
+│   │   ├── EnvironmentalHealth
+│   │   ├── ExternalServices
+│   │   ├── Features
+│   │   ├── FileStorage
+│   │   ├── Financials
+│   │   ├── Governance
+│   │   ├── HealthChecks
+│   │   ├── HumanFactors
+│   │   ├── Identity
+│   │   ├── Integrations
+│   │   ├── Intelligence
+│   │   ├── MachineSafety
+│   │   ├── Messaging
+│   │   ├── obj
+│   │   ├── Observability
+│   │   ├── Operational
+│   │   ├── OperationalSafety
+│   │   ├── Operations
+│   │   ├── PermitToWork
+│   │   ├── Persistence
+│   │   ├── PlanningProjects
+│   │   ├── PPE
+│   │   ├── ProcessManagement
+│   │   ├── RiskManagement
+│   │   ├── SafetyCulture
+│   │   ├── SafetyEvents
+│   │   ├── SafetyPolicies
+│   │   ├── SafetyProcedures
+│   │   ├── Scheduling
+│   │   ├── Scorecards
+│   │   ├── Search
+│   │   ├── Sustainability
+│   │   ├── Training
+│   │   └── WorkerWellBeing
+│   ├── PlantSafety.IntegrationTests
+│   │   ├── AccidentManagement
+│   │   ├── Analytics
+│   │   ├── Api
+│   │   ├── bin
+│   │   ├── Commands
+│   │   ├── Common
+│   │   ├── Compliance
+│   │   ├── ContinuousImprovement
+│   │   ├── Events
+│   │   ├── Financials
+│   │   ├── Fixtures
+│   │   ├── Helpers
+│   │   ├── Infrastructure
+│   │   ├── Integrations
+│   │   ├── Intelligence
+│   │   ├── obj
+│   │   ├── Operational
+│   │   ├── Operations
+│   │   ├── PlanningProjects
+│   │   ├── Queries
+│   │   ├── Repositories
+│   │   ├── RiskManagement
+│   │   ├── SafetyEvents
+│   │   └── Setup
+│   ├── PlantSafety.Intelligence
+│   │   └── obj
+│   ├── PlantSafety.PerformanceTests
+│   │   ├── Alerts
+│   │   ├── bin
+│   │   └── obj
+│   ├── PlantSafety.ResilienceTests
+│   │   ├── bin
+│   │   ├── Chaos
+│   │   ├── obj
+│   │   ├── Outbox
+│   │   └── Sensors
+│   ├── PlantSafety.ScenarioTests
+│   │   ├── Alerts
+│   │   ├── bin
+│   │   └── obj
+│   ├── PlantSafety.SecurityTests
+│   │   ├── bin
+│   │   ├── Identity
+│   │   ├── obj
+│   │   └── Persistence
+│   ├── PlantSafety.SharedKernel
+│   │   ├── Abstractions
+│   │   ├── Audit
+│   │   ├── Base
+│   │   ├── bin
+│   │   ├── CodeGeneration
+│   │   ├── Constants
+│   │   ├── Contracts
+│   │   ├── DependencyInjection
+│   │   ├── Domain
+│   │   ├── Events
+│   │   ├── Exceptions
+│   │   ├── Extensions
+│   │   ├── Financials
+│   │   ├── Guards
+│   │   ├── Identifiers
+│   │   ├── Models
+│   │   ├── MultiTenancy
+│   │   ├── obj
+│   │   ├── Outbox
+│   │   ├── PlanningProjects
+│   │   ├── Primitives
+│   │   ├── Serialization
+│   │   ├── Time
+│   │   └── Validation
+│   ├── PlantSafety.SmokeTests
+│   │   ├── bin
+│   │   ├── Domain
+│   │   ├── obj
+│   │   └── Repositories
+│   ├── PlantSafety.StressTests
+│   │   ├── Alerts
+│   │   ├── bin
+│   │   ├── obj
+│   │   └── Support
+│   ├── PlantSafety.Tests
+│   │   ├── Analytics
+│   │   ├── Api
+│   │   ├── Application
+│   │   ├── bin
+│   │   ├── Common
+│   │   ├── Compliance
+│   │   ├── ContinuousImprovement
+│   │   ├── Domain
+│   │   ├── Financials
+│   │   ├── Infrastructure
+│   │   ├── Integrations
+│   │   ├── Intelligence
+│   │   ├── obj
+│   │   ├── Operational
+│   │   ├── PlanningProjects
+│   │   └── SafetyEvents
+│   ├── PlantSafety.UI
+│   │   ├── .safety
+│   │   ├── bin
+│   │   ├── Components
+│   │   ├── Infrastructure
+│   │   ├── Models
+│   │   ├── Modules
+│   │   ├── obj
+│   │   ├── Platforms
+│   │   ├── Properties
+│   │   ├── Resources
+│   │   ├── Routing
+│   │   ├── State
+│   │   └── wwwroot
+│   ├── src
+│   ├── tests
+│   ├── tools
+│   ├── unpacked_crossdomain
+│   │   ├── docProps
+│   │   ├── word
+│   │   └── _rels
+│   ├── unpacked_intelligence
+│   │   ├── docProps
+│   │   ├── word
+│   │   └── _rels
+│   └── verify_extract
+│       ├── docProps
+│       ├── word
+│       └── _rels
+├── Reporting
+│   ├── build
+│   ├── docs
+│   ├── Reporting.Api
+│   │   ├── bin
+│   │   ├── Controllers
+│   │   ├── DependencyInjection
+│   │   ├── Extensions
+│   │   ├── Filters
+│   │   ├── HealthChecks
+│   │   ├── Mapping
+│   │   ├── Middleware
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Properties
+│   │   └── reports-output
+│   ├── Reporting.Application
+│   │   ├── Behaviors
+│   │   ├── bin
+│   │   ├── Commands
+│   │   ├── DependencyInjection
+│   │   ├── Mappings
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Orchestration
+│   │   ├── Queries
+│   │   └── Services
+│   ├── Reporting.Domain
+│   │   ├── bin
+│   │   ├── Entities
+│   │   ├── Enums
+│   │   ├── Exceptions
+│   │   ├── Interfaces
+│   │   ├── obj
+│   │   ├── Rules
+│   │   └── ValueObjects
+│   ├── Reporting.Infrastructure
+│   │   ├── bin
+│   │   ├── Configuration
+│   │   ├── DataSources
+│   │   ├── DependencyInjection
+│   │   ├── EventBus
+│   │   ├── FileSystem
+│   │   ├── Generators
+│   │   ├── obj
+│   │   ├── PdfGenerator
+│   │   └── Persistence
+│   ├── Reporting.IntegrationTests
+│   │   ├── Accessibility
+│   │   ├── Baselines
+│   │   ├── bin
+│   │   ├── Chaos
+│   │   ├── Compatibility
+│   │   ├── Fixtures
+│   │   ├── Integration
+│   │   ├── obj
+│   │   ├── Pdf
+│   │   ├── Performance
+│   │   ├── Regression
+│   │   ├── Scenarios
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Snapshots
+│   │   ├── Stress
+│   │   ├── TestResults
+│   │   └── Utilities
+│   ├── Reporting.Tests
+│   │   ├── Application
+│   │   ├── bin
+│   │   ├── Chaos
+│   │   ├── Domain
+│   │   ├── Infrastructure
+│   │   ├── obj
+│   │   ├── Security
+│   │   ├── TestData
+│   │   └── TestResults
+│   ├── Reporting.UI
+│   │   ├── bin
+│   │   ├── Components
+│   │   ├── Interop
+│   │   ├── Modules
+│   │   ├── obj
+│   │   ├── Platforms
+│   │   ├── Properties
+│   │   ├── Resources
+│   │   ├── Routes
+│   │   ├── Services
+│   │   ├── State
+│   │   └── wwwroot
+│   ├── src
+│   ├── tests
+│   └── tools
+├── SafetyIntegrations
+│   ├── .safety
+│   ├── build
+│   ├── docs
+│   ├── SafetyIntegration.Tests
+│   │   ├── Adapters
+│   │   ├── AuthIdentityTests
+│   │   ├── bin
+│   │   ├── CanonicalEnvelope
+│   │   ├── ChaosTests
+│   │   ├── CompatibilityTests
+│   │   ├── DriftDetection
+│   │   ├── Engines
+│   │   ├── EventBus
+│   │   ├── Integration
+│   │   ├── IntegrationConfiguration
+│   │   ├── IntegrationContracts
+│   │   ├── IntegrationHealth
+│   │   ├── IntegrationOrchestration
+│   │   ├── IntegrationPipelines
+│   │   ├── IntegrationTelemetry
+│   │   ├── obj
+│   │   ├── PerformanceTests
+│   │   ├── RecoveryTests
+│   │   ├── RegressionTests
+│   │   ├── ResilienceTests
+│   │   ├── SecurityTests
+│   │   ├── Shared
+│   │   └── SmokeTests
+│   ├── SafetyIntegrations
+│   │   ├── Adapters
+│   │   ├── bin
+│   │   ├── CononicalEnvelope
+│   │   ├── DRFailover
+│   │   ├── DriftDetection
+│   │   ├── EventBus
+│   │   ├── IntegrationAbstractions
+│   │   ├── IntegrationConfiguration
+│   │   ├── IntegrationContracts
+│   │   ├── IntegrationHealth
+│   │   ├── IntegrationLogging
+│   │   ├── IntegrationOrchestration
+│   │   ├── IntegrationPipelines
+│   │   ├── IntegrationTelemetry
+│   │   ├── obj
+│   │   ├── ReconciliationEngine
+│   │   ├── ReplayEngine
+│   │   ├── Shared
+│   │   └── SyncEngine
+│   ├── src
+│   ├── tests
+│   └── tools
+├── SafetyTooling
+│   ├── .claude
+│   ├── .github
+│   ├── .idea
+│   │   └── .idea.SafetyTooling
+│   ├── Analyzers
+│   │   ├── .safety
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── Common
+│   │   ├── Docs
+│   │   ├── obj
+│   │   ├── Packaging
+│   │   ├── Samples
+│   │   ├── src
+│   │   ├── Suppressors
+│   │   ├── tests
+│   │   └── tools
+│   ├── Analyzers.IntegrationTests
+│   │   ├── Baselines
+│   │   ├── bin
+│   │   ├── Categories
+│   │   ├── Infrastructure
+│   │   ├── obj
+│   │   ├── Projects
+│   │   ├── Regression
+│   │   ├── Samples
+│   │   └── Sql
+│   ├── Analyzers.Tests
+│   │   ├── Architecture
+│   │   ├── Async
+│   │   ├── bin
+│   │   ├── DependencyInjection
+│   │   ├── Design
+│   │   ├── DOC
+│   │   ├── Logging
+│   │   ├── Nullability
+│   │   ├── obj
+│   │   ├── Performance
+│   │   ├── Security
+│   │   ├── Smoke
+│   │   ├── Testing
+│   │   ├── TestQuality
+│   │   ├── TestResults
+│   │   └── Tests
+│   ├── Build
+│   │   ├── .safety
+│   │   ├── bin
+│   │   ├── Build
+│   │   ├── Diagnostics
+│   │   ├── Exceptions
+│   │   ├── Logging
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Rules
+│   │   ├── Services
+│   │   ├── src
+│   │   ├── Tasks
+│   │   ├── tests
+│   │   ├── tools
+│   │   ├── Utilities
+│   │   └── Version
+│   ├── Build.Tests
+│   │   ├── bin
+│   │   ├── obj
+│   │   └── Smoke
+│   ├── BuildPipelines
+│   │   ├── bin
+│   │   ├── Config
+│   │   ├── Docs
+│   │   ├── GitHooks
+│   │   ├── obj
+│   │   ├── Pipelines
+│   │   ├── Scripts
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── CLI
+│   │   ├── .safety
+│   │   ├── Abstractions
+│   │   ├── Application
+│   │   ├── bin
+│   │   ├── Commands
+│   │   ├── Config
+│   │   ├── Core
+│   │   ├── Docs
+│   │   ├── Engine
+│   │   ├── GitHooks
+│   │   ├── IntegrationTests
+│   │   ├── obj
+│   │   ├── Registry
+│   │   ├── Runtime
+│   │   ├── Snapshots
+│   │   ├── src
+│   │   ├── Startup
+│   │   ├── TemplateLibrary
+│   │   ├── tests
+│   │   ├── tools
+│   │   └── UnitTests
+│   ├── CodeFixes
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── CodeFixes.Tests
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── DependencyRules
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Suppressors
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── DependencyRules.Tests
+│   │   ├── bin
+│   │   ├── ForbiddenReferences
+│   │   ├── Layering
+│   │   ├── ModuleBoundaries
+│   │   ├── obj
+│   │   └── Testing
+│   ├── Docs
+│   │   ├── bin
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── Docs.Tests
+│   │   ├── bin
+│   │   ├── Extractors
+│   │   ├── obj
+│   │   └── Renderers
+│   ├── DocsExtensions
+│   │   ├── bin
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── DocsExtensions.Tests
+│   │   ├── bin
+│   │   └── obj
+│   ├── Generators
+│   │   ├── bin
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Generators
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── Generators.Tests
+│   │   ├── bin
+│   │   ├── DtoGenerators
+│   │   ├── obj
+│   │   ├── StrongTypeGenerators
+│   │   └── Testing
+│   ├── IDE
+│   │   ├── bin
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── Tests
+│   │   └── tools
+│   ├── IDE.Tests
+│   │   ├── bin
+│   │   ├── CommandRouting
+│   │   ├── obj
+│   │   └── Threading
+│   ├── Localization
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Generators
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── Localization.Tests
+│   │   ├── bin
+│   │   ├── CultureConsistencyRules
+│   │   ├── MissingTranslationRules
+│   │   ├── obj
+│   │   ├── ResourceRules
+│   │   └── Testing
+│   ├── MigrationGenerators
+│   │   ├── bin
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Generators
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── MigrationGenerators.Tests
+│   │   ├── bin
+│   │   └── obj
+│   ├── PerformanceProfilers
+│   │   ├── Analysis
+│   │   ├── bin
+│   │   ├── Instrumentation
+│   │   ├── obj
+│   │   ├── src
+│   │   ├── tests
+│   │   └── tools
+│   ├── PerformanceProfilers.Tests
+│   │   ├── bin
+│   │   └── obj
+│   ├── Reporting
+│   │   ├── bin
+│   │   ├── Builders
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── Renderers
+│   │   ├── src
+│   │   ├── tests
+│   │   └── tools
+│   ├── Reporting.Tests
+│   │   ├── bin
+│   │   └── obj
+│   ├── RoslynRefactoring
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Refactorings
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── RoslynRefactoring.Tests
+│   │   ├── bin
+│   │   ├── obj
+│   │   └── Refactorings
+│   ├── SafetyReporting.Pdf
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Common
+│   │   ├── Core
+│   │   ├── Diagnostics
+│   │   ├── DX
+│   │   ├── Models
+│   │   ├── obj
+│   │   └── Reports
+│   ├── SafetyReporting.Pdf.Tests
+│   │   ├── bin
+│   │   ├── Common
+│   │   ├── Core
+│   │   ├── Diagnostics
+│   │   ├── DX
+│   │   ├── Models
+│   │   ├── obj
+│   │   └── Reports
+│   ├── SchemaSync
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Generators
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── SchemaSync.Tests
+│   │   ├── bin
+│   │   └── obj
+│   ├── StaticAnalysis
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── CodeMetrics
+│   │   ├── CodeMetrics.Tests
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Generators
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── StyleCopRules
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Generators
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── StyleCopRules.Tests
+│   │   ├── bin
+│   │   ├── FormattingRules
+│   │   ├── NamingRules
+│   │   ├── obj
+│   │   ├── OrderingRules
+│   │   └── Testing
+│   ├── Templates
+│   │   ├── .safety
+│   │   ├── bin
+│   │   └── obj
+│   ├── TestTooling
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Generators
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   ├── TestTooling.Tests
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── obj
+│   │   └── Testing
+│   ├── Tooling
+│   │   ├── bin
+│   │   ├── Documentation
+│   │   ├── Migration
+│   │   ├── obj
+│   │   ├── src
+│   │   ├── StaticAnalysisHelpers
+│   │   ├── tests
+│   │   └── tools
+│   ├── Tooling.Core
+│   │   ├── Abstractions
+│   │   ├── bin
+│   │   ├── Models
+│   │   ├── obj
+│   │   ├── src
+│   │   ├── tests
+│   │   ├── tools
+│   │   └── Utilities
+│   ├── Tooling.Core.Tests
+│   │   ├── bin
+│   │   └── obj
+│   ├── Tooling.Tests
+│   │   ├── bin
+│   │   ├── Documentation
+│   │   ├── Migration
+│   │   ├── obj
+│   │   └── StaticAnalysisHelpers
+│   ├── UXLint
+│   │   ├── Analyzers
+│   │   ├── bin
+│   │   ├── CodeFixes
+│   │   ├── Core
+│   │   ├── Extensions
+│   │   ├── Generators
+│   │   ├── Metadata
+│   │   ├── obj
+│   │   ├── Resources
+│   │   ├── src
+│   │   ├── Templates
+│   │   ├── tests
+│   │   └── tools
+│   └── UXLint.Tests
+│       ├── bin
+│       └── obj
+└── Shared
+    ├── AuditLogging
+    │   ├── docs
+    │   ├── Shared.AuditLogging.Abstractions
+    │   ├── Shared.AuditLogging.Infrastructure
+    │   ├── Shared.AuditLogging.Tests
+    │   └── sql
+    ├── Authorization
+    │   └── Shared.Authorization.Abstractions
+    ├── EventBus
+    │   ├── docs
+    │   ├── Shared.DomainEvents.Abstractions
+    │   ├── Shared.EventBus.Abstractions
+    │   ├── Shared.EventBus.Infrastructure
+    │   ├── Shared.EventBus.Tests
+    │   └── sql
+    └── SafetyData
+        ├── docs
+        ├── Shared.SafetyData.Abstractions
+        ├── Shared.SafetyData.Infrastructure
+        ├── Shared.SafetyData.Tests
+        └── sql

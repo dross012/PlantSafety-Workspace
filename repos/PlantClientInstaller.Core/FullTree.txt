@@ -1,0 +1,114 @@
+﻿
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\bin
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\InstallConfig
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Payload
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Scripts
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Class1.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\FullTree.txt
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\installer.json
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\PlantClientInstaller.Core.csproj
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\bin\Debug
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\bin\Debug\net10.0
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\ConfigGenerator.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\DatabaseInitializer.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\DependencyResolver.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\EnvironmentDetector.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\InstallerContext.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\InstallerEngine.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\Logger.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\PayloadInstaller.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\RollbackManager.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\ServiceInstaller.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\SqlExpressInstaller.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\UninstallerEngine.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Bootstapper\UpgradeEngine.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\InstallConfig\installer.json
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\PlantClientInstaller.Core.csproj.nuget.dgspec.json
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\PlantClientInstaller.Core.csproj.nuget.g.props
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\PlantClientInstaller.Core.csproj.nuget.g.targets
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\project.assets.json
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\project.nuget.cache
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\ref
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\refint
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\.NETCoreApp,Version=v10.0.AssemblyAt
+           tributes.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.AssemblyIn
+           fo.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.AssemblyIn
+           foInputs.cache
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.assets.cac
+           he
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.GeneratedM
+           SBuildEditorConfig.editorconfig
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.GlobalUsin
+           gs.g.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Payload\ClientApp
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Payload\ConfigTemplates
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Payload\Drivers
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Payload\Modules
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Payload\SqlExpress
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Payload\ClientApp\ClientApp manifest generator.cs
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Scripts\Database
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Scripts\Configue.ps1
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Scripts\Install.ps1
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Scripts\RegisterServices.ps1
+
+FullName : C:\Users\dross\source\repos\PlantClientInstaller.Core\Scripts\Rollback.ps1
+
+
+

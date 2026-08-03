@@ -1,0 +1,18 @@
+# Rule Enforcement Validation — Observability
+
+See `_shared-findings.md` and F11 (`AutomatedIncidentDetection.EscalateToIncident` never cross-checks the
+referenced Incident — re-confirmed at handler-level detail this phase, G5).
+
+| Transition | Invariants Pass/Fail | Constraints Pass/Fail | Cross-Module Pass/Fail | Lifecycle-Sequence Pass/Fail | Tenancy Pass/Fail | Actor/Correlation Pass/Fail | Confidence | Notes |
+|---|---|---|---|---|---|---|---|---|
+| AutomatedIncidentDetection — Create | Pass | Pass (inherited) | Pass | Pass | Fail (F1, pattern) | Fail (G2) — `AutomatedIncidentDetectionDapperRepository` confirmed hardcoded site | High | Audit-logged (F8) |
+| AutomatedIncidentDetection — Acknowledge | Pass | Pass (inherited) | Pass | Pass | Fail (F1, pattern) | Fail (G2) | High | |
+| AutomatedIncidentDetection — Dismiss | Pass | Pass (inherited) | Pass | Pass | Fail (F1, pattern) | Fail (G2) | High | |
+| AutomatedIncidentDetection — EscalateToIncident | Pass (own-status guard) but **Fail (F11)** — `IncidentReferenceId` is a raw caller-supplied `Guid` passed straight into the aggregate with no repository call into SafetyEvents/IncidentManagement to verify the referenced Incident exists, no status check, no write-back | Pass — command-level validation exists but does not (and structurally cannot, given the handler's single-repository dependency) validate the Incident reference itself | **Fail (F11)** — `EscalateDetectionToIncidentCommandHandler`'s only dependency is `IAutomatedIncidentDetectionRepository`; this is the headline cross-module gap for this module, same category as F6 | Pass (own state machine) | Fail (F1, pattern) | Fail (G2) — `AutomatedIncidentDetectionDapperRepository` confirmed hardcoded site | High | Method name implies real IncidentManagement integration; none exists |
+| AutomatedIncidentDetection — NotifySupervisor | Pass | Pass (inherited) | Pass | Pass | Fail (F1, pattern) | Fail (G2) | High | |
+| AutomatedIncidentDetection — Archive/Cancel/Delete | N/A | N/A | N/A | N/A | N/A | N/A | High | |
+| MachineProcessMonitoring — Create/Acknowledge/RecordSensorReading | Pass — 3 guard sites (inherited) | Pass (inherited) | Pass | Pass | Fail (F1, pattern) | Fail (G2) — `MachineProcessMonitoringDapperRepository` confirmed hardcoded site | High | |
+| MachineProcessMonitoring — RaiseAnomalyFlag | Pass (raise-side guard) but **Fail (lifecycle gap, inherited)** — no `Close`/`Resolve` method exists anywhere on this aggregate; once raised, an anomaly has no confirmed domain path to be marked resolved | Pass (inherited) | Pass | **Fail** — this is a "grew but didn't grow far enough" gap: the aggregate has real transitions but no terminal one, so any anomaly is permanently open in the domain model | Fail (F1, pattern) | Fail (G2) | High | Distinct defect class from Create-only aggregates — flagged separately per Phase 1 |
+| EnvironmentalAssetMonitoring — Create only (batched) | Pass — factory guard only | Unconfirmed | Pass | N/A | Fail (F1, pattern) | Fail (G2) — `EnvironmentalAssetMonitoringDapperRepository` confirmed hardcoded site | Medium | Missing entirely beyond Create; dormant `_Update` unused |
+| FacilityTrafficMonitoring — Create only (batched) | Pass — factory guard only | Unconfirmed | Pass | N/A | Fail (F1, pattern) | Fail (G2) — `FacilityTrafficMonitoringDapperRepository` confirmed hardcoded site | Medium | Same shape |
+| PPEBehavioralMonitoring — Create only (batched) | Pass — factory guard only | Unconfirmed | Pass | N/A | Fail (F1, pattern) | Fail (G2) — `PPEBehavioralMonitoringDapperRepository` confirmed hardcoded site | Medium | Same shape |

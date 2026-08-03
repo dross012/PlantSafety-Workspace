@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "4mbmJPqZ1ro=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\dross\\source\\repos\\PlantClientInstaller.Bootstrapper\\PlantClientInstaller.Bootstrapper.csproj",
+  "expectedPackageFiles": [
+    "D:\\NuGetPackages\\microsoft.extensions.dependencyinjection.abstractions\\10.0.10\\microsoft.extensions.dependencyinjection.abstractions.10.0.10.nupkg.sha512",
+    "D:\\NuGetPackages\\microsoft.extensions.logging.abstractions\\10.0.10\\microsoft.extensions.logging.abstractions.10.0.10.nupkg.sha512",
+    "D:\\NuGetPackages\\serilog\\4.4.0\\serilog.4.4.0.nupkg.sha512",
+    "D:\\NuGetPackages\\system.diagnostics.eventlog\\7.0.0\\system.diagnostics.eventlog.7.0.0.nupkg.sha512",
+    "D:\\NuGetPackages\\system.serviceprocess.servicecontroller\\7.0.0\\system.serviceprocess.servicecontroller.7.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

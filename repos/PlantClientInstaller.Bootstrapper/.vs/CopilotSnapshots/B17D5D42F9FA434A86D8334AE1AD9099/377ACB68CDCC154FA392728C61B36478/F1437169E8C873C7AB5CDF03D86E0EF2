@@ -1,0 +1,165 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace PlantClientInstaller.Core
+{
+    /// <summary>
+    /// Immutable installer context containing all configuration, paths,
+    /// tokens, and state flags required by the installer pipeline.
+    /// Deterministic, enterprise-compliant, and drift-free.
+    /// </summary>
+    public sealed class InstallerContext
+    {
+        // ------------------------------------------------------------
+        // CORE INSTALLER PATHS
+        // ------------------------------------------------------------
+
+        public string InstallRoot { get; init; }
+        public string PayloadPath { get; init; }
+
+        public string ClientAppPayloadPath { get; init; }
+        public string ModulePayloadPath { get; init; }
+        public string DriverPayloadPath { get; init; }
+        public string AssetPayloadPath { get; init; }
+
+        public string SqlExpressPayloadPath { get; init; }
+        public string CertificatePayloadPath { get; init; }
+
+        public string ConfigTemplatePath { get; init; }
+        public string OutputConfigPath { get; init; }
+
+        public string RollbackJournalPath { get; init; }
+
+        // ------------------------------------------------------------
+        // SQL EXPRESS CONFIGURATION
+        // ------------------------------------------------------------
+
+        public string SqlInstanceName { get; init; }
+        public string SqlSaPassword { get; init; }
+
+        public bool SqlExpressDetected { get; set; }
+
+        // ------------------------------------------------------------
+        // SERVICE CONFIGURATION
+        // ------------------------------------------------------------
+
+        public IReadOnlyList<ServiceDefinition> Services { get; init; }
+
+        public string ServicePayloadPath { get; init; }
+        public string ServiceRegistrationScript { get; init; }
+
+        public string ServiceAccount { get; init; }
+        public string ServiceAccountPassword { get; init; }
+
+        // ------------------------------------------------------------
+        // CLIENT APPLICATION METADATA
+        // ------------------------------------------------------------
+
+        public string ClientExecutableName { get; init; }
+
+        // ------------------------------------------------------------
+        // TOKEN REPLACEMENT (USED BY ConfigGenerator)
+        // ------------------------------------------------------------
+
+        public IReadOnlyDictionary<string, string> Tokens { get; init; }
+
+        // ------------------------------------------------------------
+        // VALIDATION
+        // ------------------------------------------------------------
+
+        public void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(InstallRoot))
+                throw new InvalidOperationException("InstallRoot is required.");
+
+            if (string.IsNullOrWhiteSpace(PayloadPath))
+                throw new InvalidOperationException("PayloadPath is required.");
+
+            if (!Directory.Exists(PayloadPath))
+                throw new DirectoryNotFoundException($"PayloadPath not found: {PayloadPath}");
+
+            if (string.IsNullOrWhiteSpace(SqlInstanceName))
+                throw new InvalidOperationException("SqlInstanceName is required.");
+
+            if (string.IsNullOrWhiteSpace(SqlSaPassword))
+                throw new InvalidOperationException("SqlSaPassword is required.");
+
+            if (Tokens == null)
+                throw new InvalidOperationException("Tokens dictionary must be provided.");
+
+            if (Services == null)
+                throw new InvalidOperationException("Services list must be provided.");
+        }
+
+        // ------------------------------------------------------------
+        // FACTORY METHOD
+        // ------------------------------------------------------------
+
+        public static InstallerContext CreateDefault(string basePath)
+        {
+            return new InstallerContext
+            {
+                InstallRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PlantClient"),
+                PayloadPath = Path.Combine(basePath, "Payload"),
+
+                ClientAppPayloadPath = Path.Combine(basePath, "Payload", "ClientApp"),
+                ModulePayloadPath = Path.Combine(basePath, "Payload", "Modules"),
+                DriverPayloadPath = Path.Combine(basePath, "Payload", "Drivers"),
+                AssetPayloadPath = Path.Combine(basePath, "Payload", "Assets"),
+
+                SqlExpressPayloadPath = Path.Combine(basePath, "Payload", "SqlExpress"),
+                CertificatePayloadPath = Path.Combine(basePath, "Payload", "Certificates"),
+
+                ConfigTemplatePath = Path.Combine(basePath, "Payload", "ConfigTemplates"),
+                OutputConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PlantClient", "Config"),
+
+                RollbackJournalPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PlantClientInstaller", "rollback.journal"),
+
+                SqlInstanceName = "PLANTCLIENT",
+                SqlSaPassword = "StrongPassword123!",
+
+                ServicePayloadPath = Path.Combine(basePath, "Payload", "Services"),
+                ServiceRegistrationScript = Path.Combine(basePath, "Scripts", "RegisterServices.ps1"),
+
+                ServiceAccount = "PlantClientSvc",
+                ServiceAccountPassword = "SvcAccountPassword123!",
+
+                ClientExecutableName = "PlantClient.exe",
+
+                Services = new List<ServiceDefinition>
+                {
+                    new ServiceDefinition
+                    {
+                        ServiceName = "PlantClient.WorkerService",
+                        DisplayName = "Plant Client Worker Service",
+                        Description = "Handles background processing for Plant Client.",
+                        ExecutableName = "WorkerService.exe"
+                    },
+                    new ServiceDefinition
+                    {
+                        ServiceName = "PlantClient.HealthMonitor",
+                        DisplayName = "Plant Client Health Monitor",
+                        Description = "Monitors system health and diagnostics.",
+                        ExecutableName = "HealthMonitor.exe"
+                    },
+                    new ServiceDefinition
+                    {
+                        ServiceName = "PlantClient.SyncService",
+                        DisplayName = "Plant Client Sync Service",
+                        Description = "Synchronizes data between client and server.",
+                        ExecutableName = "SyncService.exe"
+                    }
+                },
+
+                Tokens = new Dictionary<string, string>
+                {
+                    { "SqlInstanceName", "PLANTCLIENT" },
+                    { "DatabaseName", "PlantClientDb" },
+                    { "ApiBaseUrl", "https://plantserver/api" },
+                    { "Environment", "Production" }
+                }
+            };
+        }
+    }
+}

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../PlantClientInstaller.Core/PlantClientInstaller.Core.csproj" />
+  <Project Path="PlantClientInstaller.Bootstrapper.csproj" />
+</Solution>

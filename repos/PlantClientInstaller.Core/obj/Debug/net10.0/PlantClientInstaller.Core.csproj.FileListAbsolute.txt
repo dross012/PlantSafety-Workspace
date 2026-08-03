@@ -1,0 +1,12 @@
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.AssemblyInfoInputs.cache
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.AssemblyInfo.cs
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.csproj.CoreCompileInputs.cache
+C:\Users\dross\source\repos\PlantClientInstaller.Core\bin\Debug\net10.0\PlantClientInstaller.Core.deps.json
+C:\Users\dross\source\repos\PlantClientInstaller.Core\bin\Debug\net10.0\PlantClientInstaller.Core.dll
+C:\Users\dross\source\repos\PlantClientInstaller.Core\bin\Debug\net10.0\PlantClientInstaller.Core.pdb
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.csproj.AssemblyReference.cache
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.dll
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\refint\PlantClientInstaller.Core.dll
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\PlantClientInstaller.Core.pdb
+C:\Users\dross\source\repos\PlantClientInstaller.Core\obj\Debug\net10.0\ref\PlantClientInstaller.Core.dll

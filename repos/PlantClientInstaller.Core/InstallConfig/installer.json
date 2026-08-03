@@ -1,0 +1,65 @@
+{
+  "InstallRoot": "C:\\Program Files\\PlantClient",
+
+  "Payload": {
+    "BasePath": ".\\Payload",
+    "ClientApp": ".\\Payload\\ClientApp",
+    "Modules": ".\\Payload\\Modules",
+    "Drivers": ".\\Payload\\Drivers",
+    "Assets": ".\\Payload\\Assets",
+    "SqlExpress": ".\\Payload\\SqlExpress",
+    "Certificates": ".\\Payload\\Certificates",
+    "Services": ".\\Payload\\Services",
+    "ConfigTemplates": ".\\Payload\\ConfigTemplates"
+  },
+
+  "Config": {
+    "OutputPath": "C:\\ProgramData\\PlantClient\\Config"
+  },
+
+  "SqlExpress": {
+    "InstanceName": "PLANTCLIENT",
+    "SaPassword": "StrongPassword123!"
+  },
+
+  "Services": [
+    {
+      "ServiceName": "PlantClient.WorkerService",
+      "DisplayName": "Plant Client Worker Service",
+      "Description": "Handles background processing for Plant Client.",
+      "ExecutableName": "WorkerService.exe"
+    },
+    {
+      "ServiceName": "PlantClient.HealthMonitor",
+      "DisplayName": "Plant Client Health Monitor",
+      "Description": "Monitors system health and diagnostics.",
+      "ExecutableName": "HealthMonitor.exe"
+    },
+    {
+      "ServiceName": "PlantClient.SyncService",
+      "DisplayName": "Plant Client Sync Service",
+      "Description": "Synchronizes data between client and server.",
+      "ExecutableName": "SyncService.exe"
+    }
+  ],
+
+  "ServiceAccount": {
+    "User": "PlantClientSvc",
+    "Password": "SvcAccountPassword123!"
+  },
+
+  "Client": {
+    "ExecutableName": "PlantClient.exe"
+  },
+
+  "Tokens": {
+    "SqlInstanceName": "PLANTCLIENT",
+    "DatabaseName": "PlantClientDb",
+    "ApiBaseUrl": "https://plantserver/api",
+    "Environment": "Production"
+  },
+
+  "Rollback": {
+    "JournalPath": "C:\\ProgramData\\PlantClientInstaller\\rollback.journal"
+  }
+}
