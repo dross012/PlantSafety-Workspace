@@ -69,11 +69,23 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMsalTokenProvider, MsalTokenProvider>();
         builder.Services.AddTransient<AuthorizationMessageHandler>();
 
+        // ── Impersonation (Phase 7 §6.3 Support Tooling) ────────────────────────
+        // Stamps X-Tenant-ID on every outbound request while a support-console
+        // impersonation session is active; registered in every typed client's
+        // handler pipeline via RegisterApiClient below.
+        builder.Services.AddTransient<Infrastructure.Impersonation.ImpersonationHeaderHandler>();
+
         // ── State Containers (Singleton — shared across the session) ───────────
         builder.Services.AddSingleton<AppSessionState>();
         builder.Services.AddSingleton<UserSessionState>();
         builder.Services.AddSingleton<TenantState>();
         builder.Services.AddSingleton<NavigationState>();
+        builder.Services.AddSingleton<Modules.Admin.State.TenantAdminState>();
+        builder.Services.AddSingleton<Modules.Admin.State.BillingState>();
+        builder.Services.AddSingleton<Modules.Admin.State.ImpersonationState>();
+        builder.Services.AddSingleton<Modules.Admin.State.SupportConsoleState>();
+        builder.Services.AddSingleton<Modules.Admin.State.UserManagementState>();
+        builder.Services.AddSingleton<Modules.Admin.State.TenantFeatureFlagsState>();
 
         // ── Module State Containers ────────────────────────────────────────────
         builder.Services.AddSingleton<Modules.Alerts.State.AlertsState>();
@@ -188,7 +200,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.WorkerManagement.State.WorkerManagementState>();
 
         // ── Typed HttpClients ──────────────────────────────────────────────────
-        // Handler pipeline: CorrelationHandler → AuthorizationMessageHandler → HttpClientHandler
+        // Handler pipeline: CorrelationHandler → AuthorizationMessageHandler →
+        // ImpersonationHeaderHandler → HttpClientHandler (Phase 7 §6.3: stamps X-Tenant-ID
+        // while a support-console impersonation session is active).
         // Base address is read from configuration; must end with trailing slash.
         RegisterApiClient<AlertsApiClient>(builder, "alerts");
         RegisterApiClient<DiagnosticsApiClient>(builder, "diagnostics");
@@ -213,6 +227,11 @@ public static class MauiProgram
         // gap, following the exact RegisterApiClient<T>(builder, "kebab-case-name") pattern
         // established above.
         RegisterApiClient<Modules.Admin.ApiClients.AdminApiClient>(builder, "admin");
+        RegisterApiClient<Modules.Admin.ApiClients.TenantAdminApiClient>(builder, "tenant-admin");
+        RegisterApiClient<Modules.Admin.ApiClients.BillingApiClient>(builder, "billing");
+        RegisterApiClient<Modules.Admin.ApiClients.ImpersonationApiClient>(builder, "impersonation");
+        RegisterApiClient<Modules.Admin.ApiClients.ComplianceMonitoringApiClient>(builder, "compliance-monitoring");
+        RegisterApiClient<Modules.Admin.ApiClients.UserManagementApiClient>(builder, "user-management");
         RegisterApiClient<Modules.AiGovernance.ApiClients.AiGovernanceApiClient>(builder, "ai-governance");
         RegisterApiClient<Modules.AiInvestigation.ApiClients.AiInvestigationApiClient>(builder, "ai-investigation");
         RegisterApiClient<Modules.AiTraining.ApiClients.AiTrainingApiClient>(builder, "ai-training");
@@ -280,7 +299,7 @@ public static class MauiProgram
 
     /// <summary>
     /// Registers a typed API client with the canonical handler pipeline:
-    /// CorrelationHandler → AuthorizationMessageHandler.
+    /// CorrelationHandler → AuthorizationMessageHandler → ImpersonationHeaderHandler.
     /// </summary>
     /// <typeparam name="TClient">The typed client implementation.</typeparam>
     /// <param name="builder">The MAUI app builder.</param>
@@ -296,6 +315,7 @@ public static class MauiProgram
                 // IServiceProvider after MauiApp is built.
             })
             .AddHttpMessageHandler<CorrelationHandler>()
-            .AddHttpMessageHandler<AuthorizationMessageHandler>();
+            .AddHttpMessageHandler<AuthorizationMessageHandler>()
+            .AddHttpMessageHandler<Infrastructure.Impersonation.ImpersonationHeaderHandler>();
     }
 }

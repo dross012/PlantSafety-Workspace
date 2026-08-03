@@ -1,0 +1,203 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Admin Portal per-tenant Feature Flags page (Phase 7 §7.1/§7.2). Lists every
+     global feature flag alongside its precedence-resolved outcome for this specific tenant
+     (user > tenant > region > global), and allows setting a tenant-level override. Reuses the
+     already-registered OperationsConfiguration.ConfigurationApiClient (ResolveFeatureFlagQuery /
+     SetTenantFeatureFlagOverrideCommand) rather than duplicating the feature-flag HTTP surface --
+     see ConfigurationDashboardPage.razor for the generic (any tenant/user/region, free-text GUID)
+     editor this page complements with a tenant-scoped, resolved view.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/tenants/{TenantId:guid}/feature-flags"
+
+@inject TenantFeatureFlagsState State
+@inject ConfigurationApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.State
+@using PlantSafety.UI.Modules.OperationsConfiguration.ApiClients
+@using PlantSafety.UI.Modules.OperationsConfiguration.Models
+@using PlantSafety.UI.Modules.OperationsConfiguration.State
+
+<PageTitle>Tenant Feature Flags — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The tenant feature-flag view could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="@($"/admin/tenants/{TenantId}")" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Tenant Detail
+            </a>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+            <a href="@RouteDefinitions.OperationsConfigurationDashboard" class="ps-btn ps-btn-ghost ps-btn-sm">
+                Global / User / Region Override Editor
+            </a>
+        </div>
+
+        <p class="ps-text-muted">
+            Resolution precedence is <strong>user &gt; tenant &gt; region &gt; global</strong>. Each
+            row shows the raw global setting and the precedence-resolved outcome for
+            <strong>this tenant</strong> (with no specific user/region context), so it is clear
+            which level is deciding the result.
+        </p>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.OverrideMessage is not null)
+        {
+            <div class="ps-alert ps-alert--info" role="status">@State.OverrideMessage</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Resolving feature flags for this tenant…" />
+        }
+        else
+        {
+            @foreach (var row in State.Rows)
+            {
+                var key = ConfigurationState.FlagKey(row.Global.DatabaseKey, row.Global.FlagName);
+
+                <CardComponent Title="@row.Global.FlagName">
+                    <div class="ps-field-row"><span class="ps-field-label">Database</span><span class="ps-field-value">@row.Global.DatabaseKey</span></div>
+                    <div class="ps-field-row">
+                        <span class="ps-field-label">Global</span>
+                        <span class="ps-field-value">
+                            @(row.Global.IsEnabled ? "On" : "Off")@(row.Global.RolloutPercentage is { } gr ? $" ({gr}% rollout)" : "")
+                        </span>
+                    </div>
+                    @if (row.Resolved is { } resolved)
+                    {
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Resolved For This Tenant</span>
+                            <span class="ps-field-value">
+                                <StatusIndicatorComponent Status="@(resolved.IsEnabled ? "Healthy" : "Offline")" Label="@(resolved.IsEnabled ? "On" : "Off")" />
+                                — decided by <strong>@resolved.DecidedBy</strong>@(resolved.EffectiveRolloutPercentage is { } er ? $" ({er}% rollout)" : "")
+                            </span>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="ps-text-muted">Resolution failed for this flag; showing global value only.</p>
+                    }
+
+                    <hr />
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="@($"override-enabled-{key}")">Set Tenant Override — Enabled</label>
+                        <input id="@($"override-enabled-{key}")" type="checkbox" checked="@GetOverrideEnabled(key)"
+                               @onchange="e => SetOverrideEnabled(key, (bool)e.Value!)" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="@($"override-rollout-{key}")">Rollout % (blank = none)</label>
+                        <input id="@($"override-rollout-{key}")" type="number" min="0" max="100" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;"
+                               value="@GetOverrideRollout(key)" @onchange="e => SetOverrideRollout(key, e.Value?.ToString())" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="() => ApplyOverrideAsync(row.Global.FlagName, key)" disabled="@State.IsSubmittingOverride">
+                        Apply Tenant Override
+                    </button>
+                </CardComponent>
+            }
+
+            @if (State.Rows.Count == 0)
+            {
+                <p class="ps-text-muted">No feature flags found.</p>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid TenantId { get; set; }
+
+    private readonly Dictionary<string, bool> _overrideEnabled = new();
+    private readonly Dictionary<string, int?> _overrideRollout = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Tenant Feature Flags",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Tenant Management", Href = RouteDefinitions.AdminTenantList },
+                new BreadcrumbItem { Label = "Detail", Href = $"/admin/tenants/{TenantId}" },
+                new BreadcrumbItem { Label = "Feature Flags" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var flagsEnvelope = await ApiClient.GetAllFeatureFlagsAsync();
+        if (!flagsEnvelope.IsSuccess)
+        {
+            State.SetError(flagsEnvelope.IsProblem ? flagsEnvelope.Problem!.Detail : $"Failed to load feature flags: {flagsEnvelope.FaultType}");
+            return;
+        }
+
+        var rows = new List<TenantFeatureFlagRowDto>();
+        foreach (var flag in flagsEnvelope.Data!)
+        {
+            var resolveEnvelope = await ApiClient.ResolveFeatureFlagAsync(flag.DatabaseKey, flag.FlagName, TenantId, userId: null, region: null);
+            rows.Add(new TenantFeatureFlagRowDto
+            {
+                Global = flag,
+                Resolved = resolveEnvelope.IsSuccess ? resolveEnvelope.Data : null,
+            });
+        }
+
+        State.SetRows(rows);
+    }
+
+    private bool GetOverrideEnabled(string key) => _overrideEnabled.TryGetValue(key, out var value) && value;
+
+    private void SetOverrideEnabled(string key, bool value) => _overrideEnabled[key] = value;
+
+    private int? GetOverrideRollout(string key) => _overrideRollout.TryGetValue(key, out var value) ? value : null;
+
+    private void SetOverrideRollout(string key, string? raw)
+    {
+        _overrideRollout[key] = int.TryParse(raw, out var parsed) ? parsed : null;
+    }
+
+    private async Task ApplyOverrideAsync(string flagName, string key)
+    {
+        State.BeginOverrideSubmit();
+
+        var enabled = GetOverrideEnabled(key);
+        var rollout = GetOverrideRollout(key);
+
+        var result = await ApiClient.SetTenantFeatureFlagOverrideAsync(flagName, TenantId, enabled, rollout);
+
+        State.CompleteOverrideSubmit(result.IsSuccess
+            ? $"Tenant override for {flagName} set: Enabled={result.Data!.Enabled}, Rollout={result.Data!.RolloutPercentage?.ToString() ?? "none"}."
+            : (result.IsProblem ? result.Problem!.Detail : $"Failed: {result.FaultType}"));
+
+        await LoadAsync();
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

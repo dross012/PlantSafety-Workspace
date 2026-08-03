@@ -1,0 +1,92 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Admin Portal customer-onboarding quick-start checklist (Phase 7 §6.2
+     Customer Onboarding). Deliberately thin: navigation/UX scaffolding pointing at real
+     existing pages, not new business logic. ProvisionTenantCommand already seeds default
+     reference data during provisioning (Phase 7 §2.1) -- this page does not duplicate that.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/onboarding"
+
+@inject NavigationState NavState
+
+<PageTitle>Quick-Start Checklist — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The onboarding checklist could not be displayed.">
+
+        <CardComponent Title="New Tenant Quick-Start Checklist">
+            <p class="ps-text-muted">
+                A guided sequence of the first real actions a new tenant should take. Each step
+                links to the actual page that performs it — nothing here is a simulated or
+                sample-data-only walkthrough.
+            </p>
+
+            <ol class="ps-checklist">
+                <li>
+                    <strong>1. Provision the tenant.</strong>
+                    Runs the real end-to-end pipeline (Tenant record, data isolation, seeded
+                    default reference data, initial admin user, roles, API key).
+                    <a href="@RouteDefinitions.AdminTenantProvision" class="ps-btn ps-btn-ghost ps-btn-sm">Provision Tenant</a>
+                </li>
+                <li>
+                    <strong>2. Confirm the subscription plan and usage limits.</strong>
+                    Review the plan resolved for the tenant on the Billing tab of its detail page.
+                    <a href="@RouteDefinitions.AdminTenantList" class="ps-btn ps-btn-ghost ps-btn-sm">Tenant Management</a>
+                </li>
+                <li>
+                    <strong>3. Invite additional users.</strong>
+                    Use the tenant's Administrative Setup → Users &amp; Roles tab once signed in
+                    as the tenant's admin user (created during provisioning).
+                    <a href="@RouteDefinitions.AdminSetup" class="ps-btn ps-btn-ghost ps-btn-sm">Administrative Setup</a>
+                </li>
+                <li>
+                    <strong>4. Create the tenant's first work item.</strong>
+                    Start with an Incident Management record, a Safety Program, or a Workflow
+                    approval — whichever matches the tenant's primary use case.
+                    <a href="@RouteDefinitions.IncidentManagementList" class="ps-btn ps-btn-ghost ps-btn-sm">Incident Management</a>
+                    <a href="@RouteDefinitions.SafetyProgramsList" class="ps-btn ps-btn-ghost ps-btn-sm">Safety Programs</a>
+                </li>
+                <li>
+                    <strong>5. Review enabled modules and feature flags.</strong>
+                    Confirm the tenant's module/feature-flag configuration matches its plan.
+                    <a href="@RouteDefinitions.OperationsConfigurationDashboard" class="ps-btn ps-btn-ghost ps-btn-sm">Feature Flags</a>
+                </li>
+                <li>
+                    <strong>6. Bookmark the Support Console.</strong>
+                    For future support requests: tenant quick-links, audited impersonation, and
+                    the tenant's audit stream.
+                    <a href="@RouteDefinitions.AdminSupportConsole" class="ps-btn ps-btn-ghost ps-btn-sm">Support Console</a>
+                </li>
+            </ol>
+
+            <div class="ps-alert ps-alert--info" role="note">
+                <span class="bi bi-info-circle" aria-hidden="true"></span>
+                Recommendation: a dedicated in-product tutorial/sample-data seeding pipeline
+                beyond what <code>ProvisionTenantCommand</code> already seeds is a reasonable
+                future enhancement, not built here to keep this checklist proportionate to its
+                actual scope (navigation scaffolding, not new business logic).
+            </div>
+        </CardComponent>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Quick-Start Checklist",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Quick-Start Checklist" }
+            ]);
+    }
+}

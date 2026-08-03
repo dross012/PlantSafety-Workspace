@@ -30,6 +30,7 @@ public sealed class FinancialRecordApprovedErpMeshConsumer(
     ISqlConnectionFactory connectionFactory,
     ISender sender,
     IEnumerable<IExternalSystemPublisher> publishers,
+    FinancialRecordApprovedEnterpriseEventMapper mapper,
     ILogger<FinancialRecordApprovedErpMeshConsumer> logger)
     : IdempotentConsumerBase<FinancialRecordApprovedEvent>(connectionFactory, logger)
 {
@@ -69,7 +70,7 @@ public sealed class FinancialRecordApprovedErpMeshConsumer(
         var costCenterResult = await sender.Send(new GetCostCenterMappingQuery(tenantId, record.SiteId), cancellationToken);
         var costCenterMapping = costCenterResult.IsSuccess ? costCenterResult.Value : null;
 
-        var envelope = FinancialRecordApprovedEnterpriseEventMapper.ToEnvelope(evt, record, costCenterMapping, tenantId, actorId);
+        var envelope = mapper.ToEnvelope(evt, record, costCenterMapping, tenantId, actorId);
 
         foreach (var publisher in publishers.Where(p => p.TargetSystem == EnterpriseSourceSystem.Erp))
         {

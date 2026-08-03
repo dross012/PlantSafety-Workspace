@@ -54,6 +54,9 @@ using PlantSafety.Application.Compliance.RulesEngine.DependencyInjection;
 using PlantSafety.Application.Scheduling.PredictiveScheduling.DependencyInjection;
 using PlantSafety.Application.Operations.DependencyInjection;
 using PlantSafety.Application.Enterprise.EventMesh.DependencyInjection;
+using PlantSafety.Application.Tenancy.Tenant.DependencyInjection;
+using PlantSafety.Application.Billing.DependencyInjection;
+using PlantSafety.Application.Support.Impersonation.DependencyInjection;
 
 namespace PlantSafety.Application.DependencyInjection;
 
@@ -172,10 +175,61 @@ public static class ApplicationServiceRegistration
         // column. Singleton: pure, stateless, side-effect-free (SHA-256 hash computation only).
         services.AddSingleton<Common.Rollout.ITenantRolloutPolicy, Common.Rollout.FeatureRolloutEvaluator>();
 
+        // Phase 7 §7.1 Feature Flag System (2026-08-03): 4-level precedence resolver
+        // (user > tenant > region > global), composing the above ITenantRolloutPolicy with
+        // the new tenant/user/region override repositories. Singleton: pure, stateless,
+        // side-effect-free composition logic (all I/O happens in the repositories the
+        // ResolveFeatureFlagQueryHandler injects separately).
+        services.AddSingleton<Operations.Configuration.Resolution.IFeatureFlagResolver, Operations.Configuration.Resolution.FeatureFlagResolver>();
+
+        // Phase 7 §7.2 Release Pipeline (2026-08-03): pure threshold/sample-size rollback
+        // trigger policy consumed by TriggerRollbackCommandHandler / a scheduled health-signal
+        // job. Singleton: pure, stateless, side-effect-free.
+        services.AddSingleton<Operations.Configuration.Release.IRollbackAutomationPolicy, Operations.Configuration.Release.RollbackAutomationPolicy>();
+
         // Phase 6 §3 Enterprise Event Mesh (2026-08-03, Eventing & Messaging Agent): cross-SYSTEM
         // (platform <-> external ERP/MES/CMMS) event exchange -- inbound translators + the
         // event-upgrade pipeline. See PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh.
         services.AddEnterpriseEventMeshApplicationServices();
+
+        // Phase 7 §4.3 Global Scalability & Multi-Region Deployment (2026-08-03): deterministic
+        // tenant-to-region routing (falls back to a stable SHA-256 hash across the known
+        // regions when no explicit override is configured). Singleton: pure, stateless,
+        // side-effect-free. See PlantSafety.Application.Enterprise.MultiRegion.
+        // NOTE: this method has no IConfiguration parameter, so TenantRegionAffinityOptions is
+        // bound in PlantSafety.Api's ServiceCollectionExtensions (where IConfiguration is
+        // already available for RpoRtoOptions/GeoReplicationOptions), not here. Without an
+        // explicit Configure<T> call, IOptions<TenantRegionAffinityOptions> still resolves via
+        // its class defaults (an empty Overrides dictionary) if the Api layer's binding is ever
+        // skipped, so this registration is safe standalone too.
+        services.AddSingleton<Enterprise.MultiRegion.ITenantRegionRouter, Enterprise.MultiRegion.TenantRegionAffinityResolver>();
+
+        // Phase 7 §5.3 Data Residency (2026-08-03, Security & Compliance Agent): real,
+        // deterministic enforcement that a tenant's configured DataResidencyPolicy is satisfied
+        // by the platform's current (single-region, in this sandbox) deployment region. Pure,
+        // stateless, side-effect-free -- singletons, matching the sibling MultiRegion services
+        // registered immediately above.
+        services.AddSingleton<Enterprise.MultiRegion.DataResidency.ICurrentDeploymentRegionProvider, Enterprise.MultiRegion.DataResidency.ConfiguredCurrentDeploymentRegionProvider>();
+        services.AddSingleton<Enterprise.MultiRegion.DataResidency.ITenantDataResidencyProfileStore, Enterprise.MultiRegion.DataResidency.ConfiguredTenantDataResidencyProfileStore>();
+        services.AddSingleton<Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer, Enterprise.MultiRegion.DataResidency.DataResidencyEnforcer>();
+
+        // Regression audit fix (2026-08-03, Billing agent): Tenancy.Tenant's own Application-layer
+        // registration (ITenantFactory) was fully implemented but never called from here -- the
+        // exact same class of gap flagged elsewhere in this file -- so ProvisionTenantCommandHandler
+        // could never be constructed. Discovered while wiring this pass's new Billing module, which
+        // depends on Tenant provisioning/plan assignment working end-to-end.
+        services.AddTenantApplicationServices();
+
+        // Phase 7 §3 Billing, Metering & Subscription Management (2026-08-03): SubscriptionPlan
+        // catalog, usage metering composition, and the Invoice billing engine. See
+        // BillingApplicationServiceRegistration remarks for why this method is currently a no-op
+        // beyond the assembly-wide MediatR scan.
+        services.AddBillingApplicationServices();
+
+        // Phase 7 §6.3 Support Tooling (2026-08-03): tenant-impersonation session
+        // start/end/query. See SupportApplicationServiceRegistration remarks for why this method
+        // is currently a no-op beyond the assembly-wide MediatR scan.
+        services.AddSupportApplicationServices();
 
         return services;
     }

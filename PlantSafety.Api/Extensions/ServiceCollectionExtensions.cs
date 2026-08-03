@@ -73,6 +73,11 @@ public static class ServiceCollectionExtensions
         services.AddPlantSafetyOutputCache();
         services.AddPlantSafetySwagger();
 
+        // Phase 7 §3.4 License Enforcement: real, per-tenant API rate limiting keyed by the
+        // tenant's active SubscriptionPlan.ApiRateLimitPerMinute. See RateLimitingExtensions
+        // remarks -- previously NO rate limiting middleware existed anywhere in this solution.
+        services.AddPlantSafetyRateLimiting();
+
         services.AddEndpointsApiExplorer();
         services.AddHttpContextAccessor();
         services.AddScoped<IOperationContext, OperationContextAccessor>();
@@ -175,12 +180,39 @@ public static class ServiceCollectionExtensions
         services.Configure<PlantSafety.Infrastructure.Operations.Backup.Options.RpoRtoOptions>(
             configuration.GetSection(PlantSafety.Infrastructure.Operations.Backup.Options.RpoRtoOptions.SectionName));
 
+        // Phase 7 §4.2 (Geo-Replication): sibling formalized config so GeoReplicationHealthCheck
+        // can resolve IOptions<GeoReplicationOptions>. See that check's file header for why it
+        // reports every region as a placeholder rather than fabricating "Healthy" -- no real
+        // secondary replica exists in this environment.
+        services.Configure<PlantSafety.Infrastructure.Operations.Backup.Options.GeoReplicationOptions>(
+            configuration.GetSection(PlantSafety.Infrastructure.Operations.Backup.Options.GeoReplicationOptions.SectionName));
+
+        // Phase 7 §4.3 (Global Routing): binds explicit tenant-to-region overrides for
+        // ITenantRegionRouter/TenantRegionAffinityResolver (registered in the Application
+        // layer's AddApplicationServices, which has no IConfiguration parameter to bind from).
+        services.Configure<PlantSafety.Application.Enterprise.MultiRegion.TenantRegionAffinityOptions>(
+            configuration.GetSection(PlantSafety.Application.Enterprise.MultiRegion.TenantRegionAffinityOptions.SectionName));
+
+        // Phase 7 §5.3 (Data Residency): binds (1) which Region this running deployment is
+        // actually in (defaults to Region.Default/US East -- this platform's real single-region
+        // reality, see docs\Phase7\multi-region-architecture.md) and (2) any tenant's explicit
+        // data-residency requirement, for IDataResidencyEnforcer (registered in the Application
+        // layer's AddApplicationServices, which has no IConfiguration parameter to bind from).
+        services.Configure<PlantSafety.Application.Enterprise.MultiRegion.DataResidency.CurrentDeploymentRegionOptions>(
+            configuration.GetSection(PlantSafety.Application.Enterprise.MultiRegion.DataResidency.CurrentDeploymentRegionOptions.SectionName));
+        services.Configure<PlantSafety.Application.Enterprise.MultiRegion.DataResidency.TenantDataResidencyOptions>(
+            configuration.GetSection(PlantSafety.Application.Enterprise.MultiRegion.DataResidency.TenantDataResidencyOptions.SectionName));
+
         services.AddHealthChecks()
             .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
             .AddCheck<RedisHealthCheck>("redis", tags: ["ready"])
             .AddCheck<ServiceBusHealthCheck>("servicebus", tags: ["ready"])
             .AddCheck<SchemaVersionHealthCheck>("schema-version", tags: ["ready"])
-            .AddCheck<BackupRpoHealthCheck>("backup-rpo", tags: ["ready"]);
+            .AddCheck<BackupRpoHealthCheck>("backup-rpo", tags: ["ready"])
+            // Phase 7 §4.2: deliberately NOT tagged "ready" -- see GeoReplicationHealthCheck's
+            // file header. Surfaces only on the unfiltered /health endpoint, never gates
+            // /health/ready on a known environmental limitation (no real geo-replica).
+            .AddCheck<GeoReplicationHealthCheck>("geo-replication", tags: ["diagnostics"]);
 
         return services;
     }

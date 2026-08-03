@@ -59,4 +59,18 @@ public sealed class AzureBlobStorageService(
         var blob = blobServiceClient.GetBlobContainerClient(containerName).GetBlobClient(blobName);
         return await blob.ExistsAsync(cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<long> GetContainerSizeBytesAsync(string containerName, CancellationToken cancellationToken = default)
+    {
+        var container = blobServiceClient.GetBlobContainerClient(containerName);
+        if (!await container.ExistsAsync(cancellationToken))
+            return 0L;
+
+        long totalBytes = 0;
+        await foreach (var blobItem in container.GetBlobsAsync(cancellationToken: cancellationToken))
+            totalBytes += blobItem.Properties.ContentLength ?? 0L;
+
+        return totalBytes;
+    }
 }

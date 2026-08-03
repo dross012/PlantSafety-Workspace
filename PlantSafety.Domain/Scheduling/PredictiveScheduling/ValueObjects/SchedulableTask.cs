@@ -53,6 +53,16 @@ public sealed record SchedulableTask
     /// <summary>Number of times this task has previously slipped/been rescheduled.</summary>
     public int DeferralCount { get; init; }
 
+    /// <summary>
+    /// Tenant this task belongs to (Phase 7 §1.4 Tenant-Aware Scheduling). Optional/additive --
+    /// defaults to <see cref="Guid.Empty"/> ("not populated") for source compatibility with every
+    /// existing caller that constructs a SchedulableTask without this property. When populated,
+    /// the OptimizationRun aggregate's Request factory verifies it matches the requesting run's
+    /// own TenantId, guarding against cross-tenant data ever being mixed into a single
+    /// optimization run.
+    /// </summary>
+    public Guid TenantId { get; init; }
+
     /// <summary>Creates a validated SchedulableTask.</summary>
     public SchedulableTask(
         SchedulableTaskId taskId,

@@ -1132,3 +1132,9 @@ D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\
 D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\runtimes\win-x64\native\qpdf.dll
 D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\runtimes\win-x86\native\QuestPdfSkia.dll
 D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\runtimes\win-x86\native\qpdf.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.OpenIdConnect.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\OpenTelemetry.Exporter.Console.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\OpenTelemetry.Exporter.OpenTelemetryProtocol.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\OpenTelemetry.Instrumentation.AspNetCore.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\OpenTelemetry.Instrumentation.Http.dll
+D:\PlantSafety\source\PlantSafety\PlantSafety.IntegrationTests\bin\Debug\net8.0\OpenTelemetry.Instrumentation.SqlClient.dll

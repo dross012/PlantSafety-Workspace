@@ -144,6 +144,8 @@ using PlantSafety.Infrastructure.Auditing.DependencyInjection;
 using PlantSafety.Infrastructure.Auditing.AuditTimeline.DependencyInjection;
 using PlantSafety.Infrastructure.Auditing.AuditReport.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.RulesEngine.DependencyInjection;
+using PlantSafety.Infrastructure.Tenancy.Tenant.DependencyInjection;
+using PlantSafety.Infrastructure.Scheduling.PredictiveScheduling.DependencyInjection;
 using PlantSafety.Infrastructure.SafetyCulture.DependencyInjection;
 using PlantSafety.Infrastructure.SafetyPrograms.DependencyInjection;
 using PlantSafety.Infrastructure.Alerts.DependencyInjection;
@@ -194,6 +196,7 @@ using PlantSafety.Infrastructure.Workflow.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.UnifiedModel.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.PlatformHealthDashboard.DependencyInjection;
 using PlantSafety.Infrastructure.Observability.Tracing;
+using PlantSafety.Infrastructure.Billing.DependencyInjection;
 
 namespace PlantSafety.Infrastructure.DependencyInjection;
 
@@ -361,6 +364,7 @@ public static class InfrastructureServiceRegistration
             var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Erp");
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Erp, opts.ErpEndpointUrl, client,
+                sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
                 sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
         });
         services.AddSingleton<IExternalSystemPublisher>(sp =>
@@ -369,6 +373,7 @@ public static class InfrastructureServiceRegistration
             var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Mes");
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Mes, opts.MesEndpointUrl, client,
+                sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
                 sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
         });
 
@@ -395,6 +400,7 @@ public static class InfrastructureServiceRegistration
             var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Cmms");
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Cmms, opts.CmmsEndpointUrl, client,
+                sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
                 sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
         });
         services.AddSingleton<IExternalSystemPublisher>(sp =>
@@ -403,6 +409,7 @@ public static class InfrastructureServiceRegistration
             var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Hr");
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Hr, opts.HrEndpointUrl, client,
+                sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
                 sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
         });
         services.AddSingleton<IExternalSystemPublisher>(sp =>
@@ -411,8 +418,18 @@ public static class InfrastructureServiceRegistration
             var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("EnterpriseEventMesh.Vendor");
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Vendor, opts.VendorEndpointUrl, client,
+                sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
                 sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
         });
+
+        // Phase 7 §1.3 Tenant-Aware Eventing (2026-08-03): outbound Enterprise Event Mesh mappers
+        // resolve each event's originating tenant Region via ITenantRegionRouter before constructing
+        // the EnterpriseEventEnvelope -- singleton-registered, mirroring ITenantRegionRouter's own
+        // singleton lifetime (pure, side-effect-free, no scoped dependencies).
+        services.AddSingleton<Messaging.EnterpriseMesh.WorkOrderEnterpriseEventMapper>();
+        services.AddSingleton<Messaging.EnterpriseMesh.Mes.ProductionOrderEnterpriseEventMapper>();
+        services.AddSingleton<Messaging.EnterpriseMesh.Erp.PartStockConsumptionEnterpriseEventMapper>();
+        services.AddSingleton<Messaging.EnterpriseMesh.Erp.FinancialRecordApprovedEnterpriseEventMapper>();
 
         // Search
         services.AddScoped<ISearchService, AzureSearchService>();
@@ -458,11 +475,19 @@ public static class InfrastructureServiceRegistration
             // abstractions.
             EnterpriseEventMeshConsumerRegistration.Register(x);
 
-            // Phase 6 blocker fix (2026-08-02): the single, message-type-agnostic dead-letter
-            // fault sink -- see DeadLetterFaultConsumer<TMessage> remarks for why an open generic
-            // IConsumer<Fault<TMessage>> is MassTransit's documented pattern for covering every
-            // existing/future consumer's fault path with one registration.
-            DeadLetterConsumerRegistration.Register(x);
+            // Phase 6 blocker fix (2026-08-02), reworked 2026-08-03: the single,
+            // message-type-agnostic dead-letter fault sink. Originally registered as an
+            // open-generic IConsumer<Fault<TMessage>> (DeadLetterFaultConsumer<TMessage> /
+            // DeadLetterConsumerRegistration.Register(x)) -- that produced an internal MassTransit
+            // RegisterConsumer<> marker type with an unbound generic parameter that
+            // PlantSafety.Api's strict UseDefaultServiceProvider(ValidateOnBuild = true) eagerly
+            // tried to Activator.CreateInstance at startup, crashing with "Cannot create an
+            // instance of ... because Type.ContainsGenericParameters is true." Replaced with
+            // DeadLetterFaultObserver (IConsumeObserver), a normal singleton with no open generics
+            // anywhere -- see DeadLetterFaultObserver/DeadLetterEventPersister remarks. Connected
+            // to the bus via cfg.ConnectConsumeObserver(...) below.
+            services.AddSingleton<IDeadLetterEventPersister, DeadLetterEventPersister>();
+            services.AddSingleton<DeadLetterFaultObserver>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -491,15 +516,21 @@ public static class InfrastructureServiceRegistration
                 // Rules §12 "bounded retries with exponential backoff"). Previously there was NO
                 // UseMessageRetry(...) middleware anywhere in this configuration, so any
                 // transient consumer failure (e.g. a momentary SQL timeout) faulted the message on
-                // the very first attempt with no retry at all, and MassTransit's Fault<T> was never
-                // observed by anything -- see DeadLetterFaultConsumer<TMessage>, registered above,
-                // which is what actually persists the fault to [System].[DeadLetterEvents] once
-                // this retry budget is exhausted.
+                // the very first attempt with no retry at all, and nothing ever observed the
+                // eventual failure -- see DeadLetterFaultObserver, connected below, which is what
+                // actually persists the fault to [System].[DeadLetterEvents] once this retry
+                // budget is exhausted.
                 cfg.UseMessageRetry(r => r.Exponential(
                     InfrastructureConstants.DefaultRetryCount,
                     TimeSpan.FromMilliseconds(InfrastructureConstants.RetryBaseDelayMs),
                     TimeSpan.FromSeconds(30),
                     TimeSpan.FromMilliseconds(InfrastructureConstants.RetryBaseDelayMs)));
+
+                // Reworked 2026-08-03 (see remarks above where DeadLetterFaultObserver is
+                // registered as a singleton): connects the global fault observer to this bus so
+                // ConsumeFault<T> fires for every permanently-faulted message across every
+                // receive endpoint configured below, with no open-generic consumer registration.
+                cfg.ConnectConsumeObserver(context.GetRequiredService<DeadLetterFaultObserver>());
 
                 // Handbook §7 Performance & Stress / Outbox correctness fix (2026-08-02):
                 // OutboxProcessor.PublishAsync deserialises the outbox payload back into the
@@ -525,13 +556,12 @@ public static class InfrastructureServiceRegistration
 
                 // Phase 6 blocker fix (2026-08-02): previously ABSENT from this configuration --
                 // without ConfigureEndpoints, MassTransit never creates a receive endpoint for any
-                // AddConsumer<T> registered above (17 pre-existing *ConsumerRegistration files, the
-                // 8 Phase 5 cross-module orchestration consumers, and this pass's
-                // DeadLetterFaultConsumer<>), so none of them would ever actually receive a
-                // message regardless of retry/fault configuration. This call uses MassTransit's
-                // standard consumer-type-name receive-endpoint convention (one queue per consumer
-                // type), which DeadLetterFaultConsumer<TMessage>'s ConsumerName recovery (via
-                // ConsumeContext.ReceiveContext.InputAddress) also depends on.
+                // AddConsumer<T> registered above (17 pre-existing *ConsumerRegistration files and
+                // the 8 Phase 5 cross-module orchestration consumers), so none of them would ever
+                // actually receive a message regardless of retry/fault configuration. This call
+                // uses MassTransit's standard consumer-type-name receive-endpoint convention (one
+                // queue per consumer type), which DeadLetterEventPersister's ConsumerName recovery
+                // (via ConsumeContext.ReceiveContext.InputAddress) also depends on.
                 cfg.ConfigureEndpoints(context);
             });
         });
@@ -618,6 +648,13 @@ public static class InfrastructureServiceRegistration
         services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
         services.AddScoped<IBackupRepository, BackupDapperRepository>();
 
+        // Phase 7 §4.3/§4.4 Global Scalability & Multi-Region Deployment (2026-08-03):
+        // deterministic, data-residency-aware region-failover decision. Pure domain logic --
+        // Singleton since it is stateless and side-effect-free (no I/O of its own).
+        services.AddSingleton<
+            PlantSafety.Domain.MultiRegion.Services.IRegionFailoverPolicy,
+            PlantSafety.Domain.MultiRegion.Services.RegionFailoverPolicy>();
+
         // Operations — Schema Drift Guard (Phase 7 Governance [System].[SchemaMigrations]
         // tracking, compared against a filesystem manifest scan of Migrations\**\*.sql).
         // Manifest provider is a Singleton: it scans the filesystem once and caches the
@@ -669,6 +706,20 @@ public static class InfrastructureServiceRegistration
         // Archival/AuditViewer/Monitoring.
         services.Configure<ConfigurationOptions>(configuration.GetSection(ConfigurationOptions.SectionName));
         services.AddScoped<IFeatureFlagRepository, FeatureFlagDapperRepository>();
+
+        // Operations — Configuration, Phase 7 (SaaS Productization Blueprint §7.1 Feature Flag
+        // System, §7.2 Release Pipeline): tenant/user/region-level feature flag override
+        // repositories over [Release].[TenantFeatureFlagOverride] /
+        // [Release].[UserFeatureFlagOverride] / [Release].[RegionFeatureFlagOverride] /
+        // [Release].[TenantReleaseChannel] (migration
+        // 200-tenant-user-region-feature-flag-overrides.sql), all co-located in
+        // PlantSafety.ArchiveDB alongside the existing [System].[FeatureFlag] table. Consumed
+        // by IFeatureFlagResolver (PlantSafety.Application.Operations.Configuration.Resolution)
+        // via ResolveFeatureFlagQueryHandler.
+        services.AddScoped<PlantSafety.Application.Operations.Configuration.Repositories.ITenantFeatureFlagOverrideRepository, Operations.Configuration.Persistence.TenantFeatureFlagOverrideDapperRepository>();
+        services.AddScoped<PlantSafety.Application.Operations.Configuration.Repositories.IUserFeatureFlagOverrideRepository, Operations.Configuration.Persistence.UserFeatureFlagOverrideDapperRepository>();
+        services.AddScoped<PlantSafety.Application.Operations.Configuration.Repositories.IRegionFeatureFlagOverrideRepository, Operations.Configuration.Persistence.RegionFeatureFlagOverrideDapperRepository>();
+        services.AddScoped<PlantSafety.Application.Operations.Configuration.Repositories.ITenantReleaseChannelRepository, Operations.Configuration.Persistence.TenantReleaseChannelDapperRepository>();
 
         // Operations — Enterprise Secrets Management (Phase 6.6, §6.3). ISecretsProvider is
         // the ONLY type application code should ever resolve -- the concrete provider
@@ -750,6 +801,13 @@ public static class InfrastructureServiceRegistration
             .AddComplianceRulesEngineInfrastructure()
             .AddAuditTimelineInfrastructure()
             .AddAuditReportInfrastructure();
+
+        // Phase 7 Tenancy.Tenant (2026-08-03): first-class Tenant aggregate + provisioning
+        // pipeline (see docs/Phase7/tenant-isolation-model.md), and the tenant-scoped scheduling
+        // rule override provider for Phase 5's PredictiveScheduling optimizer.
+        services
+            .AddTenantInfrastructure()
+            .AddTenantSchedulingRuleOverrides(configuration);
 
         // SafetyPrograms (2026-08-03): thin composition-layer module over the existing
         // SafetyPolicies/SafetyProcedures/SafetyCulture modules -- see
@@ -881,6 +939,11 @@ public static class InfrastructureServiceRegistration
         // HttpClient/SqlClient span instrumentation so TraceId/SpanId (already read from
         // Activity.Current by OperationContextAccessor) correlate to an actual exported trace.
         services.AddPlantSafetyTracing(configuration);
+
+        // Phase 7 §3 Billing, Metering & Subscription Management (2026-08-03): usage-metering
+        // snapshot persistence, invoice persistence, tenant storage-usage provider, and the
+        // payment-gateway extension seam (UnconfiguredPaymentProcessor by default).
+        services.AddBillingInfrastructure();
 
         return services;
     }

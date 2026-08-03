@@ -52,6 +52,11 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
         await TestDatabaseFactory.ApplyContinuousImprovementSchemaAsync(ConnectionString);
         await TestDatabaseFactory.ApplyIntelligenceSchemaAsync(ConnectionString);
         await TestDatabaseFactory.ApplyIntegrationsSchemaAsync(ConnectionString);
+
+        // Phase 7 §5.4 Audit & Logging (Security & Compliance Agent, 2026-08-03): backs
+        // AuthorizationBehavior's PermissionUsageLog capture and GetTenantAuditStreamQuery.
+        await TestDatabaseFactory.ApplyComplianceMonitoringSchemaAsync(ConnectionString);
+
         await TestDataSeeder.SeedAsync(ConnectionString);
     }
 

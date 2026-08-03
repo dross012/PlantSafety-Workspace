@@ -31,6 +31,26 @@ public static class RouteDefinitions
     /// <summary>Administrative Setup page.</summary>
     public const string AdminSetup = "/admin/setup";
 
+    // ── Admin Portal (Phase 7 §6.1 Admin Portal) ─────────────────────────────
+
+    /// <summary>Admin Portal tenant management list.</summary>
+    public const string AdminTenantList = "/admin/tenants";
+
+    /// <summary>Admin Portal tenant detail (lifecycle actions, billing, support). Requires {tenantId} route parameter.</summary>
+    public const string AdminTenantDetail = "/admin/tenants/{tenantId}";
+
+    /// <summary>Admin Portal guided tenant provisioning wizard.</summary>
+    public const string AdminTenantProvision = "/admin/tenants/provision";
+
+    /// <summary>Admin Portal Support Console (tenant quick-links, impersonation, audit/event viewers).</summary>
+    public const string AdminSupportConsole = "/admin/support";
+
+    /// <summary>Admin Portal customer-onboarding quick-start checklist.</summary>
+    public const string AdminOnboardingChecklist = "/admin/onboarding";
+
+    /// <summary>Admin Portal per-tenant user management (list/create). Requires {tenantId} route parameter.</summary>
+    public const string AdminTenantUsers = "/admin/tenants/{tenantId}/users";
+
     // ── Sub Menu (Section landing pages) ─────────────────────────────────────
 
     /// <summary>Core Operational sub menu.</summary>

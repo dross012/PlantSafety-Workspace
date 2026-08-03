@@ -2,8 +2,9 @@
 // CREATED: 2026-08-02
 // FILE DESCRIPTION: Read-side projection of a single row from [System].[DeadLetterEvents] --
 //   an event that permanently failed to be consumed after MassTransit's retry pipeline
-//   (cfg.UseMessageRetry) exhausted every attempt and DeadLetterFaultConsumer<TMessage>
-//   (Infrastructure layer) recorded the fault. Immutable, contains no domain logic.
+//   (cfg.UseMessageRetry) exhausted every attempt and DeadLetterFaultObserver
+//   (Infrastructure layer, an IConsumeObserver) recorded the fault. Immutable, contains no
+//   domain logic.
 // SchemaVersion: 1
 
 using System;

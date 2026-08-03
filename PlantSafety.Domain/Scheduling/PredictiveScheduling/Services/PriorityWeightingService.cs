@@ -11,6 +11,8 @@
 //                  overdue status, safety criticality, deferral history, and remaining slack.
 //                  Additive-only evolution.
 // ============================================================================
+using PlantSafety.Domain.Scheduling.PredictiveScheduling.Interfaces;
+
 namespace PlantSafety.Domain.Scheduling.PredictiveScheduling.Services;
 
 /// <summary>Computes a deterministic composite priority weight for a schedulable task.</summary>
@@ -27,15 +29,27 @@ public sealed class PriorityWeightingService : IDomainService
     /// Computes the composite priority weight for <paramref name="task"/> as of
     /// <paramref name="asOfUtc"/>. Higher values indicate the task should be scheduled sooner.
     /// </summary>
-    public double ComputeWeight(SchedulableTask task, UtcTimestamp asOfUtc)
+    public double ComputeWeight(SchedulableTask task, UtcTimestamp asOfUtc) => ComputeWeight(task, asOfUtc, TenantSchedulingRuleOverrides.Default);
+
+    /// <summary>
+    /// Computes the composite priority weight for <paramref name="task"/> as of
+    /// <paramref name="asOfUtc"/>, applying <paramref name="overrides"/>' safety-critical/overdue
+    /// bonus multipliers (Phase 7 §1.4 Tenant-Aware Scheduling -- tenant-specific rule
+    /// customization via <see cref="ITenantSchedulingRuleOverrideProvider"/>). Passing
+    /// <see cref="TenantSchedulingRuleOverrides.Default"/> reproduces
+    /// <see cref="ComputeWeight(SchedulableTask, UtcTimestamp)"/>'s exact original behavior.
+    /// </summary>
+    public double ComputeWeight(SchedulableTask task, UtcTimestamp asOfUtc, TenantSchedulingRuleOverrides overrides)
     {
+        ArgumentNullException.ThrowIfNull(overrides);
+
         var weight = task.BasePriorityWeight;
 
         if (task.IsOverdue)
-            weight += OverdueBonus;
+            weight += OverdueBonus * overrides.OverduePriorityMultiplier;
 
         if (task.IsSafetyCritical)
-            weight += SafetyCriticalBonus;
+            weight += SafetyCriticalBonus * overrides.SafetyCriticalPriorityMultiplier;
 
         weight += Math.Min(task.DeferralCount * DeferralBonusPerOccurrence, MaxDeferralBonus);
 
@@ -56,11 +70,18 @@ public sealed class PriorityWeightingService : IDomainService
     /// earliest EarliestStartUtc, then by TaskId for full determinism).
     /// </summary>
     public IReadOnlyList<SchedulableTask> OrderByPriority(IEnumerable<SchedulableTask> tasks, UtcTimestamp asOfUtc)
+        => OrderByPriority(tasks, asOfUtc, TenantSchedulingRuleOverrides.Default);
+
+    /// <summary>
+    /// Orders the supplied tasks by descending composite priority weight computed with
+    /// <paramref name="overrides"/> applied (Phase 7 §1.4 Tenant-Aware Scheduling).
+    /// </summary>
+    public IReadOnlyList<SchedulableTask> OrderByPriority(IEnumerable<SchedulableTask> tasks, UtcTimestamp asOfUtc, TenantSchedulingRuleOverrides overrides)
     {
         ArgumentNullException.ThrowIfNull(tasks);
 
         return tasks
-            .Select(t => (Task: t, Weight: ComputeWeight(t, asOfUtc)))
+            .Select(t => (Task: t, Weight: ComputeWeight(t, asOfUtc, overrides)))
             .OrderByDescending(x => x.Weight)
             .ThenBy(x => x.Task.EarliestStartUtc.Value)
             .ThenBy(x => x.Task.TaskId.Value)

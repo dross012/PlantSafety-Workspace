@@ -35,6 +35,7 @@
 // ============================================================================
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Text.Json;
 using PlantSafety.Api.Middleware;
@@ -80,6 +81,11 @@ public static class ApplicationBuilderExtensions
 
         // 7. Authorization (policy enforcement)
         app.UseAuthorization();
+
+        // 7.5 Rate limiting (Phase 7 §3.4 License Enforcement) — after authentication so the
+        // "tenant_id" JWT claim is available to the per-tenant partition-key resolver; before
+        // tenant resolution/output cache/endpoint execution so throttled requests never reach them.
+        app.UseRateLimiter();
 
         // 8. Tenant resolution — after authentication, JWT must be validated first
         app.UseMiddleware<TenantResolutionMiddleware>();

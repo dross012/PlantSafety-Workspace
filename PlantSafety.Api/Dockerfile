@@ -59,4 +59,14 @@ COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
+# Phase 7 §4.1/§4.2 (Global Scalability & Multi-Region Deployment): identifies which region this
+# specific container instance is running in, once real region-scoped deployments exist. Defaults
+# to "UsEast" (Region.Default). This is a real, safe, additive build-arg -- it does NOT imply any
+# actual multi-region deployment exists; it only lets a future real deployment pipeline stamp
+# each region's container with its own identity (e.g. for structured logging / metrics
+# dimension, and as the value an ops team would bind to configuration key
+# "MultiRegion:CurrentRegion" so ITenantRegionRouter-adjacent code can know its own region).
+ARG DEPLOY_REGION=UsEast
+ENV MultiRegion__CurrentRegion=$DEPLOY_REGION
+
 ENTRYPOINT ["dotnet", "PlantSafety.Api.dll"]

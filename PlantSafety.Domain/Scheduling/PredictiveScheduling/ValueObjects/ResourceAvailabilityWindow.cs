@@ -27,6 +27,14 @@ public sealed record ResourceAvailabilityWindow
     /// <summary>Maximum concurrent task count the resource can support within this window (crew headcount or machine slot count).</summary>
     public int Capacity { get; init; } = 1;
 
+    /// <summary>
+    /// Tenant this availability window belongs to (Phase 7 §1.4 Tenant-Aware Scheduling).
+    /// Optional/additive -- defaults to <see cref="Guid.Empty"/> ("not populated") for source
+    /// compatibility with every existing caller. See <see cref="SchedulableTask.TenantId"/> for
+    /// the matching guard this enables.
+    /// </summary>
+    public Guid TenantId { get; init; }
+
     /// <summary>Creates a validated ResourceAvailabilityWindow.</summary>
     public ResourceAvailabilityWindow(SchedulingResourceId resourceId, UtcTimestamp startUtc, UtcTimestamp endUtc)
     {

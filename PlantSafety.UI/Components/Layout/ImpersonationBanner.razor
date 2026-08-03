@@ -1,0 +1,60 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Persistent, always-visible banner shown on every page while a real,
+     audited, time-boxed tenant-impersonation session (Phase 7 §6.3 Support Tooling) is active.
+     Rendered from MainLayout so it can never be dismissed or hidden by navigating away from the
+     Support Console. Polls ImpersonationState every 5 seconds to auto-clear once the session's
+     hard time-box expires, even if EndImpersonationCommand was never explicitly called.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@inject PlantSafety.UI.Modules.Admin.State.ImpersonationState ImpersonationState
+@inject PlantSafety.UI.Modules.Admin.ApiClients.ImpersonationApiClient ImpersonationApiClient
+
+@implements IDisposable
+
+@if (ImpersonationState.ActiveSession is { EndedAtUtc: null } session && DateTime.UtcNow < session.ExpiresAtUtc)
+{
+    <div class="ps-impersonation-banner" role="alert" aria-live="assertive">
+        <span class="bi bi-person-badge" aria-hidden="true"></span>
+        <span>
+            Impersonating tenant <strong>@session.TenantId</strong> — session expires
+            <strong>@session.ExpiresAtUtc.ToString("HH:mm:ss") UTC</strong>.
+        </span>
+        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="EndSessionAsync">End Session</button>
+    </div>
+}
+
+@code {
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        ImpersonationState.OnChange += StateHasChanged;
+
+        // Ticks every 5s purely to re-evaluate the ExpiresAtUtc comparison above and
+        // auto-hide the banner once the hard time-box passes, even with no server round-trip.
+        _timer = new System.Threading.Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private async Task EndSessionAsync()
+    {
+        if (ImpersonationState.ActiveSession is not { } session) return;
+
+        ImpersonationState.BeginAction();
+        var result = await ImpersonationApiClient.EndAsync(session.SessionId);
+
+        if (result.IsSuccess)
+            ImpersonationState.ClearActiveSession();
+        else
+            ImpersonationState.SetError(result.IsProblem ? result.Problem!.Detail : $"Failed: {result.FaultType}");
+    }
+
+    public void Dispose()
+    {
+        ImpersonationState.OnChange -= StateHasChanged;
+        _timer?.Dispose();
+    }
+}

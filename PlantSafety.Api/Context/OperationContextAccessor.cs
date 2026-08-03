@@ -127,4 +127,21 @@ public sealed class OperationContextAccessor : IOperationContext
     /// established graceful-degrade convention for optional context.
     /// </summary>
     private const string ComplianceScopeClaimType = "compliance_scope";
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Resolved from the <c>region</c> claim (published by the tenant's Azure AD tenant
+    /// configuration/IdP alongside the tenant claim, mirroring how <see cref="TenantId"/> is
+    /// itself resolved from a claim rather than trusted client input) or, failing that, from the
+    /// <see cref="TenantContextAccessor.RegionKey"/> HttpContext item populated by
+    /// <c>TenantResolutionMiddleware</c> once it has resolved the requesting tenant's registered
+    /// region server-side. Phase 7 §1.2 Tenant Context Enforcement — additive member, added
+    /// 2026-08-03.
+    /// </remarks>
+    public string? Region =>
+        _httpContextAccessor.HttpContext?.Items[TenantContextAccessor.RegionKey] as string
+        ?? _httpContextAccessor.HttpContext?.User.FindFirst(RegionClaimType)?.Value;
+
+    /// <summary>Claim type carrying the current session's resolved deployment/data-residency region.</summary>
+    private const string RegionClaimType = "region";
 }

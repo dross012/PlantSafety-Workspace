@@ -80,6 +80,75 @@ jobs:
           path: "**/unit-tests.trx"
 
   # --------------------------------------------------------------------------
+  # 2b. Dependency vulnerability scan (Phase 7 §5.1 Security Hardening)
+  #     REAL, runnable today: `dotnet list package --vulnerable` cross-references every
+  #     NuGet package transitively referenced by the solution against the NuGet Package
+  #     Vulnerability Data feed (no external service/secret required). This was the
+  #     genuine SAST/dependency-scanning gap found when this pipeline was audited for
+  #     Phase 7 §5.1 -- previously NEITHER a SAST step NOR a dependency-vulnerability step
+  #     existed anywhere in this file. Soft-fail (continue-on-error) for now: the current
+  #     vulnerable-package baseline for this solution has not yet been triaged by a human,
+  #     so turning this into a hard gate immediately could block unrelated PRs on
+  #     pre-existing transitive vulnerabilities nobody has reviewed yet. Flip to a hard
+  #     gate once that first triage pass is complete.
+  # --------------------------------------------------------------------------
+  dependency-vulnerability-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: build
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+
+      - name: List vulnerable NuGet packages (direct + transitive)
+        run: dotnet list "${{ env.SOLUTION_PATH }}" package --vulnerable --include-transitive
+
+  # --------------------------------------------------------------------------
+  # 2c. Static Application Security Testing (SAST) via GitHub CodeQL
+  #     REAL, standard GitHub-native SAST -- requires no external service/secret, only that
+  #     "Code scanning" is enabled for this repository once pushed to a real GitHub repo
+  #     (Settings > Code security and analysis). This closes the "no SAST in CI" gap found
+  #     during the same Phase 7 §5.1 audit referenced above. See
+  #     docs\Phase7\security-compliance.md for what this step does and does not cover, and
+  #     the real penetration-testing scope a human security team would still need to run
+  #     (SAST finds code-pattern-level issues; it is not a substitute for a pen test).
+  # --------------------------------------------------------------------------
+  codeql-sast:
+    name: CodeQL SAST
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build (for CodeQL analysis)
+        run: dotnet build "${{ env.SOLUTION_PATH }}" --configuration Release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # --------------------------------------------------------------------------
   # 3. SQL migration validation
   #    Runs every real migration script (numeric/phase order) against a throwaway
   #    SQL Server container to catch syntax/ordering errors before promotion.

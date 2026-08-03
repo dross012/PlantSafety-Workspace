@@ -25,4 +25,12 @@ public interface IBlobStorageService
 
     /// <summary>Returns <see langword="true"/> when the blob exists.</summary>
     Task<bool> ExistsAsync(string containerName, string blobName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the total size, in bytes, of every blob currently stored in <paramref name="containerName"/>.
+    /// Returns 0 if the container does not exist or is empty. Added for Phase 7 §3.1 Usage
+    /// Metering (per-tenant storage-usage billing dimension) -- previously this interface had no
+    /// way to answer "how much storage is a tenant using" at all.
+    /// </summary>
+    Task<long> GetContainerSizeBytesAsync(string containerName, CancellationToken cancellationToken = default);
 }

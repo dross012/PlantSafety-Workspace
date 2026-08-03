@@ -547,7 +547,7 @@
             },
             "OpenTelemetry.Instrumentation.SqlClient": {
               "target": "Package",
-              "version": "[1.17.0-beta.1, )"
+              "version": "[1.17.0, )"
             },
             "Polly": {
               "target": "Package",

@@ -26,6 +26,7 @@ public sealed class PartStockConsumptionErpMeshConsumer(
     ISqlConnectionFactory connectionFactory,
     IPartRepository partRepository,
     IEnumerable<IExternalSystemPublisher> publishers,
+    PartStockConsumptionEnterpriseEventMapper mapper,
     ILogger<PartStockConsumptionErpMeshConsumer> logger)
     : IdempotentConsumerBase<PartStockAdjustedEvent>(connectionFactory, logger)
 {
@@ -60,7 +61,7 @@ public sealed class PartStockConsumptionErpMeshConsumer(
             return;
         }
 
-        var envelope = PartStockConsumptionEnterpriseEventMapper.ToEnvelope(evt, part, tenantId, actorId);
+        var envelope = mapper.ToEnvelope(evt, part, tenantId, actorId);
 
         foreach (var publisher in publishers.Where(p => p.TargetSystem == EnterpriseSourceSystem.Erp))
         {

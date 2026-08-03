@@ -26,6 +26,7 @@ public sealed class ProductionRunCompletedMesMeshConsumer(
     ISqlConnectionFactory connectionFactory,
     IProductionRunRepository productionRunRepository,
     IEnumerable<IExternalSystemPublisher> publishers,
+    ProductionOrderEnterpriseEventMapper mapper,
     ILogger<ProductionRunCompletedMesMeshConsumer> logger)
     : IdempotentConsumerBase<ProductionRunCompletedEvent>(connectionFactory, logger)
 {
@@ -60,7 +61,7 @@ public sealed class ProductionRunCompletedMesMeshConsumer(
             return;
         }
 
-        var envelope = ProductionOrderEnterpriseEventMapper.ToEnvelope(run, evt, tenantId, actorId);
+        var envelope = mapper.ToEnvelope(run, evt, tenantId, actorId);
 
         foreach (var publisher in publishers.Where(p => p.TargetSystem is EnterpriseSourceSystem.Mes or EnterpriseSourceSystem.Erp))
         {

@@ -68,6 +68,7 @@ public sealed class TenantResolutionMiddleware
         {
             var tenantId = context.User.FindFirstValue("tenantId");
             var siteId = context.User.FindFirstValue("siteId");
+            var region = context.User.FindFirstValue("region");
 
             if (string.IsNullOrWhiteSpace(tenantId))
             {
@@ -87,6 +88,15 @@ public sealed class TenantResolutionMiddleware
             if (Guid.TryParse(siteId, out var siteGuid))
             {
                 context.Items[TenantContextAccessor.SiteIdKey] = siteGuid;
+            }
+
+            // Phase 7 §1.2 Tenant Context Enforcement: resolves the tenant's data-residency/
+            // deployment region from the same JWT the tenantId/siteId claims come from -- never
+            // client-supplied via query/body -- mirroring the tenantId/siteId resolution pattern
+            // above. Optional: absent for tenants provisioned before region tracking existed.
+            if (!string.IsNullOrWhiteSpace(region))
+            {
+                context.Items[TenantContextAccessor.RegionKey] = region;
             }
         }
 

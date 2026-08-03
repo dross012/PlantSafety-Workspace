@@ -5,7 +5,7 @@
 //  File:           EnterpriseEventEnvelope.cs
 //  Created:        2026-08-03
 //  Author:         PlantSafety Platform Team (Phase 6 §3 Enterprise Event Mesh, Eventing & Messaging Agent)
-//  SchemaVersion:  2026.1
+//  SchemaVersion:  2026.2
 //  Description:    Canonical, versioned envelope for CROSS-SYSTEM (not just cross-module) event
 //                  exchange between this platform and external Enterprise Resource Planning (ERP),
 //                  Manufacturing Execution System (MES), and Computerized Maintenance Management
@@ -26,6 +26,12 @@
 //                  lands, a typed accessor (e.g. <c>Payload.Deserialize&lt;TCanonicalDto&gt;()</c>)
 //                  can be layered on top of this envelope without any breaking change to the shape
 //                  below (additive-only evolution).
+//
+//                  2026-08-03 UPDATE (Phase 7 §1.3 Tenant-Aware Eventing): added the optional
+//                  Region field so cross-system routing/data-residency enforcement can act on the
+//                  originating tenant's region without a second lookup. Purely additive -- appended
+//                  as a defaulted trailing parameter, so every existing positional-argument call
+//                  site (Create<TPayload>(...) and direct record construction) compiles unchanged.
 // ============================================================================
 using System.Text.Json;
 
@@ -58,6 +64,13 @@ namespace PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh;
 /// The event-specific payload, generic over <see cref="JsonElement"/> until the canonical
 /// <c>PlantSafety.SharedKernel.Contracts.Enterprise.CanonicalModel</c> DTOs land (see file header).
 /// </param>
+/// <param name="Region">
+/// The data-residency/deployment region of the tenant this event belongs to (Phase 7 §1.3
+/// Tenant-Aware Eventing), e.g. <c>"us-east"</c>, <c>"eu-west"</c>, or <see langword="null"/> when
+/// the originating tenant has no region resolved (e.g. tenants provisioned before region tracking
+/// existed). Additive field (SchemaVersion 2026.1 -&gt; 2026.2); defaulted to preserve source
+/// compatibility with every existing positional-argument call site.
+/// </param>
 public sealed record EnterpriseEventEnvelope(
     Guid EventId,
     string EventType,
@@ -68,7 +81,8 @@ public sealed record EnterpriseEventEnvelope(
     Guid? CausationId,
     Guid TenantId,
     Guid? ActorId,
-    JsonElement Payload)
+    JsonElement Payload,
+    string? Region = null)
 {
     /// <summary>
     /// Creates a new outbound <see cref="EnterpriseEventEnvelope"/> with a freshly minted
@@ -83,7 +97,8 @@ public sealed record EnterpriseEventEnvelope(
         Guid? causationId,
         Guid tenantId,
         Guid? actorId,
-        TPayload payload)
+        TPayload payload,
+        string? region = null)
     {
         var payloadElement = JsonSerializer.SerializeToElement(payload);
 
@@ -97,7 +112,8 @@ public sealed record EnterpriseEventEnvelope(
             CausationId: causationId,
             TenantId: tenantId,
             ActorId: actorId,
-            Payload: payloadElement);
+            Payload: payloadElement,
+            Region: region);
     }
 
     /// <summary>Deserializes <see cref="Payload"/> into <typeparamref name="TPayload"/>.</summary>

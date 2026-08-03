@@ -25,6 +25,7 @@ namespace PlantSafety.Infrastructure.Messaging.EnterpriseMesh;
 public sealed class WorkOrderCompletedEnterpriseMeshConsumer(
     ISqlConnectionFactory connectionFactory,
     IEnumerable<IExternalSystemPublisher> publishers,
+    WorkOrderEnterpriseEventMapper mapper,
     ILogger<WorkOrderCompletedEnterpriseMeshConsumer> logger)
     : IdempotentConsumerBase<WorkOrderCompletedEvent>(connectionFactory, logger)
 {
@@ -42,7 +43,7 @@ public sealed class WorkOrderCompletedEnterpriseMeshConsumer(
         var tenantId = context.GetEnvelopeTenantId();
         var actorId = context.GetEnvelopeActorId();
 
-        var envelope = WorkOrderEnterpriseEventMapper.ToEnvelope(evt, tenantId, actorId);
+        var envelope = mapper.ToEnvelope(evt, tenantId, actorId);
 
         foreach (var publisher in publishers)
         {

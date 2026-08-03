@@ -1,0 +1,491 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Admin Portal tenant detail page. Platform-admin-only page covering:
+     Overview (lifecycle actions: suspend/reactivate/archive/export/delete), Billing
+     (subscription plan/usage metering/invoices), and Support (start a real, audited,
+     time-boxed impersonation session). Calls the real TenantV1Controller, BillingV1Controller,
+     and ImpersonationV1Controller endpoints.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/tenants/{TenantId:guid}"
+
+@inject TenantAdminState State
+@inject TenantAdminApiClient ApiClient
+@inject BillingState BillingState
+@inject BillingApiClient BillingApiClient
+@inject ImpersonationState ImpersonationState
+@inject ImpersonationApiClient ImpersonationApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+@using PlantSafety.UI.Modules.Admin.State
+
+<PageTitle>Tenant Detail — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The tenant detail could not be displayed.">
+
+        @if (State.IsLoadingDetail)
+        {
+            <LoadingIndicatorComponent Message="Loading tenant…" />
+        }
+        else if (State.DetailError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
+        }
+        else if (State.SelectedTenant is { } tenant)
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">@tenant.Name</h2>
+                <StatusIndicatorComponent Status="@MapStatus(tenant.Status)" Label="@tenant.Status" />
+            </div>
+
+            <TabControlComponent Tabs="_tabLabels" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Tenant detail sections" />
+
+            <div class="ps-tab-panel" role="tabpanel">
+
+                @if (_activeTab == 0)
+                {
+                    <CardComponent Title="Overview">
+                        <div class="ps-field-row"><span class="ps-field-label">Tenant Id</span><span class="ps-field-value">@tenant.TenantId</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Region</span><span class="ps-field-value">@tenant.Region</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Plan Code</span><span class="ps-field-value">@tenant.PlanCode</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Created</span><span class="ps-field-value">@tenant.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</span></div>
+                        <div class="ps-field-row"><span class="ps-field-label">Activated</span><span class="ps-field-value">@(tenant.ActivatedAtUtc is { } activatedAt ? $"{activatedAt:yyyy-MM-dd HH:mm} UTC" : "Not yet activated")</span></div>
+                        @if (tenant.SuspendedAtUtc is not null)
+                        {
+                            <div class="ps-field-row"><span class="ps-field-label">Suspended</span><span class="ps-field-value">@tenant.SuspendedAtUtc?.ToString("yyyy-MM-dd HH:mm") UTC — @tenant.SuspensionReason</span></div>
+                        }
+                        @if (tenant.ArchivedAtUtc is not null)
+                        {
+                            <div class="ps-field-row"><span class="ps-field-label">Archived</span><span class="ps-field-value">@tenant.ArchivedAtUtc?.ToString("yyyy-MM-dd HH:mm") UTC</span></div>
+                        }
+                        <div class="ps-field-row">
+                            <span class="ps-field-label">Enabled Modules</span>
+                            <span>
+                                @foreach (var m in tenant.Configuration.EnabledModules)
+                                {
+                                    <span class="ps-chip" style="margin-right:4px;">@m</span>
+                                }
+                                @if (tenant.Configuration.EnabledModules.Count == 0)
+                                {
+                                    <span class="ps-text-muted">No module restriction list recorded.</span>
+                                }
+                            </span>
+                        </div>
+                    </CardComponent>
+
+                    <CardComponent Title="Lifecycle Actions">
+                        @if (State.ActionMessage is not null)
+                        {
+                            <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                        }
+
+                        @if (tenant.Status == "Active")
+                        {
+                            <div class="ps-field-row">
+                                <label class="ps-field-label" for="suspend-reason">Suspend Reason</label>
+                                <input id="suspend-reason" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_suspendReason" />
+                            </div>
+                            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SuspendAsync" disabled="@State.IsBusy">Suspend</button>
+                        }
+
+                        @if (tenant.Status == "Suspended")
+                        {
+                            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ReactivateAsync" disabled="@State.IsBusy">Reactivate</button>
+                        }
+
+                        @if (tenant.Status is "Active" or "Suspended")
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ArchiveAsync" disabled="@State.IsBusy">Archive Data</button>
+                        }
+
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ExportAsync" disabled="@State.IsBusy">Export Tenant Record</button>
+
+                        @if (State.LastExportResult is { } export)
+                        {
+                            <div class="ps-alert ps-alert--info" role="status">
+                                Export ready: <code>@export.ContentReference</code> (@export.ContentSizeBytes bytes)
+                            </div>
+                        }
+
+                        <hr />
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="delete-reason">Delete Reason</label>
+                            <input id="delete-reason" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_deleteReason" />
+                        </div>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="DeleteAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-trash" aria-hidden="true"></span> Soft-Delete Tenant
+                        </button>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 1)
+                {
+                    @if (BillingState.Error is not null)
+                    {
+                        <div class="ps-alert ps-alert--danger" role="alert">@BillingState.Error</div>
+                    }
+
+                    @if (BillingState.IsLoading)
+                    {
+                        <LoadingIndicatorComponent Message="Loading billing data…" />
+                    }
+                    else
+                    {
+                        <CardComponent Title="Subscription Plan">
+                            @if (BillingState.SubscriptionPlan is { } plan)
+                            {
+                                <div class="ps-field-row"><span class="ps-field-label">Plan</span><span class="ps-field-value">@plan.DisplayName (@plan.PlanTierCode)</span></div>
+                                <div class="ps-field-row"><span class="ps-field-label">Monthly Base Price</span><span class="ps-field-value">@plan.MonthlyBasePriceAmount.ToString("C") @plan.Currency</span></div>
+                                <div class="ps-field-row"><span class="ps-field-label">Max Users</span><span class="ps-field-value">@(plan.MaxUsers?.ToString() ?? "Unlimited")</span></div>
+                                <div class="ps-field-row"><span class="ps-field-label">API Rate Limit</span><span class="ps-field-value">@plan.ApiRateLimitPerMinute / min</span></div>
+                                <div class="ps-field-row"><span class="ps-field-label">Storage Quota</span><span class="ps-field-value">@(plan.StorageQuotaBytes is null ? "Unlimited" : $"{plan.StorageQuotaBytes / 1_000_000_000:N1} GB")</span></div>
+                            }
+                            else
+                            {
+                                <p class="ps-text-muted">No subscription plan resolved for this tenant.</p>
+                            }
+                        </CardComponent>
+
+                        <CardComponent Title="Usage Metering (Current Month)">
+                            @if (BillingState.UsageMetering is { } usage && usage.Dimensions.Count > 0)
+                            {
+                                <DataGridComponent TItem="MeteredDimensionDto"
+                                                    Items="usage.Dimensions"
+                                                    Headers="_usageHeaders"
+                                                    KeySelector="d => d.MetricCode"
+                                                    EmptyMessage="No usage recorded."
+                                                    AriaLabel="Usage metering dimensions">
+                                    <RowTemplate Context="dim">
+                                        <td>@dim.MetricCode</td>
+                                        <td>@dim.RecordedValue</td>
+                                        <td>@dim.SourceDescription</td>
+                                    </RowTemplate>
+                                </DataGridComponent>
+                            }
+                            else
+                            {
+                                <p class="ps-text-muted">No usage-metering summary available for the current period.</p>
+                            }
+                        </CardComponent>
+
+                        <CardComponent Title="Invoices">
+                            @if (BillingState.ActionMessage is not null)
+                            {
+                                <div class="ps-alert ps-alert--info" role="status">@BillingState.ActionMessage</div>
+                            }
+                            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="GenerateInvoiceAsync">Generate Invoice (Current Month)</button>
+                            <DataGridComponent TItem="InvoiceDto"
+                                                Items="BillingState.Invoices"
+                                                Headers="_invoiceHeaders"
+                                                KeySelector="i => i.InvoiceId"
+                                                EmptyMessage="No invoices generated for this tenant."
+                                                AriaLabel="Invoices">
+                                <RowTemplate Context="invoice">
+                                    <td>@invoice.PeriodYear-@invoice.PeriodMonth.ToString("00")</td>
+                                    <td>@invoice.TotalDueAmount.ToString("C") @invoice.Currency</td>
+                                    <td><StatusIndicatorComponent Status="@MapInvoiceStatus(invoice.Status)" Label="@invoice.Status" /></td>
+                                    <td>
+                                        @if (invoice.Status == "Draft")
+                                        {
+                                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => ChargeInvoiceAsync(invoice.InvoiceId)">Issue &amp; Charge</button>
+                                        }
+                                        @if (invoice.Status == "Paid")
+                                        {
+                                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => RefundInvoiceAsync(invoice.InvoiceId)">Refund</button>
+                                        }
+                                    </td>
+                                </RowTemplate>
+                            </DataGridComponent>
+                        </CardComponent>
+                    }
+                }
+
+                @if (_activeTab == 2)
+                {
+                    <CardComponent Title="Users">
+                        <p class="ps-text-muted">
+                            Manage this tenant's user accounts (list, filter, create). Requires an
+                            active impersonation session for this tenant -- start one below, or on
+                            the Support / Impersonation tab -- since the Users endpoints are
+                            scoped by the caller's operating context, not an explicit tenant
+                            parameter.
+                        </p>
+                        <a href="@($"/admin/tenants/{TenantId}/users")" class="ps-btn ps-btn-primary ps-btn-sm">
+                            <span class="bi bi-people" aria-hidden="true"></span> Manage Users
+                        </a>
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 3)
+                {
+                    <CardComponent Title="Impersonation (Audited)">
+                        <div class="ps-alert ps-alert--warning" role="note">
+                            <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                            Impersonating a tenant is a real, audited, time-boxed (30 minute) action.
+                            Every start/end is recorded to the tenant audit stream via
+                            <code>Support.Impersonation.Start</code>/<code>Support.Impersonation.End</code>
+                            permission-usage log entries. A persistent banner is shown on every page
+                            while a session is active.
+                        </div>
+
+                        @if (ImpersonationState.Error is not null)
+                        {
+                            <div class="ps-alert ps-alert--danger" role="alert">@ImpersonationState.Error</div>
+                        }
+
+                        @if (ImpersonationState.ActiveSession is { } active && active.TenantId == TenantId && active.EndedAtUtc is null)
+                        {
+                            <p class="ps-field-value">
+                                Impersonation session active since @active.StartedAtUtc.ToString("HH:mm:ss") UTC,
+                                expires @active.ExpiresAtUtc.ToString("HH:mm:ss") UTC.
+                            </p>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="EndImpersonationAsync" disabled="@ImpersonationState.IsBusy">End Session</button>
+                        }
+                        else
+                        {
+                            <div class="ps-field-row">
+                                <label class="ps-field-label" for="impersonate-reason">Business Reason (required)</label>
+                                <input id="impersonate-reason" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_impersonateReason" />
+                            </div>
+                            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="StartImpersonationAsync" disabled="@ImpersonationState.IsBusy">
+                                <span class="bi bi-person-badge" aria-hidden="true"></span> Start Impersonation Session
+                            </button>
+                        }
+                    </CardComponent>
+                }
+
+                @if (_activeTab == 4)
+                {
+                    <CardComponent Title="Feature Flags">
+                        <p class="ps-text-muted">
+                            View every feature flag's resolved outcome for this tenant (4-level
+                            precedence: user &gt; tenant &gt; region &gt; global) and set a
+                            tenant-level override.
+                        </p>
+                        <a href="@($"/admin/tenants/{TenantId}/feature-flags")" class="ps-btn ps-btn-primary ps-btn-sm">
+                            <span class="bi bi-toggles" aria-hidden="true"></span> Manage Feature Flags
+                        </a>
+                    </CardComponent>
+                }
+
+            </div>
+
+            <div class="ps-detail-actions">
+                <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AdminTenantList)">
+                    <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Tenant Management
+                </button>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid TenantId { get; set; }
+
+    private static readonly string[] _tabLabels = ["Overview", "Billing", "Users", "Support / Impersonation", "Feature Flags"];
+    private static readonly string[] _usageHeaders = ["Metric", "Recorded Value", "Source"];
+    private static readonly string[] _invoiceHeaders = ["Period", "Total Due", "Status", "Actions"];
+
+    private int _activeTab;
+    private string _suspendReason = string.Empty;
+    private string _deleteReason = string.Empty;
+    private string _impersonateReason = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Tenant Detail",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Tenant Management", Href = RouteDefinitions.AdminTenantList },
+                new BreadcrumbItem { Label = "Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+        BillingState.OnChange += StateHasChanged;
+        ImpersonationState.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        State.BeginDetailLoad();
+        var envelope = await ApiClient.GetByIdAsync(TenantId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedTenant(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load tenant: {envelope.FaultType}");
+    }
+
+    private Task OnTabChangedAsync(int index)
+    {
+        _activeTab = index;
+        if (index == 1 && BillingState.SubscriptionPlan is null)
+            return LoadBillingAsync();
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadBillingAsync()
+    {
+        BillingState.BeginLoad();
+
+        var now = DateTime.UtcNow;
+        var planEnvelope = await BillingApiClient.GetSubscriptionPlanAsync(TenantId);
+        var usageEnvelope = await BillingApiClient.GetUsageMeteringAsync(TenantId, now.Year, now.Month);
+        var invoicesEnvelope = await BillingApiClient.ListInvoicesAsync(TenantId);
+
+        var plan = planEnvelope.IsSuccess ? planEnvelope.Data : null;
+        var usage = usageEnvelope.IsSuccess ? usageEnvelope.Data : null;
+        var invoices = invoicesEnvelope.IsSuccess ? invoicesEnvelope.Data! : [];
+
+        if (!invoicesEnvelope.IsSuccess)
+        {
+            BillingState.SetError(invoicesEnvelope.IsProblem ? invoicesEnvelope.Problem!.Detail : $"Failed to load invoices: {invoicesEnvelope.FaultType}");
+            return;
+        }
+
+        BillingState.SetData(plan, usage, invoices);
+    }
+
+    private async Task SuspendAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.SuspendAsync(TenantId, new SuspendTenantRequest { Reason = _suspendReason });
+        if (result.IsSuccess)
+            State.CompleteAction("Tenant suspended.", result.Data);
+        else
+            State.SetActionError(DescribeFailure(result));
+    }
+
+    private async Task ReactivateAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ReactivateAsync(TenantId);
+        if (result.IsSuccess)
+            State.CompleteAction("Tenant reactivated.", result.Data);
+        else
+            State.SetActionError(DescribeFailure(result));
+    }
+
+    private async Task ArchiveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ArchiveAsync(TenantId);
+        if (result.IsSuccess)
+            State.CompleteAction("Tenant data archived.", result.Data);
+        else
+            State.SetActionError(DescribeFailure(result));
+    }
+
+    private async Task ExportAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ExportAsync(TenantId);
+        if (result.IsSuccess)
+            State.SetExportResult(result.Data!);
+        else
+            State.SetActionError(DescribeFailure(result));
+    }
+
+    private async Task DeleteAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.DeleteAsync(TenantId, new DeleteTenantRequest { Reason = _deleteReason });
+        if (result.IsSuccess)
+            State.CompleteAction("Tenant soft-deleted.", result.Data);
+        else
+            State.SetActionError(DescribeFailure(result));
+    }
+
+    private async Task GenerateInvoiceAsync()
+    {
+        var now = DateTime.UtcNow;
+        var result = await BillingApiClient.GenerateInvoiceAsync(TenantId, new GenerateInvoiceRequest { PeriodYear = now.Year, PeriodMonth = now.Month });
+        BillingState.ApplyInvoiceUpdate(result.Data ?? new InvoiceDto(), result.IsSuccess
+            ? $"Invoice generated for {now:yyyy}-{now.Month:00}."
+            : DescribeFailure(result));
+    }
+
+    private async Task ChargeInvoiceAsync(Guid invoiceId)
+    {
+        var result = await BillingApiClient.ChargeInvoiceAsync(invoiceId);
+        if (result.IsSuccess)
+            BillingState.ApplyInvoiceUpdate(result.Data!, "Invoice issued and charged.");
+        else
+            BillingState.SetActionMessage(DescribeFailure(result));
+    }
+
+    private async Task RefundInvoiceAsync(Guid invoiceId)
+    {
+        var result = await BillingApiClient.RefundInvoiceAsync(invoiceId, new RefundInvoiceRequest { Reason = "Admin-initiated refund" });
+        BillingState.SetActionMessage(result.IsSuccess ? "Invoice refunded and voided." : DescribeFailure(result));
+        if (result.IsSuccess) await LoadBillingAsync();
+    }
+
+    private async Task StartImpersonationAsync()
+    {
+        ImpersonationState.BeginAction();
+        var result = await ImpersonationApiClient.StartAsync(TenantId, new StartImpersonationRequest { Reason = _impersonateReason });
+        if (result.IsSuccess)
+            ImpersonationState.SetActiveSession(result.Data!);
+        else
+            ImpersonationState.SetError(DescribeFailure(result));
+    }
+
+    private async Task EndImpersonationAsync()
+    {
+        if (ImpersonationState.ActiveSession is not { } session) return;
+
+        ImpersonationState.BeginAction();
+        var result = await ImpersonationApiClient.EndAsync(session.SessionId);
+        if (result.IsSuccess)
+            ImpersonationState.ClearActiveSession();
+        else
+            ImpersonationState.SetError(DescribeFailure(result));
+    }
+
+    private static string MapStatus(string status) => status switch
+    {
+        "Active" => "Healthy",
+        "Provisioning" => "Warning",
+        "Suspended" => "Warning",
+        "Archived" or "Deleted" => "Offline",
+        _ => "Offline",
+    };
+
+    private static string MapInvoiceStatus(string status) => status switch
+    {
+        "Paid" => "Healthy",
+        "Draft" or "Issued" => "Warning",
+        "Voided" or "Refunded" => "Offline",
+        _ => "Offline",
+    };
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        BillingState.OnChange -= StateHasChanged;
+        ImpersonationState.OnChange -= StateHasChanged;
+    }
+}

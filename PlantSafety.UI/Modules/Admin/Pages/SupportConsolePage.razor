@@ -1,0 +1,202 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Admin Portal Support Console (Phase 7 §6.3 Support Tooling).
+     Platform-admin-only page listing every tenant with quick links into their data,
+     the real audited impersonation start action, and a per-tenant audit stream viewer
+     composed from the existing GetTenantAuditStreamQuery (Auditing.ComplianceMonitoring)
+     rather than a duplicated logging pipeline. Health dashboard links reuse the existing
+     PlatformHealthDashboard / Operations System Health page rather than rebuilding one.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/support"
+
+@inject TenantAdminState TenantState
+@inject TenantAdminApiClient TenantApiClient
+@inject SupportConsoleState State
+@inject ComplianceMonitoringApiClient ComplianceApiClient
+@inject ImpersonationState ImpersonationState
+@inject ImpersonationApiClient ImpersonationApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+@using PlantSafety.UI.Modules.Admin.State
+
+<PageTitle>Support Console — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Support Console could not be displayed." OnRetry="LoadTenantsAsync">
+
+        <div class="ps-page-actions">
+            <a href="@RouteDefinitions.OperationsSystemHealthDashboard" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-heart-pulse" aria-hidden="true"></span> Platform Health Dashboard
+            </a>
+            <a href="@RouteDefinitions.OperationsAuditViewerDashboard" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-search" aria-hidden="true"></span> Cross-Database Audit Viewer
+            </a>
+            <a href="@RouteDefinitions.EnterpriseFabricDashboard" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-hdd-network" aria-hidden="true"></span> Enterprise Fabric / Event Mesh
+            </a>
+        </div>
+
+        @if (TenantState.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@TenantState.ListError</div>
+        }
+
+        @if (TenantState.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading tenants…" />
+        }
+        else
+        {
+            <CardComponent Title="Tenants">
+                <DataGridComponent TItem="TenantAdminDto"
+                                    Items="TenantState.Tenants"
+                                    Headers="_tenantHeaders"
+                                    KeySelector="t => t.TenantId"
+                                    EmptyMessage="No tenants have been provisioned yet."
+                                    AriaLabel="Tenants">
+                    <RowTemplate Context="tenant">
+                        <td>@tenant.Name</td>
+                        <td><StatusIndicatorComponent Status="@MapStatus(tenant.Status)" Label="@tenant.Status" /></td>
+                        <td>
+                            <a href="@($"/admin/tenants/{tenant.TenantId}")" class="ps-btn ps-btn-ghost ps-btn-sm">Manage</a>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => LoadAuditStreamAsync(tenant.TenantId)">View Audit Stream</button>
+                        </td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+
+            @if (ImpersonationState.ActiveSession is { EndedAtUtc: null } activeSession)
+            {
+                <CardComponent Title="Active Impersonation Session">
+                    <p class="ps-field-value">
+                        Impersonating tenant <strong>@activeSession.TenantId</strong>, expires
+                        @activeSession.ExpiresAtUtc.ToString("HH:mm:ss") UTC.
+                    </p>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="EndImpersonationAsync" disabled="@ImpersonationState.IsBusy">End Session</button>
+                </CardComponent>
+            }
+
+            @if (State.SelectedTenantId is { } selectedTenantId)
+            {
+                <CardComponent Title="@($"Audit Stream — Tenant {selectedTenantId} (trailing 24h)")">
+                    @if (State.AuditStreamError is not null)
+                    {
+                        <div class="ps-alert ps-alert--danger" role="alert">@State.AuditStreamError</div>
+                    }
+
+                    @if (State.IsLoadingAuditStream)
+                    {
+                        <LoadingIndicatorComponent Message="Loading audit stream…" />
+                    }
+                    else
+                    {
+                        <DataGridComponent TItem="PermissionUsageLogEntryDto"
+                                            Items="State.AuditEntries"
+                                            Headers="_auditHeaders"
+                                            KeySelector="e => e.CorrelationId"
+                                            EmptyMessage="No authorization decisions recorded in the trailing 24 hours."
+                                            AriaLabel="Tenant audit stream">
+                            <RowTemplate Context="entry">
+                                <td>@entry.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                                <td>@entry.Permission</td>
+                                <td>@entry.RequestType</td>
+                                <td><span class="ps-chip">@entry.Decision</span></td>
+                            </RowTemplate>
+                        </DataGridComponent>
+                    }
+                </CardComponent>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tenantHeaders = ["Name", "Status", "Actions"];
+    private static readonly string[] _auditHeaders = ["Occurred", "Permission", "Request Type", "Decision"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Support Console",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Support Console" }
+            ]);
+
+        TenantState.OnChange += StateHasChanged;
+        State.OnChange += StateHasChanged;
+        ImpersonationState.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadTenantsAsync();
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        TenantState.BeginListLoad();
+        var envelope = await TenantApiClient.ListAsync();
+
+        if (envelope.IsSuccess)
+            TenantState.SetTenants(envelope.Data!);
+        else if (envelope.IsProblem)
+            TenantState.SetListError(envelope.Problem!.Detail);
+        else
+            TenantState.SetListError($"Failed to load tenants: {envelope.FaultType}");
+    }
+
+    private async Task LoadAuditStreamAsync(Guid tenantId)
+    {
+        State.SelectTenant(tenantId);
+        var envelope = await ComplianceApiClient.GetTenantAuditStreamAsync(tenantId);
+
+        if (envelope.IsSuccess)
+            State.SetAuditEntries(envelope.Data!.Entries);
+        else if (envelope.IsProblem)
+            State.SetAuditStreamError(envelope.Problem!.Detail);
+        else
+            State.SetAuditStreamError($"Failed to load audit stream: {envelope.FaultType}");
+    }
+
+    private async Task EndImpersonationAsync()
+    {
+        if (ImpersonationState.ActiveSession is not { } session) return;
+
+        ImpersonationState.BeginAction();
+        var result = await ImpersonationApiClient.EndAsync(session.SessionId);
+        if (result.IsSuccess)
+            ImpersonationState.ClearActiveSession();
+        else
+            ImpersonationState.SetError(result.IsProblem ? result.Problem!.Detail : $"Failed: {result.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status switch
+    {
+        "Active" => "Healthy",
+        "Provisioning" => "Warning",
+        "Suspended" => "Warning",
+        "Archived" or "Deleted" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose()
+    {
+        TenantState.OnChange -= StateHasChanged;
+        State.OnChange -= StateHasChanged;
+        ImpersonationState.OnChange -= StateHasChanged;
+    }
+}

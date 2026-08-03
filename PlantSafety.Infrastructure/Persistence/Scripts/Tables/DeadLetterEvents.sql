@@ -18,14 +18,16 @@
 --                  Additive-only evolution.
 --
 --  2026-08-02 UPDATE: this table is now wired to MassTransit's fault pipeline. See
---  DeadLetterFaultConsumer<TMessage> (PlantSafety.Infrastructure.Messaging.Consumers.DeadLetter),
---  an open-generic IConsumer<Fault<TMessage>> registered once via
---  DeadLetterConsumerRegistration.Register(cfg), plus cfg.UseMessageRetry(...) bus-wide in
+--  DeadLetterFaultObserver (PlantSafety.Infrastructure.Messaging.Consumers.DeadLetter), an
+--  IConsumeObserver registered once as a singleton and connected via
+--  cfg.ConnectConsumeObserver(...), plus cfg.UseMessageRetry(...) bus-wide in
 --  InfrastructureServiceRegistration -- both previously absent from AddMassTransit's
---  configuration. Columns added below (CorrelationId, CausationId, ActorId, ConsumerName,
---  ReplayedAtUtc, ReplayedByUserId) capture the full diagnostic/replay context the fault
---  consumer records and the replay pipeline (ReplayDeadLetterEventCommand) needs. Additive-only
---  evolution -- every new column is nullable so existing rows remain valid.
+--  configuration. (2026-08-03: reworked from an open-generic IConsumer<Fault<TMessage>>
+--  registration, which crashed PlantSafety.Api's strict ValidateOnBuild DI validation at startup.)
+--  Columns added below (CorrelationId, CausationId, ActorId, ConsumerName, ReplayedAtUtc,
+--  ReplayedByUserId) capture the full diagnostic/replay context the fault persister records and
+--  the replay pipeline (ReplayDeadLetterEventCommand) needs. Additive-only evolution -- every new
+--  column is nullable so existing rows remain valid.
 -- ============================================================================
 
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'System')

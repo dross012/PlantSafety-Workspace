@@ -34,7 +34,6 @@ namespace PlantSafety.Infrastructure.BackgroundJobs;
 public sealed class OutboxProcessor(
     ISqlConnectionFactory connectionFactory,
     IServiceProvider serviceProvider,
-    IApplicationLogger applicationLogger,
     ILogger<OutboxProcessor> logger)
     : BackgroundService
 {
@@ -50,6 +49,13 @@ public sealed class OutboxProcessor(
             // inherit lineage from.
             var correlationId = Guid.NewGuid();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            // IApplicationLogger is Scoped; OutboxProcessor is a singleton hosted service, so it
+            // cannot be constructor-injected here (ValidateOnBuild correctly rejects that lifetime
+            // mismatch at startup). Resolved per-batch from a fresh scope instead, mirroring the
+            // existing PublishAsync -> IBus pattern below.
+            using var loggerScope = serviceProvider.CreateScope();
+            var applicationLogger = loggerScope.ServiceProvider.GetRequiredService<IApplicationLogger>();
 
             try
             {

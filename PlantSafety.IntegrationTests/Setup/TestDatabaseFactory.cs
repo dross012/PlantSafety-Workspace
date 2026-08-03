@@ -9305,4 +9305,87 @@ ORDER BY [ScheduledAtUtc] DESC;
                 THROW;
             END CATCH");
     }
+
+    /// <summary>
+    /// Phase 7 §5.4 (Security &amp; Compliance Agent): creates the [Auditing].[PermissionUsageLog]
+    /// table and its Insert/GetByTenant stored procedures (mirrors
+    /// PlantSafety.Infrastructure\Auditing\ComplianceMonitoring\PermissionUsage\Sql\**\*.sql
+    /// verbatim, minus the leading `USE` statement -- same convention as every other
+    /// Apply*SchemaAsync method in this file). Backs AuthorizationBehavior's access-log capture
+    /// and GetTenantAuditStreamQuery's tenant-scoped audit-stream read. Additive-only evolution.
+    /// </summary>
+    public static async Task ApplyComplianceMonitoringSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Auditing')
+                EXEC('CREATE SCHEMA [Auditing]');
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+                           WHERE TABLE_SCHEMA = 'Auditing' AND TABLE_NAME = 'PermissionUsageLog')
+            BEGIN
+                CREATE TABLE [Auditing].[PermissionUsageLog] (
+                    [PermissionUsageLogId] BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [TenantId]             UNIQUEIDENTIFIER NOT NULL,
+                    [UserId]               UNIQUEIDENTIFIER NOT NULL,
+                    [Permission]           NVARCHAR(256)    NOT NULL,
+                    [RequestType]          NVARCHAR(256)    NOT NULL,
+                    [Decision]             NVARCHAR(16)     NOT NULL,
+                    [CorrelationId]        UNIQUEIDENTIFIER NOT NULL,
+                    [OccurredAtUtc]        DATETIME2(3)     NOT NULL CONSTRAINT DF_PermissionUsageLog_OccurredAtUtc DEFAULT (SYSUTCDATETIME())
+                );
+
+                CREATE INDEX IX_PermissionUsageLog_TenantId_UserId_OccurredAtUtc
+                    ON [Auditing].[PermissionUsageLog] ([TenantId], [UserId], [OccurredAtUtc]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [Auditing].[usp_PermissionUsageLog_Insert]
+                @TenantId      UNIQUEIDENTIFIER,
+                @UserId        UNIQUEIDENTIFIER,
+                @Permission    NVARCHAR(256),
+                @RequestType   NVARCHAR(256),
+                @Decision      NVARCHAR(16),
+                @CorrelationId UNIQUEIDENTIFIER,
+                @OccurredAtUtc DATETIME2(3)
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                INSERT INTO [Auditing].[PermissionUsageLog]
+                    ([TenantId], [UserId], [Permission], [RequestType], [Decision], [CorrelationId], [OccurredAtUtc])
+                VALUES
+                    (@TenantId, @UserId, @Permission, @RequestType, @Decision, @CorrelationId, @OccurredAtUtc);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [Auditing].[usp_PermissionUsageLog_GetByTenant]
+                @TenantId  UNIQUEIDENTIFIER,
+                @FromUtc   DATETIME2(3),
+                @ToUtc     DATETIME2(3)
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT
+                    [TenantId],
+                    [UserId],
+                    [Permission],
+                    [RequestType],
+                    [Decision],
+                    [CorrelationId],
+                    [OccurredAtUtc]
+                FROM [Auditing].[PermissionUsageLog]
+                WHERE [TenantId] = @TenantId
+                  AND [OccurredAtUtc] BETWEEN @FromUtc AND @ToUtc
+                ORDER BY [OccurredAtUtc] DESC;
+            END
+            """);
+    }
 }

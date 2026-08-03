@@ -1,0 +1,120 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Admin Portal tenant management list. Platform-admin-only page listing
+     every registered tenant with quick links to detail/lifecycle actions and the guided
+     provisioning wizard. Calls the real TenantV1Controller (v1/tenancy/tenants) via
+     TenantAdminApiClient.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/tenants"
+
+@inject TenantAdminState State
+@inject TenantAdminApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+@using PlantSafety.UI.Modules.Admin.State
+
+<PageTitle>Tenant Management — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The tenant list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="@RouteDefinitions.AdminTenantProvision" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-lg" aria-hidden="true"></span> Provision New Tenant
+            </a>
+            <a href="@RouteDefinitions.AdminSupportConsole" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-life-preserver" aria-hidden="true"></span> Support Console
+            </a>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading tenants…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="TenantAdminDto"
+                                Items="State.Tenants"
+                                Headers="_headers"
+                                KeySelector="t => t.TenantId"
+                                EmptyMessage="No tenants have been provisioned yet."
+                                AriaLabel="Tenants">
+                <RowTemplate Context="tenant">
+                    <td>@tenant.Name</td>
+                    <td>@tenant.Region</td>
+                    <td>@tenant.PlanCode</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(tenant.Status)" Label="@tenant.Status" /></td>
+                    <td>@tenant.CreatedAtUtc.ToString("yyyy-MM-dd")</td>
+                    <td><a href="@($"/admin/tenants/{tenant.TenantId}")" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Name", "Region", "Plan", "Status", "Created", "Actions"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Tenant Management",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Tenant Management" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginListLoad();
+        var envelope = await ApiClient.ListAsync();
+
+        if (envelope.IsSuccess)
+            State.SetTenants(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load tenants: {envelope.FaultType}");
+    }
+
+    private static string MapStatus(string status) => status switch
+    {
+        "Active" => "Healthy",
+        "Provisioning" => "Warning",
+        "Suspended" => "Warning",
+        "Archived" or "Deleted" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

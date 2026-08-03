@@ -1,0 +1,162 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Admin Portal guided tenant-provisioning wizard (Phase 7 §6.2 Customer
+     Onboarding). A minimal, proportionate step-by-step form calling the real
+     ProvisionTenantCommand end-to-end (creates the tenant, initial admin user, roles, and API
+     key in one pipeline run) -- not a fully-scripted product-tour engine.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/tenants/provision"
+
+@inject TenantAdminState State
+@inject TenantAdminApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+@using PlantSafety.UI.Modules.Admin.State
+
+<PageTitle>Provision New Tenant — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The tenant provisioning wizard could not be displayed.">
+
+        @if (State.LastProvisioningResult is { } result)
+        {
+            <CardComponent Title="Tenant Provisioned">
+                <div class="ps-alert ps-alert--info" role="status">
+                    Tenant <strong>@result.Tenant.Name</strong> (@result.Tenant.TenantId) is now
+                    <strong>@result.Tenant.Status</strong>.
+                </div>
+                <div class="ps-field-row"><span class="ps-field-label">Admin User Id</span><span class="ps-field-value">@result.AdminUserId</span></div>
+                <div class="ps-field-row">
+                    <span class="ps-field-label">API Key (shown once)</span>
+                    <span class="ps-field-value"><code>@result.ApiKey</code></span>
+                </div>
+                <p class="ps-alert ps-alert--warning" role="note">
+                    <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                    This API key is never retrievable again — record it now.
+                </p>
+                <div class="ps-detail-actions">
+                    <a href="@($"/admin/tenants/{result.Tenant.TenantId}")" class="ps-btn ps-btn-primary ps-btn-sm">View Tenant</a>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="Reset">Provision Another Tenant</button>
+                </div>
+            </CardComponent>
+        }
+        else
+        {
+            @if (_error is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@_error</div>
+            }
+
+            <CardComponent Title="Step 1 — Organization Details">
+                <div class="ps-field-row">
+                    <label class="ps-field-label" for="tenant-name">Tenant Name</label>
+                    <input id="tenant-name" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_request.Name" />
+                </div>
+                <div class="ps-field-row">
+                    <label class="ps-field-label" for="tenant-region">Deployment Region</label>
+                    <input id="tenant-region" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" placeholder="e.g. US, EU, APAC" @bind="_request.Region" />
+                </div>
+                <div class="ps-field-row">
+                    <label class="ps-field-label" for="tenant-plan">Subscription Plan</label>
+                    <select id="tenant-plan" class="ps-btn ps-btn-ghost ps-btn-sm" @bind="_request.PlanCode">
+                        <option value="Trial">Trial</option>
+                        <option value="Standard">Standard</option>
+                        <option value="Professional">Professional</option>
+                        <option value="Enterprise">Enterprise</option>
+                    </select>
+                </div>
+            </CardComponent>
+
+            <CardComponent Title="Step 2 — Initial Administrator">
+                <div class="ps-field-row">
+                    <label class="ps-field-label" for="admin-email">Admin Email</label>
+                    <input id="admin-email" type="email" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_request.AdminEmail" />
+                </div>
+                <div class="ps-field-row">
+                    <label class="ps-field-label" for="admin-first">First Name</label>
+                    <input id="admin-first" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_request.AdminFirstName" />
+                </div>
+                <div class="ps-field-row">
+                    <label class="ps-field-label" for="admin-last">Last Name</label>
+                    <input id="admin-last" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_request.AdminLastName" />
+                </div>
+            </CardComponent>
+
+            <CardComponent Title="Step 3 — Review &amp; Provision">
+                <p class="ps-text-muted">
+                    Provisioning runs the full pipeline in one step: creates the Tenant record,
+                    initializes tenant-scoped data isolation, seeds default reference data, creates
+                    the administrator account above, assigns roles, and generates the tenant's
+                    primary API key.
+                </p>
+                <button class="ps-btn ps-btn-primary" @onclick="ProvisionAsync" disabled="@State.IsBusy">
+                    @(State.IsBusy ? "Provisioning…" : "Provision Tenant")
+                </button>
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly ProvisionTenantRequest _request = new();
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Provision New Tenant",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Tenant Management", Href = RouteDefinitions.AdminTenantList },
+                new BreadcrumbItem { Label = "Provision" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task ProvisionAsync()
+    {
+        _error = null;
+        State.BeginAction();
+
+        var envelope = await ApiClient.ProvisionAsync(_request);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetProvisioningResult(envelope.Data!);
+        }
+        else
+        {
+            _error = envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to provision tenant: {envelope.FaultType}";
+            State.SetActionError(_error);
+        }
+    }
+
+    private void Reset()
+    {
+        _request.Name = string.Empty;
+        _request.Region = string.Empty;
+        _request.PlanCode = "Trial";
+        _request.AdminEmail = string.Empty;
+        _request.AdminFirstName = string.Empty;
+        _request.AdminLastName = string.Empty;
+        _error = null;
+        State.ClearProvisioningResult();
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

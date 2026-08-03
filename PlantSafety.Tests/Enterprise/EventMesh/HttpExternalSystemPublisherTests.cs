@@ -10,12 +10,18 @@
 //                  (Result.Success(false), no HTTP call) when its endpoint is unconfigured, and
 //                  (2) a real HTTP POST against a fake/in-memory HttpMessageHandler (no live ERP/MES
 //                  endpoint exists in this environment) when configured, covering both the success
-//                  and rejected-status paths. Isolated, deterministic, no real network I/O.
+//                  and rejected-status paths. Also covers the Phase 7 §5.3 Data Residency wiring:
+//                  outbound publishes for a tenant whose configured DataResidencyPolicy forbids the
+//                  platform's current deployment region must be rejected before any HTTP call is made.
+//                  Isolated, deterministic, no real network I/O.
 // ============================================================================
 using System.Net;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
+using PlantSafety.Application.Enterprise.MultiRegion.DataResidency;
 using PlantSafety.Infrastructure.Messaging.EnterpriseMesh;
 using PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh;
+using PlantSafety.SharedKernel.Contracts.Enterprise.MultiRegion;
 
 namespace PlantSafety.Tests.Enterprise.EventMesh;
 
@@ -33,12 +39,25 @@ public sealed class HttpExternalSystemPublisherTests : UnitTestBase
             actorId: TestUserId.Value,
             payload: new { workOrderId = Guid.NewGuid() });
 
+    /// <summary>Builds a real, unrestricted-by-default <see cref="IDataResidencyEnforcer"/> so existing HTTP-behaviour tests are unaffected.</summary>
+    private static IDataResidencyEnforcer CreateEnforcer(
+        Region? currentRegion = null, IReadOnlyDictionary<string, string>? tenantPolicies = null)
+    {
+        var regionProvider = new ConfiguredCurrentDeploymentRegionProvider(
+            Options.Create(new CurrentDeploymentRegionOptions { RegionCode = (currentRegion ?? Region.UsEast).Code }));
+
+        var profileStore = new ConfiguredTenantDataResidencyProfileStore(
+            Options.Create(new TenantDataResidencyOptions { Policies = tenantPolicies ?? new Dictionary<string, string>() }));
+
+        return new DataResidencyEnforcer(profileStore, regionProvider);
+    }
+
     [Fact]
     public async Task PublishAsync_WithUnconfiguredEndpoint_SkipsGracefullyWithoutCallingHttpClient()
     {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
         var httpClient = new HttpClient(handler);
-        var sut = new HttpExternalSystemPublisher(EnterpriseSourceSystem.Erp, endpointUrl: string.Empty, httpClient, NullLogger<HttpExternalSystemPublisher>());
+        var sut = new HttpExternalSystemPublisher(EnterpriseSourceSystem.Erp, endpointUrl: string.Empty, httpClient, CreateEnforcer(), NullLogger<HttpExternalSystemPublisher>());
 
         var result = await sut.PublishAsync(SampleEnvelope(), CancellationToken.None);
 
@@ -52,7 +71,7 @@ public sealed class HttpExternalSystemPublisherTests : UnitTestBase
     {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
         var httpClient = new HttpClient(handler);
-        var sut = new HttpExternalSystemPublisher(EnterpriseSourceSystem.Erp, "https://fake-erp.local/inbound", httpClient, NullLogger<HttpExternalSystemPublisher>());
+        var sut = new HttpExternalSystemPublisher(EnterpriseSourceSystem.Erp, "https://fake-erp.local/inbound", httpClient, CreateEnforcer(), NullLogger<HttpExternalSystemPublisher>());
 
         var result = await sut.PublishAsync(SampleEnvelope(), CancellationToken.None);
 
@@ -67,11 +86,47 @@ public sealed class HttpExternalSystemPublisherTests : UnitTestBase
     {
         var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError);
         var httpClient = new HttpClient(handler);
-        var sut = new HttpExternalSystemPublisher(EnterpriseSourceSystem.Mes, "https://fake-mes.local/inbound", httpClient, NullLogger<HttpExternalSystemPublisher>());
+        var sut = new HttpExternalSystemPublisher(EnterpriseSourceSystem.Mes, "https://fake-mes.local/inbound", httpClient, CreateEnforcer(), NullLogger<HttpExternalSystemPublisher>());
 
         var result = await sut.PublishAsync(SampleEnvelope(), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+        handler.RequestCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task PublishAsync_TenantResidencyPolicyViolatedByCurrentRegion_RejectsWithoutCallingHttpClient()
+    {
+        var envelope = SampleEnvelope();
+        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handler);
+        var enforcer = CreateEnforcer(
+            currentRegion: Region.UsEast,
+            tenantPolicies: new Dictionary<string, string> { [envelope.TenantId.ToString("D")] = "EuOnly" });
+        var sut = new HttpExternalSystemPublisher(EnterpriseSourceSystem.Erp, "https://fake-erp.local/inbound", httpClient, enforcer, NullLogger<HttpExternalSystemPublisher>());
+
+        var result = await sut.PublishAsync(envelope, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue("an EU-only tenant's data must never be published from a US deployment region");
+        result.Error!.Code.Value.Should().Be("enterprise.eventmesh.residencyviolation");
+        handler.RequestCount.Should().Be(0, "the HTTP call must never be attempted once the residency check rejects the publish");
+    }
+
+    [Fact]
+    public async Task PublishAsync_TenantResidencyPolicySatisfiedByCurrentRegion_ProceedsToHttpCall()
+    {
+        var envelope = SampleEnvelope();
+        var handler = new FakeHttpMessageHandler(HttpStatusCode.OK);
+        var httpClient = new HttpClient(handler);
+        var enforcer = CreateEnforcer(
+            currentRegion: Region.UsEast,
+            tenantPolicies: new Dictionary<string, string> { [envelope.TenantId.ToString("D")] = "UsOnly" });
+        var sut = new HttpExternalSystemPublisher(EnterpriseSourceSystem.Erp, "https://fake-erp.local/inbound", httpClient, enforcer, NullLogger<HttpExternalSystemPublisher>());
+
+        var result = await sut.PublishAsync(envelope, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeTrue();
         handler.RequestCount.Should().Be(1);
     }
 

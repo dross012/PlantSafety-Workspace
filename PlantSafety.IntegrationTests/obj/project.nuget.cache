@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "4/tkE2hcoDg=",
+  "dgSpecHash": "k/ATOzQPRd0=",
   "success": true,
   "projectFilePath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.IntegrationTests\\PlantSafety.IntegrationTests.csproj",
   "expectedPackageFiles": [
@@ -184,18 +184,5 @@
     "D:\\NuGetPackages\\microsoft.aspnetcore.app.ref\\8.0.29\\microsoft.aspnetcore.app.ref.8.0.29.nupkg.sha512",
     "D:\\NuGetPackages\\microsoft.netcore.app.host.win-x64\\8.0.29\\microsoft.netcore.app.host.win-x64.8.0.29.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "message": "PlantSafety.Infrastructure depends on OpenTelemetry.Instrumentation.SqlClient (>= 1.17.0-beta.1) but OpenTelemetry.Instrumentation.SqlClient 1.17.0-beta.1 was not found. OpenTelemetry.Instrumentation.SqlClient 1.17.0 was resolved instead.",
-      "projectPath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.IntegrationTests\\PlantSafety.IntegrationTests.csproj",
-      "warningLevel": 1,
-      "filePath": "D:\\PlantSafety\\source\\PlantSafety\\PlantSafety.IntegrationTests\\PlantSafety.IntegrationTests.csproj",
-      "libraryId": "OpenTelemetry.Instrumentation.SqlClient",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    }
-  ]
+  "logs": []
 }

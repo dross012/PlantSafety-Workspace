@@ -414,4 +414,31 @@
 .ps-badge--high     { background: rgba(220,38,38,0.12);  color: var(--ps-color-severity-high); }
 .ps-badge--medium   { background: rgba(217,119,6,0.12);  color: var(--ps-color-severity-medium); }
 .ps-badge--low      { background: rgba(22,163,74,0.12);  color: var(--ps-color-severity-low); }
+
+/* ── Impersonation Banner (Phase 7 §6.3 Support Tooling) ───────────────────── */
+.ps-impersonation-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--ps-space-4);
+    padding: var(--ps-space-2) var(--ps-space-4);
+    background: #7c2d12;
+    color: #fff7ed;
+    font-weight: 600;
+}
+
+.ps-impersonation-banner .ps-btn {
+    margin-left: auto;
+}
+
+/* ── Onboarding Checklist ───────────────────────────────────────────────────── */
+.ps-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-space-4);
+    padding-left: var(--ps-space-8);
+}
+
+.ps-checklist li {
+    padding-bottom: var(--ps-space-2);
+}
 .ps-badge--info     { background: rgba(2,132,199,0.12);  color: var(--ps-color-severity-info); }

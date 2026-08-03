@@ -77,6 +77,23 @@ public interface IOperationContext
     /// Additive member (SchemaVersion 1 → 2). Added 2026-08-02.
     /// </remarks>
     ComplianceContext ComplianceContext { get; }
+
+    /// <summary>
+    /// Gets the data-residency/deployment region the current tenant is pinned to (Phase 7 §1.2
+    /// "Tenant Context Enforcement", Global-Scale Multi-Region architecture), e.g. <c>"us-east"</c>,
+    /// <c>"eu-west"</c>. Resolved server-side from the tenant's own registered Tenant aggregate
+    /// region (<c>PlantSafety.Domain.Tenancy.Tenant.Aggregates.Tenant.Region</c>) — never
+    /// client-supplied — and threaded through to
+    /// <see cref="SharedKernel.Contracts.Enterprise.EventMesh.EnterpriseEventEnvelope.Region"/> so
+    /// downstream ERP/MES/CMMS routing and data-residency enforcement can make region-aware
+    /// decisions without re-resolving the tenant's region independently.
+    /// </summary>
+    /// <remarks>
+    /// Additive member (SchemaVersion 2 → 3). Added 2026-08-03 (Phase 7 §1 Multi-Tenant
+    /// Architecture). <see langword="null"/> for sessions where no region has been resolved yet
+    /// (e.g. anonymous/system paths, or tenants provisioned before region tracking existed).
+    /// </remarks>
+    string? Region { get; }
 }
 
 /// <summary>

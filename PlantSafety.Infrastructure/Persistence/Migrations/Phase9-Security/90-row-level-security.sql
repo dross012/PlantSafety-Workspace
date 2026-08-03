@@ -117,6 +117,18 @@ DECLARE @sql nvarchar(max) = N'CREATE SECURITY POLICY Security.TenantAccessPolic
 DECLARE @first bit = 1;
 DECLARE @schemaName sysname, @tableName sysname;
 
+-- 2026-08-03 ADDITION (Phase 7 §1.2/§2.1 Tenancy.Tenant): Tenancy.Tenant is deliberately
+-- excluded here. It has a NOT NULL uniqueidentifier TenantId column, so it would otherwise be
+-- picked up by this script's live-discovery query, but that column IS the row's own identity
+-- (the tenant registry), not a foreign reference to "which tenant owns this row" the way every
+-- other RLS-protected table's TenantId column is. Applying the FILTER/BLOCK predicate here would
+-- mean no session could ever list more than the single tenant its own SESSION_CONTEXT happens to
+-- be set to -- exactly the opposite of what the platform-admin tenant registry (list/provision
+-- tenants) needs. Same exclusion category as AuditLog/ErrorLog/ArchivalJob above. Access control
+-- for Tenancy.Tenant is enforced at the Application/API layer instead (PlatformAdmin-tier
+-- authorization on TenantV1Controller). Tenancy.TenantApiKey and Tenancy.TenantAdminRoleAssignment
+-- are NOT excluded -- their TenantId columns genuinely reference an owning tenant, so they are
+-- correctly picked up by the live-discovery query below.
 DECLARE tblcur CURSOR LOCAL FAST_FORWARD FOR
     SELECT s.name, t.name
     FROM sys.columns c
@@ -125,6 +137,7 @@ DECLARE tblcur CURSOR LOCAL FAST_FORWARD FOR
     JOIN sys.types ty ON c.user_type_id = ty.user_type_id
     WHERE c.name = 'TenantId' AND ty.name = 'uniqueidentifier' AND c.is_nullable = 0
       AND s.name <> 'Security'
+      AND NOT (s.name = 'Tenancy' AND t.name = 'Tenant')
     ORDER BY s.name, t.name;
 
 OPEN tblcur;

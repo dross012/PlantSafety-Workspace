@@ -40,6 +40,7 @@ using PlantSafety.Application.Abstractions.Context;
 using PlantSafety.Application.Abstractions.Logging;
 using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Common.Logging;
+using PlantSafety.Application.Features.EnterpriseFabric.Handlers.Users;
 
 namespace PlantSafety.Api.Middleware;
 
@@ -123,6 +124,11 @@ public sealed class ExceptionHandlingMiddleware
             ConcurrencyConflictException => ProblemDetailsExtensions.ConflictProblem(ex.Message, correlationId),
             ApplicationAuthorizationException => ProblemDetailsExtensions.ForbiddenProblem(correlationId),
             DomainRuleException => ProblemDetailsExtensions.ValidationProblem([ex.Message], correlationId),
+            // Phase 7 §3.4 License Enforcement (2026-08-03): surface the tenant's plan user-cap
+            // rejection as a clear 409 Conflict with its own message, instead of a generic 500 --
+            // this is a real, enforced business outcome (CreateUserCommandHandler), not an
+            // unexpected failure.
+            UserLimitExceededException => ProblemDetailsExtensions.ConflictProblem(ex.Message, correlationId),
             _ => ProblemDetailsExtensions.InternalServerErrorProblem(correlationId)
         };
 

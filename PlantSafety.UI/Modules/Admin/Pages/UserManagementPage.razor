@@ -1,0 +1,289 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-03
+   FILE DESCRIPTION: Admin Portal per-tenant user management page. Lists users for a tenant
+     (paged, with role/status columns) and creates new users. Calls the real
+     UsersV1Controller (v1/features/enterprise-fabric/users) via UserManagementApiClient.
+
+     Backend gap note: no Deactivate/Reactivate endpoint exists on the real backend --
+     IUserRepository (PlantSafety.Application.Features.EnterpriseFabric.Handlers.Users) has
+     no corresponding repository method or stored procedure (only
+     usp_User_Create/GetById/List exist). This page intentionally does not offer a
+     deactivate/reactivate action rather than fabricating one; see the note in the page body.
+
+     UserLimitExceededException (Phase 7 §3.4 License Enforcement) is surfaced by
+     CreateUserCommandHandler when the tenant is at its subscription plan's user cap. The
+     API's ExceptionHandlingMiddleware maps it to a 409 Conflict ProblemDetails response, so
+     it appears here as a normal, readable ActionMessage rather than a generic failure.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/admin/tenants/{TenantId:guid}/users"
+
+@inject UserManagementState State
+@inject UserManagementApiClient ApiClient
+@inject ImpersonationState ImpersonationState
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Admin.ApiClients
+@using PlantSafety.UI.Modules.Admin.Models
+@using PlantSafety.UI.Modules.Admin.State
+
+<PageTitle>User Management — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The user list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="@($"/admin/tenants/{TenantId}")" class="ps-btn ps-btn-ghost ps-btn-sm">
+                <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Tenant Detail
+            </a>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (!IsImpersonatingThisTenant)
+        {
+            <div class="ps-alert ps-alert--warning" role="note">
+                <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                No active impersonation session for this tenant. The Users list/Create endpoints
+                are tenant-scoped by the caller's own operating context (<code>X-Tenant-ID</code>,
+                stamped only while impersonating -- see <c>ImpersonationHeaderHandler</c>); without
+                an active session for this tenant, the list below reflects <strong>your own</strong>
+                admin tenant, not this one, and creating a user will create it in the wrong tenant.
+                <a href="@($"/admin/tenants/{TenantId}")" class="ps-btn ps-btn-ghost ps-btn-sm">Start Impersonation (Support tab)</a>
+            </div>
+        }
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.Error</div>
+        }
+
+        @if (State.ActionMessage is not null)
+        {
+            <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+        }
+
+        <CardComponent Title="Create User">
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="new-user-first-name">First Name</label>
+                <input id="new-user-first-name" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_newFirstName" />
+            </div>
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="new-user-last-name">Last Name</label>
+                <input id="new-user-last-name" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_newLastName" />
+            </div>
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="new-user-email">Email</label>
+                <input id="new-user-email" type="email" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_newEmail" />
+            </div>
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="new-user-roles">Roles (comma-separated)</label>
+                <input id="new-user-roles" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_newRolesCsv" placeholder="SafetyOfficer,SiteManager" />
+            </div>
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="new-user-sites">Site Ids (comma-separated GUIDs, optional)</label>
+                <input id="new-user-sites" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_newSiteIdsCsv" />
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CreateUserAsync" disabled="@State.IsCreating">
+                <span class="bi bi-person-plus" aria-hidden="true"></span> @(State.IsCreating ? "Creating…" : "Create User")
+            </button>
+        </CardComponent>
+
+        <CardComponent Title="Filters">
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="filter-role">Role</label>
+                <input id="filter-role" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_filterRole" />
+            </div>
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="filter-active">Status</label>
+                <select id="filter-active" class="ps-btn ps-btn-ghost ps-btn-sm" @bind="_filterActiveOption">
+                    <option value="">All</option>
+                    <option value="true">Active only</option>
+                    <option value="false">Deactivated only</option>
+                </select>
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ApplyFiltersAsync" disabled="@State.IsLoading">Apply Filters</button>
+        </CardComponent>
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading users…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="UserProfileDto"
+                                Items="State.Users"
+                                Headers="_headers"
+                                KeySelector="u => u.UserId"
+                                EmptyMessage="No users found for this tenant."
+                                AriaLabel="Users">
+                <RowTemplate Context="user">
+                    <td>@user.DisplayName</td>
+                    <td>@user.Email</td>
+                    <td>@string.Join(", ", user.Roles)</td>
+                    <td><StatusIndicatorComponent Status="@(user.Status == "Active" ? "Healthy" : "Offline")" Label="@user.Status" /></td>
+                    <td>@(user.LastLoginAtUtc is { } last ? last.ToString("yyyy-MM-dd HH:mm") + " UTC" : "Never")</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <div class="ps-alert ps-alert--warning" role="note">
+                <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                Deactivate/Reactivate is not available: the real backend
+                (<code>IUserRepository</code>) has no corresponding repository method or stored
+                procedure today (only Create/GetById/List exist). This page will not fabricate
+                that action until real backend support is built.
+            </div>
+
+            @if (State.TotalCount > State.PageSize)
+            {
+                <div class="ps-page-actions">
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="PreviousPageAsync" disabled="@(State.PageNumber <= 1 || State.IsLoading)">Previous</button>
+                    <span class="ps-text-muted">Page @State.PageNumber of @TotalPages (@State.TotalCount total)</span>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="NextPageAsync" disabled="@(State.PageNumber >= TotalPages || State.IsLoading)">Next</button>
+                </div>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid TenantId { get; set; }
+
+    private static readonly string[] _headers = ["Name", "Email", "Roles", "Status", "Last Login"];
+
+    private string _newFirstName = string.Empty;
+    private string _newLastName = string.Empty;
+    private string _newEmail = string.Empty;
+    private string _newRolesCsv = string.Empty;
+    private string _newSiteIdsCsv = string.Empty;
+
+    private string _filterRole = string.Empty;
+    private string _filterActiveOption = string.Empty;
+
+    private int TotalPages => State.PageSize <= 0 ? 1 : Math.Max(1, (int)Math.Ceiling(State.TotalCount / (double)State.PageSize));
+
+    private bool IsImpersonatingThisTenant =>
+        ImpersonationState.ActiveSession is { } session
+        && session.TenantId == TenantId
+        && session.EndedAtUtc is null
+        && DateTime.UtcNow < session.ExpiresAtUtc;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "User Management",
+            activeModuleCode: string.Empty,
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Main Menu", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Tenant Management", Href = RouteDefinitions.AdminTenantList },
+                new BreadcrumbItem { Label = "Detail", Href = $"/admin/tenants/{TenantId}" },
+                new BreadcrumbItem { Label = "Users" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+        ImpersonationState.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync() => await LoadPageAsync(1);
+
+    private Task ApplyFiltersAsync() => LoadPageAsync(1);
+
+    private Task PreviousPageAsync() => LoadPageAsync(State.PageNumber - 1);
+
+    private Task NextPageAsync() => LoadPageAsync(State.PageNumber + 1);
+
+    private async Task LoadPageAsync(int pageNumber)
+    {
+        State.BeginLoad();
+
+        bool? isActive = _filterActiveOption switch
+        {
+            "true" => true,
+            "false" => false,
+            _ => null,
+        };
+
+        var envelope = await ApiClient.ListAsync(
+            role: string.IsNullOrWhiteSpace(_filterRole) ? null : _filterRole,
+            siteId: null,
+            isActive: isActive,
+            pageNumber: pageNumber,
+            pageSize: 25);
+
+        if (envelope.IsSuccess)
+            State.SetUsers(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetError(envelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load users: {envelope.FaultType}");
+    }
+
+    private async Task CreateUserAsync()
+    {
+        State.BeginCreate();
+
+        var roles = _newRolesCsv
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        var siteIds = new List<Guid>();
+        foreach (var token in _newSiteIdsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (Guid.TryParse(token, out var siteId)) siteIds.Add(siteId);
+        }
+
+        var request = new CreateUserRequest
+        {
+            FirstName = _newFirstName,
+            LastName = _newLastName,
+            Email = _newEmail,
+            Roles = roles,
+            SiteIds = siteIds,
+        };
+
+        var result = await ApiClient.CreateAsync(request);
+
+        if (result.IsSuccess)
+        {
+            State.CompleteCreate($"User created (Id: {result.Data!.UserId}).");
+            _newFirstName = string.Empty;
+            _newLastName = string.Empty;
+            _newEmail = string.Empty;
+            _newRolesCsv = string.Empty;
+            _newSiteIdsCsv = string.Empty;
+            await LoadPageAsync(State.PageNumber);
+        }
+        else if (result.IsProblem)
+        {
+            // UserLimitExceededException surfaces here as a clear 409 Conflict detail message
+            // (e.g. "Tenant '...' has reached its subscription plan's user cap (25). Current
+            // active users: 25.") rather than a generic failure.
+            State.CompleteCreate(result.Problem!.Detail);
+        }
+        else
+        {
+            State.CompleteCreate($"Failed to create user: {result.FaultType}");
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        ImpersonationState.OnChange -= StateHasChanged;
+    }
+}

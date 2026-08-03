@@ -3367,7 +3367,7 @@
           "OpenTelemetry.Extensions.Hosting": "1.17.0",
           "OpenTelemetry.Instrumentation.AspNetCore": "1.17.0",
           "OpenTelemetry.Instrumentation.Http": "1.17.0",
-          "OpenTelemetry.Instrumentation.SqlClient": "1.17.0-beta.1",
+          "OpenTelemetry.Instrumentation.SqlClient": "1.17.0",
           "PlantSafety.Application": "1.0.0",
           "PlantSafety.Domain": "1.0.0",
           "PlantSafety.SharedKernel": "1.0.0",
@@ -8557,17 +8557,5 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json"
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "PlantSafety.Infrastructure depends on OpenTelemetry.Instrumentation.SqlClient (>= 1.17.0-beta.1) but OpenTelemetry.Instrumentation.SqlClient 1.17.0-beta.1 was not found. OpenTelemetry.Instrumentation.SqlClient 1.17.0 was resolved instead.",
-      "libraryId": "OpenTelemetry.Instrumentation.SqlClient",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    }
-  ]
+  }
 }

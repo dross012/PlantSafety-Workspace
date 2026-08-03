@@ -59,6 +59,11 @@ public static class AuditingInfrastructureServiceRegistration
         services.AddScoped<IPermissionUsageLogRepository, PermissionUsageLogDapperRepository>();
         services.AddScoped<IDataLineageRepository, DataLineageDapperRepository>();
 
+        // Phase 7 §5.4 Audit & Logging (2026-08-03, Security & Compliance Agent): read-side
+        // companion to IPermissionUsageLogRepository backing GetTenantAuditStreamQuery -- the
+        // tenant-scoped access-log audit stream.
+        services.AddScoped<IPermissionUsageLogReadRepository, PermissionUsageLogReadDapperRepository>();
+
         // Application discipline read repositories
         services.AddScoped<IEfficiencyRepository, EfficiencyDapperRepository>();
         services.AddScoped<IFacilityAssessmentRepository, FacilityAssessmentDapperRepository>();

@@ -54,6 +54,16 @@ public sealed class TenantContextAccessor
     /// </summary>
     public const string SiteIdKey = "PlantSafety:SiteId";
 
+    /// <summary>
+    /// The <see cref="HttpContext.Items"/> key under which the resolved tenant's
+    /// data-residency/deployment region is stored (Phase 7 §1.2 Tenant Context Enforcement).
+    /// Written by <see cref="Middleware.TenantResolutionMiddleware"/> once it resolves the
+    /// requesting tenant's registered <c>Region</c> (see
+    /// <c>PlantSafety.Domain.Tenancy.Tenant.Aggregates.Tenant.Region</c>). Additive member,
+    /// added 2026-08-03.
+    /// </summary>
+    public const string RegionKey = "PlantSafety:Region";
+
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     /// <summary>
@@ -84,4 +94,12 @@ public sealed class TenantContextAccessor
     /// Gets a value indicating whether tenant context is available on the current request.
     /// </summary>
     public bool HasTenantContext => TenantId != Guid.Empty;
+
+    /// <summary>
+    /// Gets the resolved tenant's data-residency/deployment region for the current request
+    /// (Phase 7 §1.2 Tenant Context Enforcement), or <c>null</c> if not yet resolved (e.g.
+    /// anonymous endpoints, or a tenant provisioned before region tracking existed).
+    /// </summary>
+    public string? Region =>
+        _httpContextAccessor.HttpContext?.Items[RegionKey] as string;
 }

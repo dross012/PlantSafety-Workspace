@@ -97,16 +97,143 @@
             </section>
 
             <section class="ps-section">
-                <h2>Thresholds / Routing Rules / Tenant Overrides</h2>
+                <h2>Thresholds / Routing Rules</h2>
                 <div class="ps-alert ps-alert--warning" role="note">
                     <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
-                    Out of scope for this build. No SQL Server tables for Thresholds, Routing
-                    Rules, or Tenant Overrides exist in the codebase as of 2026-07-20 (confirmed by
-                    searching every migration script under
-                    <code>PlantSafety.Infrastructure\Persistence\Migrations</code>). This page will
-                    not fabricate editors for data that does not exist — these sections will be
-                    added once real backing tables are built.
+                    Out of scope for this build. No SQL Server tables for Thresholds or Routing
+                    Rules exist in the codebase as of 2026-07-20 (confirmed by searching every
+                    migration script under <code>PlantSafety.Infrastructure\Persistence\Migrations</code>).
+                    This page will not fabricate editors for data that does not exist — these
+                    sections will be added once real backing tables are built.
                 </div>
+            </section>
+
+            <section class="ps-section">
+                <h2>Tenant / User / Region Overrides &amp; Release Management</h2>
+                <p class="ps-text-muted">
+                    Phase 7 §7.1/§7.2: real tenant/user/region feature-flag overrides, resolution,
+                    tenant release channels, and rollback automation, backed by
+                    <code>200-tenant-user-region-feature-flag-overrides.sql</code>. Resolution
+                    precedence is <strong>user &gt; tenant &gt; region &gt; global</strong>.
+                </p>
+
+                @if (State.OverridesMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.OverridesMessage</div>
+                }
+
+                <CardComponent Title="Set Feature Flag Rollout Percentage">
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="rollout-db">Database</label>
+                        <input id="rollout-db" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_rolloutDatabaseKey" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="rollout-flag">Flag Name</label>
+                        <input id="rollout-flag" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_rolloutFlagName" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="rollout-pct">Rollout % (blank = clear)</label>
+                        <input id="rollout-pct" type="number" min="0" max="100" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_rolloutPercentage" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SetRolloutPercentageAsync" disabled="@State.IsSubmittingOverride">Apply</button>
+                </CardComponent>
+
+                <CardComponent Title="Tenant-Level Override">
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="tenant-ovr-flag">Flag Name</label>
+                        <input id="tenant-ovr-flag" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_tenantOverrideFlagName" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="tenant-ovr-id">Tenant Id</label>
+                        <input id="tenant-ovr-id" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_tenantOverrideTenantId" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="tenant-ovr-enabled">Enabled</label>
+                        <input id="tenant-ovr-enabled" type="checkbox" @bind="_tenantOverrideEnabled" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="tenant-ovr-pct">Rollout % (blank = none)</label>
+                        <input id="tenant-ovr-pct" type="number" min="0" max="100" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_tenantOverrideRolloutPercentage" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SetTenantOverrideAsync" disabled="@State.IsSubmittingOverride">Apply</button>
+                </CardComponent>
+
+                <CardComponent Title="User-Level Override">
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="user-ovr-flag">Flag Name</label>
+                        <input id="user-ovr-flag" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_userOverrideFlagName" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="user-ovr-id">User Id</label>
+                        <input id="user-ovr-id" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_userOverrideUserId" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="user-ovr-enabled">Enabled</label>
+                        <input id="user-ovr-enabled" type="checkbox" @bind="_userOverrideEnabled" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SetUserOverrideAsync" disabled="@State.IsSubmittingOverride">Apply</button>
+                </CardComponent>
+
+                <CardComponent Title="Region-Level Override">
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="region-ovr-flag">Flag Name</label>
+                        <input id="region-ovr-flag" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_regionOverrideFlagName" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="region-ovr-region">Region</label>
+                        <input id="region-ovr-region" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_regionOverrideRegion" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="region-ovr-enabled">Enabled</label>
+                        <input id="region-ovr-enabled" type="checkbox" @bind="_regionOverrideEnabled" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="region-ovr-pct">Rollout % (blank = none)</label>
+                        <input id="region-ovr-pct" type="number" min="0" max="100" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_regionOverrideRolloutPercentage" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SetRegionOverrideAsync" disabled="@State.IsSubmittingOverride">Apply</button>
+                </CardComponent>
+
+                <CardComponent Title="Tenant Release Channel">
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="channel-tenant-id">Tenant Id</label>
+                        <input id="channel-tenant-id" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_channelTenantId" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="channel-value">Channel</label>
+                        <select id="channel-value" class="ps-btn ps-btn-ghost ps-btn-sm" @bind="_channelValue">
+                            <option value="Stable">Stable</option>
+                            <option value="Beta">Beta</option>
+                            <option value="Canary">Canary</option>
+                        </select>
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SetReleaseChannelAsync" disabled="@State.IsSubmittingOverride">Apply</button>
+                </CardComponent>
+
+                <CardComponent Title="Trigger Rollback" CssClass="ps-card--danger">
+                    <p class="ps-text-muted">
+                        Reverts the global flag's rollout percentage (and every tenant/region
+                        override's rollout percentage) to 0. Use when a canary rollout must be
+                        reversed immediately.
+                    </p>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="rollback-db">Database</label>
+                        <input id="rollback-db" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_rollbackDatabaseKey" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="rollback-flag">Flag Name</label>
+                        <input id="rollback-flag" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_rollbackFlagName" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="rollback-reason">Reason</label>
+                        <input id="rollback-reason" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_rollbackReason" />
+                    </div>
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="rollback-hard-disable">Hard-disable global flag</label>
+                        <input id="rollback-hard-disable" type="checkbox" @bind="_rollbackHardDisable" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="TriggerRollbackAsync" disabled="@State.IsSubmittingOverride">Trigger Rollback</button>
+                </CardComponent>
             </section>
         }
 
@@ -167,6 +294,109 @@
             State.SetToggleError(result.IsProblem ? $"Failed to update {item.FlagName}: {result.Problem!.Detail}" : $"Failed to update {item.FlagName}: {result.FaultType}");
         }
     }
+
+    // ── Phase 7 §7.1/§7.2 Tenant/User/Region overrides + release channel + rollback ──
+
+    private string _rolloutDatabaseKey = "ArchiveDB";
+    private string _rolloutFlagName = string.Empty;
+    private int? _rolloutPercentage;
+
+    private string _tenantOverrideFlagName = string.Empty;
+    private string _tenantOverrideTenantId = string.Empty;
+    private bool _tenantOverrideEnabled = true;
+    private int? _tenantOverrideRolloutPercentage;
+
+    private string _userOverrideFlagName = string.Empty;
+    private string _userOverrideUserId = string.Empty;
+    private bool _userOverrideEnabled = true;
+
+    private string _regionOverrideFlagName = string.Empty;
+    private string _regionOverrideRegion = string.Empty;
+    private bool _regionOverrideEnabled = true;
+    private int? _regionOverrideRolloutPercentage;
+
+    private string _channelTenantId = string.Empty;
+    private string _channelValue = "Stable";
+
+    private string _rollbackDatabaseKey = "ArchiveDB";
+    private string _rollbackFlagName = string.Empty;
+    private string _rollbackReason = string.Empty;
+    private bool _rollbackHardDisable;
+
+    private async Task SetRolloutPercentageAsync()
+    {
+        State.BeginOverrideSubmit();
+        var result = await ApiClient.SetFeatureFlagRolloutPercentageAsync(_rolloutDatabaseKey, _rolloutFlagName, _rolloutPercentage);
+        State.SetOverrideResult(result.IsSuccess
+            ? $"{_rolloutFlagName} rollout percentage set to {(result.Data!.RolloutPercentage?.ToString() ?? "cleared")}."
+            : DescribeFailure(result));
+    }
+
+    private async Task SetTenantOverrideAsync()
+    {
+        if (!Guid.TryParse(_tenantOverrideTenantId, out var tenantId))
+        {
+            State.SetOverrideResult("Enter a valid Tenant Id (GUID).");
+            return;
+        }
+
+        State.BeginOverrideSubmit();
+        var result = await ApiClient.SetTenantFeatureFlagOverrideAsync(_tenantOverrideFlagName, tenantId, _tenantOverrideEnabled, _tenantOverrideRolloutPercentage);
+        State.SetOverrideResult(result.IsSuccess
+            ? $"Tenant override for {_tenantOverrideFlagName} set: Enabled={result.Data!.Enabled}, Rollout={result.Data!.RolloutPercentage?.ToString() ?? "none"}."
+            : DescribeFailure(result));
+    }
+
+    private async Task SetUserOverrideAsync()
+    {
+        if (!Guid.TryParse(_userOverrideUserId, out var userId))
+        {
+            State.SetOverrideResult("Enter a valid User Id (GUID).");
+            return;
+        }
+
+        State.BeginOverrideSubmit();
+        var result = await ApiClient.SetUserFeatureFlagOverrideAsync(_userOverrideFlagName, userId, _userOverrideEnabled);
+        State.SetOverrideResult(result.IsSuccess
+            ? $"User override for {_userOverrideFlagName} set: Enabled={result.Data!.Enabled}."
+            : DescribeFailure(result));
+    }
+
+    private async Task SetRegionOverrideAsync()
+    {
+        State.BeginOverrideSubmit();
+        var result = await ApiClient.SetRegionFeatureFlagOverrideAsync(_regionOverrideFlagName, _regionOverrideRegion, _regionOverrideEnabled, _regionOverrideRolloutPercentage);
+        State.SetOverrideResult(result.IsSuccess
+            ? $"Region override for {_regionOverrideFlagName} ({_regionOverrideRegion}) set: Enabled={result.Data!.Enabled}, Rollout={result.Data!.RolloutPercentage?.ToString() ?? "none"}."
+            : DescribeFailure(result));
+    }
+
+    private async Task SetReleaseChannelAsync()
+    {
+        if (!Guid.TryParse(_channelTenantId, out var tenantId))
+        {
+            State.SetOverrideResult("Enter a valid Tenant Id (GUID).");
+            return;
+        }
+
+        State.BeginOverrideSubmit();
+        var result = await ApiClient.SetTenantReleaseChannelAsync(tenantId, _channelValue);
+        State.SetOverrideResult(result.IsSuccess
+            ? $"Tenant {tenantId} release channel set to {result.Data!.Channel}."
+            : DescribeFailure(result));
+    }
+
+    private async Task TriggerRollbackAsync()
+    {
+        State.BeginOverrideSubmit();
+        var result = await ApiClient.TriggerRollbackAsync(_rollbackDatabaseKey, _rollbackFlagName, _rollbackReason, _rollbackHardDisable);
+        State.SetOverrideResult(result.IsSuccess
+            ? $"Rollback executed for {result.Data!.FeatureName}: {result.Data!.TenantOverridesReset} tenant + {result.Data!.RegionOverridesReset} region overrides reset."
+            : DescribeFailure(result));
+    }
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

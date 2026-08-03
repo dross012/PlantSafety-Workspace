@@ -5,10 +5,12 @@
 --  Created:        2026-08-02
 --  Author:         PlantSafety Platform Team (Eventing & Messaging Agent, Phase 6)
 --  Description:    Inserts a single dead-lettered event row. Called once per faulted message by
---                  DeadLetterFaultConsumer<TMessage> (PlantSafety.Infrastructure.Messaging.
---                  Consumers.DeadLetter) after MassTransit's retry pipeline (cfg.UseMessageRetry)
---                  exhausts all attempts for a given IConsumer<T> and publishes Fault<T>.
---                  Mirrors usp_OutboxMessages_Insert's plain parameterised-procedure style.
+--                  DeadLetterEventPersister, invoked from DeadLetterFaultObserver's
+--                  ConsumeFault<T> (PlantSafety.Infrastructure.Messaging.Consumers.DeadLetter, an
+--                  IConsumeObserver connected via cfg.ConnectConsumeObserver) after MassTransit's
+--                  retry pipeline (cfg.UseMessageRetry) exhausts all attempts for a given
+--                  IConsumer<T>. Mirrors usp_OutboxMessages_Insert's plain
+--                  parameterised-procedure style.
 -- ============================================================================
 
 -- NOTE: the tenant parameter is named @EnvelopeTenantId, NOT @TenantId, for the same reason as

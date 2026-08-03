@@ -8,12 +8,12 @@
 //   PlantSafety.ArchiveDB and PlantSafety.IntegrationDB. Routes all requests through
 //   MediatR ISender to the Application layer. No domain logic or data access here.
 //
-//   SCOPE NOTE: This is the Configuration Framework's feature-flag editor only.
-//   "Thresholds", "Routing Rules", and "Tenant Overrides" have NO backing SQL Server
-//   tables in this codebase as of this build (2026-07-20) — see
-//   IFeatureFlagRepository's header comment and the UI dashboard page for the full
-//   scope rationale. No endpoints for those areas exist here; do not add fabricated
-//   endpoints until real tables are built.
+//   SCOPE NOTE (2026-07-20, superseded 2026-08-03 for Tenant/User/Region Overrides only):
+//   originally, "Thresholds", "Routing Rules", and "Tenant Overrides" had NO backing SQL
+//   Server tables in this codebase. Phase 7 (SaaS Productization Blueprint §7.1/§7.2, migration
+//   200-tenant-user-region-feature-flag-overrides.sql) added real tables + endpoints for
+//   Tenant/User/Region feature flag overrides, release channels, and rollback automation
+//   below. "Thresholds" and "Routing Rules" remain out of scope (still no backing tables).
 // ============================================================================
 using PlantSafety.Api.Operations.Configuration.Contracts.Requests;
 using PlantSafety.Application.Operations.Configuration.Commands;
@@ -103,5 +103,135 @@ public sealed class OperationsConfigurationV1Controller : ControllerBase
             return BadRequest(ApiResponse<FeatureFlagDto>.Fail(result.Error.Message, CorrelationId));
 
         return Ok(ApiResponse<FeatureFlagDto>.Ok(result.Value, CorrelationId));
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 7 §7.1 -- Tenant/User/Region feature flag overrides + resolver
+    // ------------------------------------------------------------------
+
+    /// <summary>Creates or updates a tenant-level feature flag override.</summary>
+    [HttpPut("feature-flags/{flagName}/tenant-overrides/{tenantId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
+    [ProducesResponseType(typeof(ApiResponse<TenantFeatureFlagOverrideDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<TenantFeatureFlagOverrideDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetTenantFeatureFlagOverrideAsync(
+        [FromRoute] string flagName,
+        [FromRoute] Guid tenantId,
+        [FromBody] SetTenantFeatureFlagOverrideRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new SetTenantFeatureFlagOverrideCommand(tenantId, flagName, request.Enabled, request.RolloutPercentage), cancellationToken);
+
+        if (result.IsFailure)
+            return BadRequest(ApiResponse<TenantFeatureFlagOverrideDto>.Fail(result.Error.Message, CorrelationId));
+
+        return Ok(ApiResponse<TenantFeatureFlagOverrideDto>.Ok(result.Value, CorrelationId));
+    }
+
+    /// <summary>Creates or updates a user-level feature flag override (e.g. an individual beta tester).</summary>
+    [HttpPut("feature-flags/{flagName}/user-overrides/{userId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
+    [ProducesResponseType(typeof(ApiResponse<UserFeatureFlagOverrideDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UserFeatureFlagOverrideDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetUserFeatureFlagOverrideAsync(
+        [FromRoute] string flagName,
+        [FromRoute] Guid userId,
+        [FromBody] SetUserFeatureFlagOverrideRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new SetUserFeatureFlagOverrideCommand(userId, flagName, request.Enabled), cancellationToken);
+
+        if (result.IsFailure)
+            return BadRequest(ApiResponse<UserFeatureFlagOverrideDto>.Fail(result.Error.Message, CorrelationId));
+
+        return Ok(ApiResponse<UserFeatureFlagOverrideDto>.Ok(result.Value, CorrelationId));
+    }
+
+    /// <summary>Creates or updates a region-level feature flag override (e.g. a feature only live in EU first).</summary>
+    [HttpPut("feature-flags/{flagName}/region-overrides/{region}")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
+    [ProducesResponseType(typeof(ApiResponse<RegionFeatureFlagOverrideDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RegionFeatureFlagOverrideDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetRegionFeatureFlagOverrideAsync(
+        [FromRoute] string flagName,
+        [FromRoute] string region,
+        [FromBody] SetRegionFeatureFlagOverrideRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new SetRegionFeatureFlagOverrideCommand(region, flagName, request.Enabled, request.RolloutPercentage), cancellationToken);
+
+        if (result.IsFailure)
+            return BadRequest(ApiResponse<RegionFeatureFlagOverrideDto>.Fail(result.Error.Message, CorrelationId));
+
+        return Ok(ApiResponse<RegionFeatureFlagOverrideDto>.Ok(result.Value, CorrelationId));
+    }
+
+    /// <summary>
+    /// Resolves a feature flag's final on/off outcome across all 4 precedence levels
+    /// (user > tenant > region > global) for the given evaluation context.
+    /// </summary>
+    [HttpGet("{databaseKey}/feature-flags/{flagName}/resolve")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
+    [ProducesResponseType(typeof(ApiResponse<FeatureFlagResolutionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<FeatureFlagResolutionResult>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResolveFeatureFlagAsync(
+        [FromRoute] string databaseKey,
+        [FromRoute] string flagName,
+        [FromQuery] Guid? tenantId,
+        [FromQuery] Guid? userId,
+        [FromQuery] string? region,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new ResolveFeatureFlagQuery(databaseKey, flagName, tenantId, userId, region), cancellationToken);
+
+        if (result.IsFailure)
+            return BadRequest(ApiResponse<FeatureFlagResolutionResult>.Fail(result.Error.Message, CorrelationId));
+
+        return Ok(ApiResponse<FeatureFlagResolutionResult>.Ok(result.Value, CorrelationId));
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 7 §7.2 -- Tenant release channels + rollback automation
+    // ------------------------------------------------------------------
+
+    /// <summary>Assigns a tenant's release channel (Stable, Beta, or Canary).</summary>
+    [HttpPut("tenants/{tenantId:guid}/release-channel")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
+    [ProducesResponseType(typeof(ApiResponse<TenantReleaseChannelDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<TenantReleaseChannelDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetTenantReleaseChannelAsync(
+        [FromRoute] Guid tenantId,
+        [FromBody] SetTenantReleaseChannelRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new SetTenantReleaseChannelCommand(tenantId, request.Channel), cancellationToken);
+
+        if (result.IsFailure)
+            return BadRequest(ApiResponse<TenantReleaseChannelDto>.Fail(result.Error.Message, CorrelationId));
+
+        return Ok(ApiResponse<TenantReleaseChannelDto>.Ok(result.Value, CorrelationId));
+    }
+
+    /// <summary>
+    /// Executes a real, code-level feature-flag rollback for a bad release: reverts the
+    /// canary rollout percentage to 0 across the global flag and every tenant/region
+    /// override for the given feature (and optionally hard-disables the global flag).
+    /// </summary>
+    [HttpPost("{databaseKey}/feature-flags/{flagName}/rollback")]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
+    [ProducesResponseType(typeof(ApiResponse<RollbackResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RollbackResultDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> TriggerRollbackAsync(
+        [FromRoute] string databaseKey,
+        [FromRoute] string flagName,
+        [FromBody] TriggerRollbackRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new TriggerRollbackCommand(databaseKey, flagName, request.Reason, request.HardDisable), cancellationToken);
+
+        if (result.IsFailure)
+            return BadRequest(ApiResponse<RollbackResultDto>.Fail(result.Error.Message, CorrelationId));
+
+        return Ok(ApiResponse<RollbackResultDto>.Ok(result.Value, CorrelationId));
     }
 }

@@ -16,8 +16,18 @@
 //                  exercise this class against an in-memory/fake HTTP handler (see
 //                  Shared.EventBus.Tests-style precedent) rather than a live endpoint. Additive-only
 //                  evolution.
+//
+//                  2026-08-03 UPDATE (Phase 7 §5.3 Data Residency wiring): publishing an envelope to
+//                  an external ERP/MES/CMMS system is a genuinely cross-region-relevant operation --
+//                  the external endpoint may sit outside the tenant's required residency zone. Before
+//                  any HTTP transmission this now calls IDataResidencyEnforcer.IsSatisfied(tenantId)
+//                  (reusing the same tenant-vs-current-deployment-region comparison the enforcer
+//                  already performs for tenant data exports) and rejects the publish -- loudly logged,
+//                  never silently dropped -- when the tenant's policy does not permit it. Additive-only
+//                  evolution.
 // ============================================================================
 using System.Net.Http.Json;
+using PlantSafety.Application.Enterprise.MultiRegion.DataResidency;
 using PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh;
 using PlantSafety.SharedKernel.Primitives.Errors;
 using PlantSafety.SharedKernel.Primitives.Results;
@@ -29,6 +39,7 @@ public sealed class HttpExternalSystemPublisher(
     EnterpriseSourceSystem targetSystem,
     string endpointUrl,
     HttpClient httpClient,
+    IDataResidencyEnforcer dataResidencyEnforcer,
     ILogger<HttpExternalSystemPublisher> logger) : IExternalSystemPublisher
 {
     /// <inheritdoc/>
@@ -43,6 +54,20 @@ public sealed class HttpExternalSystemPublisher(
                 "EnterpriseEventMesh: {TargetSystem} endpoint is not configured; skipping outbound publish of {EventType} (EventId={EventId}).",
                 TargetSystem, envelope.EventType, envelope.EventId);
             return Result<bool>.Success(false);
+        }
+
+        if (envelope.TenantId != Guid.Empty && !dataResidencyEnforcer.IsSatisfied(envelope.TenantId))
+        {
+            logger.LogWarning(
+                "EnterpriseEventMesh: rejected outbound publish of {EventType} (EventId={EventId}) for Tenant {TenantId} to " +
+                "{TargetSystem} -- the tenant's configured data-residency policy does not permit sending data outside the " +
+                "platform's current deployment region.",
+                envelope.EventType, envelope.EventId, envelope.TenantId, TargetSystem);
+
+            return Result<bool>.Failure(new Error(
+                ErrorCode.Create("enterprise.eventmesh.residencyviolation"),
+                ErrorType.Forbidden,
+                $"Tenant {envelope.TenantId}'s data-residency policy does not permit publishing to {TargetSystem} from the platform's current deployment region."));
         }
 
         try

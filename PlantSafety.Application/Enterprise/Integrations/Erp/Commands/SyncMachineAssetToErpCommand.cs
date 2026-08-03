@@ -21,6 +21,7 @@ using PlantSafety.Application.Abstractions.Messaging;
 using PlantSafety.Application.Common.Results;
 using PlantSafety.Application.CrossDomain.Machines.Mappings;
 using PlantSafety.Application.CrossDomain.Machines.Repositories;
+using PlantSafety.Application.Enterprise.MultiRegion;
 using PlantSafety.SharedKernel.Contracts.Enterprise.CanonicalModel;
 using PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh;
 
@@ -80,6 +81,7 @@ public sealed record SyncMachineAssetToErpResult(int AssetsAttempted, int Assets
 public sealed class SyncMachineAssetToErpCommandHandler(
     IMachinesRepository machinesRepository,
     IEnumerable<IExternalSystemPublisher> publishers,
+    ITenantRegionRouter tenantRegionRouter,
     ILogger<SyncMachineAssetToErpCommandHandler> logger)
     : IRequestHandler<SyncMachineAssetToErpCommand, Result<SyncMachineAssetToErpResult>>
 {
@@ -99,6 +101,11 @@ public sealed class SyncMachineAssetToErpCommandHandler(
         var published = 0;
         var skipped = 0;
 
+        // Phase 7 §1.3 Tenant-Aware Eventing: resolve the tenant's Region once per sync run (a
+        // deterministic tenant->region mapping never varies per machine) and thread it into every
+        // outbound envelope this command produces.
+        var region = request.TenantId == Guid.Empty ? null : tenantRegionRouter.ResolveRegion(request.TenantId).Code;
+
         foreach (var machine in machines)
         {
             var canonical = machine.ToCanonicalV1();
@@ -112,7 +119,8 @@ public sealed class SyncMachineAssetToErpCommandHandler(
                 causationId: request.CausationId,
                 tenantId: request.TenantId,
                 actorId: request.ActorId == Guid.Empty ? null : request.ActorId,
-                payload: canonical);
+                payload: canonical,
+                region: region);
 
             attempted++;
 

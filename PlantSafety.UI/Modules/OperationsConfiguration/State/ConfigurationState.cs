@@ -83,5 +83,22 @@ public sealed class ConfigurationState
     /// <summary>Records a toggle failure with a sanitized message.</summary>
     public void SetToggleError(string sanitizedError) { _toggleMessage = sanitizedError; _togglingFlagKey = null; NotifyStateChanged(); }
 
+    // ── Phase 7 §7.1/§7.2 Tenant/User/Region overrides + release channel + rollback ──
+
+    private string? _overridesMessage;
+    private bool _isSubmittingOverride;
+
+    /// <summary>Gets the most recent override/release-channel/rollback action outcome message.</summary>
+    public string? OverridesMessage => _overridesMessage;
+
+    /// <summary>Gets a value indicating whether an override/release-channel/rollback action is in flight.</summary>
+    public bool IsSubmittingOverride => _isSubmittingOverride;
+
+    /// <summary>Marks an override/release-channel/rollback action as in flight.</summary>
+    public void BeginOverrideSubmit() { _isSubmittingOverride = true; _overridesMessage = null; NotifyStateChanged(); }
+
+    /// <summary>Records the outcome of a completed override/release-channel/rollback action.</summary>
+    public void SetOverrideResult(string message) { _isSubmittingOverride = false; _overridesMessage = message; NotifyStateChanged(); }
+
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

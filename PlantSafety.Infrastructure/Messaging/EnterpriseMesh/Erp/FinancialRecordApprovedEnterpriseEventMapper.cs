@@ -17,8 +17,15 @@
 //                  has no real domain event yet; FinancialRecordApprovedEvent is the actual,
 //                  already-built financial-impact event this hook fires on). EventType:
 //                  "plantsafety.financialrecord.approved.v1". Additive-only evolution.
+//
+//                  2026-08-03 UPDATE (Phase 7 §1.3 Tenant-Aware Eventing): converted from a static
+//                  class to an instance class carrying an injected ITenantRegionRouter, so the
+//                  envelope's Region field can be populated by resolving the event's TenantId
+//                  through the same tenant-region-affinity logic Phase 7 §4.3 Global Routing already
+//                  established, instead of always defaulting to null. Additive-only evolution.
 // ============================================================================
 using PlantSafety.Application.Enterprise.Integrations.Erp.CostCenters;
+using PlantSafety.Application.Enterprise.MultiRegion;
 using PlantSafety.Application.Financials.Models;
 using PlantSafety.Domain.Financials.Events;
 using PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh;
@@ -26,7 +33,7 @@ using PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh;
 namespace PlantSafety.Infrastructure.Messaging.EnterpriseMesh.Erp;
 
 /// <summary>Maps FinancialRecord lifecycle domain events onto <see cref="EnterpriseEventEnvelope"/> for the Enterprise Event Mesh.</summary>
-public static class FinancialRecordApprovedEnterpriseEventMapper
+public sealed class FinancialRecordApprovedEnterpriseEventMapper(ITenantRegionRouter tenantRegionRouter)
 {
     /// <summary>The canonical, namespaced EventType for this envelope.</summary>
     public const string ApprovedEventType = "plantsafety.financialrecord.approved.v1";
@@ -39,7 +46,7 @@ public static class FinancialRecordApprovedEnterpriseEventMapper
     /// (<paramref name="record"/>) and, when configured, its <paramref name="costCenterMapping"/>,
     /// onto an outbound <see cref="EnterpriseEventEnvelope"/> for ERP financial posting.
     /// </summary>
-    public static EnterpriseEventEnvelope ToEnvelope(
+    public EnterpriseEventEnvelope ToEnvelope(
         FinancialRecordApprovedEvent domainEvent,
         FinancialRecordDetailDto record,
         CostCenterMapping? costCenterMapping,
@@ -61,7 +68,8 @@ public static class FinancialRecordApprovedEnterpriseEventMapper
                 record.Amount,
                 costCenterMapping?.ExternalCostCenterCode,
                 domainEvent.ApprovedBy.Value,
-                domainEvent.ApprovedAtUtc.Value));
+                domainEvent.ApprovedAtUtc.Value),
+            region: tenantId == Guid.Empty ? null : tenantRegionRouter.ResolveRegion(tenantId).Code);
 
     /// <summary>Payload shape for <see cref="ApprovedEventType"/> SchemaVersion 1.</summary>
     /// <param name="FinancialRecordId">Identity of the approved FinancialRecord.</param>

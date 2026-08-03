@@ -136,6 +136,8 @@ public sealed partial class OptimizationRun
         ArgumentNullException.ThrowIfNull(inputTasks);
         ArgumentNullException.ThrowIfNull(inputAvailability);
 
+        EnsureSingleTenant(tenantId, inputTasks, inputAvailability, correlationId);
+
         var agg = new OptimizationRun
         {
             OptimizationRunId = OptimizationRunId.New(),
@@ -227,6 +229,46 @@ public sealed partial class OptimizationRun
     }
 
     // ---- Helpers -----------------------------------------------------------
+
+    /// <summary>
+    /// Guards against cross-tenant data ever being mixed into a single optimization run (Phase 7
+    /// §1.4 Tenant-Aware Scheduling). SchedulableTask/ResourceAvailabilityWindow's TenantId
+    /// property is optional/additive (defaults to <see cref="Guid.Empty"/>) for source
+    /// compatibility with pre-existing callers that do not yet populate it -- a record with an
+    /// unpopulated (empty) TenantId is treated as "not yet tagged" and skipped, matching this
+    /// codebase's established Guid.Empty-as-unset convention (see
+    /// TenantSessionContextExtensions). Any record whose TenantId IS populated and does not match
+    /// <paramref name="tenantId"/> throws.
+    /// </summary>
+    private static void EnsureSingleTenant(
+        Guid tenantId,
+        IReadOnlyList<SchedulableTask> inputTasks,
+        IReadOnlyList<ResourceAvailabilityWindow> inputAvailability,
+        CorrelationId correlationId)
+    {
+        var offendingTask = inputTasks.FirstOrDefault(t => t.TenantId != Guid.Empty && t.TenantId != tenantId);
+        if (offendingTask is not null)
+        {
+            throw new OptimizationRunCrossTenantDataException(
+                tenantId, offendingTask.TenantId, correlationId, CausationId.FromGuid(correlationId.Value));
+        }
+
+        var offendingWindowIndex = -1;
+        for (var i = 0; i < inputAvailability.Count; i++)
+        {
+            if (inputAvailability[i].TenantId != Guid.Empty && inputAvailability[i].TenantId != tenantId)
+            {
+                offendingWindowIndex = i;
+                break;
+            }
+        }
+
+        if (offendingWindowIndex >= 0)
+        {
+            throw new OptimizationRunCrossTenantDataException(
+                tenantId, inputAvailability[offendingWindowIndex].TenantId, correlationId, CausationId.FromGuid(correlationId.Value));
+        }
+    }
 
     private void AddDomainEvent(IOptimizationRunDomainEvent evt) => _domainEvents.Add(evt);
 

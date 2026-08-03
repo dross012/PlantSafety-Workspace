@@ -18,6 +18,7 @@
           "PlantSafety.Domain": "1.0.0",
           "PlantSafety.SharedKernel": "1.0.0",
           "Shared.AuditLogging.Abstractions": "1.0.0",
+          "Shared.Authorization.Abstractions": "1.0.0",
           "System.Diagnostics.DiagnosticSource": "10.0.9"
         },
         "runtime": {
@@ -296,6 +297,7 @@
           "FluentValidation": "12.1.1",
           "MessagePack": "3.1.7",
           "Microsoft.Extensions.DependencyInjection": "10.0.8",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.9",
           "MongoDB.Bson": "3.1.0",
           "YamlDotNet": "18.0.0",
           "protobuf-net": "3.2.56"
@@ -310,6 +312,14 @@
       "Shared.AuditLogging.Abstractions/1.0.0": {
         "runtime": {
           "Shared.AuditLogging.Abstractions.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Shared.Authorization.Abstractions/1.0.0": {
+        "runtime": {
+          "Shared.Authorization.Abstractions.dll": {
             "assemblyVersion": "1.0.0.0",
             "fileVersion": "1.0.0.0"
           }
@@ -509,6 +519,11 @@
       "sha512": ""
     },
     "Shared.AuditLogging.Abstractions/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Shared.Authorization.Abstractions/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
