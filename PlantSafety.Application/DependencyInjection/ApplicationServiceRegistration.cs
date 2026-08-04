@@ -50,6 +50,7 @@ using PlantSafety.Application.Workflow.Behaviors;
 using PlantSafety.Application.Workflow.DependencyInjection;
 using PlantSafety.Application.Auditing.AuditReport.DependencyInjection;
 using PlantSafety.Application.Auditing.AuditTimeline.DependencyInjection;
+using PlantSafety.Application.Auditing.ComplianceMonitoring.DependencyInjection;
 using PlantSafety.Application.Compliance.RulesEngine.DependencyInjection;
 using PlantSafety.Application.Scheduling.PredictiveScheduling.DependencyInjection;
 using PlantSafety.Application.Operations.DependencyInjection;
@@ -237,6 +238,11 @@ public static class ApplicationServiceRegistration
         // RecommendationComposer/Factory). Command/query handlers are auto-registered via the
         // assembly-wide MediatR scan above.
         services.AddGlobalSafetyInsightsApplicationServices();
+
+        // Phase 9 §5.6 Compliance Report Generation (2026-08-03): registers
+        // TenantAuditStreamSectionProvider, the cross-module read-model composition provider the
+        // new GetComplianceReportQuery uses to resolve the audit-trail/incident-lineage section.
+        services.AddComplianceMonitoringApplicationServices();
 
         return services;
     }

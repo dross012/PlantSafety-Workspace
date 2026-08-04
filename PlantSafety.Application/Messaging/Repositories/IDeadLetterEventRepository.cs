@@ -59,4 +59,39 @@ public interface IDeadLetterEventRepository
     /// <param name="cancellationToken">Propagated cancellation token.</param>
     /// <returns><see langword="true"/> if the event was re-published and the row marked replayed; <see langword="false"/> if the row did not exist or was already replayed.</returns>
     Task<bool> ReplayAsync(Guid deadLetterId, Guid replayedByUserId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Persists a diagnostic dead-letter row for an inbound Enterprise Event Mesh payload (from an
+    /// external ERP/MES/CMMS/HR/Vendor system) that failed translation/dispatch at
+    /// <c>EnterpriseEventMeshV1Controller</c>/<c>IngestEnterpriseInboundEventCommandHandler</c>
+    /// (Phase 9 §1 Reliability Hardening). Distinct from <see cref="ReplayAsync"/>'s target -- the
+    /// internal MassTransit fault pipeline persisted via <c>DeadLetterFaultObserver</c> -- this is
+    /// the cross-SYSTEM boundary's poison-message capture, reusing the same
+    /// <c>[System].[DeadLetterEvents]</c> table/shape so a malformed or permanently-failing inbound
+    /// external payload leaves the same queryable diagnostic trail instead of vanishing after only a
+    /// log line. Never throws back to the caller -- persistence failures are logged and swallowed,
+    /// matching <c>DeadLetterEventPersister</c>'s "the dead-letter sink itself must never destabilise
+    /// its caller" convention.
+    /// </summary>
+    /// <param name="eventType">The inbound envelope's EventType discriminator.</param>
+    /// <param name="schemaVersion">The inbound envelope's SchemaVersion.</param>
+    /// <param name="tenantId">The inbound envelope's TenantId, or <see langword="null"/> if unset.</param>
+    /// <param name="payload">The inbound envelope, serialized to JSON, for replay/diagnostics.</param>
+    /// <param name="faultReason">Short, human-readable reason the inbound event could not be processed.</param>
+    /// <param name="exceptionDetail">Full exception detail, if the failure was an unhandled exception rather than a domain <c>Result</c> failure.</param>
+    /// <param name="correlationId">The inbound envelope's CorrelationId.</param>
+    /// <param name="causationId">The inbound envelope's CausationId, if any.</param>
+    /// <param name="sourceSystem">The external system that sent this payload (ERP/MES/CMMS/HR/Vendor), recorded as the row's ConsumerName/ActorId equivalent for triage.</param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    Task RecordInboundEventMeshFailureAsync(
+        string eventType,
+        string schemaVersion,
+        string? tenantId,
+        string? payload,
+        string faultReason,
+        string? exceptionDetail,
+        Guid? correlationId,
+        Guid? causationId,
+        string sourceSystem,
+        CancellationToken cancellationToken);
 }

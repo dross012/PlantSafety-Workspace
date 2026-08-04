@@ -45,4 +45,20 @@ public sealed record CrossSiteActionLogEntryDto
     /// when the action executed immediately without an approval chain.
     /// </summary>
     public Guid? WorkflowInstanceId { get; init; }
+
+    /// <summary>
+    /// Correlation identifier propagated from the triggering CrossSiteActionEvent (Phase 9 §4
+    /// observability-audit fix: previously computed end-to-end by MultiSiteActionRouter/
+    /// RecordCrossSiteActionCommand but silently dropped before persistence, breaking queryable
+    /// trace-back from this audit ledger to the originating request/mesh event). <see langword="null"/>
+    /// for rows recorded before this column existed.
+    /// </summary>
+    public Guid? CorrelationId { get; init; }
+
+    /// <summary>
+    /// Causation identifier propagated from the triggering CrossSiteActionEvent (see
+    /// <see cref="CorrelationId"/> remarks). <see langword="null"/> for rows recorded before this
+    /// column existed.
+    /// </summary>
+    public Guid? CausationId { get; init; }
 }

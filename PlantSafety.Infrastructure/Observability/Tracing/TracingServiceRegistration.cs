@@ -18,6 +18,7 @@
 //                  trace ever existed across service/database boundaries. This file closes that
 //                  gap. Additive-only evolution.
 // ============================================================================
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -57,6 +58,23 @@ public static class TracingServiceRegistration
                     // Custom ActivitySources declared across the platform's Diagnostics/
                     // Telemetry constant files (e.g. BehaviorDiagnostics.ActivitySourceName).
                     .AddSource("PlantSafety.*")
+                    .AddConsoleExporter();
+
+                if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+                {
+                    builder.AddOtlpExporter(otlp => otlp.Endpoint = new Uri(otlpEndpoint));
+                }
+            })
+            // Phase 9 §4 observability-audit fix: real System.Diagnostics.Metrics instruments
+            // declared across the platform (e.g. DataResidencyEnforcer's residency-check counter)
+            // were never collected -- same dead-instrumentation risk WithTracing() above already
+            // closed for ActivitySources, mirrored here for Meters.
+            .WithMetrics(builder =>
+            {
+                builder
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddMeter("PlantSafety.*")
                     .AddConsoleExporter();
 
                 if (!string.IsNullOrWhiteSpace(otlpEndpoint))

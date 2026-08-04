@@ -150,6 +150,65 @@ public sealed class DeadLetterEventDapperRepository(
         return rowsAffected > 0;
     }
 
+    /// <inheritdoc/>
+    public async Task RecordInboundEventMeshFailureAsync(
+        string eventType,
+        string schemaVersion,
+        string? tenantId,
+        string? payload,
+        string faultReason,
+        string? exceptionDetail,
+        Guid? correlationId,
+        Guid? causationId,
+        string sourceSystem,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var conn = connectionFactory.CreateConnection();
+
+            var parameters = new DynamicParameters();
+            parameters.Add("DeadLetterId", Uuid7.New());
+            parameters.Add("MessageId", (Guid?)null);
+            parameters.Add("EventType", eventType);
+            parameters.Add("SchemaVersion", schemaVersion);
+            parameters.Add("EnvelopeTenantId", tenantId);
+            parameters.Add("Payload", payload);
+            parameters.Add("FaultReason", faultReason);
+            parameters.Add("ExceptionDetail", exceptionDetail);
+            // Inbound Enterprise Event Mesh payloads are a synchronous HTTP request, not a
+            // MassTransit-retried message -- RetryCount is honestly 0 here (no retry pipeline
+            // applies at this boundary), distinct from the internal DLQ's real per-attempt count.
+            parameters.Add("RetryCount", 0);
+            parameters.Add("FaultedAt", DateTime.UtcNow);
+            parameters.Add("CorrelationId", correlationId);
+            parameters.Add("CausationId", causationId);
+            parameters.Add("ActorId", sourceSystem);
+            parameters.Add("ConsumerName", $"EnterpriseEventMesh.Inbound:{sourceSystem}");
+
+            await conn.ExecuteAsync(
+                new CommandDefinition(
+                    "[System].[usp_DeadLetterEvents_Insert]",
+                    parameters,
+                    commandType: CommandType.StoredProcedure,
+                    cancellationToken: cancellationToken));
+
+            logger.LogError(
+                "EnterpriseEventMesh: inbound {EventType} from {SourceSystem} (CorrelationId={CorrelationId}) recorded as a " +
+                "dead letter: {FaultReason}",
+                eventType, sourceSystem, correlationId, faultReason);
+        }
+        catch (Exception persistEx)
+        {
+            // Same "must never destabilise the caller" convention as DeadLetterEventPersister --
+            // losing the diagnostic row is preferable to failing the inbound HTTP request a second
+            // time over a purely observability-related write.
+            logger.LogError(persistEx,
+                "EnterpriseEventMesh: failed to persist inbound dead-letter row for {EventType} from {SourceSystem} (original fault: {FaultReason}).",
+                eventType, sourceSystem, faultReason);
+        }
+    }
+
     private async Task PublishAsync(DeadLetterEventDto row, CancellationToken cancellationToken)
     {
         // Resolved per-call to avoid capturing a stale bus instance, mirroring

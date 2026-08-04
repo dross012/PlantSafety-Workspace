@@ -13,9 +13,18 @@
 //                  so no explicit handler registration is required here. MUST be invoked from
 //                  ApplicationServiceRegistration.AddApplicationServices -- see that file's call
 //                  site. Additive-only evolution.
+//                  2026-08-03 (Phase 9 §5.6 Compliance Report Generation): also registers this
+//                  module's two SharedKernel IReportSectionProvider&lt;,&gt; implementations
+//                  (GlobalSafetyKpiSectionProvider, CrossSiteActionLogSectionProvider), letting
+//                  Auditing.ComplianceMonitoring's compliance report compose the TRIR/LTIR KPI and
+//                  cross-site-action sections via DI instead of dispatching this module's Queries
+//                  directly through ISender (Handbook Part IX §9.3.2).
 // ============================================================================
 using Microsoft.Extensions.DependencyInjection;
+using PlantSafety.SharedKernel.Contracts.ReadModelComposition;
+using PlantSafety.Application.GlobalSafetyInsights.Contracts;
 using PlantSafety.Application.GlobalSafetyInsights.Coordination;
+using PlantSafety.Application.GlobalSafetyInsights.Models;
 using PlantSafety.Domain.GlobalSafetyInsights.Coordination.Policies;
 using PlantSafety.Domain.GlobalSafetyInsights.Interfaces;
 using PlantSafety.Domain.GlobalSafetyInsights.Services;
@@ -40,6 +49,10 @@ public static class GlobalSafetyInsightsApplicationServiceRegistration
         services.AddSingleton<IMultiSiteSafetyPolicy, MultiSiteSafetyPolicy>();
         services.AddScoped<IMultiSiteActionRouter, MultiSiteActionRouter>();
         services.AddScoped<IGlobalSafetyAnomalyEscalationReactor, GlobalSafetyAnomalyEscalationReactor>();
+
+        // Phase 9 §5.6 Compliance Report Generation: cross-module read-model composition providers.
+        services.AddScoped<IReportSectionProvider<GlobalSafetyKpiSectionRequest, GlobalSafetyInsightsItemDto?>, GlobalSafetyKpiSectionProvider>();
+        services.AddScoped<IReportSectionProvider<CrossSiteActionLogSectionRequest, IReadOnlyList<CrossSiteActionLogEntryDto>>, CrossSiteActionLogSectionProvider>();
 
         return services;
     }

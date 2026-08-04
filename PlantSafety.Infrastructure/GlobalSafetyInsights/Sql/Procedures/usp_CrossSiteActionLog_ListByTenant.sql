@@ -31,7 +31,9 @@ BEGIN
         InitiatedByUserId,
         RecordedAtUtc,
         RegionCode,
-        WorkflowInstanceId
+        WorkflowInstanceId,
+        CorrelationId,
+        CausationId
     FROM [GlobalSafetyInsights].[CrossSiteActionLog]
     WHERE TenantId = @TenantId
       AND RecordedAtUtc >= @FromUtc

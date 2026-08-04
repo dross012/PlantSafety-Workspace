@@ -101,6 +101,9 @@ public sealed class TenantDataExportResultDto
 
     /// <summary>Gets the UTC instant the export completed.</summary>
     public DateTime ExportedAtUtc { get; init; }
+
+    /// <summary>Gets the region code the platform's current deployment region was validated against before this export was written.</summary>
+    public string ValidatedRegionCode { get; init; } = string.Empty;
 }
 
 /// <summary>Request body for provisioning a new tenant.</summary>

@@ -26,6 +26,7 @@ public sealed class ExportTenantDataCommandHandler(
     ITenantRepository repository,
     ITenantDataExportStore exportStore,
     IDataResidencyEnforcer dataResidencyEnforcer,
+    ICurrentDeploymentRegionProvider currentDeploymentRegionProvider,
     ILogger<ExportTenantDataCommandHandler> logger)
     : IRequestHandler<ExportTenantDataCommand, Result<TenantDataExportResultDto>>
 {
@@ -78,10 +79,16 @@ public sealed class ExportTenantDataCommandHandler(
 
             var reference = await exportStore.SaveAsync(tenant.TenantId.Value, bytes, cancellationToken);
             var exportedAtUtc = DateTime.UtcNow;
+            var validatedRegionCode = currentDeploymentRegionProvider.CurrentRegion.Code;
 
-            logger.LogInformation("Tenant {TenantId} data export completed ({Bytes} bytes) -> {Reference}", tenant.TenantId, bytes.LongLength, reference);
+            // Phase 9 §5.3 Export Lineage Validation: capture the tenant -> region -> destination
+            // chain on the record itself, not only on the (rare) rejection path -- a successful
+            // export's lineage is exactly as compliance-relevant as a rejected one.
+            logger.LogInformation(
+                "Tenant {TenantId} data export completed ({Bytes} bytes), region {Region} -> {Reference}",
+                tenant.TenantId, bytes.LongLength, validatedRegionCode, reference);
 
-            return Result<TenantDataExportResultDto>.Success(new TenantDataExportResultDto(reference, bytes.LongLength, exportedAtUtc));
+            return Result<TenantDataExportResultDto>.Success(new TenantDataExportResultDto(reference, bytes.LongLength, exportedAtUtc, validatedRegionCode));
         }
         catch (Exception ex)
         {

@@ -10562,6 +10562,157 @@
         <member name="P:PlantSafety.Application.Auditing.Commands.VerifyAuditFindingResult.Status">
             <summary>Lifecycle status after verification.</summary>
         </member>
+        <member name="T:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Handlers.GetComplianceReportQueryHandler">
+            <summary>Handles <see cref="T:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Queries.GetComplianceReportQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Handlers.GetComplianceReportQueryHandler.#ctor(PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionRequest,PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionRequest,PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Queries.TenantAuditStreamResult},PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider{PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionRequest,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto}},Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Handlers.GetComplianceReportQueryHandler})">
+            <summary>Handles <see cref="T:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Queries.GetComplianceReportQuery"/>.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Handlers.GetComplianceReportQueryHandler.Handle(PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Queries.GetComplianceReportQuery,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto">
+            <summary>
+            Unified compliance report combining TRIR/LTIR KPIs, the tenant's audit-trail/incident-lineage
+            stream, and cross-site coordinated-action history for a single tenant and date range.
+            </summary>
+            <param name="TenantId">The tenant this report was generated for.</param>
+            <param name="FromUtc">Inclusive UTC start of the report's date range.</param>
+            <param name="ToUtc">Inclusive UTC end of the report's date range.</param>
+            <param name="GeneratedAtUtc">UTC instant this report snapshot was generated.</param>
+            <param name="SafetyKpi">
+            Most recently computed TRIR/LTIR KPI snapshot within the range (from
+            <c>GlobalSafetyKpiEngine</c>/<c>GlobalSafetyInsightsAggregate</c>), or <see langword="null"/> when
+            no snapshot has ever been computed for this tenant -- a real absence, not a retrieval failure.
+            </param>
+            <param name="SafetyKpiSectionAvailable">
+            <see langword="false"/> when the TRIR/LTIR section could not be retrieved (a real failure, e.g.
+            the read-model store was unavailable) -- distinct from <paramref name="SafetyKpi"/> being
+            <see langword="null"/> because no snapshot has ever been computed.
+            </param>
+            <param name="AuditTrail">
+            The tenant's audit-trail/incident-lineage entries within the range (from the
+            PermissionUsageLog-backed audit stream, which captures every authorization-gated
+            state-changing operation -- including incident lifecycle transitions -- via
+            <c>AuthorizationBehavior</c>), newest first.
+            </param>
+            <param name="AuditTrailSectionAvailable">
+            <see langword="false"/> when the audit-trail section could not be retrieved.
+            </param>
+            <param name="CrossSiteActions">Cross-site coordinated-action audit ledger entries within the range, newest first.</param>
+            <param name="CrossSiteActionsSectionAvailable">
+            <see langword="false"/> when the cross-site-actions section could not be retrieved.
+            </param>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.#ctor(System.Guid,System.DateTime,System.DateTime,System.DateTime,PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyInsightsItemDto,System.Boolean,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Models.PermissionUsageLogEntry},System.Boolean,System.Collections.Generic.IReadOnlyList{PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto},System.Boolean)">
+            <summary>
+            Unified compliance report combining TRIR/LTIR KPIs, the tenant's audit-trail/incident-lineage
+            stream, and cross-site coordinated-action history for a single tenant and date range.
+            </summary>
+            <param name="TenantId">The tenant this report was generated for.</param>
+            <param name="FromUtc">Inclusive UTC start of the report's date range.</param>
+            <param name="ToUtc">Inclusive UTC end of the report's date range.</param>
+            <param name="GeneratedAtUtc">UTC instant this report snapshot was generated.</param>
+            <param name="SafetyKpi">
+            Most recently computed TRIR/LTIR KPI snapshot within the range (from
+            <c>GlobalSafetyKpiEngine</c>/<c>GlobalSafetyInsightsAggregate</c>), or <see langword="null"/> when
+            no snapshot has ever been computed for this tenant -- a real absence, not a retrieval failure.
+            </param>
+            <param name="SafetyKpiSectionAvailable">
+            <see langword="false"/> when the TRIR/LTIR section could not be retrieved (a real failure, e.g.
+            the read-model store was unavailable) -- distinct from <paramref name="SafetyKpi"/> being
+            <see langword="null"/> because no snapshot has ever been computed.
+            </param>
+            <param name="AuditTrail">
+            The tenant's audit-trail/incident-lineage entries within the range (from the
+            PermissionUsageLog-backed audit stream, which captures every authorization-gated
+            state-changing operation -- including incident lifecycle transitions -- via
+            <c>AuthorizationBehavior</c>), newest first.
+            </param>
+            <param name="AuditTrailSectionAvailable">
+            <see langword="false"/> when the audit-trail section could not be retrieved.
+            </param>
+            <param name="CrossSiteActions">Cross-site coordinated-action audit ledger entries within the range, newest first.</param>
+            <param name="CrossSiteActionsSectionAvailable">
+            <see langword="false"/> when the cross-site-actions section could not be retrieved.
+            </param>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.TenantId">
+            <summary>The tenant this report was generated for.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.FromUtc">
+            <summary>Inclusive UTC start of the report's date range.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.ToUtc">
+            <summary>Inclusive UTC end of the report's date range.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.GeneratedAtUtc">
+            <summary>UTC instant this report snapshot was generated.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.SafetyKpi">
+            <summary>
+            Most recently computed TRIR/LTIR KPI snapshot within the range (from
+            <c>GlobalSafetyKpiEngine</c>/<c>GlobalSafetyInsightsAggregate</c>), or <see langword="null"/> when
+            no snapshot has ever been computed for this tenant -- a real absence, not a retrieval failure.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.SafetyKpiSectionAvailable">
+            <summary>
+            <see langword="false"/> when the TRIR/LTIR section could not be retrieved (a real failure, e.g.
+            the read-model store was unavailable) -- distinct from <paramref name="SafetyKpi"/> being
+            <see langword="null"/> because no snapshot has ever been computed.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.AuditTrail">
+            <summary>
+            The tenant's audit-trail/incident-lineage entries within the range (from the
+            PermissionUsageLog-backed audit stream, which captures every authorization-gated
+            state-changing operation -- including incident lifecycle transitions -- via
+            <c>AuthorizationBehavior</c>), newest first.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.AuditTrailSectionAvailable">
+            <summary>
+            <see langword="false"/> when the audit-trail section could not be retrieved.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.CrossSiteActions">
+            <summary>Cross-site coordinated-action audit ledger entries within the range, newest first.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Models.ComplianceReportDto.CrossSiteActionsSectionAvailable">
+            <summary>
+            <see langword="false"/> when the cross-site-actions section could not be retrieved.
+            </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Queries.GetComplianceReportQuery">
+            <summary>
+            Retrieves a unified compliance report -- TRIR/LTIR KPIs, audit-trail/incident lineage, and
+            cross-site coordinated-action history -- for <paramref name="TenantId"/> within the inclusive
+            UTC range [<paramref name="FromUtc"/>, <paramref name="ToUtc"/>].
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims. Mandatory -- no "all tenants" mode.</param>
+            <param name="FromUtc">Inclusive UTC range start.</param>
+            <param name="ToUtc">Inclusive UTC range end.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Queries.GetComplianceReportQuery.#ctor(System.Guid,System.DateTime,System.DateTime)">
+            <summary>
+            Retrieves a unified compliance report -- TRIR/LTIR KPIs, audit-trail/incident lineage, and
+            cross-site coordinated-action history -- for <paramref name="TenantId"/> within the inclusive
+            UTC range [<paramref name="FromUtc"/>, <paramref name="ToUtc"/>].
+            </summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims. Mandatory -- no "all tenants" mode.</param>
+            <param name="FromUtc">Inclusive UTC range start.</param>
+            <param name="ToUtc">Inclusive UTC range end.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Queries.GetComplianceReportQuery.TenantId">
+            <summary>Tenant identifier resolved from JWT claims. Mandatory -- no "all tenants" mode.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Queries.GetComplianceReportQuery.FromUtc">
+            <summary>Inclusive UTC range start.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.ComplianceReport.Queries.GetComplianceReportQuery.ToUtc">
+            <summary>Inclusive UTC range end.</summary>
+        </member>
         <member name="T:PlantSafety.Application.Auditing.ComplianceMonitoring.DataLineage.Handlers.GetDataLineageQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Auditing.ComplianceMonitoring.DataLineage.Queries.GetDataLineageQuery"/>.</summary>
         </member>
@@ -10671,6 +10822,50 @@
             Returns every outbox-published and dead-lettered event sharing <paramref name="correlationId"/>
             for the given tenant, oldest first.
             </summary>
+        </member>
+        <member name="T:PlantSafety.Application.Auditing.ComplianceMonitoring.DependencyInjection.ComplianceMonitoringApplicationServiceRegistration">
+            <summary>Registers Application-layer cross-module composition services for the Auditing.ComplianceMonitoring module.</summary>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.ComplianceMonitoring.DependencyInjection.ComplianceMonitoringApplicationServiceRegistration.AddComplianceMonitoringApplicationServices(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+            <summary>Adds Auditing.ComplianceMonitoring's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation(s).</summary>
+        </member>
+        <member name="T:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionProvider">
+            <summary>
+            PermissionUsage's <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing the tenant-scoped authorization-decision/audit-trail stream (the platform's
+            general-purpose lineage record for every state-changing operation, including incident lifecycle
+            transitions -- see <c>AuthorizationBehavior</c>) as a public cross-module read-model contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionProvider.GetSectionAsync(PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionRequest">
+            <summary>Scopes the PermissionUsage tenant audit-stream section for cross-module composition.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="FromUtc">Inclusive UTC range start.</param>
+            <param name="ToUtc">Inclusive UTC range end.</param>
+        </member>
+        <member name="M:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionRequest.#ctor(System.Guid,System.DateTime,System.DateTime)">
+            <summary>Scopes the PermissionUsage tenant audit-stream section for cross-module composition.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="FromUtc">Inclusive UTC range start.</param>
+            <param name="ToUtc">Inclusive UTC range end.</param>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionRequest.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionRequest.FromUtc">
+            <summary>Inclusive UTC range start.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Contracts.TenantAuditStreamSectionRequest.ToUtc">
+            <summary>Inclusive UTC range end.</summary>
         </member>
         <member name="T:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Handlers.GetTenantAuditStreamQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Queries.GetTenantAuditStreamQuery"/>.</summary>
@@ -30885,7 +31080,7 @@
         <member name="T:PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommandHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommand"/>.</summary>
         </member>
-        <member name="M:PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommandHandler.#ctor(System.Collections.Generic.IEnumerable{PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh.IEnterpriseInboundEventTranslator},PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh.EventUpgradePipeline,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommandHandler})">
+        <member name="M:PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommandHandler.#ctor(System.Collections.Generic.IEnumerable{PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh.IEnterpriseInboundEventTranslator},PlantSafety.SharedKernel.Contracts.Enterprise.EventMesh.EventUpgradePipeline,PlantSafety.Application.Messaging.Repositories.IDeadLetterEventRepository,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommandHandler})">
             <summary>Handles <see cref="T:PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommand"/>.</summary>
         </member>
         <member name="M:PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommandHandler.Handle(PlantSafety.Application.Enterprise.EventMesh.Commands.IngestEnterpriseInboundEventCommand,System.Threading.CancellationToken)">
@@ -31497,6 +31692,13 @@
         </member>
         <member name="M:PlantSafety.Application.Enterprise.MultiRegion.DataResidency.DataResidencyEnforcer.#ctor(PlantSafety.Application.Enterprise.MultiRegion.DataResidency.ITenantDataResidencyProfileStore,PlantSafety.Application.Enterprise.MultiRegion.DataResidency.ICurrentDeploymentRegionProvider)">
             <summary>Default <see cref="T:PlantSafety.Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer"/> implementation.</summary>
+        </member>
+        <member name="F:PlantSafety.Application.Enterprise.MultiRegion.DataResidency.DataResidencyEnforcer.ChecksCounter">
+            <summary>
+            Aggregate count of data-residency checks performed, tagged by <c>result</c>
+            ("satisfied"/"violation") -- the queryable answer to "is residency enforcement running at
+            all" that per-incident violation logging alone cannot provide.
+            </summary>
         </member>
         <member name="M:PlantSafety.Application.Enterprise.MultiRegion.DataResidency.DataResidencyEnforcer.IsSatisfied(System.Guid)">
             <inheritdoc/>
@@ -41261,6 +41463,81 @@
         <member name="P:PlantSafety.Application.GlobalSafetyInsights.Commands.RecordCrossSiteActionCommand.WorkflowInstanceId">
             <summary>The approval-chain WorkflowInstance gating this action, if one was started.</summary>
         </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionProvider">
+            <summary>
+            GlobalSafetyInsights' <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing the CrossSiteAction audit ledger for a date range as a public cross-module read-model
+            contract.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionProvider.GetSectionAsync(PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionRequest">
+            <summary>Scopes the GlobalSafetyInsights CrossSiteAction audit-ledger section for cross-module composition.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="From">Inclusive UTC start of the date range.</param>
+            <param name="To">Inclusive UTC end of the date range.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionRequest.#ctor(System.Guid,System.DateTime,System.DateTime)">
+            <summary>Scopes the GlobalSafetyInsights CrossSiteAction audit-ledger section for cross-module composition.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="From">Inclusive UTC start of the date range.</param>
+            <param name="To">Inclusive UTC end of the date range.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionRequest.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionRequest.From">
+            <summary>Inclusive UTC start of the date range.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Contracts.CrossSiteActionLogSectionRequest.To">
+            <summary>Inclusive UTC end of the date range.</summary>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionProvider">
+            <summary>
+            GlobalSafetyInsights' <see cref="T:PlantSafety.SharedKernel.Contracts.ReadModelComposition.IReportSectionProvider`2"/> implementation,
+            exposing the most recently computed TRIR/LTIR KPI snapshot as a public cross-module read-model
+            contract. The section value is <see langword="null"/> (a successful, empty section) when no
+            snapshot has ever been computed for the tenant -- distinct from a failed section.
+            </summary>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionProvider.#ctor(MediatR.ISender)">
+            <summary>Initialises the provider with the Application layer's <see cref="T:MediatR.ISender"/>.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionProvider.SectionName">
+            <inheritdoc/>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionProvider.GetSectionAsync(PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionRequest,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionRequest">
+            <summary>Scopes the GlobalSafetyInsights TRIR/LTIR KPI section for cross-module composition.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="From">Inclusive UTC start of the history range considered.</param>
+            <param name="To">Inclusive UTC end of the history range considered.</param>
+        </member>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionRequest.#ctor(System.Guid,System.DateTime,System.DateTime)">
+            <summary>Scopes the GlobalSafetyInsights TRIR/LTIR KPI section for cross-module composition.</summary>
+            <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
+            <param name="From">Inclusive UTC start of the history range considered.</param>
+            <param name="To">Inclusive UTC end of the history range considered.</param>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionRequest.TenantId">
+            <summary>Tenant identifier resolved from JWT claims.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionRequest.From">
+            <summary>Inclusive UTC start of the history range considered.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Contracts.GlobalSafetyKpiSectionRequest.To">
+            <summary>Inclusive UTC end of the history range considered.</summary>
+        </member>
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Coordination.Commands.CrossSiteCorrectiveActionCommand">
             <summary>Rolls out a Corrective/Preventive Action at each of a set of affected sites, as part of a governed cross-site coordinated action.</summary>
             <param name="TenantId">Tenant identifier.</param>
@@ -41875,6 +42152,17 @@
             <see cref="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.RouteAsync(PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest,System.Threading.CancellationToken)"/> for the honest fallback behavior in that case.
             </summary>
         </member>
+        <member name="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.ActivitySource">
+            <summary>
+            Real <see cref="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.ActivitySource"/> (Phase 9 §4 observability-audit fix) emitting one span per
+            <see cref="M:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.RouteAsync(PlantSafety.Application.GlobalSafetyInsights.Coordination.Models.MultiSiteActionRequest,System.Threading.CancellationToken)"/> invocation. ASP.NET Core/HttpClient/SqlClient auto-instrumentation
+            (see TracingServiceRegistration) already covers the inbound-request and database boundaries,
+            but RouteAsync can be invoked multiple times per parent request/job -- once per anomaly, from
+            GlobalSafetyAnomalyEscalationReactor's loop -- with no other span distinguishing one
+            coordinated action's validate/policy/dispatch/audit steps from the next. Auto-discovered by
+            the existing "PlantSafety.*" AddSource wildcard; no registration change required.
+            </summary>
+        </member>
         <member name="F:PlantSafety.Application.GlobalSafetyInsights.Coordination.MultiSiteActionRouter.SystemUserId">
             <summary>Well-known system-actor UserId used when no human initiated the coordinated action.</summary>
         </member>
@@ -41976,6 +42264,22 @@
             The Workflow.WorkflowInstance started to gate this action behind approval, if the coordinated
             action required one (see MultiSiteActionRouter.TryStartApprovalWorkflowAsync); <see langword="null"/>
             when the action executed immediately without an approval chain.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.CorrelationId">
+            <summary>
+            Correlation identifier propagated from the triggering CrossSiteActionEvent (Phase 9 §4
+            observability-audit fix: previously computed end-to-end by MultiSiteActionRouter/
+            RecordCrossSiteActionCommand but silently dropped before persistence, breaking queryable
+            trace-back from this audit ledger to the originating request/mesh event). <see langword="null"/>
+            for rows recorded before this column existed.
+            </summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.CausationId">
+            <summary>
+            Causation identifier propagated from the triggering CrossSiteActionEvent (see
+            <see cref="P:PlantSafety.Application.GlobalSafetyInsights.Models.CrossSiteActionLogEntryDto.CorrelationId"/> remarks). <see langword="null"/> for rows recorded before this
+            column existed.
             </summary>
         </member>
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Models.GlobalSafetyRiskScoreDetailDto">
@@ -42145,13 +42449,25 @@
             </summary>
         </member>
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery">
-            <summary>Lists cross-site coordinated-action audit entries for <paramref name="TenantId"/> within [<paramref name="From"/>, <paramref name="To"/>].</summary>
+            <summary>
+            Lists cross-site coordinated-action audit entries for <paramref name="TenantId"/> within
+            [<paramref name="From"/>, <paramref name="To"/>].
+            Implements <see cref="T:PlantSafety.Application.Behaviors.Caching.ICacheableQuery"/> (Handbook §3.1 Canonical Caching Rule) -- read-heavy,
+            short-TTL BI aggregation, safe to serve briefly stale via <see cref="T:PlantSafety.Application.Behaviors.Caching.CachingBehavior`2"/>,
+            matching the existing GetRiskDashboardQuery/GetSafetyDashboardQuery precedent's cache-key/TTL shape.
+            </summary>
             <param name="TenantId">Tenant identifier resolved server-side from the operation context.</param>
             <param name="From">Inclusive UTC start of the date range.</param>
             <param name="To">Inclusive UTC end of the date range.</param>
         </member>
         <member name="M:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery.#ctor(System.Guid,System.DateTime,System.DateTime)">
-            <summary>Lists cross-site coordinated-action audit entries for <paramref name="TenantId"/> within [<paramref name="From"/>, <paramref name="To"/>].</summary>
+            <summary>
+            Lists cross-site coordinated-action audit entries for <paramref name="TenantId"/> within
+            [<paramref name="From"/>, <paramref name="To"/>].
+            Implements <see cref="T:PlantSafety.Application.Behaviors.Caching.ICacheableQuery"/> (Handbook §3.1 Canonical Caching Rule) -- read-heavy,
+            short-TTL BI aggregation, safe to serve briefly stale via <see cref="T:PlantSafety.Application.Behaviors.Caching.CachingBehavior`2"/>,
+            matching the existing GetRiskDashboardQuery/GetSafetyDashboardQuery precedent's cache-key/TTL shape.
+            </summary>
             <param name="TenantId">Tenant identifier resolved server-side from the operation context.</param>
             <param name="From">Inclusive UTC start of the date range.</param>
             <param name="To">Inclusive UTC end of the date range.</param>
@@ -42165,22 +42481,49 @@
         <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery.To">
             <summary>Inclusive UTC end of the date range.</summary>
         </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery.CacheKey">
+            <inheritdoc/>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetCrossSiteActionHistoryQuery.CacheExpiry">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery">
-            <summary>Retrieves the full detail of the most recently computed GlobalSafetyInsights snapshot for <paramref name="TenantId"/>.</summary>
+            <summary>
+            Retrieves the full detail of the most recently computed GlobalSafetyInsights snapshot for
+            <paramref name="TenantId"/>.
+            Implements <see cref="T:PlantSafety.Application.Behaviors.Caching.ICacheableQuery"/> (Handbook §3.1 Canonical Caching Rule) -- read-heavy,
+            short-TTL BI aggregation, safe to serve briefly stale via <see cref="T:PlantSafety.Application.Behaviors.Caching.CachingBehavior`2"/>,
+            matching the existing GetRiskDashboardQuery/GetSafetyDashboardQuery precedent's cache-key/TTL shape.
+            </summary>
             <param name="TenantId">Tenant identifier resolved server-side from the operation context.</param>
         </member>
         <member name="M:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery.#ctor(System.Guid)">
-            <summary>Retrieves the full detail of the most recently computed GlobalSafetyInsights snapshot for <paramref name="TenantId"/>.</summary>
+            <summary>
+            Retrieves the full detail of the most recently computed GlobalSafetyInsights snapshot for
+            <paramref name="TenantId"/>.
+            Implements <see cref="T:PlantSafety.Application.Behaviors.Caching.ICacheableQuery"/> (Handbook §3.1 Canonical Caching Rule) -- read-heavy,
+            short-TTL BI aggregation, safe to serve briefly stale via <see cref="T:PlantSafety.Application.Behaviors.Caching.CachingBehavior`2"/>,
+            matching the existing GetRiskDashboardQuery/GetSafetyDashboardQuery precedent's cache-key/TTL shape.
+            </summary>
             <param name="TenantId">Tenant identifier resolved server-side from the operation context.</param>
         </member>
         <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery.TenantId">
             <summary>Tenant identifier resolved server-side from the operation context.</summary>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery.CacheKey">
+            <inheritdoc/>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsDetailQuery.CacheExpiry">
+            <inheritdoc/>
         </member>
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery">
             <summary>
             Retrieves the most recently computed GlobalSafetyInsights snapshot for
             <paramref name="TenantId"/>, plus its computation history within [<paramref name="From"/>,
             <paramref name="To"/>].
+            Implements <see cref="T:PlantSafety.Application.Behaviors.Caching.ICacheableQuery"/> (Handbook §3.1 Canonical Caching Rule) -- read-heavy,
+            short-TTL BI aggregation, safe to serve briefly stale via <see cref="T:PlantSafety.Application.Behaviors.Caching.CachingBehavior`2"/>,
+            matching the existing GetRiskDashboardQuery/GetSafetyDashboardQuery precedent's cache-key/TTL shape.
             </summary>
             <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
             <param name="From">Inclusive start of the history date range (UTC).</param>
@@ -42191,6 +42534,9 @@
             Retrieves the most recently computed GlobalSafetyInsights snapshot for
             <paramref name="TenantId"/>, plus its computation history within [<paramref name="From"/>,
             <paramref name="To"/>].
+            Implements <see cref="T:PlantSafety.Application.Behaviors.Caching.ICacheableQuery"/> (Handbook §3.1 Canonical Caching Rule) -- read-heavy,
+            short-TTL BI aggregation, safe to serve briefly stale via <see cref="T:PlantSafety.Application.Behaviors.Caching.CachingBehavior`2"/>,
+            matching the existing GetRiskDashboardQuery/GetSafetyDashboardQuery precedent's cache-key/TTL shape.
             </summary>
             <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
             <param name="From">Inclusive start of the history date range (UTC).</param>
@@ -42205,6 +42551,12 @@
         <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery.To">
             <summary>Inclusive end of the history date range (UTC).</summary>
         </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery.CacheKey">
+            <inheritdoc/>
+        </member>
+        <member name="P:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery.CacheExpiry">
+            <inheritdoc/>
+        </member>
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GlobalSafetyInsightsQueryResult">
             <summary>Result envelope for <see cref="T:PlantSafety.Application.GlobalSafetyInsights.Queries.GetGlobalSafetyInsightsQuery"/>.</summary>
         </member>
@@ -42214,8 +42566,16 @@
         <member name="T:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository">
             <summary>Append-only audit ledger for cross-site coordinated actions.</summary>
         </member>
-        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository.RecordAsync(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.DateTime,System.String,System.Nullable{System.Guid},System.Threading.CancellationToken)">
-            <summary>Records a cross-site action into the audit ledger.</summary>
+        <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository.RecordAsync(System.Guid,System.Collections.Generic.IReadOnlyList{System.Guid},System.String,System.String,System.Nullable{System.Guid},System.DateTime,System.String,System.Nullable{System.Guid},System.Threading.CancellationToken,System.Nullable{System.Guid},System.Nullable{System.Guid})">
+            <summary>
+            Records a cross-site action into the audit ledger.
+            </summary>
+            <param name="correlationId">
+            Correlation identifier propagated from the triggering CrossSiteActionEvent (Phase 9 §4
+            observability-audit fix), so the ledger is queryable end-to-end from the originating
+            request/mesh event. Optional for backward compatibility with call sites that predate this fix.
+            </param>
+            <param name="causationId">Causation identifier propagated from the triggering CrossSiteActionEvent.</param>
         </member>
         <member name="M:PlantSafety.Application.GlobalSafetyInsights.Repositories.IGlobalSafetyActionAuditRepository.ListAsync(System.Guid,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
             <summary>
@@ -47856,6 +48216,31 @@
             <param name="replayedByUserId">The user who triggered the replay (Domain Action Identity Rule §1.8.2).</param>
             <param name="cancellationToken">Propagated cancellation token.</param>
             <returns><see langword="true"/> if the event was re-published and the row marked replayed; <see langword="false"/> if the row did not exist or was already replayed.</returns>
+        </member>
+        <member name="M:PlantSafety.Application.Messaging.Repositories.IDeadLetterEventRepository.RecordInboundEventMeshFailureAsync(System.String,System.String,System.String,System.String,System.String,System.String,System.Nullable{System.Guid},System.Nullable{System.Guid},System.String,System.Threading.CancellationToken)">
+            <summary>
+            Persists a diagnostic dead-letter row for an inbound Enterprise Event Mesh payload (from an
+            external ERP/MES/CMMS/HR/Vendor system) that failed translation/dispatch at
+            <c>EnterpriseEventMeshV1Controller</c>/<c>IngestEnterpriseInboundEventCommandHandler</c>
+            (Phase 9 §1 Reliability Hardening). Distinct from <see cref="M:PlantSafety.Application.Messaging.Repositories.IDeadLetterEventRepository.ReplayAsync(System.Guid,System.Guid,System.Threading.CancellationToken)"/>'s target -- the
+            internal MassTransit fault pipeline persisted via <c>DeadLetterFaultObserver</c> -- this is
+            the cross-SYSTEM boundary's poison-message capture, reusing the same
+            <c>[System].[DeadLetterEvents]</c> table/shape so a malformed or permanently-failing inbound
+            external payload leaves the same queryable diagnostic trail instead of vanishing after only a
+            log line. Never throws back to the caller -- persistence failures are logged and swallowed,
+            matching <c>DeadLetterEventPersister</c>'s "the dead-letter sink itself must never destabilise
+            its caller" convention.
+            </summary>
+            <param name="eventType">The inbound envelope's EventType discriminator.</param>
+            <param name="schemaVersion">The inbound envelope's SchemaVersion.</param>
+            <param name="tenantId">The inbound envelope's TenantId, or <see langword="null"/> if unset.</param>
+            <param name="payload">The inbound envelope, serialized to JSON, for replay/diagnostics.</param>
+            <param name="faultReason">Short, human-readable reason the inbound event could not be processed.</param>
+            <param name="exceptionDetail">Full exception detail, if the failure was an unhandled exception rather than a domain <c>Result</c> failure.</param>
+            <param name="correlationId">The inbound envelope's CorrelationId.</param>
+            <param name="causationId">The inbound envelope's CausationId, if any.</param>
+            <param name="sourceSystem">The external system that sent this payload (ERP/MES/CMMS/HR/Vendor), recorded as the row's ConsumerName/ActorId equivalent for triage.</param>
+            <param name="cancellationToken">Propagated cancellation token.</param>
         </member>
         <member name="T:PlantSafety.Application.Observability.AutomatedIncidentDetection.Handlers.GetAutomatedIncidentDetectionQueryHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Observability.AutomatedIncidentDetection.Queries.GetAutomatedIncidentDetectionQuery"/>.</summary>
@@ -75171,18 +75556,36 @@
         </member>
         <member name="T:PlantSafety.Application.Tenancy.Tenant.Commands.TenantDataExportResultDto">
             <summary>Outcome of a completed tenant data export.</summary>
-            <param name="ContentReference">Storage reference (blob URI) of the exported JSON artifact.</param>
+            <param name="ContentReference">Storage reference (blob URI) of the exported JSON artifact -- the export's destination.</param>
             <param name="ContentSizeBytes">Size, in bytes, of the exported artifact.</param>
             <param name="ExportedAtUtc">UTC instant the export completed.</param>
+            <param name="ValidatedRegionCode">
+            Region code (<see cref="T:PlantSafety.SharedKernel.Contracts.Enterprise.MultiRegion.Region"/>) the
+            platform's current deployment region was validated against by <c>IDataResidencyEnforcer</c>
+            immediately before this export was written -- completes the tenant -&gt; region -&gt; destination
+            lineage chain for compliance/audit review (Phase 9 §5.3 Export Lineage Validation). Added
+            additively; existing callers positionally constructing this record before this field are
+            unaffected only if using named/init construction -- see <c>ExportTenantDataCommandHandler</c>
+            for the sole real production construction site.
+            </param>
         </member>
-        <member name="M:PlantSafety.Application.Tenancy.Tenant.Commands.TenantDataExportResultDto.#ctor(System.String,System.Int64,System.DateTime)">
+        <member name="M:PlantSafety.Application.Tenancy.Tenant.Commands.TenantDataExportResultDto.#ctor(System.String,System.Int64,System.DateTime,System.String)">
             <summary>Outcome of a completed tenant data export.</summary>
-            <param name="ContentReference">Storage reference (blob URI) of the exported JSON artifact.</param>
+            <param name="ContentReference">Storage reference (blob URI) of the exported JSON artifact -- the export's destination.</param>
             <param name="ContentSizeBytes">Size, in bytes, of the exported artifact.</param>
             <param name="ExportedAtUtc">UTC instant the export completed.</param>
+            <param name="ValidatedRegionCode">
+            Region code (<see cref="T:PlantSafety.SharedKernel.Contracts.Enterprise.MultiRegion.Region"/>) the
+            platform's current deployment region was validated against by <c>IDataResidencyEnforcer</c>
+            immediately before this export was written -- completes the tenant -&gt; region -&gt; destination
+            lineage chain for compliance/audit review (Phase 9 §5.3 Export Lineage Validation). Added
+            additively; existing callers positionally constructing this record before this field are
+            unaffected only if using named/init construction -- see <c>ExportTenantDataCommandHandler</c>
+            for the sole real production construction site.
+            </param>
         </member>
         <member name="P:PlantSafety.Application.Tenancy.Tenant.Commands.TenantDataExportResultDto.ContentReference">
-            <summary>Storage reference (blob URI) of the exported JSON artifact.</summary>
+            <summary>Storage reference (blob URI) of the exported JSON artifact -- the export's destination.</summary>
         </member>
         <member name="P:PlantSafety.Application.Tenancy.Tenant.Commands.TenantDataExportResultDto.ContentSizeBytes">
             <summary>Size, in bytes, of the exported artifact.</summary>
@@ -75190,10 +75593,21 @@
         <member name="P:PlantSafety.Application.Tenancy.Tenant.Commands.TenantDataExportResultDto.ExportedAtUtc">
             <summary>UTC instant the export completed.</summary>
         </member>
+        <member name="P:PlantSafety.Application.Tenancy.Tenant.Commands.TenantDataExportResultDto.ValidatedRegionCode">
+            <summary>
+            Region code (<see cref="T:PlantSafety.SharedKernel.Contracts.Enterprise.MultiRegion.Region"/>) the
+            platform's current deployment region was validated against by <c>IDataResidencyEnforcer</c>
+            immediately before this export was written -- completes the tenant -&gt; region -&gt; destination
+            lineage chain for compliance/audit review (Phase 9 §5.3 Export Lineage Validation). Added
+            additively; existing callers positionally constructing this record before this field are
+            unaffected only if using named/init construction -- see <c>ExportTenantDataCommandHandler</c>
+            for the sole real production construction site.
+            </summary>
+        </member>
         <member name="T:PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommandHandler">
             <summary>Handles <see cref="T:PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommand"/>.</summary>
         </member>
-        <member name="M:PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommandHandler.#ctor(PlantSafety.Domain.Tenancy.Tenant.Interfaces.ITenantRepository,PlantSafety.Application.Tenancy.Tenant.Abstractions.ITenantDataExportStore,PlantSafety.Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommandHandler})">
+        <member name="M:PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommandHandler.#ctor(PlantSafety.Domain.Tenancy.Tenant.Interfaces.ITenantRepository,PlantSafety.Application.Tenancy.Tenant.Abstractions.ITenantDataExportStore,PlantSafety.Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer,PlantSafety.Application.Enterprise.MultiRegion.DataResidency.ICurrentDeploymentRegionProvider,Microsoft.Extensions.Logging.ILogger{PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommandHandler})">
             <summary>Handles <see cref="T:PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommand"/>.</summary>
         </member>
         <member name="M:PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommandHandler.Handle(PlantSafety.Application.Tenancy.Tenant.Commands.ExportTenantDataCommand,System.Threading.CancellationToken)">

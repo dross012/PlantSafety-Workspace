@@ -27,12 +27,13 @@ public sealed class ExportTenantDataCommandHandlerTests : UnitTestBase
             "Acme Manufacturing", "UsEast", SubscriptionPlanCode.Standard,
             FixedTimestamp, TestActor, TestCorrelationId, TestCausationId);
 
-    private static IDataResidencyEnforcer CreateEnforcer(
-        Region currentRegion, IReadOnlyDictionary<string, string>? tenantPolicies = null)
-    {
-        var regionProvider = new ConfiguredCurrentDeploymentRegionProvider(
+    private static ICurrentDeploymentRegionProvider CreateRegionProvider(Region currentRegion) =>
+        new ConfiguredCurrentDeploymentRegionProvider(
             Options.Create(new CurrentDeploymentRegionOptions { RegionCode = currentRegion.Code }));
 
+    private static IDataResidencyEnforcer CreateEnforcer(
+        ICurrentDeploymentRegionProvider regionProvider, IReadOnlyDictionary<string, string>? tenantPolicies = null)
+    {
         var profileStore = new ConfiguredTenantDataResidencyProfileStore(
             Options.Create(new TenantDataResidencyOptions { Policies = tenantPolicies ?? new Dictionary<string, string>() }));
 
@@ -40,7 +41,7 @@ public sealed class ExportTenantDataCommandHandlerTests : UnitTestBase
     }
 
     private static ExportTenantDataCommandHandler CreateSut(
-        DomainTenant tenant, IDataResidencyEnforcer enforcer, out ITenantDataExportStore exportStore)
+        DomainTenant tenant, IDataResidencyEnforcer enforcer, ICurrentDeploymentRegionProvider regionProvider, out ITenantDataExportStore exportStore)
     {
         var repository = Substitute.For<ITenantRepository>();
         repository.GetByIdAsync(tenant.TenantId, Arg.Any<CancellationToken>()).Returns(tenant);
@@ -49,17 +50,18 @@ public sealed class ExportTenantDataCommandHandlerTests : UnitTestBase
         exportStore.SaveAsync(Arg.Any<Guid>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
             .Returns("blob://tenant-exports/fake-reference.json");
 
-        return new ExportTenantDataCommandHandler(repository, exportStore, enforcer, NullLogger<ExportTenantDataCommandHandler>());
+        return new ExportTenantDataCommandHandler(repository, exportStore, enforcer, regionProvider, NullLogger<ExportTenantDataCommandHandler>());
     }
 
     [Fact]
     public async Task Handle_TenantResidencyPolicyViolatedByCurrentRegion_RejectsExportWithoutWritingArtifact()
     {
         var tenant = CreateProvisionedTenant();
+        var regionProvider = CreateRegionProvider(Region.UsEast);
         var enforcer = CreateEnforcer(
-            currentRegion: Region.UsEast,
+            regionProvider,
             tenantPolicies: new Dictionary<string, string> { [tenant.TenantId.Value.ToString("D")] = "EuOnly" });
-        var sut = CreateSut(tenant, enforcer, out var exportStore);
+        var sut = CreateSut(tenant, enforcer, regionProvider, out var exportStore);
 
         var command = ExportTenantDataCommand.FromDto(tenant.TenantId.Value, TestUserId.Value, TestCorrelationId.Value, TestCausationId.Value);
 
@@ -74,10 +76,11 @@ public sealed class ExportTenantDataCommandHandlerTests : UnitTestBase
     public async Task Handle_TenantResidencyPolicySatisfiedByCurrentRegion_ExportsSuccessfully()
     {
         var tenant = CreateProvisionedTenant();
+        var regionProvider = CreateRegionProvider(Region.UsEast);
         var enforcer = CreateEnforcer(
-            currentRegion: Region.UsEast,
+            regionProvider,
             tenantPolicies: new Dictionary<string, string> { [tenant.TenantId.Value.ToString("D")] = "UsOnly" });
-        var sut = CreateSut(tenant, enforcer, out var exportStore);
+        var sut = CreateSut(tenant, enforcer, regionProvider, out var exportStore);
 
         var command = ExportTenantDataCommand.FromDto(tenant.TenantId.Value, TestUserId.Value, TestCorrelationId.Value, TestCausationId.Value);
 
@@ -85,6 +88,7 @@ public sealed class ExportTenantDataCommandHandlerTests : UnitTestBase
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.ContentReference.Should().Be("blob://tenant-exports/fake-reference.json");
+        result.Value!.ValidatedRegionCode.Should().Be(Region.UsEast.Code, "the export's lineage record must capture which region the residency check validated against");
         await exportStore.Received(1).SaveAsync(tenant.TenantId.Value, Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
     }
 
@@ -92,8 +96,9 @@ public sealed class ExportTenantDataCommandHandlerTests : UnitTestBase
     public async Task Handle_TenantWithNoConfiguredResidencyPolicy_DefaultsToUnrestricted_ExportsSuccessfully()
     {
         var tenant = CreateProvisionedTenant();
-        var enforcer = CreateEnforcer(currentRegion: Region.Eu);
-        var sut = CreateSut(tenant, enforcer, out var exportStore);
+        var regionProvider = CreateRegionProvider(Region.Eu);
+        var enforcer = CreateEnforcer(regionProvider);
+        var sut = CreateSut(tenant, enforcer, regionProvider, out var exportStore);
 
         var command = ExportTenantDataCommand.FromDto(tenant.TenantId.Value, TestUserId.Value, TestCorrelationId.Value, TestCausationId.Value);
 

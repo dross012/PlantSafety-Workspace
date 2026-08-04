@@ -9,6 +9,19 @@
 --                  hour: request throughput, P50/P95/P99 latency (PERCENTILE_CONT), and error
 --                  rate (StatusCode >= 500), for the tenant within [@FromUtc, @ToUtc]. Backs
 --                  GetPlatformHealthDashboardQuery. Additive-only evolution.
+--  UPDATED:        2026-08-03 (Claude Code performance-optimization-agent, Phase 9 §2
+--                  Performance & Load Profiling pass) -- the original shape ran three
+--                  CROSS APPLYs directly against the ungrouped Buckets CTE, each re-filtered
+--                  by "WHERE B2.BusinessHour = B.BusinessHour" and re-evaluated once per
+--                  individual request-event row in B (not once per hour bucket). For H
+--                  distinct hours with N requests/hour that is O(H * N^2) sort/window work
+--                  (three percentile sorts recomputed per row) before the final GROUP BY even
+--                  collapses the result down to one row per hour -- a genuine hot-path cost
+--                  under real request volume. Rewritten so PERCENTILE_CONT is evaluated exactly
+--                  once per row via a single windowed pass over Buckets (Percentiles CTE,
+--                  DISTINCT-collapsed to one row per BusinessHour) and joined to the
+--                  independently-aggregated per-hour counts (Counts CTE). Same output shape/
+--                  columns; O(N log N) instead of O(H * N^2).
 -- ============================================================================
 
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'usp_PlatformHealthDashboard_GetSummary' AND schema_id = SCHEMA_ID('PlatformHealth'))
@@ -34,23 +47,34 @@ BEGIN
         WHERE [TenantId] = @TenantId
           AND [OccurredAtUtc] >= @FromUtc
           AND [OccurredAtUtc] <  @ToUtc
+    ),
+    Percentiles AS (
+        SELECT DISTINCT
+            BusinessHour,
+            PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ElapsedMs) OVER (PARTITION BY BusinessHour) AS P50LatencyMs,
+            PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ElapsedMs) OVER (PARTITION BY BusinessHour) AS P95LatencyMs,
+            PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY ElapsedMs) OVER (PARTITION BY BusinessHour) AS P99LatencyMs
+        FROM Buckets
+    ),
+    Counts AS (
+        SELECT
+            BusinessHour,
+            COUNT(*) AS TotalRequests,
+            SUM(CASE WHEN StatusCode >= 500 THEN 1 ELSE 0 END) AS ErrorCount,
+            CAST(SUM(CASE WHEN StatusCode >= 500 THEN 1.0 ELSE 0.0 END) / NULLIF(COUNT(*), 0) AS FLOAT) AS ErrorRate
+        FROM Buckets
+        GROUP BY BusinessHour
     )
     SELECT
-        BusinessHour,
-        COUNT(*) AS TotalRequests,
-        SUM(CASE WHEN StatusCode >= 500 THEN 1 ELSE 0 END) AS ErrorCount,
-        CAST(SUM(CASE WHEN StatusCode >= 500 THEN 1.0 ELSE 0.0 END) / NULLIF(COUNT(*), 0) AS FLOAT) AS ErrorRate,
-        MAX(P50.Value) AS P50LatencyMs,
-        MAX(P95.Value) AS P95LatencyMs,
-        MAX(P99.Value) AS P99LatencyMs
-    FROM Buckets B
-    CROSS APPLY (SELECT DISTINCT PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY B2.ElapsedMs) OVER (PARTITION BY B2.BusinessHour) AS Value
-                 FROM Buckets B2 WHERE B2.BusinessHour = B.BusinessHour) AS P50
-    CROSS APPLY (SELECT DISTINCT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY B3.ElapsedMs) OVER (PARTITION BY B3.BusinessHour) AS Value
-                 FROM Buckets B3 WHERE B3.BusinessHour = B.BusinessHour) AS P95
-    CROSS APPLY (SELECT DISTINCT PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY B4.ElapsedMs) OVER (PARTITION BY B4.BusinessHour) AS Value
-                 FROM Buckets B4 WHERE B4.BusinessHour = B.BusinessHour) AS P99
-    GROUP BY BusinessHour
-    ORDER BY BusinessHour;
+        C.BusinessHour,
+        C.TotalRequests,
+        C.ErrorCount,
+        C.ErrorRate,
+        P.P50LatencyMs,
+        P.P95LatencyMs,
+        P.P99LatencyMs
+    FROM Counts C
+    JOIN Percentiles P ON P.BusinessHour = C.BusinessHour
+    ORDER BY C.BusinessHour;
 END
 GO

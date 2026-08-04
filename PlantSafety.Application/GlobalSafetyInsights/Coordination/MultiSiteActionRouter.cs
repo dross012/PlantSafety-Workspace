@@ -24,6 +24,7 @@
 //                     trail.
 //                  Additive-only evolution.
 // ============================================================================
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using PlantSafety.Application.Common.Errors;
@@ -75,6 +76,17 @@ public sealed class MultiSiteActionRouter(
     /// </summary>
     public const string ApprovalWorkflowDefinitionName = "MultiSiteCoordinationApproval";
 
+    /// <summary>
+    /// Real <see cref="ActivitySource"/> (Phase 9 §4 observability-audit fix) emitting one span per
+    /// <see cref="RouteAsync"/> invocation. ASP.NET Core/HttpClient/SqlClient auto-instrumentation
+    /// (see TracingServiceRegistration) already covers the inbound-request and database boundaries,
+    /// but RouteAsync can be invoked multiple times per parent request/job -- once per anomaly, from
+    /// GlobalSafetyAnomalyEscalationReactor's loop -- with no other span distinguishing one
+    /// coordinated action's validate/policy/dispatch/audit steps from the next. Auto-discovered by
+    /// the existing "PlantSafety.*" AddSource wildcard; no registration change required.
+    /// </summary>
+    private static readonly ActivitySource ActivitySource = new("PlantSafety.GlobalSafetyInsights.Coordination");
+
     /// <summary>Well-known system-actor UserId used when no human initiated the coordinated action.</summary>
     public static readonly Guid SystemUserId = Guid.Parse("00000000-0000-0000-0000-0000005a4553");
 
@@ -82,6 +94,12 @@ public sealed class MultiSiteActionRouter(
     public async Task<Result<MultiSiteActionRouteResult>> RouteAsync(MultiSiteActionRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        using var activity = ActivitySource.StartActivity("MultiSiteActionRouter.RouteAsync", ActivityKind.Internal);
+        activity?.SetTag("plantsafety.tenant_id", request.TenantId);
+        activity?.SetTag("plantsafety.action_type", request.ActionType.ToString());
+        activity?.SetTag("plantsafety.candidate_site_count", request.CandidateSiteIds.Count);
+        activity?.SetTag("plantsafety.correlation_id", request.CorrelationId);
 
         var correlationId = CorrelationId.FromGuid(request.CorrelationId == Guid.Empty ? Guid.NewGuid() : request.CorrelationId);
         var causationId = CausationId.FromGuid(request.CausationId == Guid.Empty ? correlationId.Value : request.CausationId);
@@ -93,6 +111,8 @@ public sealed class MultiSiteActionRouter(
         }
         catch (DataResidencyViolationException ex)
         {
+            activity?.AddEvent(new ActivityEvent("residency_violation"));
+            activity?.SetStatus(ActivityStatusCode.Error, "ResidencyViolation");
             logger.LogWarning(ex, "MultiSiteActionRouter: residency violation for Tenant {TenantId}; action rejected.", request.TenantId);
             return Result<MultiSiteActionRouteResult>.Failure(new ApplicationError(
                 "GlobalSafetyInsights.Coordination.ResidencyViolation",
@@ -102,12 +122,17 @@ public sealed class MultiSiteActionRouter(
         }
 
         var region = regionRouter.ResolveRegion(request.TenantId);
+        activity?.SetTag("plantsafety.region", region.Code);
 
         // Step 2: eligibility + approval-chain decision.
         var decision = policy.Evaluate(request.TenantId, request.CandidateSiteIds, request.ActionType, request.TenantExcludedSiteIds);
+        activity?.AddEvent(new ActivityEvent("policy_evaluated"));
+        activity?.SetTag("plantsafety.eligible_site_count", decision.EligibleSiteIds.Count);
+        activity?.SetTag("plantsafety.requires_approval", decision.RequiresApproval);
 
         if (!decision.IsEligible)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "NoEligibleSites");
             return Result<MultiSiteActionRouteResult>.Failure(new ApplicationError(
                 "GlobalSafetyInsights.Coordination.NoEligibleSites",
                 "No candidate site is eligible to participate in this coordinated action.",
@@ -123,10 +148,12 @@ public sealed class MultiSiteActionRouter(
         if (decision.RequiresApproval)
         {
             var workflowInstanceId = await TryStartApprovalWorkflowAsync(request, decision, actorId, nowUtc, correlationId, causationId, actor, cancellationToken);
+            activity?.SetTag("plantsafety.workflow_instance_id", workflowInstanceId);
 
             await AuditAsync(request, decision.EligibleSiteIds, actorId, correlationId, causationId, region,
                 actionTypeSuffix: workflowInstanceId is not null ? "PendingApproval" : "PendingApprovalNoWorkflowDefinition",
                 workflowInstanceId, cancellationToken);
+            activity?.AddEvent(new ActivityEvent("audited"));
 
             return Result<MultiSiteActionRouteResult>.Success(new MultiSiteActionRouteResult(
                 decision.EligibleSiteIds, decision.IneligibleSites, RequiresApproval: true, Executed: false,
@@ -135,9 +162,14 @@ public sealed class MultiSiteActionRouter(
 
         // Step 3: route to the real target module's command(s).
         var (dispatchSucceeded, dispatchError) = await DispatchAsync(request, decision.EligibleSiteIds, actorId, cancellationToken);
+        activity?.AddEvent(new ActivityEvent("dispatched"));
+        activity?.SetTag("plantsafety.dispatch_succeeded", dispatchSucceeded);
+        if (!dispatchSucceeded)
+            activity?.SetStatus(ActivityStatusCode.Error, dispatchError);
 
         // Step 4: audit + event mesh.
         await AuditAsync(request, decision.EligibleSiteIds, actorId, correlationId, causationId, region, actionTypeSuffix: null, workflowInstanceId: null, cancellationToken);
+        activity?.AddEvent(new ActivityEvent("audited"));
 
         return Result<MultiSiteActionRouteResult>.Success(new MultiSiteActionRouteResult(
             decision.EligibleSiteIds, decision.IneligibleSites, RequiresApproval: false, Executed: true,

@@ -11,6 +11,7 @@
 //                  dashboard (built by a later agent) will call. Additive-only evolution.
 // ============================================================================
 using MediatR;
+using PlantSafety.Application.Behaviors.Caching;
 using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.GlobalSafetyInsights.Queries;
@@ -19,6 +20,9 @@ namespace PlantSafety.Application.GlobalSafetyInsights.Queries;
 /// Retrieves the most recently computed GlobalSafetyInsights snapshot for
 /// <paramref name="TenantId"/>, plus its computation history within [<paramref name="From"/>,
 /// <paramref name="To"/>].
+/// Implements <see cref="ICacheableQuery"/> (Handbook §3.1 Canonical Caching Rule) -- read-heavy,
+/// short-TTL BI aggregation, safe to serve briefly stale via <see cref="CachingBehavior{TRequest,TResponse}"/>,
+/// matching the existing GetRiskDashboardQuery/GetSafetyDashboardQuery precedent's cache-key/TTL shape.
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>
 /// <param name="From">Inclusive start of the history date range (UTC).</param>
@@ -26,4 +30,11 @@ namespace PlantSafety.Application.GlobalSafetyInsights.Queries;
 public sealed record GetGlobalSafetyInsightsQuery(
     Guid TenantId,
     DateTime From,
-    DateTime To) : IRequest<Result<GlobalSafetyInsightsQueryResult>>;
+    DateTime To) : IRequest<Result<GlobalSafetyInsightsQueryResult>>, ICacheableQuery
+{
+    /// <inheritdoc/>
+    public string CacheKey => $"dashboard:globalsafetyinsights:{TenantId}:{From:yyyyMMdd}:{To:yyyyMMdd}";
+
+    /// <inheritdoc/>
+    public TimeSpan CacheExpiry => TimeSpan.FromMinutes(5);
+}

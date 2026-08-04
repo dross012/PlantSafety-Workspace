@@ -18,7 +18,15 @@ namespace PlantSafety.Application.GlobalSafetyInsights.Repositories;
 /// <summary>Append-only audit ledger for cross-site coordinated actions.</summary>
 public interface IGlobalSafetyActionAuditRepository
 {
-    /// <summary>Records a cross-site action into the audit ledger.</summary>
+    /// <summary>
+    /// Records a cross-site action into the audit ledger.
+    /// </summary>
+    /// <param name="correlationId">
+    /// Correlation identifier propagated from the triggering CrossSiteActionEvent (Phase 9 §4
+    /// observability-audit fix), so the ledger is queryable end-to-end from the originating
+    /// request/mesh event. Optional for backward compatibility with call sites that predate this fix.
+    /// </param>
+    /// <param name="causationId">Causation identifier propagated from the triggering CrossSiteActionEvent.</param>
     Task RecordAsync(
         Guid tenantId,
         IReadOnlyList<Guid> affectedSiteIds,
@@ -28,7 +36,9 @@ public interface IGlobalSafetyActionAuditRepository
         DateTime recordedAtUtc,
         string? regionCode,
         Guid? workflowInstanceId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? correlationId = null,
+        Guid? causationId = null);
 
     /// <summary>
     /// Lists cross-site action audit entries for a tenant within [<paramref name="from"/>,

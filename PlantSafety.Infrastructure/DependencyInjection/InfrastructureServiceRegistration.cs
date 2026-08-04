@@ -367,7 +367,8 @@ public static class InfrastructureServiceRegistration
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Erp, opts.ErpEndpointUrl, client,
                 sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
-                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>(),
+                metricsRecorder: sp.GetRequiredService<Application.Abstractions.Observability.IRequestMetricsRecorder>());
         });
         services.AddSingleton<IExternalSystemPublisher>(sp =>
         {
@@ -376,7 +377,8 @@ public static class InfrastructureServiceRegistration
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Mes, opts.MesEndpointUrl, client,
                 sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
-                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>(),
+                metricsRecorder: sp.GetRequiredService<Application.Abstractions.Observability.IRequestMetricsRecorder>());
         });
 
         // Phase 6 §1 Enterprise System Integrations (2026-08-03): outbound CMMS/HR/Vendor
@@ -403,7 +405,8 @@ public static class InfrastructureServiceRegistration
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Cmms, opts.CmmsEndpointUrl, client,
                 sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
-                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>(),
+                metricsRecorder: sp.GetRequiredService<Application.Abstractions.Observability.IRequestMetricsRecorder>());
         });
         services.AddSingleton<IExternalSystemPublisher>(sp =>
         {
@@ -412,7 +415,8 @@ public static class InfrastructureServiceRegistration
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Hr, opts.HrEndpointUrl, client,
                 sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
-                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>(),
+                metricsRecorder: sp.GetRequiredService<Application.Abstractions.Observability.IRequestMetricsRecorder>());
         });
         services.AddSingleton<IExternalSystemPublisher>(sp =>
         {
@@ -421,7 +425,8 @@ public static class InfrastructureServiceRegistration
             return new HttpExternalSystemPublisher(
                 EnterpriseSourceSystem.Vendor, opts.VendorEndpointUrl, client,
                 sp.GetRequiredService<Application.Enterprise.MultiRegion.DataResidency.IDataResidencyEnforcer>(),
-                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>());
+                sp.GetRequiredService<ILogger<HttpExternalSystemPublisher>>(),
+                metricsRecorder: sp.GetRequiredService<Application.Abstractions.Observability.IRequestMetricsRecorder>());
         });
 
         // Phase 7 §1.3 Tenant-Aware Eventing (2026-08-03): outbound Enterprise Event Mesh mappers

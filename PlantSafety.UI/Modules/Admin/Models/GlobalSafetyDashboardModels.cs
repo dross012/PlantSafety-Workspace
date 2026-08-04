@@ -216,4 +216,10 @@ public sealed class CrossSiteActionLogEntryDto
 
     /// <summary>Gets the region the action was resolved/routed in, if known.</summary>
     public string? RegionCode { get; init; }
+
+    /// <summary>Gets the correlation identifier propagated from the triggering CrossSiteActionEvent, if known.</summary>
+    public Guid? CorrelationId { get; init; }
+
+    /// <summary>Gets the causation identifier propagated from the triggering CrossSiteActionEvent, if known.</summary>
+    public Guid? CausationId { get; init; }
 }

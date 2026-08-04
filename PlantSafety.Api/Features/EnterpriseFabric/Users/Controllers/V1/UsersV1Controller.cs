@@ -20,6 +20,24 @@
 //   repository method or stored procedure (only usp_User_Create/GetById/List exist) --
 //   this is a genuine backend gap, not implemented here to avoid fabricating a command
 //   with no backing persistence.
+// - Authorization tightened 2026-08-03 (Phase 9 §5.5 Governance & Compliance
+//   Finalization): both actions previously enforced only SafetyTierPolicies.Write
+//   (CreateAsync, Safety.Editor-and-above) / SafetyTierPolicies.Read (GetAsync,
+//   Safety.Viewer-and-above). CreateUserCommandHandler passes the caller-supplied
+//   `Roles` list straight through to IUserRepository.CreateAsync with NO server-side
+//   check that the caller is entitled to grant those roles -- so under the previous
+//   gating, any plain Safety.Editor-tier caller (a normal content-editing role, not an
+//   administrative one) could create a brand-new user in their own tenant with
+//   Roles = ["Platform.Admin"], a full platform-admin privilege-escalation path from
+//   the lowest write tier. This controller also backs the Admin Portal's
+//   UserManagementPage.razor, which is itself only reachable/meaningful via an active
+//   PlatformAdmin impersonation session (see that page's IsImpersonatingThisTenant
+//   guard) -- i.e. every legitimate real-world caller of this endpoint already holds
+//   Platform.Admin. Tightened both actions to SafetyTierPolicies.Admin (Platform.Admin
+//   only), matching TenantV1Controller's "every operation, read and write alike, is
+//   Admin-gated" precedent for the same class of cross-tenant-sensitive administrative
+//   surface. This is additive-only hardening: no legitimate caller loses access, since
+//   every real caller already held Platform.Admin.
 //
 // ============================================================================
 
@@ -60,7 +78,7 @@ public sealed class UsersV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpPost]
-    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<CreateUserResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -102,7 +120,7 @@ public sealed class UsersV1Controller : ControllerBase
     /// <response code="401">Missing or invalid JWT Bearer token.</response>
     /// <response code="403">Caller does not hold the required policy.</response>
     [HttpGet]
-    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [Authorize(Policy = SafetyTierPolicies.Admin)]
     [ProducesResponseType(typeof(ApiResponse<ListUsersResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

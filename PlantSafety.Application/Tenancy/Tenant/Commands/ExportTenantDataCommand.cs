@@ -49,7 +49,20 @@ public sealed record ExportTenantDataCommand(
 }
 
 /// <summary>Outcome of a completed tenant data export.</summary>
-/// <param name="ContentReference">Storage reference (blob URI) of the exported JSON artifact.</param>
+/// <param name="ContentReference">Storage reference (blob URI) of the exported JSON artifact -- the export's destination.</param>
 /// <param name="ContentSizeBytes">Size, in bytes, of the exported artifact.</param>
 /// <param name="ExportedAtUtc">UTC instant the export completed.</param>
-public sealed record TenantDataExportResultDto(string ContentReference, long ContentSizeBytes, DateTime ExportedAtUtc);
+/// <param name="ValidatedRegionCode">
+/// Region code (<see cref="PlantSafety.SharedKernel.Contracts.Enterprise.MultiRegion.Region"/>) the
+/// platform's current deployment region was validated against by <c>IDataResidencyEnforcer</c>
+/// immediately before this export was written -- completes the tenant -&gt; region -&gt; destination
+/// lineage chain for compliance/audit review (Phase 9 §5.3 Export Lineage Validation). Added
+/// additively; existing callers positionally constructing this record before this field are
+/// unaffected only if using named/init construction -- see <c>ExportTenantDataCommandHandler</c>
+/// for the sole real production construction site.
+/// </param>
+public sealed record TenantDataExportResultDto(
+    string ContentReference,
+    long ContentSizeBytes,
+    DateTime ExportedAtUtc,
+    string ValidatedRegionCode);

@@ -117,3 +117,35 @@ BEGIN
         WHERE WorkflowInstanceId IS NOT NULL;
 END
 GO
+
+-- Phase 9 §4 observability-audit fix (2026-08-03): CorrelationId/CausationId were computed
+-- end-to-end by MultiSiteActionRouter and carried onto CrossSiteActionEvent and
+-- RecordCrossSiteActionCommand, but silently dropped before persistence -- this audit ledger (the
+-- Global Safety Dashboard's corrective-action tracker / incident-timeline source) had no way to be
+-- traced back to the originating request or mesh event without grepping logs. Additive columns for
+-- pre-existing deployments that already ran the CREATE TABLE block above.
+IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CrossSiteActionLog' AND schema_id = SCHEMA_ID('GlobalSafetyInsights'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[GlobalSafetyInsights].[CrossSiteActionLog]') AND name = 'CorrelationId')
+BEGIN
+    ALTER TABLE [GlobalSafetyInsights].[CrossSiteActionLog] ADD CorrelationId UNIQUEIDENTIFIER NULL;
+END
+GO
+
+IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CrossSiteActionLog' AND schema_id = SCHEMA_ID('GlobalSafetyInsights'))
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[GlobalSafetyInsights].[CrossSiteActionLog]') AND name = 'CausationId')
+BEGIN
+    ALTER TABLE [GlobalSafetyInsights].[CrossSiteActionLog] ADD CausationId UNIQUEIDENTIFIER NULL;
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_GlobalSafetyInsights_CrossSiteActionLog_CorrelationId'
+      AND object_id = OBJECT_ID('[GlobalSafetyInsights].[CrossSiteActionLog]')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX IX_GlobalSafetyInsights_CrossSiteActionLog_CorrelationId
+        ON [GlobalSafetyInsights].[CrossSiteActionLog] (CorrelationId)
+        WHERE CorrelationId IS NOT NULL;
+END
+GO
