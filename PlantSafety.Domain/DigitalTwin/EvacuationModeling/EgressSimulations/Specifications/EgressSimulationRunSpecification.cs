@@ -1,0 +1,52 @@
+// ============================================================================
+//  Project:        PlantSafety.Platform
+//  Module:         DigitalTwin.EvacuationModeling.EgressSimulations
+//  Layer:          Domain
+//  File:           EgressSimulationRunSpecification.cs
+//  Created:        2026-08-04
+//  Author:         PlantSafety Platform Team
+//  SchemaVersion:  2026.1
+//  Description:    Abstract base specification for EgressSimulationRun aggregate predicate
+//                  expressions. Additive-only evolution.
+// ============================================================================
+namespace PlantSafety.Domain.DigitalTwin.EvacuationModeling.EgressSimulations.Specifications;
+
+/// <summary>Abstract base specification for <see cref="Aggregates.EgressSimulationRun"/> aggregate predicate expressions.</summary>
+public abstract class EgressSimulationRunSpecification
+{
+    /// <summary>Returns the predicate expression for use in repository queries.</summary>
+    public abstract Expression<Func<Aggregates.EgressSimulationRun, bool>> ToExpression();
+
+    /// <summary>Compiles the expression into a delegate for in-memory filtering.</summary>
+    public Func<Aggregates.EgressSimulationRun, bool> ToPredicate() => ToExpression().Compile();
+
+    /// <summary>Combines this specification with <paramref name="other"/> using logical AND.</summary>
+    public EgressSimulationRunSpecification And(EgressSimulationRunSpecification other) => new AndEgressSimulationRunSpecification(this, other);
+
+    /// <summary>Combines this specification with <paramref name="other"/> using logical OR.</summary>
+    public EgressSimulationRunSpecification Or(EgressSimulationRunSpecification other) => new OrEgressSimulationRunSpecification(this, other);
+}
+
+internal sealed class AndEgressSimulationRunSpecification(EgressSimulationRunSpecification left, EgressSimulationRunSpecification right) : EgressSimulationRunSpecification
+{
+    public override Expression<Func<Aggregates.EgressSimulationRun, bool>> ToExpression()
+    {
+        var l = left.ToExpression();
+        var r = right.ToExpression();
+        var param = l.Parameters[0];
+        var body = Expression.AndAlso(l.Body, Expression.Invoke(r, param));
+        return Expression.Lambda<Func<Aggregates.EgressSimulationRun, bool>>(body, param);
+    }
+}
+
+internal sealed class OrEgressSimulationRunSpecification(EgressSimulationRunSpecification left, EgressSimulationRunSpecification right) : EgressSimulationRunSpecification
+{
+    public override Expression<Func<Aggregates.EgressSimulationRun, bool>> ToExpression()
+    {
+        var l = left.ToExpression();
+        var r = right.ToExpression();
+        var param = l.Parameters[0];
+        var body = Expression.OrElse(l.Body, Expression.Invoke(r, param));
+        return Expression.Lambda<Func<Aggregates.EgressSimulationRun, bool>>(body, param);
+    }
+}

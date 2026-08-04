@@ -5,7 +5,8 @@
 // Created: 2026-07-21
 // Description: V1 controller exposing every MachineSafety module command (LotoSystems,
 //              MachineGuardsBarriers, EmergencyStopDevices, PresenceSensingDevices,
-//              SafetyValvesRelays, TwoHandControls) and their read-model "Get" queries over HTTP.
+//              SafetyValvesRelays, TwoHandControls, CraneHoistSystems) and their read-model
+//              "Get" queries over HTTP.
 // ============================================================================
 //
 // Onboarding Notes:
@@ -29,6 +30,7 @@ using PlantSafety.Application.MachineSafety.MachineGuardsBarriers.Queries;
 using PlantSafety.Application.MachineSafety.PresenceSensingDevices.Queries;
 using PlantSafety.Application.MachineSafety.SafetyValvesRelays.Queries;
 using PlantSafety.Application.MachineSafety.TwoHandControls.Queries;
+using PlantSafety.Application.MachineSafety.CraneHoistSystems.Queries;
 
 namespace PlantSafety.Api.MachineSafety.Controllers.V1;
 
@@ -738,6 +740,301 @@ public sealed class MachineSafetyV1Controller : ControllerBase
     {
         var env = _envelopeFactory.NewQueryEnvelope();
         var query = new GetTwoHandControlsQuery(env.TenantId, request.SiteId, request.From, request.To);
+        var result = await _sender.Send(query, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // CraneHoistSystems
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// <summary>Registers a new crane/hoist asset in the fleet.</summary>
+    /// <response code="200">Asset registered.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpPost("crane-hoist-systems")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> RegisterCraneHoistAssetAsync([FromBody] RegisterCraneHoistAssetRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+        var command = new RegisterCraneHoistAssetCommand(
+            env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.TenantId,
+            request.SiteId, request.AssetTag, request.AssetTitle, request.AssetType, request.RatedLoadCapacityKg, env.ActorId);
+        var result = await _sender.Send(command, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Records a lift event for a CraneHoistSystems asset.</summary>
+    /// <response code="200">Lift event recorded.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">Record not found.</response>
+    [HttpPost("crane-hoist-systems/{craneHoistSystemsId:guid}/record-lift-event")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RecordLiftEventAsync(
+        Guid craneHoistSystemsId, [FromBody] RecordLiftEventRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+        var command = new RecordLiftEventCommand(
+            env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.TenantId,
+            craneHoistSystemsId, request.ObservedLoadKg, env.ActorId);
+        var result = await _sender.Send(command, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Records an overload event for a CraneHoistSystems asset.</summary>
+    /// <response code="200">Overload event recorded.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">Record not found.</response>
+    [HttpPost("crane-hoist-systems/{craneHoistSystemsId:guid}/record-overload-event")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RecordOverloadEventAsync(
+        Guid craneHoistSystemsId, [FromBody] RecordOverloadEventRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+        var command = new RecordOverloadEventCommand(
+            env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.TenantId,
+            craneHoistSystemsId, request.ObservedLoadKg, env.ActorId);
+        var result = await _sender.Send(command, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Schedules the next mandatory inspection for a CraneHoistSystems asset.</summary>
+    /// <response code="200">Inspection scheduled.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">Record not found.</response>
+    [HttpPost("crane-hoist-systems/{craneHoistSystemsId:guid}/schedule-inspection")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ScheduleCraneInspectionAsync(
+        Guid craneHoistSystemsId, [FromBody] ScheduleCraneInspectionRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+        var command = new ScheduleCraneInspectionCommand(
+            env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.TenantId,
+            craneHoistSystemsId, request.DueAtUtc, env.ActorId);
+        var result = await _sender.Send(command, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Records the outcome of a completed crane inspection.</summary>
+    /// <response code="200">Inspection completed.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">Record not found.</response>
+    [HttpPost("crane-hoist-systems/{craneHoistSystemsId:guid}/complete-inspection")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CompleteCraneInspectionAsync(
+        Guid craneHoistSystemsId, [FromBody] CompleteCraneInspectionRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+        var command = new CompleteCraneInspectionCommand(
+            env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.TenantId,
+            craneHoistSystemsId, request.Passed, env.ActorId);
+        var result = await _sender.Send(command, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Qualifies an operator to run a CraneHoistSystems asset.</summary>
+    /// <response code="200">Operator qualified.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">Record not found.</response>
+    [HttpPost("crane-hoist-systems/{craneHoistSystemsId:guid}/qualify-operator")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> QualifyOperatorAsync(
+        Guid craneHoistSystemsId, [FromBody] QualifyOperatorRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+        var command = new QualifyOperatorCommand(
+            env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.TenantId,
+            craneHoistSystemsId, request.OperatorUserId, request.ExpiresAtUtc, env.ActorId);
+        var result = await _sender.Send(command, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Suspends the current operator's qualification on a CraneHoistSystems asset.</summary>
+    /// <response code="200">Qualification suspended.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">Record not found.</response>
+    [HttpPost("crane-hoist-systems/{craneHoistSystemsId:guid}/suspend-operator-qualification")]
+    [Authorize(Policy = SafetyTierPolicies.Approve)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SuspendOperatorQualificationAsync(
+        Guid craneHoistSystemsId, [FromBody] SuspendOperatorQualificationRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+        var command = new SuspendOperatorQualificationCommand(
+            env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.TenantId,
+            craneHoistSystemsId, request.Reason, env.ActorId);
+        var result = await _sender.Send(command, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Records a rigging safety inspection for a CraneHoistSystems asset.</summary>
+    /// <response code="200">Rigging inspection recorded.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">Record not found.</response>
+    [HttpPost("crane-hoist-systems/{craneHoistSystemsId:guid}/record-rigging-inspection")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsActionResult>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RecordRiggingInspectionAsync(
+        Guid craneHoistSystemsId, [FromBody] RecordRiggingInspectionRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+        var command = new RecordRiggingInspectionCommand(
+            env.CommandId, env.CorrelationId, env.CausationId ?? Guid.NewGuid(), env.TenantId,
+            craneHoistSystemsId, request.DefectDetected, request.Notes, env.ActorId);
+        var result = await _sender.Send(command, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns CraneHoistSystems read-model data for a tenant/site within a date range.</summary>
+    /// <response code="200">Data returned successfully.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpGet("crane-hoist-systems")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<CraneHoistSystemsQueryResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetCraneHoistSystemsAsync([FromQuery] MachineSafetyQueryRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var query = new GetCraneHoistSystemsQuery(env.TenantId, request.SiteId, request.From, request.To);
+        var result = await _sender.Send(query, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns a single CraneHoistSystems asset by identifier.</summary>
+    /// <response code="200">Data returned successfully.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpGet("crane-hoist-systems/{craneHoistSystemsId:guid}")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<PlantSafety.Application.MachineSafety.CraneHoistSystems.Models.CraneHoistSystemsItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetCraneHoistAssetByIdAsync(Guid craneHoistSystemsId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var query = new GetCraneHoistAssetByIdQuery(env.TenantId, craneHoistSystemsId);
+        var result = await _sender.Send(query, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns the recorded lift events for a single CraneHoistSystems asset.</summary>
+    /// <response code="200">Data returned successfully.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpGet("crane-hoist-systems/{craneHoistSystemsId:guid}/lift-events")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PlantSafety.Application.MachineSafety.CraneHoistSystems.Models.CraneHoistSystemsItemDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListLiftEventsByAssetAsync(Guid craneHoistSystemsId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var query = new ListLiftEventsByAssetQuery(env.TenantId, craneHoistSystemsId);
+        var result = await _sender.Send(query, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns the inspection history for a single CraneHoistSystems asset.</summary>
+    /// <response code="200">Data returned successfully.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpGet("crane-hoist-systems/{craneHoistSystemsId:guid}/inspection-history")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PlantSafety.Application.MachineSafety.CraneHoistSystems.Models.CraneHoistSystemsItemDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetInspectionHistoryAsync(Guid craneHoistSystemsId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var query = new GetInspectionHistoryQuery(env.TenantId, craneHoistSystemsId);
+        var result = await _sender.Send(query, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns CraneHoistSystems assets due (or overdue) for inspection as of a given UTC instant.</summary>
+    /// <response code="200">Data returned successfully.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpGet("crane-hoist-systems/due-for-inspection")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PlantSafety.Application.MachineSafety.CraneHoistSystems.Models.CraneHoistSystemsItemDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListAssetsDueForInspectionAsync([FromQuery] ListAssetsDueForInspectionRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var query = new ListAssetsDueForInspectionQuery(env.TenantId, request.SiteId, request.AsOfUtc);
+        var result = await _sender.Send(query, cancellationToken);
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>Returns CraneHoistSystems assets whose operator qualification expires within a window.</summary>
+    /// <response code="200">Data returned successfully.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpGet("crane-hoist-systems/expiring-operator-qualifications")]
+    [Authorize(Policy = SafetyTierPolicies.Read)]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PlantSafety.Application.MachineSafety.CraneHoistSystems.Models.CraneHoistSystemsItemDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListExpiringOperatorQualificationsAsync([FromQuery] ListExpiringOperatorQualificationsRequest request, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewQueryEnvelope();
+        var query = new ListExpiringOperatorQualificationsQuery(env.TenantId, request.SiteId, request.WithinDays);
         var result = await _sender.Send(query, cancellationToken);
         return this.ToActionResult(result, env.CorrelationId);
     }

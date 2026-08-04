@@ -36,3 +36,15 @@ public sealed record ScheduleInspectionSafetyValvesRelaysRequest(DateTime DueAtU
 // ── TwoHandControls ──────────────────────────────────────────────────────────
 public sealed record RecordTestResultTwoHandControlsRequest(bool Synchronized, decimal SynchronizationScore, Guid TestedByUserId);
 public sealed record ScheduleTestTwoHandControlsRequest(DateTime DueAtUtc);
+
+// ── CraneHoistSystems ────────────────────────────────────────────────────────
+public sealed record RegisterCraneHoistAssetRequest(Guid? SiteId, string AssetTag, string AssetTitle, string AssetType, decimal RatedLoadCapacityKg);
+public sealed record RecordLiftEventRequest(decimal ObservedLoadKg);
+public sealed record RecordOverloadEventRequest(decimal ObservedLoadKg);
+public sealed record ScheduleCraneInspectionRequest(DateTime DueAtUtc);
+public sealed record CompleteCraneInspectionRequest(bool Passed);
+public sealed record QualifyOperatorRequest(Guid OperatorUserId, DateTime? ExpiresAtUtc);
+public sealed record SuspendOperatorQualificationRequest(string Reason);
+public sealed record RecordRiggingInspectionRequest(bool DefectDetected, string? Notes);
+public sealed record ListAssetsDueForInspectionRequest(Guid? SiteId, DateTime AsOfUtc);
+public sealed record ListExpiringOperatorQualificationsRequest(Guid? SiteId, int WithinDays);

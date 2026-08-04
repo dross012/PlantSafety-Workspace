@@ -1,0 +1,199 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: HumanFactors.CognitiveLoadAnalytics dashboard page. Combines the three
+     module dashboards (Cognitive Load by Shift/Role, Task Complexity vs. Load Correlation via a
+     worker lookup, Predictive Cognitive Risk Board) behind worker/shift selectors, backed by the
+     real, wired PlantSafety.Api CognitiveLoadAnalyticsV1Controller endpoints. Built entirely from
+     the canonical Shared component library. Data governance: the worker rollup panel surfaces
+     single-worker data and is intended for supervisor/analyst roles only; the trend and risk
+     board panels are aggregate/cross-worker projections.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/human-factors/cognitive-load-analytics"
+
+@inject CognitiveLoadAnalyticsState State
+@inject CognitiveLoadAnalyticsApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.HumanFactors.CognitiveLoadAnalytics.ApiClients
+@using PlantSafety.UI.Modules.HumanFactors.CognitiveLoadAnalytics.Models
+
+<PageTitle>Cognitive Load Analytics — Human Factors — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Cognitive Load Analytics dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <label for="workerIdInput" class="ps-field-label">Worker ID</label>
+            <input id="workerIdInput" class="ps-input ps-input-sm" @bind="_workerIdInput" placeholder="WorkerUserId (GUID)" />
+
+            <label for="shiftTypeSelect" class="ps-field-label">Shift</label>
+            <select id="shiftTypeSelect" class="ps-input ps-input-sm" @bind="_shiftTypeInput">
+                <option value="Day">Day</option>
+                <option value="Evening">Evening</option>
+                <option value="Night">Night</option>
+                <option value="Rotating">Rotating</option>
+            </select>
+
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Load
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.PeriodStart" EndDate="State.PeriodEnd" RangeChanged="OnPeriodChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading cognitive load analytics…" />
+        }
+        else
+        {
+            <h3>Cognitive Load by Worker</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Mean Cognitive Load"><span class="ps-field-value">@(State.CognitiveLoadByWorker?.MeanCognitiveLoadScore.ToString("N1") ?? "—")</span></CardComponent>
+                <CardComponent Title="Peak Cognitive Load"><span class="ps-field-value">@(State.CognitiveLoadByWorker?.PeakCognitiveLoadScore.ToString("N1") ?? "—")</span></CardComponent>
+                <CardComponent Title="Overload Events"><span class="ps-field-value">@(State.CognitiveLoadByWorker?.OverloadEventCount.ToString() ?? "—")</span></CardComponent>
+                <CardComponent Title="Reading Count"><span class="ps-field-value">@(State.CognitiveLoadByWorker?.ReadingCount.ToString() ?? "—")</span></CardComponent>
+            </div>
+
+            <h3>Cognitive Load by Shift/Role</h3>
+            <DataGridComponent TItem="WorkloadTrendByShiftDto"
+                                Items="State.WorkloadTrend"
+                                Headers="_trendHeaders"
+                                KeySelector="t => t.WorkloadTrendRecordId"
+                                EmptyMessage="No workload trend snapshots found for this shift/period."
+                                AriaLabel="Cognitive Workload Trend by Shift">
+                <RowTemplate Context="trend">
+                    <td><span class="ps-chip">@trend.ShiftType</span></td>
+                    <td>@trend.PeriodStartUtc.ToString("yyyy-MM-dd") UTC</td>
+                    <td>@trend.MeanCognitiveLoadScore.ToString("N1")</td>
+                    <td>@trend.OverloadEventCount</td>
+                    <td>@trend.ReadingCount</td>
+                    <td>@trend.RecalculatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3>Predictive Cognitive Risk Board</h3>
+            <DataGridComponent TItem="CognitiveRiskPredictionDto"
+                                Items="State.ElevatedPredictions"
+                                Headers="_riskHeaders"
+                                KeySelector="p => p.CognitiveRiskPredictionId"
+                                EmptyMessage="No elevated or critical cognitive risk predictions found."
+                                AriaLabel="Predictive Cognitive Risk Board">
+                <RowTemplate Context="prediction">
+                    <td><StatusIndicatorComponent Status="@MapRiskStatus(prediction.PredictedRiskLevel)" Label="@prediction.PredictedRiskLevel" /></td>
+                    <td>@prediction.PredictionScore.ToString("P1")</td>
+                    <td>@prediction.ModelVersion</td>
+                    <td><span class="ps-chip">@prediction.Status</span></td>
+                    <td>@prediction.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>
+                        @if (prediction.Status == "Generated")
+                        {
+                            <button class="ps-btn ps-btn-secondary ps-btn-sm" @onclick="() => AcknowledgeAsync(prediction.CognitiveRiskPredictionId)">Acknowledge</button>
+                        }
+                        else if (prediction.AcknowledgedAtUtc is not null)
+                        {
+                            <span>@prediction.AcknowledgedAtUtc.Value.ToString("yyyy-MM-dd HH:mm") UTC</span>
+                        }
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _trendHeaders = ["Shift", "Period Start", "Mean Load", "Overload Events", "Readings", "Recalculated"];
+    private static readonly string[] _riskHeaders = ["Risk Level", "Score", "Model Version", "Status", "Generated", "Acknowledge"];
+
+    private string _workerIdInput = string.Empty;
+    private string _shiftTypeInput = "Day";
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Cognitive Load Analytics",
+            activeModuleCode: "human-factors-cognitive-load-analytics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Human Factors", Href = RouteDefinitions.HumanFactorsDashboard },
+                new BreadcrumbItem { Label = "Cognitive Load Analytics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task OnPeriodChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetPeriod(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+        State.SelectShiftType(_shiftTypeInput);
+
+        var siteId = (Guid?)null;
+        var periodStart = State.PeriodStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var periodEnd = State.PeriodEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        if (Guid.TryParse(_workerIdInput, out var workerId))
+        {
+            State.SelectWorker(workerId);
+            var workerEnvelope = await ApiClient.GetCognitiveLoadByWorkerAsync(workerId, periodStart, periodEnd);
+            State.SetCognitiveLoadByWorker(workerEnvelope.IsSuccess ? workerEnvelope.Data : null);
+        }
+        else
+        {
+            State.SetCognitiveLoadByWorker(null);
+        }
+
+        var trendTask = ApiClient.GetWorkloadTrendByShiftAsync(siteId, _shiftTypeInput, periodStart, periodEnd);
+        var riskTask = ApiClient.ListElevatedCognitiveRiskPredictionsAsync(siteId);
+
+        await Task.WhenAll(trendTask, riskTask);
+
+        if (!trendTask.Result.IsSuccess && !riskTask.Result.IsSuccess)
+        {
+            State.SetLoadError(trendTask.Result.IsProblem ? trendTask.Result.Problem!.Detail : $"Cognitive Load Analytics service is not yet available: {trendTask.Result.FaultType}");
+            return;
+        }
+
+        State.SetDashboardData(trendTask.Result.Data ?? [], riskTask.Result.Data ?? []);
+    }
+
+    private async Task AcknowledgeAsync(Guid cognitiveRiskPredictionId)
+    {
+        await ApiClient.AcknowledgeCognitiveRiskAlertAsync(cognitiveRiskPredictionId, null);
+        await LoadAsync();
+    }
+
+    private static string MapRiskStatus(string riskLevel) => riskLevel switch
+    {
+        "Low" => "Healthy",
+        "Moderate" => "Warning",
+        "Elevated" => "Warning",
+        "Critical" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

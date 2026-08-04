@@ -130,6 +130,11 @@ using PlantSafety.Infrastructure.Operations.SystemHealth.Persistence;
 using PlantSafety.Infrastructure.EmployeeSafety.DependencyInjection;
 using PlantSafety.Infrastructure.ContractorSafety.DependencyInjection;
 using PlantSafety.Infrastructure.MachineSafety.DependencyInjection;
+using PlantSafety.Infrastructure.PhysicalAccessControl.DependencyInjection;
+using PlantSafety.Infrastructure.AutonomousVehicleSafety.DependencyInjection;
+using PlantSafety.Infrastructure.LogisticsTransportSafety.DependencyInjection;
+using PlantSafety.Infrastructure.CommunitySafety.DependencyInjection;
+using PlantSafety.Infrastructure.HazardousWasteManagement.DependencyInjection;
 using PlantSafety.Infrastructure.SafetyProcedures.DependencyInjection;
 using PlantSafety.Infrastructure.SafetyPolicies.DependencyInjection;
 using PlantSafety.Infrastructure.AccidentManagement.DependencyInjection;
@@ -164,6 +169,7 @@ using PlantSafety.Infrastructure.Compliance.Auditing.DependencyInjection;
 using PlantSafety.Infrastructure.ProcessManagement.DependencyInjection;
 using PlantSafety.Infrastructure.ProcessManagement.Routing.DependencyInjection;
 using PlantSafety.Infrastructure.Sustainability.DependencyInjection;
+using PlantSafety.Infrastructure.Sustainability.AdvancedMetrics.DependencyInjection;
 using PlantSafety.Infrastructure.WorkerWellBeing.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Certification.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Compliance.DependencyInjection;
@@ -188,8 +194,10 @@ using PlantSafety.Infrastructure.AiSafetyIntelligence.DependencyInjection;
 using PlantSafety.Infrastructure.ContractorVisitor.DependencyInjection;
 using PlantSafety.Infrastructure.DigitalTwin.DependencyInjection;
 using PlantSafety.Infrastructure.EnvironmentalHealth.DependencyInjection;
+using PlantSafety.Infrastructure.EnvironmentalHealth.WaterDischargeCompliance.DependencyInjection;
 using PlantSafety.Infrastructure.Governance.DependencyInjection;
 using PlantSafety.Infrastructure.HumanFactors.DependencyInjection;
+using PlantSafety.Infrastructure.HumanFactors.CognitiveLoadAnalytics.DependencyInjection;
 using PlantSafety.Infrastructure.OperationalSafety.DependencyInjection;
 using PlantSafety.Infrastructure.EnterpriseFabric.DependencyInjection;
 using PlantSafety.Infrastructure.Workflow.DependencyInjection;
@@ -779,6 +787,10 @@ public static class InfrastructureServiceRegistration
             .AddEmployeeSafetyInfrastructure()
             .AddContractorSafetyInfrastructure()
             .AddMachineSafetyInfrastructure()
+            .AddPhysicalAccessControlInfrastructure()
+            .AddLogisticsTransportSafetyInfrastructure()
+            .AddAutonomousVehicleSafetyInfrastructure()
+            .AddCommunitySafetyInfrastructure()
             .AddSafetyProceduresInfrastructure()
             .AddSafetyPoliciesInfrastructure()
             .AddAccidentManagementInfrastructure()
@@ -795,6 +807,7 @@ public static class InfrastructureServiceRegistration
             .AddComplianceAuditingInfrastructure()
             .AddProcessManagementAggregateInfrastructure()
             .AddSustainabilityAggregateInfrastructure()
+            .AddSustainabilityAdvancedMetricsInfrastructure()
             .AddWorkerWellBeingAggregateInfrastructure()
             .AddComplianceCertificationInfrastructure()
             .AddComplianceRuleInfrastructure()
@@ -855,9 +868,17 @@ public static class InfrastructureServiceRegistration
         // RiskManagement/Schedules registrations above.
         services
             .AddEnvironmentalHealthAggregateInfrastructure()
+            .AddWaterDischargeComplianceInfrastructure()
             .AddGovernanceAggregateInfrastructure()
             .AddHumanFactorsAggregateInfrastructure()
             .AddOperationalSafetyAggregateInfrastructure();
+
+        // HumanFactors.CognitiveLoadAnalytics (Phase 4 full build-out, 2026-08-04): cognitive
+        // workload measurement, task-complexity correlation, shift/workload trend analysis, and
+        // predictive cognitive risk modeling. Sits alongside (not inside) the generic HumanFactors
+        // aggregate registered immediately above -- mirrors the Sustainability.AdvancedMetrics
+        // sub-module registration precedent a few lines below.
+        services.AddHumanFactorsCognitiveLoadAnalyticsInfrastructure();
 
         // Phase 4 full build-out (2026-08-02): previously-bare/anemic DDD aggregates
         // EnterpriseFabric and Financials.FinancialRecord. EnterpriseFabric (this aggregate root)
@@ -884,6 +905,7 @@ public static class InfrastructureServiceRegistration
             .AddSafetyEventsWriteRepositories()
             .AddSafetyEventsNearMissesRootCauseAnalysisInfrastructure()
             .AddCrisisManagementDrillsAndExercisesInfrastructure()
+            .AddLocalEmergencyCoordinationInfrastructure()
             .AddIntegrationsInfrastructure()
             .AddCrossDomainRepositories()
             .AddFeaturesLegacyRepositories()
@@ -961,6 +983,14 @@ public static class InfrastructureServiceRegistration
         // Phase 8 §2/§4 Multi-Site Safety Intelligence Network (2026-08-03): GlobalSafetyInsights
         // Dapper repositories (write/read/audit-ledger) and the dashboard-facing mesh publisher.
         services.AddGlobalSafetyInsightsInfrastructure();
+
+        // HazardousWasteManagement (2026-08-04): new top-level module -- full hazardous-waste
+        // lifecycle (generation/characterization, accumulation, manifesting, transporter/TSDF
+        // hand-off, disposal confirmation) with RCRA-style chain-of-custody. Integrates with
+        // EnvironmentalHealth and Compliance.Procedures.HazMatProcedures (SOP linkage only; that
+        // controller is left untouched) via event-based hooks; leaves an event-based integration
+        // point for the future LogisticsTransportSafety module.
+        services.AddHazardousWasteManagementInfrastructure();
 
         return services;
     }

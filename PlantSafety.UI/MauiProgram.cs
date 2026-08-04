@@ -142,6 +142,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.HazMat.State.HazMatState>();
         builder.Services.AddSingleton<Modules.HazardAssessment.State.HazardAssessmentState>();
         builder.Services.AddSingleton<Modules.HumanFactors.State.HumanFactorsState>();
+        builder.Services.AddSingleton<Modules.HumanFactors.CognitiveLoadAnalytics.State.CognitiveLoadAnalyticsState>();
         builder.Services.AddSingleton<Modules.IncidentManagement.State.IncidentDetailState>();
         builder.Services.AddSingleton<Modules.IncidentManagement.State.IncidentTimelinePageState>();
         builder.Services.AddSingleton<Modules.IncidentManagement.State.IncidentsListState>();
@@ -149,6 +150,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.IndustrialHygiene.State.IndustrialHygieneState>();
         builder.Services.AddSingleton<Modules.Inspections.State.InspectionsState>();
         builder.Services.AddSingleton<Modules.Jsa.State.JsaState>();
+        builder.Services.AddSingleton<Modules.LocalEmergencyCoordination.State.LocalEmergencyCoordinationState>();
+        builder.Services.AddSingleton<Modules.HazardousWasteManagement.State.HazardousWasteManagementState>();
         builder.Services.AddSingleton<Modules.Loto.State.LotoState>();
         builder.Services.AddSingleton<Modules.MOC.State.MocState>();
         builder.Services.AddSingleton<Modules.MachineManagement.State.MachineManagementState>();
@@ -196,6 +199,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.SchedulingAnalytics.State.SchedulingAnalyticsState>();
         builder.Services.AddSingleton<Modules.Scorecards.State.ScorecardsState>();
         builder.Services.AddSingleton<Modules.Sustainability.State.SustainabilityState>();
+        builder.Services.AddSingleton<Modules.Sustainability.AdvancedMetrics.State.AdvancedMetricsState>();
         builder.Services.AddSingleton<Modules.Training.State.TrainingState>();
         builder.Services.AddSingleton<Modules.TrendAnalysis.State.TrendAnalysisState>();
         builder.Services.AddSingleton<Modules.WorkerManagement.State.WorkerManagementState>();
@@ -257,11 +261,14 @@ public static class MauiProgram
         RegisterApiClient<Modules.FatigueManagement.ApiClients.FatigueManagementApiClient>(builder, "fatigue-management");
         RegisterApiClient<Modules.Financials.ApiClients.FinancialsApiClient>(builder, "financials");
         RegisterApiClient<Modules.HazMat.ApiClients.HazMatApiClient>(builder, "haz-mat");
+        RegisterApiClient<Modules.HazardousWasteManagement.ApiClients.HazardousWasteManagementApiClient>(builder, "hazardous-waste-management");
         RegisterApiClient<Modules.HazardAssessment.ApiClients.HazardAssessmentApiClient>(builder, "hazard-assessment");
+        RegisterApiClient<Modules.HumanFactors.CognitiveLoadAnalytics.ApiClients.CognitiveLoadAnalyticsApiClient>(builder, "human-factors-cognitive-load-analytics");
         RegisterApiClient<Modules.IncidentManagement.ApiClients.IncidentManagementApiClient>(builder, "incident-management");
         RegisterApiClient<Modules.IndustrialHygiene.ApiClients.IndustrialHygieneApiClient>(builder, "industrial-hygiene");
         RegisterApiClient<Modules.Inspections.ApiClients.InspectionsApiClient>(builder, "inspections");
         RegisterApiClient<Modules.Jsa.ApiClients.JsaApiClient>(builder, "jsa");
+        RegisterApiClient<Modules.LocalEmergencyCoordination.ApiClients.LocalEmergencyCoordinationApiClient>(builder, "local-emergency-coordination");
         RegisterApiClient<Modules.Loto.ApiClients.LotoApiClient>(builder, "loto");
         RegisterApiClient<Modules.MachineManagement.ApiClients.MachineManagementApiClient>(builder, "machine-management");
         RegisterApiClient<Modules.Maintenance.ApiClients.MaintenanceApiClient>(builder, "maintenance");
@@ -286,6 +293,7 @@ public static class MauiProgram
         RegisterApiClient<Modules.Scheduling.ApiClients.SchedulingApiClient>(builder, "scheduling");
         RegisterApiClient<Modules.Scorecards.ApiClients.ScorecardsApiClient>(builder, "scorecards");
         RegisterApiClient<Modules.Sustainability.ApiClients.SustainabilityApiClient>(builder, "sustainability");
+        RegisterApiClient<Modules.Sustainability.AdvancedMetrics.ApiClients.AdvancedMetricsApiClient>(builder, "sustainability-advanced-metrics");
         RegisterApiClient<Modules.Training.ApiClients.TrainingApiClient>(builder, "training");
         RegisterApiClient<Modules.TrendAnalysis.ApiClients.TrendAnalysisApiClient>(builder, "trend-analysis");
         RegisterApiClient<Modules.WorkerManagement.ApiClients.WorkerManagementApiClient>(builder, "worker-management");

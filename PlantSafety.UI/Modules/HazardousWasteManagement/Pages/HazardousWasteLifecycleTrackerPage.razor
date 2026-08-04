@@ -1,0 +1,120 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Hazardous Waste Lifecycle Tracker dashboard. Loads open (not yet Closed)
+     manifests from the real GET api/v1/hazardouswastemanagement/manifests/open read-model
+     endpoint for the active tenant/site, populates HazardousWasteManagementState, and renders
+     the grid with status indicators and search. Built entirely from the canonical Shared
+     component library, following the Modules/Loto/Pages/LotoListPage.razor exemplar pattern.
+   SchemaVersion: 2026.2
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/hazardous-waste-management"
+@page "/modules/hazardous-waste-management/manifests"
+
+@inject HazardousWasteManagementState State
+@inject HazardousWasteManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.HazardousWasteManagement.ApiClients
+@using PlantSafety.UI.Modules.HazardousWasteManagement.Models
+@using PlantSafety.UI.Modules.HazardousWasteManagement.Services
+@using PlantSafety.UI.Modules.HazardousWasteManagement.State
+
+<PageTitle>Hazardous Waste Lifecycle Tracker — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The manifest lifecycle tracker could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <SearchBoxComponent Value="State.ManifestSearchText" Placeholder="Search manifest number or status" ValueChanged="OnSearchChangedAsync" />
+            <a href="/modules/hazardous-waste-management/accumulation-areas" class="ps-btn ps-btn-ghost ps-btn-sm">Time-Limit Board</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingManifests">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ManifestsError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ManifestsError</div>
+        }
+
+        @if (State.IsLoadingManifests)
+        {
+            <LoadingIndicatorComponent Message="Loading open manifests…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="HazardousWasteManifestDto"
+                                Items="State.FilteredManifests"
+                                Headers="_headers"
+                                KeySelector="i => i.HazardousWasteManifestId"
+                                EmptyMessage="No open manifests found."
+                                AriaLabel="Open hazardous waste manifests">
+                <RowTemplate Context="item">
+                    <td class="ps-mono">@item.ManifestNumber</td>
+                    <td><StatusIndicatorComponent Status="@HazardousWasteManagementUiService.MapManifestStatusToOperationalState(item.Status)" Label="@item.Status" /></td>
+                    <td>@item.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@(item.IsImmutable ? "Yes (transporter-signed)" : "No")</td>
+                    <td>@(item.DiscrepancyReason ?? "—")</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Manifest #", "Status", "Generated", "Immutable", "Discrepancy"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Hazardous Waste Lifecycle Tracker",
+            activeModuleCode: "hazardous-waste-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Hazardous Waste Management" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginManifestsLoad();
+
+        var envelope = await ApiClient.ListOpenManifestsAsync(siteId: null);
+
+        if (envelope.IsSuccess)
+            State.SetOpenManifests(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetManifestsError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetManifestsError($"Failed to load open manifests: {envelope.FaultType}");
+    }
+
+    private async Task OnSearchChangedAsync(string text)
+    {
+        State.SetManifestSearchText(text);
+        await Task.CompletedTask;
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -31,6 +31,11 @@ using PlantSafety.Application.SafetyEvents.DependencyInjection;
 using PlantSafety.Application.EmployeeSafety.DependencyInjection;
 using PlantSafety.Application.ContractorSafety.DependencyInjection;
 using PlantSafety.Application.MachineSafety.DependencyInjection;
+using PlantSafety.Application.EnvironmentalHealth.WaterDischargeCompliance.DependencyInjection;
+using PlantSafety.Application.AutonomousVehicleSafety.DependencyInjection;
+using PlantSafety.Application.CommunitySafety.DependencyInjection;
+using PlantSafety.Application.LogisticsTransportSafety.DependencyInjection;
+using PlantSafety.Application.PhysicalAccessControl.DependencyInjection;
 using PlantSafety.Application.SafetyProcedures.DependencyInjection;
 using PlantSafety.Application.Alerts.DependencyInjection;
 using PlantSafety.Application.Dashboards.DependencyInjection;
@@ -130,6 +135,11 @@ public static class ApplicationServiceRegistration
             .AddEmployeeSafetyApplicationServices()
             .AddContractorSafetyApplicationServices()
             .AddMachineSafetyApplicationServices()
+            .AddWaterDischargeComplianceApplicationServices()
+            .AddAutonomousVehicleSafetyApplicationServices()
+            .AddCommunitySafetyApplicationServices()
+            .AddLogisticsTransportSafetyApplicationServices()
+            .AddPhysicalAccessControlApplicationServices()
             .AddSafetyProceduresApplicationServices()
             .AddAlertsApplicationServices()
             .AddDashboardsApplicationServices()

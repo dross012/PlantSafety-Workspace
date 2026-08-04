@@ -211,6 +211,12 @@ public static class RouteDefinitions
     /// <summary>LOTO procedures list.</summary>
     public const string LotoList = "/modules/loto";
 
+    /// <summary>Hazardous Waste Management — Hazardous Waste Lifecycle Tracker (open manifests).</summary>
+    public const string HazardousWasteManagementManifests = "/modules/hazardous-waste-management";
+
+    /// <summary>Hazardous Waste Management — Accumulation Area Time-Limit Board.</summary>
+    public const string HazardousWasteManagementAccumulationAreas = "/modules/hazardous-waste-management/accumulation-areas";
+
     /// <summary>Permits to Work list.</summary>
     public const string PermitsList = "/modules/permits";
 

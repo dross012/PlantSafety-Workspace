@@ -1,7 +1,7 @@
 ﻿// AUTHOR: PlantSafety Platform Team
 // CREATED: 2026-07-20
 // FILE DESCRIPTION: MachineSafety module registration marker and constants.
-//   Covers: MachineGuardsBarriers, EmergencyStopDevices, PresenceSensingDevices, LotoSystems, TwoHandControls, SafetyValvesRelays.
+//   Covers: MachineGuardsBarriers, EmergencyStopDevices, PresenceSensingDevices, LotoSystems, TwoHandControls, SafetyValvesRelays, CraneHoistSystems.
 //   Source: PlantSafety Program Structure (legacy 19-module specification) â€” Machine safety and protective systems integrate physical safeguards (guards, interlocks), automated detection (presence-sensing), emergency systems, and LOTO protocols to protect workers from moving parts, pinch points, and stored energy.
 //   All commands, queries, and handlers for this module are namespaced under Application.MachineSafety.<SubComponent>.
 // SchemaVersion: 1
@@ -44,6 +44,9 @@ public static class MachineSafetyModule
 
         /// <summary>The SafetyValvesRelays sub-component.</summary>
         public const string SafetyValvesRelays = "SafetyValvesRelays";
+
+        /// <summary>The CraneHoistSystems sub-component.</summary>
+        public const string CraneHoistSystems = "CraneHoistSystems";
     }
 
     /// <summary>Permissions for this module.</summary>
@@ -84,5 +87,11 @@ public static class MachineSafetyModule
 
         /// <summary>Permission to create SafetyValvesRelays records.</summary>
         public const string CreateSafetyValvesRelays = "MachineSafety.SafetyValvesRelays.Create";
+
+        /// <summary>Permission to view CraneHoistSystems records.</summary>
+        public const string ViewCraneHoistSystems = "MachineSafety.CraneHoistSystems.View";
+
+        /// <summary>Permission to create CraneHoistSystems records.</summary>
+        public const string CreateCraneHoistSystems = "MachineSafety.CraneHoistSystems.Create";
     }
 }

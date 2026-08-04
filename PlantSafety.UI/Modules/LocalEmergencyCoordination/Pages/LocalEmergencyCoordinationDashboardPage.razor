@@ -1,0 +1,131 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Local Emergency Coordination dashboard. Combines the Mutual Aid Agreement
+     Registry (with agreement currency/renewal-status KPI) and Post-Incident Debrief Summary
+     views. Calls the real List endpoints at
+     /v1/safety-events/local-emergency-coordination/mutual-aid-agreements and
+     /v1/safety-events/local-emergency-coordination/debriefs.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/local-emergency-coordination"
+
+@inject LocalEmergencyCoordinationState State
+@inject LocalEmergencyCoordinationApiClient ApiClient
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.LocalEmergencyCoordination.State
+@using PlantSafety.UI.Modules.LocalEmergencyCoordination.ApiClients
+@using PlantSafety.UI.Modules.LocalEmergencyCoordination.Models
+
+<PageTitle>Local Emergency Coordination — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Local Emergency Coordination dashboard could not be displayed." OnRetry="LoadPageAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <div class="ps-kpi-row">
+            <CardComponent Title="Mutual Aid Agreements" Subtitle="@State.Agreements.Count.ToString()" />
+            <CardComponent Title="Needing Renewal Review" Subtitle="@State.AgreementsNeedingAttentionCount.ToString()" />
+            <CardComponent Title="Recent Joint Debriefs" Subtitle="@State.Debriefs.Count.ToString()" />
+        </div>
+
+        @if (State.Error is not null)
+        {
+            <div class="ps-alert ps-alert--warning" role="alert">@State.Error</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading local emergency coordination data…" />
+        }
+        else if (State.Error is null)
+        {
+            <CardComponent Title="Mutual Aid Agreement Registry">
+                <DataGridComponent TItem="MutualAidAgreementDto"
+                                    Items="State.Agreements"
+                                    Headers="_agreementHeaders"
+                                    KeySelector="a => a.MutualAidAgreementId"
+                                    EmptyMessage="No mutual aid agreements established."
+                                    AriaLabel="Mutual aid agreements">
+                    <RowTemplate Context="item">
+                        <td>@item.AgencyName</td>
+                        <td>@item.Discipline</td>
+                        <td><StatusIndicatorComponent Status="@(item.RenewalStatus == "Expired" ? "Critical" : item.RenewalStatus == "PendingRenewal" ? "Warning" : "Healthy")" Label="@item.RenewalStatus" /></td>
+                        <td>@item.RenewalDueAtUtc.ToString("yyyy-MM-dd") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+
+            <CardComponent Title="Post-Incident Debrief Summary">
+                <DataGridComponent TItem="JointDebriefDto"
+                                    Items="State.Debriefs"
+                                    Headers="_debriefHeaders"
+                                    KeySelector="d => d.JointDebriefRecordId"
+                                    EmptyMessage="No joint debriefs recorded in this period."
+                                    AriaLabel="Joint post-incident debriefs">
+                    <RowTemplate Context="item">
+                        <td>@item.AgenciesInvolved</td>
+                        <td>@item.Summary</td>
+                        <td>@item.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            </CardComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _agreementHeaders = ["Agency", "Discipline", "Renewal Status", "Renewal Due"];
+    private static readonly string[] _debriefHeaders = ["Agencies Involved", "Summary", "Recorded"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Local Emergency Coordination",
+            activeModuleCode: "local-emergency-coordination",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Local Emergency Coordination" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync()
+    {
+        State.BeginLoad();
+
+        var agreementsEnvelope = await ApiClient.ListMutualAidAgreementsAsync();
+        if (agreementsEnvelope.IsSuccess)
+            State.SetAgreements(agreementsEnvelope.Data!.Items);
+        else if (agreementsEnvelope.IsProblem)
+            State.SetError(agreementsEnvelope.Problem!.Detail);
+        else
+            State.SetError($"Failed to load mutual aid agreements: {agreementsEnvelope.FaultType}");
+
+        var debriefsEnvelope = await ApiClient.ListJointDebriefsByPeriodAsync(DateTime.UtcNow.AddDays(-90), DateTime.UtcNow);
+        if (debriefsEnvelope.IsSuccess)
+            State.SetDebriefs(debriefsEnvelope.Data!.Items);
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

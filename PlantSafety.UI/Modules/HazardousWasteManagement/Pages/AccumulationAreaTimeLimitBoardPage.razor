@@ -1,0 +1,123 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Accumulation Area Time-Limit Board dashboard. Loads accumulation areas with
+     containers approaching their RCRA-style 90/180-day regulatory time limit from the real GET
+     api/v1/hazardouswastemanagement/accumulation-areas/nearing-time-limit read-model endpoint,
+     populates HazardousWasteManagementState, and renders the grid with escalation indicators.
+     Built entirely from the canonical Shared component library, following the
+     Modules/Loto/Pages/LotoListPage.razor exemplar pattern.
+   SchemaVersion: 2026.2
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/hazardous-waste-management/accumulation-areas"
+
+@inject HazardousWasteManagementState State
+@inject HazardousWasteManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.HazardousWasteManagement.ApiClients
+@using PlantSafety.UI.Modules.HazardousWasteManagement.Models
+@using PlantSafety.UI.Modules.HazardousWasteManagement.Services
+@using PlantSafety.UI.Modules.HazardousWasteManagement.State
+
+<PageTitle>Accumulation Area Time-Limit Board — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The accumulation area time-limit board could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/hazardous-waste-management/manifests" class="ps-btn ps-btn-ghost ps-btn-sm">Lifecycle Tracker</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingAreas">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.AreasError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.AreasError</div>
+        }
+
+        @if (State.IsLoadingAreas)
+        {
+            <LoadingIndicatorComponent Message="Loading accumulation areas…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="AccumulationAreaDto"
+                                Items="State.AreasNearingTimeLimit"
+                                Headers="_headers"
+                                KeySelector="i => i.AccumulationAreaId"
+                                EmptyMessage="No accumulation areas are nearing their regulatory time limit."
+                                AriaLabel="Accumulation areas nearing their regulatory time limit">
+                <RowTemplate Context="item">
+                    <td>@item.AreaName</td>
+                    <td><StatusIndicatorComponent Status="@HazardousWasteManagementUiService.MapAccumulationAreaStatusToOperationalState(item.Status)" Label="@item.Status" /></td>
+                    <td>@item.TimeLimitDays days</td>
+                    <td>@(item.EarliestContainerDeadlineUtc?.ToString("yyyy-MM-dd HH:mm") ?? "—") UTC</td>
+                    <td>
+                        @if (HazardousWasteManagementUiService.IsOverdue(item.EarliestContainerDeadlineUtc))
+                        {
+                            <span class="ps-chip ps-chip--danger">Overdue — escalate to RiskManagement</span>
+                        }
+                        else
+                        {
+                            <span class="ps-chip ps-chip--warning">Approaching</span>
+                        }
+                    </td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Area", "Status", "Time Limit", "Earliest Deadline", "Escalation"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Accumulation Area Time-Limit Board",
+            activeModuleCode: "hazardous-waste-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Hazardous Waste Management", Href = "/modules/hazardous-waste-management" },
+                new BreadcrumbItem { Label = "Time-Limit Board" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginAreasLoad();
+
+        var envelope = await ApiClient.ListAccumulationAreasNearingTimeLimitAsync(siteId: null);
+
+        if (envelope.IsSuccess)
+            State.SetAreasNearingTimeLimit(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetAreasError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetAreasError($"Failed to load accumulation areas: {envelope.FaultType}");
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

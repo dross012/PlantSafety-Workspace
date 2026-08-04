@@ -1,0 +1,200 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Sustainability.AdvancedMetrics dashboard page. Combines the four
+     module dashboards (Carbon Footprint Trend, Energy/Water Intensity Board, Waste Diversion
+     Rate, Target Progress Tracker) behind a single AdvancedMetricsLedgerId selector, backed by
+     the real, wired PlantSafety.Api AdvancedMetricsV1Controller endpoints. Built entirely from
+     the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/sustainability/advanced-metrics"
+
+@inject AdvancedMetricsState State
+@inject AdvancedMetricsApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Sustainability.AdvancedMetrics.ApiClients
+@using PlantSafety.UI.Modules.Sustainability.AdvancedMetrics.Models
+
+<PageTitle>Advanced Metrics — Sustainability — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Advanced Metrics dashboard could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <label for="ledgerIdInput" class="ps-field-label">Ledger ID</label>
+            <input id="ledgerIdInput" class="ps-input ps-input-sm" @bind="_ledgerIdInput" placeholder="AdvancedMetricsLedgerId (GUID)" />
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Load
+            </button>
+        </div>
+
+        <DateRangePickerComponent StartDate="State.PeriodStart" EndDate="State.PeriodEnd" RangeChanged="OnPeriodChangedAsync" />
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading advanced metrics…" />
+        }
+        else
+        {
+            <h3>Carbon Footprint Trend (Scope 1/2/3)</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Scope 1 (tCO2e)"><span class="ps-field-value">@(State.CarbonFootprint?.Scope1MetricTonsCo2e.ToString("N2") ?? "—")</span></CardComponent>
+                <CardComponent Title="Scope 2 (tCO2e)"><span class="ps-field-value">@(State.CarbonFootprint?.Scope2MetricTonsCo2e.ToString("N2") ?? "—")</span></CardComponent>
+                <CardComponent Title="Scope 3 (tCO2e)"><span class="ps-field-value">@(State.CarbonFootprint?.Scope3MetricTonsCo2e.ToString("N2") ?? "—")</span></CardComponent>
+                <CardComponent Title="Total (tCO2e)"><span class="ps-field-value">@(State.CarbonFootprint?.TotalMetricTonsCo2e.ToString("N2") ?? "—")</span></CardComponent>
+                <CardComponent Title="Carbon Intensity / Unit Output"><span class="ps-field-value">@(State.CarbonFootprint?.CarbonIntensityPerUnitOutput?.ToString("N4") ?? "—")</span></CardComponent>
+            </div>
+
+            <h3>Energy / Water Intensity Board</h3>
+            <DataGridComponent TItem="EnergyIntensityTrendPointDto"
+                                Items="State.EnergyTrend"
+                                Headers="_energyHeaders"
+                                KeySelector="m => m.EnergyIntensityMetricId"
+                                EmptyMessage="No energy intensity readings found for this ledger."
+                                AriaLabel="Energy Intensity Trend">
+                <RowTemplate Context="metric">
+                    <td>@metric.ReadingAtUtc.ToString("yyyy-MM-dd") UTC</td>
+                    <td>@metric.EnergyConsumedKwh.ToString("N1") kWh</td>
+                    <td>@metric.OutputUnits.ToString("N1")</td>
+                    <td>@metric.IntensityValue.ToString("N4")</td>
+                    <td>@metric.MethodologyVersion</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <DataGridComponent TItem="WaterIntensityTrendPointDto"
+                                Items="State.WaterTrend"
+                                Headers="_waterHeaders"
+                                KeySelector="m => m.WaterIntensityMetricId"
+                                EmptyMessage="No water intensity readings found for this ledger."
+                                AriaLabel="Water Intensity Trend">
+                <RowTemplate Context="metric">
+                    <td>@metric.ReadingAtUtc.ToString("yyyy-MM-dd") UTC</td>
+                    <td>@metric.WaterConsumedCubicMeters.ToString("N1") m³</td>
+                    <td>@metric.OutputUnits.ToString("N1")</td>
+                    <td>@metric.IntensityValue.ToString("N4")</td>
+                    <td>@metric.MethodologyVersion</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3>Waste Diversion Rate</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Total Waste (kg)"><span class="ps-field-value">@(State.WasteDiversionRate?.TotalWasteKg.ToString("N1") ?? "—")</span></CardComponent>
+                <CardComponent Title="Diverted (kg)"><span class="ps-field-value">@(State.WasteDiversionRate?.DivertedWasteKg.ToString("N1") ?? "—")</span></CardComponent>
+                <CardComponent Title="Diversion Rate"><span class="ps-field-value">@(State.WasteDiversionRate?.DiversionRatePercent.ToString("N1") ?? "—")%</span></CardComponent>
+            </div>
+
+            <h3>Target Progress Tracker</h3>
+            <DataGridComponent TItem="SustainabilityTargetProgressDto"
+                                Items="State.Targets"
+                                Headers="_targetHeaders"
+                                KeySelector="t => t.SustainabilityTargetId"
+                                EmptyMessage="No sustainability targets set for this ledger."
+                                AriaLabel="Sustainability Target Progress">
+                <RowTemplate Context="target">
+                    <td><StatusIndicatorComponent Status="@MapStatus(target.Status)" Label="@target.Status" /></td>
+                    <td><span class="ps-chip">@target.TargetType</span></td>
+                    <td>@target.BaselineValue.ToString("N2")</td>
+                    <td>@target.TargetValue.ToString("N2")</td>
+                    <td>@target.CurrentValue.ToString("N2")</td>
+                    <td>@target.TargetDateUtc.ToString("yyyy-MM-dd") UTC</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _energyHeaders = ["Reading Date", "Consumed", "Output Units", "Intensity", "Methodology"];
+    private static readonly string[] _waterHeaders = ["Reading Date", "Consumed", "Output Units", "Intensity", "Methodology"];
+    private static readonly string[] _targetHeaders = ["Status", "Target Type", "Baseline", "Target", "Current", "Target Date"];
+
+    private string _ledgerIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Advanced Metrics",
+            activeModuleCode: "sustainability-advanced-metrics",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Sustainability", Href = "/modules/sustainability" },
+                new BreadcrumbItem { Label = "Advanced Metrics" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task OnPeriodChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetPeriod(range.Start, range.End);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var siteId = (Guid?)null;
+        var periodStart = State.PeriodStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var periodEnd = State.PeriodEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var footprintEnvelope = await ApiClient.GetCarbonFootprintByPeriodAsync(siteId, periodStart, periodEnd);
+        if (footprintEnvelope.IsSuccess)
+            State.SetCarbonFootprint(footprintEnvelope.Data);
+        else if (!Guid.TryParse(_ledgerIdInput, out _))
+        {
+            State.SetLoadError(footprintEnvelope.IsProblem ? footprintEnvelope.Problem!.Detail : $"Advanced Metrics service is not yet available: {footprintEnvelope.FaultType}");
+            return;
+        }
+
+        if (!Guid.TryParse(_ledgerIdInput, out var ledgerId))
+        {
+            State.SetCarbonFootprint(footprintEnvelope.Data);
+            return;
+        }
+
+        State.SelectLedger(ledgerId);
+
+        var energyTask = ApiClient.GetEnergyIntensityTrendAsync(ledgerId);
+        var waterTask = ApiClient.GetWaterIntensityTrendAsync(ledgerId);
+        var wasteTask = ApiClient.GetWasteDiversionRateAsync(ledgerId);
+        var targetsTask = ApiClient.ListSustainabilityTargetsAndProgressAsync(ledgerId);
+
+        await Task.WhenAll(energyTask, waterTask, wasteTask, targetsTask);
+
+        State.SetDashboardData(
+            energyTask.Result.Data ?? [],
+            waterTask.Result.Data ?? [],
+            wasteTask.Result.IsSuccess ? wasteTask.Result.Data : null,
+            targetsTask.Result.Data ?? []);
+    }
+
+    private static string MapStatus(string status) => status switch
+    {
+        "OnTrack" => "Healthy",
+        "AtRisk" => "Warning",
+        "Missed" => "Critical",
+        "Achieved" => "Healthy",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

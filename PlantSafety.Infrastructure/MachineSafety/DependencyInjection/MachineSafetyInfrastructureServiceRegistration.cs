@@ -7,7 +7,7 @@
 //  Author:         PlantSafety Platform Team
 //  SchemaVersion:  2026.1
 //  Description:    Per-module DI registration entry point for the MachineSafety Infrastructure
-//                  layer (6 sub-component aggregate repositories, each implementing
+//                  layer (7 sub-component aggregate repositories, each implementing
 //                  both its Domain write-repository interface and its Application read-model
 //                  repository interface against the same Dapper repository class). Call
 //                  <c>services.AddMachineSafetyInfrastructure()</c> from the host startup
@@ -24,6 +24,7 @@ using PlantSafety.Infrastructure.MachineSafety.MachineGuardsBarriers.Persistence
 using PlantSafety.Infrastructure.MachineSafety.PresenceSensingDevices.Persistence;
 using PlantSafety.Infrastructure.MachineSafety.SafetyValvesRelays.Persistence;
 using PlantSafety.Infrastructure.MachineSafety.TwoHandControls.Persistence;
+using PlantSafety.Infrastructure.MachineSafety.CraneHoistSystems.Persistence;
 
 namespace PlantSafety.Infrastructure.MachineSafety.DependencyInjection;
 
@@ -45,6 +46,8 @@ public static class MachineSafetyInfrastructureServiceRegistration
         services.AddScoped<PlantSafety.Application.MachineSafety.SafetyValvesRelays.Repositories.ISafetyValvesRelaysRepository, SafetyValvesRelaysDapperRepository>();
         services.AddScoped<PlantSafety.Domain.MachineSafety.TwoHandControls.Interfaces.ITwoHandControlsRepository, TwoHandControlsDapperRepository>();
         services.AddScoped<PlantSafety.Application.MachineSafety.TwoHandControls.Repositories.ITwoHandControlsRepository, TwoHandControlsDapperRepository>();
+        services.AddScoped<PlantSafety.Domain.MachineSafety.CraneHoistSystems.Interfaces.ICraneHoistSystemsRepository, CraneHoistSystemsDapperRepository>();
+        services.AddScoped<PlantSafety.Application.MachineSafety.CraneHoistSystems.Repositories.ICraneHoistSystemsRepository, CraneHoistSystemsDapperRepository>();
 
         // Top-level placeholder marker (no members)
         services.AddScoped<IMachineSafetyRepository, MachineSafetyRepository>();

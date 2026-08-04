@@ -1,0 +1,166 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Live Evacuation Readiness Board — one of the two required dashboards for
+     DigitalTwin.EvacuationModeling. Surfaces currently open route obstructions and recent
+     bottleneck history so operators can assess evacuation readiness at a glance. Built entirely
+     from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/digital-twin/evacuation-modeling/readiness-board"
+
+@inject EvacuationModelingState State
+@inject EvacuationModelingApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DigitalTwin.EvacuationModeling.ApiClients
+@using PlantSafety.UI.Modules.DigitalTwin.EvacuationModeling.Models
+
+<PageTitle>Live Evacuation Readiness Board — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Live Evacuation Readiness Board could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.LoadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.LoadError</div>
+        }
+
+        @if (State.IsLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading evacuation readiness data…" />
+        }
+        else if (State.LoadError is null)
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Open Obstructions"><span class="ps-field-value">@State.ActiveObstructions.Count</span></CardComponent>
+                <CardComponent Title="Severe"><span class="ps-field-value">@CountBySeverity("Severe")</span></CardComponent>
+                <CardComponent Title="Recurring Bottlenecks"><span class="ps-field-value">@CountRecurring()</span></CardComponent>
+                <CardComponent Title="Mitigated Bottlenecks"><span class="ps-field-value">@CountByStatus("Mitigated")</span></CardComponent>
+            </div>
+
+            <h3 class="ps-section-heading">Active Route Obstructions</h3>
+            <DataGridComponent TItem="RouteObstructionDto"
+                                Items="State.ActiveObstructions"
+                                Headers="_obstructionHeaders"
+                                KeySelector="o => o.RouteObstructionId"
+                                EmptyMessage="No open route obstructions — all modeled evacuation routes are clear."
+                                AriaLabel="Active Route Obstructions">
+                <RowTemplate Context="obstruction">
+                    <td><StatusIndicatorComponent Status="@MapSeverity(obstruction.Severity)" Label="@obstruction.Severity" /></td>
+                    <td>@obstruction.Description</td>
+                    <td>@obstruction.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3 class="ps-section-heading">Bottleneck History</h3>
+            <DataGridComponent TItem="EvacuationBottleneckDto"
+                                Items="State.BottleneckHistory"
+                                Headers="_bottleneckHeaders"
+                                KeySelector="b => b.EvacuationBottleneckId"
+                                EmptyMessage="No bottlenecks detected across recorded egress simulations."
+                                AriaLabel="Evacuation Bottleneck History">
+                <RowTemplate Context="bottleneck">
+                    <td><StatusIndicatorComponent Status="@MapBottleneckStatus(bottleneck.BottleneckStatus)" Label="@bottleneck.BottleneckStatus" /></td>
+                    <td>@bottleneck.BottleneckLocation</td>
+                    <td>@bottleneck.DelaySeconds s</td>
+                    <td>@bottleneck.RecurrenceCount</td>
+                    <td>@bottleneck.DetectedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _obstructionHeaders = ["Severity", "Description", "Recorded"];
+    private static readonly string[] _bottleneckHeaders = ["Status", "Location", "Delay", "Recurrences", "Detected"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Live Evacuation Readiness Board",
+            activeModuleCode: "digital-twin-evacuation-modeling",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Digital Twin", Href = "/modules/digital-twin" },
+                new BreadcrumbItem { Label = "Evacuation Readiness Board" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginLoad();
+
+        var siteId = TenantCtx.Tenant?.SiteId;
+
+        var obstructionsTask = ApiClient.GetActiveObstructionsAsync(siteId);
+        var bottlenecksTask = ApiClient.GetBottleneckHistoryAsync(siteId, routeId: null);
+        await Task.WhenAll(obstructionsTask, bottlenecksTask);
+
+        var obstructionsEnvelope = await obstructionsTask;
+        var bottlenecksEnvelope = await bottlenecksTask;
+
+        if (obstructionsEnvelope.IsSuccess && bottlenecksEnvelope.IsSuccess)
+        {
+            State.SetReadinessData(obstructionsEnvelope.Data ?? [], bottlenecksEnvelope.Data ?? []);
+        }
+        else if (obstructionsEnvelope.IsProblem || bottlenecksEnvelope.IsProblem)
+        {
+            State.SetLoadError((obstructionsEnvelope.Problem ?? bottlenecksEnvelope.Problem)!.Detail);
+        }
+        else
+        {
+            State.SetLoadError($"Evacuation readiness service is not yet available: {(obstructionsEnvelope.FaultType ?? bottlenecksEnvelope.FaultType)}");
+        }
+    }
+
+    private int CountBySeverity(string severity) =>
+        State.ActiveObstructions.Count(o => string.Equals(o.Severity, severity, StringComparison.OrdinalIgnoreCase));
+
+    private int CountByStatus(string status) =>
+        State.BottleneckHistory.Count(b => string.Equals(b.BottleneckStatus, status, StringComparison.OrdinalIgnoreCase));
+
+    private int CountRecurring() => State.BottleneckHistory.Count(b => b.RecurrenceCount > 0);
+
+    private static string MapSeverity(string severity) => severity.ToLowerInvariant() switch
+    {
+        "severe" => "Critical",
+        "moderate" => "Warning",
+        "minor" => "Healthy",
+        _ => "Offline",
+    };
+
+    private static string MapBottleneckStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "mitigated" => "Healthy",
+        "recurred" => "Critical",
+        "detected" => "Warning",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

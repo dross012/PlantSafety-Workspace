@@ -140,10 +140,11 @@ public static class ModuleRouteRegistry
                 new ModuleRoute { ModuleCode = "equipment-safety", Label = "Equipment Safety", Href = RouteDefinitions.EquipmentSafetyList, IconClass = "bi-hammer", Section = "Operational Safety", SectionOrder = 1 },
                 new ModuleRoute { ModuleCode = "hazard-assessment", Label = "Hazard Assessment", Href = RouteDefinitions.HazardAssessmentList, IconClass = "bi-radioactive", Section = "Operational Safety", SectionOrder = 2 },
                 new ModuleRoute { ModuleCode = "hazmat", Label = "HazMat", Href = RouteDefinitions.HazMatList, IconClass = "bi-exclamation-octagon", Section = "Operational Safety", SectionOrder = 3 },
-                new ModuleRoute { ModuleCode = "inspections", Label = "Inspections", Href = RouteDefinitions.InspectionsList, IconClass = "bi-clipboard2-check", Section = "Operational Safety", SectionOrder = 4 },
-                new ModuleRoute { ModuleCode = "jsa", Label = "JSA", Href = RouteDefinitions.JsaList, IconClass = "bi-card-checklist", Section = "Operational Safety", SectionOrder = 5 },
-                new ModuleRoute { ModuleCode = "loto", Label = "LOTO", Href = RouteDefinitions.LotoList, IconClass = "bi-lock", Section = "Operational Safety", SectionOrder = 6 },
-                new ModuleRoute { ModuleCode = "permits", Label = "Permits to Work", Href = RouteDefinitions.PermitsList, IconClass = "bi-patch-check", Section = "Operational Safety", SectionOrder = 7 },
+                new ModuleRoute { ModuleCode = "hazardous-waste-management", Label = "Hazardous Waste Management", Href = RouteDefinitions.HazardousWasteManagementManifests, IconClass = "bi-trash3", Section = "Operational Safety", SectionOrder = 4 },
+                new ModuleRoute { ModuleCode = "inspections", Label = "Inspections", Href = RouteDefinitions.InspectionsList, IconClass = "bi-clipboard2-check", Section = "Operational Safety", SectionOrder = 5 },
+                new ModuleRoute { ModuleCode = "jsa", Label = "JSA", Href = RouteDefinitions.JsaList, IconClass = "bi-card-checklist", Section = "Operational Safety", SectionOrder = 6 },
+                new ModuleRoute { ModuleCode = "loto", Label = "LOTO", Href = RouteDefinitions.LotoList, IconClass = "bi-lock", Section = "Operational Safety", SectionOrder = 7 },
+                new ModuleRoute { ModuleCode = "permits", Label = "Permits to Work", Href = RouteDefinitions.PermitsList, IconClass = "bi-patch-check", Section = "Operational Safety", SectionOrder = 8 },
             ]
         },
         new ModuleSection
