@@ -1,0 +1,185 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Egress Simulation Comparison — the second spec'd dashboard for
+     DigitalTwin.EvacuationModeling. Compares each modeled evacuation route's nominal/planned
+     egress time (GET zones/{zoneId}/routes) against the zone's most recent drill-actual egress
+     simulation result (GET zones/{zoneId}/simulations/latest), so operators can see whether
+     drilled evacuation performance is tracking the Digital Twin model's estimate. Built entirely
+     from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/digital-twin/evacuation-modeling/egress-comparison"
+
+@inject EvacuationModelingState State
+@inject EvacuationModelingApiClient ApiClient
+@inject UserSessionState UserSession
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.DigitalTwin.EvacuationModeling.ApiClients
+@using PlantSafety.UI.Modules.DigitalTwin.EvacuationModeling.Models
+
+<PageTitle>Egress Simulation Comparison — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The egress simulation comparison could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/digital-twin/evacuation-modeling/readiness-board" class="ps-btn ps-btn-ghost ps-btn-sm">Readiness Board</a>
+            <div class="ps-form-field">
+                <label for="zoneIdInput">Evacuation Zone ID</label>
+                <input id="zoneIdInput" type="text" @bind="_zoneIdInput" placeholder="Enter zone GUID" />
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingComparison">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Compare
+            </button>
+        </div>
+
+        @if (State.ComparisonError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ComparisonError</div>
+        }
+
+        @if (State.IsLoadingComparison)
+        {
+            <LoadingIndicatorComponent Message="Loading planned vs. drill-actual egress data…" />
+        }
+        else if (State.ComparisonZoneId is null)
+        {
+            <div class="ps-alert ps-alert--info" role="status">Enter an evacuation zone ID above and select Compare to view its planned-vs-actual egress simulation comparison.</div>
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Modeled Routes"><span class="ps-field-value">@State.ComparisonPlannedRoutes.Count</span></CardComponent>
+                <CardComponent Title="Latest Drill-Actual Time">
+                    <span class="ps-field-value">@(State.ComparisonLatestSimulation?.SimulatedEvacuationTimeSeconds is int s ? $"{s} s" : "No simulation recorded")</span>
+                </CardComponent>
+                <CardComponent Title="Best Planned Time">
+                    <span class="ps-field-value">@(State.ComparisonPlannedRoutes.Count > 0 ? $"{State.ComparisonPlannedRoutes.Min(r => r.EstimatedEgressTimeSeconds)} s" : "—")</span>
+                </CardComponent>
+                <CardComponent Title="Variance (Actual − Best Planned)">
+                    <span class="ps-field-value">@VarianceLabel()</span>
+                </CardComponent>
+            </div>
+
+            <h3 class="ps-section-heading">Modeled (Planned) Routes</h3>
+            <DataGridComponent TItem="EvacuationRouteDto"
+                                Items="State.ComparisonPlannedRoutes"
+                                Headers="_routeHeaders"
+                                KeySelector="r => r.EvacuationRouteId"
+                                EmptyMessage="No modeled evacuation routes are defined for this zone."
+                                AriaLabel="Modeled evacuation routes for the selected zone">
+                <RowTemplate Context="route">
+                    <td>@route.RouteName</td>
+                    <td><StatusIndicatorComponent Status="@MapRouteStatus(route.RouteStatus)" Label="@route.RouteStatus" /></td>
+                    <td>@route.EstimatedEgressTimeSeconds s</td>
+                    <td>@route.ObstructionCount</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3 class="ps-section-heading">Most Recent Egress Simulation (Drill-Actual)</h3>
+            @if (State.ComparisonLatestSimulation is { } sim)
+            {
+                <CardComponent Title="Simulation Run">
+                    <div class="ps-field-row"><span class="ps-field-label">Status</span> <StatusIndicatorComponent Status="@MapSimulationStatus(sim.SimulationStatus)" Label="@sim.SimulationStatus" /></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Started</span> <span class="ps-field-value">@sim.StartedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Simulated Evacuation Time</span> <span class="ps-field-value">@(sim.SimulatedEvacuationTimeSeconds.HasValue ? $"{sim.SimulatedEvacuationTimeSeconds} s" : "Pending")</span></div>
+                </CardComponent>
+            }
+            else
+            {
+                <div class="ps-alert ps-alert--info" role="status">No egress simulation has been run for this zone yet.</div>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _routeHeaders = ["Route", "Status", "Planned Egress Time", "Obstructions"];
+    private string _zoneIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Egress Simulation Comparison",
+            activeModuleCode: "digital-twin-evacuation-modeling",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Digital Twin", Href = "/modules/digital-twin" },
+                new BreadcrumbItem { Label = "Egress Simulation Comparison" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!Guid.TryParse(_zoneIdInput, out var zoneId))
+        {
+            State.SetComparisonError("Enter a valid evacuation zone GUID before comparing.");
+            return;
+        }
+
+        State.BeginComparisonLoad(zoneId);
+
+        var siteId = TenantCtx.Tenant?.SiteId;
+
+        var routesEnvelope = await ApiClient.ListEvacuationRoutesByZoneAsync(zoneId);
+        var simulationEnvelope = await ApiClient.GetLatestEgressSimulationAsync(zoneId, siteId);
+
+        if (!routesEnvelope.IsSuccess)
+        {
+            State.SetComparisonError(routesEnvelope.IsProblem
+                ? DescribeProblem(routesEnvelope.Problem!)
+                : $"Failed to load modeled routes: {routesEnvelope.FaultType}");
+            return;
+        }
+
+        // A missing simulation (no drill run yet) is an expected, non-fatal state — degrade to null
+        // rather than surfacing a hard error, per the module's "planned vs. drill-actual" comparison intent.
+        var latestSimulation = simulationEnvelope.IsSuccess ? simulationEnvelope.Data : null;
+
+        State.SetComparisonData(routesEnvelope.Data ?? [], latestSimulation);
+    }
+
+    private string VarianceLabel()
+    {
+        if (State.ComparisonLatestSimulation?.SimulatedEvacuationTimeSeconds is not int actual || State.ComparisonPlannedRoutes.Count == 0)
+            return "—";
+
+        var bestPlanned = State.ComparisonPlannedRoutes.Min(r => r.EstimatedEgressTimeSeconds);
+        var variance = actual - bestPlanned;
+        return variance >= 0 ? $"+{variance} s slower" : $"{variance} s faster";
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapRouteStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "obstructed" => "Critical",
+        "retired" => "Offline",
+        _ => "Offline",
+    };
+
+    private static string MapSimulationStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" => "Healthy",
+        "running" => "Warning",
+        "failed" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

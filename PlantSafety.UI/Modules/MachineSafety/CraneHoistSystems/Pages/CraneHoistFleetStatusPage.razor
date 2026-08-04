@@ -1,0 +1,164 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Crane/Hoist Fleet Status dashboard — the first of the two spec'd dashboards
+     for MachineSafety.CraneHoistSystems (the first MachineSafety sub-aggregate to receive a UI,
+     per its explicit dashboard mandate). Loads the full crane/hoist fleet (GET
+     crane-hoist-systems) and the subset due/overdue for inspection (GET crane-hoist-systems/
+     due-for-inspection), surfacing overload event counts and inspection currency. Built entirely
+     from the canonical Shared component library, following the Modules/HazardousWasteManagement
+     exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/machine-safety/crane-hoist-systems"
+@page "/modules/machine-safety/crane-hoist-systems/fleet-status"
+
+@inject CraneHoistSystemsState State
+@inject CraneHoistSystemsApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.MachineSafety.CraneHoistSystems.ApiClients
+@using PlantSafety.UI.Modules.MachineSafety.CraneHoistSystems.Models
+
+<PageTitle>Crane/Hoist Fleet Status — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The crane/hoist fleet status board could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/machine-safety/crane-hoist-systems/operator-qualifications" class="ps-btn ps-btn-ghost ps-btn-sm">Operator Qualification Matrix</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingFleet">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.FleetError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.FleetError</div>
+        }
+
+        @if (State.IsLoadingFleet)
+        {
+            <LoadingIndicatorComponent Message="Loading crane/hoist fleet status…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Fleet Size"><span class="ps-field-value">@State.Fleet.Count</span></CardComponent>
+                <CardComponent Title="Due/Overdue for Inspection"><span class="ps-field-value">@State.DueForInspection.Count</span></CardComponent>
+                <CardComponent Title="Assets with Overload Events"><span class="ps-field-value">@State.Fleet.Count(a => a.OverloadEventCount > 0)</span></CardComponent>
+                <CardComponent Title="Out of Service"><span class="ps-field-value">@State.Fleet.Count(a => string.Equals(a.SystemStatus, "OutOfService", StringComparison.OrdinalIgnoreCase))</span></CardComponent>
+            </div>
+
+            <h3 class="ps-section-heading">Assets Due/Overdue for Inspection</h3>
+            <DataGridComponent TItem="CraneHoistSystemsItemDto"
+                                Items="@(State.DueForInspection.OrderBy(a => a.InspectionDueAtUtc).ToList())"
+                                Headers="_dueHeaders"
+                                KeySelector="a => a.CraneHoistSystemsId"
+                                EmptyMessage="No crane/hoist assets are due or overdue for inspection."
+                                AriaLabel="Crane and hoist assets due for inspection">
+                <RowTemplate Context="asset">
+                    <td>@asset.AssetTitle</td>
+                    <td>@asset.AssetTag</td>
+                    <td>@(asset.InspectionDueAtUtc?.ToString("yyyy-MM-dd") ?? "—") @(IsOverdue(asset.InspectionDueAtUtc) ? "(overdue)" : "")</td>
+                    <td><StatusIndicatorComponent Status="@(IsOverdue(asset.InspectionDueAtUtc) ? "Critical" : "Warning")" Label="@(IsOverdue(asset.InspectionDueAtUtc) ? "Overdue" : "Due Soon")" /></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3 class="ps-section-heading">Full Fleet</h3>
+            <DataGridComponent TItem="CraneHoistSystemsItemDto"
+                                Items="State.Fleet"
+                                Headers="_fleetHeaders"
+                                KeySelector="a => a.CraneHoistSystemsId"
+                                EmptyMessage="No crane/hoist assets registered."
+                                AriaLabel="Full crane and hoist fleet">
+                <RowTemplate Context="asset">
+                    <td>@asset.AssetTitle</td>
+                    <td>@asset.AssetType</td>
+                    <td><StatusIndicatorComponent Status="@MapAssetStatus(asset)" Label="@asset.SystemStatus" /></td>
+                    <td>@asset.RatedLoadCapacityKg kg</td>
+                    <td>@(asset.LastObservedLoadKg?.ToString("0.0") ?? "—") kg</td>
+                    <td>@asset.OverloadEventCount</td>
+                    <td>@(asset.OperatorQualificationExpiresAtUtc?.ToString("yyyy-MM-dd") ?? "No qualified operator")</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _dueHeaders = ["Asset", "Tag", "Inspection Due", "Escalation"];
+    private static readonly string[] _fleetHeaders = ["Asset", "Type", "Status", "Rated Capacity", "Last Load", "Overload Events", "Operator Qual. Expires"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Crane/Hoist Fleet Status",
+            activeModuleCode: "machine-safety-crane-hoist-systems",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Machine Safety" },
+                new BreadcrumbItem { Label = "Crane/Hoist Fleet Status" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginFleetLoad();
+
+        var siteId = TenantCtx.Tenant?.SiteId;
+        var to = DateTime.UtcNow;
+        var from = to.AddYears(-2);
+
+        var fleetTask = ApiClient.GetCraneHoistSystemsAsync(siteId, from, to);
+        var dueTask = ApiClient.ListAssetsDueForInspectionAsync(siteId, to);
+        await Task.WhenAll(fleetTask, dueTask);
+
+        var fleetEnvelope = await fleetTask;
+        var dueEnvelope = await dueTask;
+
+        if (fleetEnvelope.IsSuccess && dueEnvelope.IsSuccess)
+        {
+            State.SetFleetData(fleetEnvelope.Data!.Items, dueEnvelope.Data ?? []);
+        }
+        else
+        {
+            var problem = fleetEnvelope.Problem ?? dueEnvelope.Problem;
+            State.SetFleetError(problem is not null
+                ? DescribeProblem(problem)
+                : $"Failed to load crane/hoist fleet status: {fleetEnvelope.FaultType ?? dueEnvelope.FaultType}");
+        }
+    }
+
+    private static bool IsOverdue(DateTime? dueAtUtc) => dueAtUtc.HasValue && dueAtUtc.Value < DateTime.UtcNow;
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapAssetStatus(CraneHoistSystemsItemDto asset) => asset.SystemStatus.ToLowerInvariant() switch
+    {
+        "inservice" or "active" => asset.OverloadEventCount > 0 ? "Warning" : "Healthy",
+        "outofservice" => "Critical",
+        "retired" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,208 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Effluent Trend Charts by discharge point dashboard for EnvironmentalHealth.
+     WaterDischargeCompliance. Loads a discharge point's effluent sample history (GET
+     discharge-points/{id}/effluent-samples) alongside its defined discharge limits (GET
+     discharge-points/{id}/discharge-limits) so operators can see whether measured values are
+     trending toward/past their regulatory limits. Trend is rendered as a chronological data grid
+     per the Modules/Sustainability/AdvancedMetrics exemplar pattern (no client-side charting
+     library is part of the Shared component library).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/environmental-health/water-discharge-compliance/effluent-trends"
+
+@inject WaterDischargeComplianceState State
+@inject WaterDischargeComplianceApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.EnvironmentalHealth.WaterDischargeCompliance.ApiClients
+@using PlantSafety.UI.Modules.EnvironmentalHealth.WaterDischargeCompliance.Models
+
+<PageTitle>Effluent Trend Charts — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The effluent trend chart could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/environmental-health/water-discharge-compliance" class="ps-btn ps-btn-ghost ps-btn-sm">Compliance Status</a>
+            <div class="ps-form-field">
+                <label for="pointIdInput">Discharge Point ID</label>
+                <input id="pointIdInput" type="text" @bind="_dischargePointIdInput" placeholder="Enter discharge point GUID" />
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingTrend">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Load Trend
+            </button>
+        </div>
+
+        @if (State.TrendError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.TrendError</div>
+        }
+
+        @if (State.IsLoadingTrend)
+        {
+            <LoadingIndicatorComponent Message="Loading effluent sample trend…" />
+        }
+        else if (State.TrendDischargePointId is null)
+        {
+            <div class="ps-alert ps-alert--info" role="status">Enter a discharge point ID above (or open "Trend" from the Discharge Compliance Status board) to view its effluent sample trend.</div>
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Samples in Range"><span class="ps-field-value">@State.SampleHistory.Count</span></CardComponent>
+                <CardComponent Title="Defined Limits"><span class="ps-field-value">@State.LimitsForTrendPoint.Count</span></CardComponent>
+                <CardComponent Title="Voided Samples"><span class="ps-field-value">@State.SampleHistory.Count(s => string.Equals(s.Status, "Voided", StringComparison.OrdinalIgnoreCase))</span></CardComponent>
+            </div>
+
+            <h3 class="ps-section-heading">Discharge Limits (Reference)</h3>
+            <DataGridComponent TItem="DischargeLimitDto"
+                                Items="State.LimitsForTrendPoint"
+                                Headers="_limitHeaders"
+                                KeySelector="l => l.DischargeLimitId"
+                                EmptyMessage="No discharge limits are defined for this point."
+                                AriaLabel="Discharge limits for the selected point">
+                <RowTemplate Context="limit">
+                    <td>@limit.Parameter</td>
+                    <td>@limit.LimitBasis</td>
+                    <td>@limit.LimitValue @limit.UnitOfMeasure</td>
+                    <td><StatusIndicatorComponent Status="@MapLimitStatus(limit.Status)" Label="@limit.Status" /></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3 class="ps-section-heading">Effluent Sample Trend (chronological)</h3>
+            <DataGridComponent TItem="EffluentSampleDto"
+                                Items="@(State.SampleHistory.OrderBy(s => s.SampledAtUtc).ToList())"
+                                Headers="_sampleHeaders"
+                                KeySelector="s => s.EffluentSampleId"
+                                EmptyMessage="No effluent samples recorded for this point within the selected range."
+                                AriaLabel="Effluent sample trend for the selected discharge point">
+                <RowTemplate Context="sample">
+                    <td>@sample.SampledAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@sample.Parameter</td>
+                    <td>@ExceedsAnyLimit(sample) @sample.MeasuredValue @sample.UnitOfMeasure</td>
+                    <td>@sample.LabSourceSystem</td>
+                    <td><StatusIndicatorComponent Status="@MapSampleStatus(sample.Status)" Label="@sample.Status" /></td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _limitHeaders = ["Parameter", "Basis", "Limit", "Status"];
+    private static readonly string[] _sampleHeaders = ["Sampled", "Parameter", "Measured Value", "Lab System", "Status"];
+    private string _dischargePointIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Effluent Trend Charts",
+            activeModuleCode: "environmental-health-water-discharge-compliance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Environmental Health", Href = RouteDefinitions.EnvironmentalHealthDashboard },
+                new BreadcrumbItem { Label = "Effluent Trend Charts" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var queryValue = ParseQueryParameter(uri.Query, "dischargePointId");
+        if (!string.IsNullOrEmpty(queryValue))
+            _dischargePointIdInput = queryValue;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Guid.TryParse(_dischargePointIdInput, out _)) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!Guid.TryParse(_dischargePointIdInput, out var dischargePointId))
+        {
+            State.SetTrendError("Enter a valid discharge point GUID before loading the trend.");
+            return;
+        }
+
+        State.BeginTrendLoad(dischargePointId);
+
+        var to = DateTime.UtcNow;
+        var from = to.AddMonths(-12);
+
+        var samplesTask = ApiClient.GetSampleHistoryByPointAsync(dischargePointId, from, to);
+        var limitsTask = ApiClient.ListDischargeLimitsByPointAsync(dischargePointId);
+        await Task.WhenAll(samplesTask, limitsTask);
+
+        var samplesEnvelope = await samplesTask;
+        var limitsEnvelope = await limitsTask;
+
+        if (samplesEnvelope.IsSuccess && limitsEnvelope.IsSuccess)
+        {
+            State.SetTrendData(samplesEnvelope.Data!.Items, limitsEnvelope.Data!.Items);
+        }
+        else
+        {
+            var problem = samplesEnvelope.Problem ?? limitsEnvelope.Problem;
+            State.SetTrendError(problem is not null
+                ? DescribeProblem(problem)
+                : $"Failed to load the effluent trend: {samplesEnvelope.FaultType ?? limitsEnvelope.FaultType}");
+        }
+    }
+
+    /// <summary>Minimal, dependency-free query-string parameter extraction (avoids taking a dependency
+    /// on Microsoft.AspNetCore.WebUtilities, which is not guaranteed present in the MAUI host).</summary>
+    private static string? ParseQueryParameter(string query, string name)
+    {
+        if (string.IsNullOrEmpty(query))
+            return null;
+
+        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && string.Equals(Uri.UnescapeDataString(parts[0]), name, StringComparison.OrdinalIgnoreCase))
+                return Uri.UnescapeDataString(parts[1]);
+        }
+
+        return null;
+    }
+
+    private string ExceedsAnyLimit(EffluentSampleDto sample) =>
+        State.LimitsForTrendPoint.Any(l =>
+            string.Equals(l.Parameter, sample.Parameter, StringComparison.OrdinalIgnoreCase) &&
+            sample.MeasuredValue > l.LimitValue)
+            ? "⚠"
+            : string.Empty;
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapLimitStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "retired" => "Offline",
+        _ => "Warning",
+    };
+
+    private static string MapSampleStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "recorded" or "verified" => "Healthy",
+        "voided" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

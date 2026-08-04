@@ -1,0 +1,129 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Operator Qualification Matrix dashboard — the second of the two spec'd
+     dashboards for MachineSafety.CraneHoistSystems. Loads crane/hoist assets whose operator
+     qualification expires within a configurable window (GET crane-hoist-systems/
+     expiring-operator-qualifications), so operators can proactively requalify before a lapse
+     forces an asset out of service. Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/machine-safety/crane-hoist-systems/operator-qualifications"
+
+@inject CraneHoistSystemsState State
+@inject CraneHoistSystemsApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.MachineSafety.CraneHoistSystems.ApiClients
+@using PlantSafety.UI.Modules.MachineSafety.CraneHoistSystems.Models
+
+<PageTitle>Operator Qualification Matrix — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The operator qualification matrix could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/machine-safety/crane-hoist-systems" class="ps-btn ps-btn-ghost ps-btn-sm">Fleet Status</a>
+            <div class="ps-form-field">
+                <label for="withinDaysInput">Expiring Within (days)</label>
+                <input id="withinDaysInput" type="number" min="1" max="365" @bind="_withinDays" />
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingQualifications">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.QualificationsError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.QualificationsError</div>
+        }
+
+        @if (State.IsLoadingQualifications)
+        {
+            <LoadingIndicatorComponent Message="Loading operator qualification expirations…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Expiring Qualifications"><span class="ps-field-value">@State.ExpiringQualifications.Count</span></CardComponent>
+                <CardComponent Title="Already Lapsed"><span class="ps-field-value">@State.ExpiringQualifications.Count(a => a.OperatorQualificationExpiresAtUtc is { } d && d < DateTime.UtcNow)</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="CraneHoistSystemsItemDto"
+                                Items="@(State.ExpiringQualifications.OrderBy(a => a.OperatorQualificationExpiresAtUtc).ToList())"
+                                Headers="_headers"
+                                KeySelector="a => a.CraneHoistSystemsId"
+                                EmptyMessage="No crane/hoist assets have an operator qualification expiring in the selected window."
+                                AriaLabel="Operator qualification matrix">
+                <RowTemplate Context="asset">
+                    <td>@asset.AssetTitle</td>
+                    <td>@asset.AssetTag</td>
+                    <td>@asset.AssetType</td>
+                    <td>@(asset.OperatorQualificationExpiresAtUtc?.ToString("yyyy-MM-dd") ?? "—")</td>
+                    <td><StatusIndicatorComponent Status="@MapQualificationStatus(asset)" Label="@QualificationLabel(asset)" /></td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Asset", "Tag", "Type", "Qualification Expires", "Status"];
+    private int _withinDays = 30;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Operator Qualification Matrix",
+            activeModuleCode: "machine-safety-crane-hoist-systems",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Machine Safety" },
+                new BreadcrumbItem { Label = "Crane/Hoist Fleet Status", Href = "/modules/machine-safety/crane-hoist-systems" },
+                new BreadcrumbItem { Label = "Operator Qualification Matrix" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginQualificationsLoad();
+
+        var siteId = TenantCtx.Tenant?.SiteId;
+        var envelope = await ApiClient.ListExpiringOperatorQualificationsAsync(siteId, Math.Clamp(_withinDays, 1, 365));
+
+        if (envelope.IsSuccess)
+            State.SetExpiringQualifications(envelope.Data ?? []);
+        else if (envelope.IsProblem)
+            State.SetQualificationsError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetQualificationsError($"Failed to load expiring operator qualifications: {envelope.FaultType}");
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapQualificationStatus(CraneHoistSystemsItemDto asset) =>
+        asset.OperatorQualificationExpiresAtUtc is { } expires && expires < DateTime.UtcNow ? "Critical" : "Warning";
+
+    private static string QualificationLabel(CraneHoistSystemsItemDto asset) =>
+        asset.OperatorQualificationExpiresAtUtc is { } expires && expires < DateTime.UtcNow ? "Lapsed" : "Expiring Soon";
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

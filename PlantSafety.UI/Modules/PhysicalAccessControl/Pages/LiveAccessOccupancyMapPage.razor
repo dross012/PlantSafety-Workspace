@@ -1,0 +1,168 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Live Access &amp; Occupancy Map dashboard for PhysicalAccessControl. Looks up a
+     single safety zone's correlated occupancy (GET safety-zones/{id}/occupancy) and its recent
+     access events (GET access-events?SafetyZoneId=...) by zone ID — no list-all-zones read model
+     currently exists in the API, so a zone-ID lookup panel is the closest compliant surface for a
+     "map" view. Rendered as status cards + a chronological access-event grid, following the
+     established Shared component library pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/physical-access-control/occupancy-map"
+
+@inject PhysicalAccessControlState State
+@inject PhysicalAccessControlApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PhysicalAccessControl.ApiClients
+@using PlantSafety.UI.Modules.PhysicalAccessControl.Models
+
+<PageTitle>Live Access &amp; Occupancy Map — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The access and occupancy map could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/physical-access-control" class="ps-btn ps-btn-ghost ps-btn-sm">Anomaly Feed</a>
+            <a href="/modules/physical-access-control/credentials" class="ps-btn ps-btn-ghost ps-btn-sm">Credential Lifecycle Status</a>
+            <div class="ps-form-field">
+                <label for="zoneIdInput">Safety Zone ID</label>
+                <input id="zoneIdInput" type="text" @bind="_zoneIdInput" placeholder="Enter safety zone GUID" />
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingOccupancy">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Load Zone
+            </button>
+        </div>
+
+        @if (State.OccupancyError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.OccupancyError</div>
+        }
+
+        @if (State.IsLoadingOccupancy)
+        {
+            <LoadingIndicatorComponent Message="Loading zone occupancy…" />
+        }
+        else if (State.OccupancyZoneId is null)
+        {
+            <div class="ps-alert ps-alert--info" role="status">Enter a safety zone ID above to view its live occupancy and recent access events.</div>
+        }
+        else if (State.ZoneOccupancy is null)
+        {
+            <div class="ps-alert ps-alert--warning" role="status">No safety zone was found for the given identifier.</div>
+        }
+        else
+        {
+            var zone = State.ZoneOccupancy;
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="@zone.ZoneName"><StatusIndicatorComponent Status="@MapZoneStatus(zone)" Label="@zone.Status" /></CardComponent>
+                <CardComponent Title="Current Occupancy"><span class="ps-field-value">@zone.CurrentOccupancy / @zone.MaxOccupancy</span></CardComponent>
+                <CardComponent Title="As Of"><span class="ps-field-value">@zone.AsOfUtc.ToString("yyyy-MM-dd HH:mm") UTC</span></CardComponent>
+                <CardComponent Title="Recent Events"><span class="ps-field-value">@State.ZoneAccessEvents.Count</span></CardComponent>
+            </div>
+
+            <h3 class="ps-section-heading">Recent Access Events (last 24 hours)</h3>
+            <DataGridComponent TItem="AccessEventDto"
+                                Items="@(State.ZoneAccessEvents.OrderByDescending(e => e.OccurredAtUtc).ToList())"
+                                Headers="_eventHeaders"
+                                KeySelector="e => e.AccessEventId"
+                                EmptyMessage="No access events recorded for this zone in the last 24 hours."
+                                AriaLabel="Recent access events for the selected zone">
+                <RowTemplate Context="evt">
+                    <td>@evt.EventType</td>
+                    <td>@evt.Direction</td>
+                    <td><StatusIndicatorComponent Status="@MapEventStatus(evt.Status)" Label="@evt.Status" /></td>
+                    <td>@evt.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _eventHeaders = ["Event", "Direction", "Status", "Occurred"];
+    private string _zoneIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Live Access & Occupancy Map",
+            activeModuleCode: "physical-access-control",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Physical Access Control", Href = "/modules/physical-access-control" },
+                new BreadcrumbItem { Label = "Access & Occupancy Map" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!Guid.TryParse(_zoneIdInput, out var zoneId))
+        {
+            State.SetOccupancyError("Enter a valid safety zone GUID before loading.");
+            return;
+        }
+
+        State.BeginOccupancyLoad(zoneId);
+
+        var to = DateTime.UtcNow;
+        var from = to.AddHours(-24);
+
+        var occupancyTask = ApiClient.GetZoneOccupancyAsync(zoneId);
+        var eventsTask = ApiClient.ListAccessEventsByZoneAsync(zoneId, from, to);
+        await Task.WhenAll(occupancyTask, eventsTask);
+
+        var occupancyEnvelope = await occupancyTask;
+        var eventsEnvelope = await eventsTask;
+
+        if (occupancyEnvelope.IsSuccess && eventsEnvelope.IsSuccess)
+        {
+            State.SetOccupancyData(occupancyEnvelope.Data!.Occupancy, eventsEnvelope.Data!.Items);
+        }
+        else
+        {
+            var problem = occupancyEnvelope.Problem ?? eventsEnvelope.Problem;
+            State.SetOccupancyError(problem is not null
+                ? DescribeProblem(problem)
+                : $"Failed to load the access and occupancy map: {occupancyEnvelope.FaultType ?? eventsEnvelope.FaultType}");
+        }
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapZoneStatus(SafetyZoneOccupancyDto zone)
+    {
+        if (zone.CurrentOccupancy >= zone.MaxOccupancy)
+            return "Critical";
+        return zone.Status.ToLowerInvariant() switch
+        {
+            "restricted" => "Warning",
+            "active" or "normal" => "Healthy",
+            _ => "Offline",
+        };
+    }
+
+    private static string MapEventStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "granted" or "processed" => "Healthy",
+        "denied" => "Critical",
+        "pending" => "Warning",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

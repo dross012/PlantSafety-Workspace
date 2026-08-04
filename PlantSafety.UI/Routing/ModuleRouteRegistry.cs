@@ -110,6 +110,9 @@ public static class ModuleRouteRegistry
                 new ModuleRoute { ModuleCode = "near-miss", Label = "Near Miss", Href = RouteDefinitions.NearMissList, IconClass = "bi-eye-slash", Section = "Safety Event", SectionOrder = 4 },
                 new ModuleRoute { ModuleCode = "observations", Label = "Observation", Href = RouteDefinitions.ObservationList, IconClass = "bi-binoculars", Section = "Safety Event", SectionOrder = 5 },
                 new ModuleRoute { ModuleCode = "rca", Label = "RCA", Href = RouteDefinitions.RcaList, IconClass = "bi-search", Section = "Safety Event", SectionOrder = 6 },
+                new ModuleRoute { ModuleCode = "local-emergency-coordination", Label = "Local Emergency Coordination", Href = RouteDefinitions.LocalEmergencyCoordinationDashboard, IconClass = "bi-people", Section = "Safety Event", SectionOrder = 7 },
+                new ModuleRoute { ModuleCode = "public-safety-communication", Label = "Public Safety Communication", Href = RouteDefinitions.PublicSafetyCommunicationDashboard, IconClass = "bi-broadcast", Section = "Safety Event", SectionOrder = 8 },
+                new ModuleRoute { ModuleCode = "community-safety", Label = "Community Safety", Href = RouteDefinitions.CommunitySafetyDashboard, IconClass = "bi-house-heart", Section = "Safety Event", SectionOrder = 9 },
             ]
         },
         new ModuleSection
@@ -126,6 +129,7 @@ public static class ModuleRouteRegistry
                 new ModuleRoute { ModuleCode = "ergonomics", Label = "Ergonomics", Href = RouteDefinitions.ErgonomicsList, IconClass = "bi-body-text", Section = "Human Factors", SectionOrder = 3 },
                 new ModuleRoute { ModuleCode = "industrial-hygiene", Label = "Industrial Hygiene", Href = RouteDefinitions.IndustrialHygieneList, IconClass = "bi-droplet", Section = "Human Factors", SectionOrder = 4 },
                 new ModuleRoute { ModuleCode = "worker-wellbeing", Label = "Worker WellBeing", Href = RouteDefinitions.WorkerWellBeingDashboard, IconClass = "bi-heart", Section = "Human Factors", SectionOrder = 5 },
+                new ModuleRoute { ModuleCode = "cognitive-load-analytics", Label = "Cognitive Load Analytics", Href = RouteDefinitions.CognitiveLoadAnalyticsDashboard, IconClass = "bi-cpu", Section = "Human Factors", SectionOrder = 6 },
             ]
         },
         new ModuleSection
@@ -145,6 +149,12 @@ public static class ModuleRouteRegistry
                 new ModuleRoute { ModuleCode = "jsa", Label = "JSA", Href = RouteDefinitions.JsaList, IconClass = "bi-card-checklist", Section = "Operational Safety", SectionOrder = 6 },
                 new ModuleRoute { ModuleCode = "loto", Label = "LOTO", Href = RouteDefinitions.LotoList, IconClass = "bi-lock", Section = "Operational Safety", SectionOrder = 7 },
                 new ModuleRoute { ModuleCode = "permits", Label = "Permits to Work", Href = RouteDefinitions.PermitsList, IconClass = "bi-patch-check", Section = "Operational Safety", SectionOrder = 8 },
+                new ModuleRoute { ModuleCode = "water-discharge-compliance", Label = "Water Discharge Compliance", Href = RouteDefinitions.WaterDischargeComplianceStatus, IconClass = "bi-droplet-half", Section = "Operational Safety", SectionOrder = 9 },
+                new ModuleRoute { ModuleCode = "physical-access-control", Label = "Physical Access Control", Href = RouteDefinitions.PhysicalAccessControlDashboard, IconClass = "bi-door-closed", Section = "Operational Safety", SectionOrder = 10 },
+                new ModuleRoute { ModuleCode = "logistics-transport-safety", Label = "Logistics & Transport Safety", Href = RouteDefinitions.LogisticsTransportSafetyDashboard, IconClass = "bi-truck", Section = "Operational Safety", SectionOrder = 11 },
+                new ModuleRoute { ModuleCode = "crane-hoist-systems", Label = "Crane / Hoist Systems", Href = RouteDefinitions.CraneHoistSystemsFleetStatus, IconClass = "bi-crane", Section = "Operational Safety", SectionOrder = 12 },
+                new ModuleRoute { ModuleCode = "cyber-physical-security", Label = "Cyber-Physical Security", Href = RouteDefinitions.CyberPhysicalSecurityDashboard, IconClass = "bi-shield-lock", Section = "Operational Safety", SectionOrder = 13 },
+                new ModuleRoute { ModuleCode = "autonomous-vehicle-safety", Label = "Autonomous Vehicle Safety", Href = RouteDefinitions.AutonomousVehicleSafetyDashboard, IconClass = "bi-robot", Section = "Operational Safety", SectionOrder = 14 },
             ]
         },
         new ModuleSection
@@ -217,6 +227,8 @@ public static class ModuleRouteRegistry
                 new ModuleRoute { ModuleCode = "ai-governance", Label = "AI Governance", Href = RouteDefinitions.AiGovernanceDashboard, IconClass = "bi-shield-lock", Section = "Intelligence", SectionOrder = 9 },
                 new ModuleRoute { ModuleCode = "enterprise-fabric", Label = "Enterprise Fabric", Href = RouteDefinitions.EnterpriseFabricDashboard, IconClass = "bi-hdd-network", Section = "Intelligence", SectionOrder = 10 },
                 new ModuleRoute { ModuleCode = "environmental-health", Label = "Environmental Health", Href = RouteDefinitions.EnvironmentalHealthDashboard, IconClass = "bi-flower1", Section = "Intelligence", SectionOrder = 11 },
+                new ModuleRoute { ModuleCode = "evacuation-modeling", Label = "Evacuation Modeling", Href = RouteDefinitions.EvacuationModelingReadinessBoard, IconClass = "bi-signpost-split", Section = "Intelligence", SectionOrder = 12 },
+                new ModuleRoute { ModuleCode = "advanced-sustainability-metrics", Label = "Advanced Sustainability Metrics", Href = RouteDefinitions.SustainabilityAdvancedMetricsDashboard, IconClass = "bi-graph-up", Section = "Intelligence", SectionOrder = 13 },
             ]
         },
         new ModuleSection

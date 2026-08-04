@@ -1,0 +1,254 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Discharge Compliance Status dashboard for EnvironmentalHealth.
+     WaterDischargeCompliance. Surfaces active limit exceedances, the registered discharge points,
+     Discharge Monitoring Report (DMR) due/submitted status for the current reporting quarter, and
+     an on-demand permit-expiration lookup (no list-all endpoint exists for permits, so the closest
+     compliant surface is a by-ID lookup panel). Built entirely from the canonical Shared component
+     library, following the Modules/HazardousWasteManagement/Pages exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/environmental-health/water-discharge-compliance"
+@page "/modules/environmental-health/water-discharge-compliance/status"
+
+@inject WaterDischargeComplianceState State
+@inject WaterDischargeComplianceApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.EnvironmentalHealth.WaterDischargeCompliance.ApiClients
+@using PlantSafety.UI.Modules.EnvironmentalHealth.WaterDischargeCompliance.Models
+
+<PageTitle>Discharge Compliance Status — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The discharge compliance status board could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/environmental-health/water-discharge-compliance/effluent-trends" class="ps-btn ps-btn-ghost ps-btn-sm">Effluent Trend Charts</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingComplianceStatus">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.ComplianceStatusError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ComplianceStatusError</div>
+        }
+
+        @if (State.IsLoadingComplianceStatus)
+        {
+            <LoadingIndicatorComponent Message="Loading discharge compliance status…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Discharge Points"><span class="ps-field-value">@State.DischargePoints.Count</span></CardComponent>
+                <CardComponent Title="Open Exceedances"><span class="ps-field-value">@State.ActiveExceedances.Count</span></CardComponent>
+                <CardComponent Title="Critical Exceedances"><span class="ps-field-value">@State.ActiveExceedances.Count(e => string.Equals(e.Severity, "Critical", StringComparison.OrdinalIgnoreCase))</span></CardComponent>
+                <CardComponent Title="DMRs Due This Period"><span class="ps-field-value">@State.DmrReports.Count(r => r.SubmittedAtUtc is null)</span></CardComponent>
+            </div>
+
+            <h3 class="ps-section-heading">Open Discharge Limit Exceedances</h3>
+            <DataGridComponent TItem="LimitExceedanceDto"
+                                Items="State.ActiveExceedances"
+                                Headers="_exceedanceHeaders"
+                                KeySelector="e => e.LimitExceedanceId"
+                                EmptyMessage="No open discharge limit exceedances."
+                                AriaLabel="Open discharge limit exceedances">
+                <RowTemplate Context="item">
+                    <td><StatusIndicatorComponent Status="@MapSeverity(item.Severity)" Label="@item.Severity" /></td>
+                    <td>@item.ParameterName</td>
+                    <td>@item.MeasuredValue (limit @item.LimitValue)</td>
+                    <td>@item.ExceedancePercentage.ToString("0.0")%</td>
+                    <td>@item.DetectedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3 class="ps-section-heading">Registered Discharge Points</h3>
+            <DataGridComponent TItem="DischargePointDto"
+                                Items="State.DischargePoints"
+                                Headers="_pointHeaders"
+                                KeySelector="p => p.DischargePointId"
+                                EmptyMessage="No discharge points registered."
+                                AriaLabel="Registered discharge points">
+                <RowTemplate Context="point">
+                    <td>@point.PointCode</td>
+                    <td>@point.PointName</td>
+                    <td>@point.ReceivingWaterBody</td>
+                    <td><StatusIndicatorComponent Status="@MapPointStatus(point.Status)" Label="@point.Status" /></td>
+                    <td><a href="@($"/modules/environmental-health/water-discharge-compliance/effluent-trends?dischargePointId={point.DischargePointId:D}")" class="ps-btn ps-btn-ghost ps-btn-sm">Trend</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3 class="ps-section-heading">Discharge Monitoring Reports — Current Period</h3>
+            <DataGridComponent TItem="DischargeMonitoringReportDto"
+                                Items="State.DmrReports"
+                                Headers="_dmrHeaders"
+                                KeySelector="r => r.DischargeMonitoringReportId"
+                                EmptyMessage="No Discharge Monitoring Reports overlap the current reporting period."
+                                AriaLabel="Discharge Monitoring Reports for the current period">
+                <RowTemplate Context="dmr">
+                    <td><StatusIndicatorComponent Status="@MapDmrStatus(dmr.Status)" Label="@dmr.Status" /></td>
+                    <td>@dmr.ReportingPeriodStartUtc.ToString("yyyy-MM-dd") – @dmr.ReportingPeriodEndUtc.ToString("yyyy-MM-dd")</td>
+                    <td>@dmr.DueAtUtc.ToString("yyyy-MM-dd")</td>
+                    <td>@(dmr.SubmittedAtUtc?.ToString("yyyy-MM-dd") ?? "Not submitted")</td>
+                    <td>@dmr.SamplesWithinLimitCount / @dmr.TotalSamplesCount within limit</td>
+                </RowTemplate>
+            </DataGridComponent>
+
+            <h3 class="ps-section-heading">Permit Expiration Lookup</h3>
+            <div class="ps-page-actions">
+                <div class="ps-form-field">
+                    <label for="permitIdInput">Discharge Permit ID</label>
+                    <input id="permitIdInput" type="text" @bind="_permitIdInput" placeholder="Enter permit GUID" />
+                </div>
+                <button class="ps-btn ps-btn-secondary ps-btn-sm" @onclick="LookupPermitAsync">Look up Permit</button>
+            </div>
+
+            @if (State.PermitLookupError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.PermitLookupError</div>
+            }
+            @if (State.LookedUpPermit is { } permit)
+            {
+                <CardComponent Title="@permit.PermitNumber">
+                    <div class="ps-field-row"><span class="ps-field-label">Status</span> <StatusIndicatorComponent Status="@MapPermitStatus(permit)" Label="@permit.Status" /></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Regulatory Program</span> <span class="ps-field-value">@permit.RegulatoryProgram</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Issuing Authority</span> <span class="ps-field-value">@permit.IssuingAuthority</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Effective</span> <span class="ps-field-value">@permit.EffectiveAtUtc.ToString("yyyy-MM-dd")</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Expires</span> <span class="ps-field-value">@permit.ExpiresAtUtc.ToString("yyyy-MM-dd") @(IsExpiringSoon(permit.ExpiresAtUtc) ? "(expiring soon)" : "")</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Renewals</span> <span class="ps-field-value">@permit.RenewalCount</span></div>
+                </CardComponent>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _exceedanceHeaders = ["Severity", "Parameter", "Measured / Limit", "Exceedance %", "Detected"];
+    private static readonly string[] _pointHeaders = ["Code", "Name", "Receiving Water Body", "Status", ""];
+    private static readonly string[] _dmrHeaders = ["Status", "Reporting Period", "Due", "Submitted", "Sample Compliance"];
+    private string _permitIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Discharge Compliance Status",
+            activeModuleCode: "environmental-health-water-discharge-compliance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Environmental Health", Href = RouteDefinitions.EnvironmentalHealthDashboard },
+                new BreadcrumbItem { Label = "Discharge Compliance Status" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginComplianceStatusLoad();
+
+        var siteId = TenantCtx.Tenant?.SiteId;
+        var periodStart = new DateTime(DateTime.UtcNow.Year, ((DateTime.UtcNow.Month - 1) / 3) * 3 + 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var periodEnd = periodStart.AddMonths(3).AddTicks(-1);
+
+        var pointsTask = ApiClient.ListDischargePointsBySiteAsync(siteId);
+        var exceedancesTask = ApiClient.ListActiveExceedancesAsync(siteId);
+        var dmrTask = ApiClient.GetDischargeMonitoringReportsByPeriodAsync(siteId, periodStart, periodEnd);
+        await Task.WhenAll(pointsTask, exceedancesTask, dmrTask);
+
+        var pointsEnvelope = await pointsTask;
+        var exceedancesEnvelope = await exceedancesTask;
+        var dmrEnvelope = await dmrTask;
+
+        if (pointsEnvelope.IsSuccess && exceedancesEnvelope.IsSuccess && dmrEnvelope.IsSuccess)
+        {
+            State.SetComplianceStatusData(
+                pointsEnvelope.Data!.Items,
+                exceedancesEnvelope.Data!.Items,
+                dmrEnvelope.Data!.Items);
+        }
+        else
+        {
+            var problem = pointsEnvelope.Problem ?? exceedancesEnvelope.Problem ?? dmrEnvelope.Problem;
+            State.SetComplianceStatusError(problem is not null
+                ? DescribeProblem(problem)
+                : $"Failed to load discharge compliance status: {pointsEnvelope.FaultType ?? exceedancesEnvelope.FaultType ?? dmrEnvelope.FaultType}");
+        }
+    }
+
+    private async Task LookupPermitAsync()
+    {
+        if (!Guid.TryParse(_permitIdInput, out var permitId))
+        {
+            State.SetPermitLookupError("Enter a valid discharge permit GUID.");
+            return;
+        }
+
+        var envelope = await ApiClient.GetDischargePermitByIdAsync(permitId);
+
+        if (envelope.IsSuccess)
+            State.SetLookedUpPermit(envelope.Data);
+        else if (envelope.IsProblem)
+            State.SetPermitLookupError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetPermitLookupError($"Failed to look up the permit: {envelope.FaultType}");
+    }
+
+    private static bool IsExpiringSoon(DateTime expiresAtUtc) => expiresAtUtc < DateTime.UtcNow.AddDays(60);
+
+    private static string MapPermitStatus(DischargePermitDto permit)
+    {
+        if (string.Equals(permit.Status, "Revoked", StringComparison.OrdinalIgnoreCase) || string.Equals(permit.Status, "Suspended", StringComparison.OrdinalIgnoreCase))
+            return "Critical";
+        if (IsExpiringSoon(permit.ExpiresAtUtc))
+            return "Warning";
+        return "Healthy";
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapSeverity(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" => "Critical",
+        "high" or "major" => "Critical",
+        "medium" or "moderate" => "Warning",
+        "low" or "minor" => "Healthy",
+        _ => "Offline",
+    };
+
+    private static string MapPointStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "inactive" or "decommissioned" => "Offline",
+        _ => "Warning",
+    };
+
+    private static string MapDmrStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "accepted" => "Healthy",
+        "submitted" => "Warning",
+        "rejected" => "Critical",
+        "draft" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

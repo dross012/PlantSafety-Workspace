@@ -1,0 +1,124 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Anomaly Feed dashboard for PhysicalAccessControl. Loads active (unresolved)
+     access anomalies from the real GET api/v1/physicalaccesscontrol/access-anomalies/active
+     read-model endpoint (unauthorized/tailgating/after-hours and other system-detected physical-
+     access anomalies), populates PhysicalAccessControlState, and renders the grid with severity
+     indicators. Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/physical-access-control"
+@page "/modules/physical-access-control/anomaly-feed"
+
+@inject PhysicalAccessControlState State
+@inject PhysicalAccessControlApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PhysicalAccessControl.ApiClients
+@using PlantSafety.UI.Modules.PhysicalAccessControl.Models
+
+<PageTitle>Anomaly Feed — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The physical-access anomaly feed could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="/modules/physical-access-control/occupancy-map" class="ps-btn ps-btn-ghost ps-btn-sm">Access &amp; Occupancy Map</a>
+            <a href="/modules/physical-access-control/credentials" class="ps-btn ps-btn-ghost ps-btn-sm">Credential Lifecycle Status</a>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingAnomalies">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        @if (State.AnomaliesError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.AnomaliesError</div>
+        }
+
+        @if (State.IsLoadingAnomalies)
+        {
+            <LoadingIndicatorComponent Message="Loading active access anomalies…" />
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                <CardComponent Title="Active Anomalies"><span class="ps-field-value">@State.ActiveAnomalies.Count</span></CardComponent>
+                <CardComponent Title="High Severity (≥ 75)"><span class="ps-field-value">@State.ActiveAnomalies.Count(a => a.SeverityScore >= 75)</span></CardComponent>
+                <CardComponent Title="Unacknowledged"><span class="ps-field-value">@State.ActiveAnomalies.Count(a => string.Equals(a.Status, "Detected", StringComparison.OrdinalIgnoreCase))</span></CardComponent>
+            </div>
+
+            <DataGridComponent TItem="AccessAnomalyDto"
+                                Items="@(State.ActiveAnomalies.OrderByDescending(a => a.SeverityScore).ToList())"
+                                Headers="_headers"
+                                KeySelector="a => a.AccessAnomalyId"
+                                EmptyMessage="No active physical-access anomalies — no unauthorized, tailgating, or after-hours events pending review."
+                                AriaLabel="Active physical-access anomalies">
+                <RowTemplate Context="anomaly">
+                    <td><StatusIndicatorComponent Status="@MapSeverity(anomaly.SeverityScore)" Label="@($"{anomaly.SeverityScore:0} / 100")" /></td>
+                    <td>@anomaly.AnomalyType</td>
+                    <td>@anomaly.Status</td>
+                    <td>@anomaly.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Severity", "Type", "Status", "Detected"];
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Anomaly Feed",
+            activeModuleCode: "physical-access-control",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Physical Access Control" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginAnomaliesLoad();
+
+        var envelope = await ApiClient.ListActiveAnomaliesAsync(TenantCtx.Tenant?.SiteId);
+
+        if (envelope.IsSuccess)
+            State.SetActiveAnomalies(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetAnomaliesError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetAnomaliesError($"Failed to load active anomalies: {envelope.FaultType}");
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapSeverity(decimal score) => score switch
+    {
+        >= 75 => "Critical",
+        >= 40 => "Warning",
+        _ => "Healthy",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

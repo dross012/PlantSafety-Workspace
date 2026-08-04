@@ -31,6 +31,18 @@ using PlantSafety.UI.Modules.Auditing.ApiClients;
 using PlantSafety.UI.Modules.Compliance.ApiClients;
 using PlantSafety.UI.State;
 
+// Regression audit fix (2026-08-04): UI Agent build-out for 8 modules/sub-modules — see the
+// AddSingleton<Modules.X.State.Y>/RegisterApiClient<Modules.X.ApiClients.Y> blocks below.
+using PlantSafety.UI.Modules.DigitalTwin.EvacuationModeling.ApiClients;
+using PlantSafety.UI.Modules.EnvironmentalHealth.WaterDischargeCompliance.ApiClients;
+using PlantSafety.UI.Modules.PhysicalAccessControl.ApiClients;
+using PlantSafety.UI.Modules.LogisticsTransportSafety.ApiClients;
+using PlantSafety.UI.Modules.CommunitySafety.ApiClients;
+using PlantSafety.UI.Modules.PublicSafetyCommunication.ApiClients;
+using PlantSafety.UI.Modules.CyberPhysicalSecurity.ApiClients;
+using PlantSafety.UI.Modules.AutonomousVehicleSafety.ApiClients;
+using PlantSafety.UI.Modules.MachineSafety.CraneHoistSystems.ApiClients;
+
 namespace PlantSafety.UI;
 
 /// <summary>
@@ -204,6 +216,19 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.TrendAnalysis.State.TrendAnalysisState>();
         builder.Services.AddSingleton<Modules.WorkerManagement.State.WorkerManagementState>();
 
+        // UI Agent build-out (2026-08-04): 8 new/extended modules — dashboards added under
+        // Modules/<ModuleName>/{ApiClients,Models,Pages,State}, wired here following the exact
+        // AddSingleton<Modules.X.State.Y> pattern established above.
+        builder.Services.AddSingleton<Modules.DigitalTwin.EvacuationModeling.State.EvacuationModelingState>();
+        builder.Services.AddSingleton<Modules.EnvironmentalHealth.WaterDischargeCompliance.State.WaterDischargeComplianceState>();
+        builder.Services.AddSingleton<Modules.PhysicalAccessControl.State.PhysicalAccessControlState>();
+        builder.Services.AddSingleton<Modules.LogisticsTransportSafety.State.LogisticsTransportSafetyState>();
+        builder.Services.AddSingleton<Modules.CommunitySafety.State.CommunitySafetyState>();
+        builder.Services.AddSingleton<Modules.PublicSafetyCommunication.State.PublicSafetyCommunicationState>();
+        builder.Services.AddSingleton<Modules.CyberPhysicalSecurity.State.CyberPhysicalSecurityState>();
+        builder.Services.AddSingleton<Modules.AutonomousVehicleSafety.State.AutonomousVehicleSafetyState>();
+        builder.Services.AddSingleton<Modules.MachineSafety.CraneHoistSystems.State.CraneHoistSystemsState>();
+
         // ── Typed HttpClients ──────────────────────────────────────────────────
         // Handler pipeline: CorrelationHandler → AuthorizationMessageHandler →
         // ImpersonationHeaderHandler → HttpClientHandler (Phase 7 §6.3: stamps X-Tenant-ID
@@ -297,6 +322,18 @@ public static class MauiProgram
         RegisterApiClient<Modules.Training.ApiClients.TrainingApiClient>(builder, "training");
         RegisterApiClient<Modules.TrendAnalysis.ApiClients.TrendAnalysisApiClient>(builder, "trend-analysis");
         RegisterApiClient<Modules.WorkerManagement.ApiClients.WorkerManagementApiClient>(builder, "worker-management");
+
+        // UI Agent build-out (2026-08-04): 8 new/extended modules — typed HttpClient registrations
+        // following the exact RegisterApiClient<T>(builder, "kebab-case-name") pattern established above.
+        RegisterApiClient<EvacuationModelingApiClient>(builder, "digital-twin-evacuation-modeling");
+        RegisterApiClient<WaterDischargeComplianceApiClient>(builder, "environmental-health-water-discharge-compliance");
+        RegisterApiClient<PhysicalAccessControlApiClient>(builder, "physical-access-control");
+        RegisterApiClient<LogisticsTransportSafetyApiClient>(builder, "logistics-transport-safety");
+        RegisterApiClient<CommunitySafetyApiClient>(builder, "community-safety");
+        RegisterApiClient<PublicSafetyCommunicationApiClient>(builder, "public-safety-communication");
+        RegisterApiClient<CyberPhysicalSecurityApiClient>(builder, "cyber-physical-security");
+        RegisterApiClient<AutonomousVehicleSafetyApiClient>(builder, "autonomous-vehicle-safety");
+        RegisterApiClient<CraneHoistSystemsApiClient>(builder, "machine-safety-crane-hoist-systems");
 
         // ── Logging ────────────────────────────────────────────────────────────
 #if DEBUG

@@ -1,0 +1,309 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Combined AutonomousVehicleSafety dashboard page hosting the three spec'd
+     dashboards as tabs: Autonomous Fleet Status &amp; Geofence Map (active geofence violations plus
+     an on-demand asset lookup — no list-all-fleet read model exists, so per-asset lookup is the
+     closest compliant surface for "fleet status"), Safety Case Currency Board (looked up by asset
+     ID), and Human-Robot Interaction Heatmap (interaction events over a period, rendered as a
+     chronological/severity-sortable grid since no client-side heatmap visualization is part of
+     the Shared component library). Loads from the real GET
+     api/v1/autonomousvehiclesafety/geofences/active-violations, /assets/{id}, /safety-cases/
+     status/{id}, and /human-robot-interactions read-model endpoints.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/autonomous-vehicle-safety"
+
+@inject AutonomousVehicleSafetyState State
+@inject AutonomousVehicleSafetyApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.AutonomousVehicleSafety.ApiClients
+@using PlantSafety.UI.Modules.AutonomousVehicleSafety.Models
+
+<PageTitle>Autonomous Vehicle Safety — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The autonomous vehicle safety dashboard could not be displayed." OnRetry="LoadDefaultTabsAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDefaultTabsAsync" disabled="@(State.IsLoadingGeofences || State.IsLoadingInteractions)">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <TabControlComponent Tabs="_tabs" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Autonomous Vehicle Safety dashboards" />
+
+        @if (_activeTab == 0)
+        {
+            <div class="ps-page-actions">
+                <div class="ps-form-field">
+                    <label for="assetIdInput">Autonomous Vehicle Asset ID</label>
+                    <input id="assetIdInput" type="text" @bind="_assetIdInput" placeholder="Enter asset GUID" />
+                </div>
+                <button class="ps-btn ps-btn-secondary ps-btn-sm" @onclick="LookupAssetAsync">Look Up Asset</button>
+            </div>
+
+            @if (State.AssetLookupError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.AssetLookupError</div>
+            }
+            @if (State.LookedUpAsset is { } asset)
+            {
+                <CardComponent Title="@asset.AssetTag">
+                    <div class="ps-field-row"><span class="ps-field-label">Status</span> <StatusIndicatorComponent Status="@MapAssetStatus(asset)" Label="@asset.Status" /></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Vehicle Type</span> <span class="ps-field-value">@asset.VehicleType</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Autonomy Level</span> <span class="ps-field-value">@asset.AutonomyLevel</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Current Mode</span> <span class="ps-field-value">@asset.CurrentAutonomyMode</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Mode Transitions</span> <span class="ps-field-value">@asset.ModeTransitionCount</span></div>
+                    @if (!string.IsNullOrWhiteSpace(asset.SuspensionReason))
+                    {
+                        <div class="ps-field-row"><span class="ps-field-label">Suspension Reason</span> <span class="ps-field-value">@asset.SuspensionReason</span></div>
+                    }
+                </CardComponent>
+            }
+
+            <h3 class="ps-section-heading">Active Geofence Violations</h3>
+            @if (State.GeofencesError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.GeofencesError</div>
+            }
+            @if (State.IsLoadingGeofences)
+            {
+                <LoadingIndicatorComponent Message="Loading geofence violations…" />
+            }
+            else
+            {
+                <DataGridComponent TItem="OperatingGeofenceDto"
+                                    Items="@(State.GeofenceViolations.OrderByDescending(g => g.ViolationCount).ToList())"
+                                    Headers="_geofenceHeaders"
+                                    KeySelector="g => g.OperatingGeofenceId"
+                                    EmptyMessage="No geofences are currently reporting active violations."
+                                    AriaLabel="Geofences with active violations">
+                    <RowTemplate Context="geofence">
+                        <td>@geofence.GeofenceName</td>
+                        <td>@geofence.ZoneType</td>
+                        <td><StatusIndicatorComponent Status="@MapGeofenceStatus(geofence)" Label="@geofence.Status" /></td>
+                        <td>@geofence.ViolationCount</td>
+                        <td>@(geofence.LastAuditedAtUtc?.ToString("yyyy-MM-dd") ?? "Never audited")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+        else if (_activeTab == 1)
+        {
+            <div class="ps-page-actions">
+                <div class="ps-form-field">
+                    <label for="safetyCaseAssetIdInput">Autonomous Vehicle Asset ID</label>
+                    <input id="safetyCaseAssetIdInput" type="text" @bind="_safetyCaseAssetIdInput" placeholder="Enter asset GUID" />
+                </div>
+                <button class="ps-btn ps-btn-secondary ps-btn-sm" @onclick="LookupSafetyCaseAsync">Check Safety Case</button>
+            </div>
+
+            @if (State.SafetyCaseError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.SafetyCaseError</div>
+            }
+            @if (State.SafetyCase is { } safetyCase)
+            {
+                <CardComponent Title="@safetyCase.StandardReference">
+                    <div class="ps-field-row"><span class="ps-field-label">Status</span> <StatusIndicatorComponent Status="@MapSafetyCaseStatus(safetyCase)" Label="@safetyCase.Status" /></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Document Version</span> <span class="ps-field-value">@safetyCase.DocumentVersion</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Validated</span> <span class="ps-field-value">@(safetyCase.ValidatedAtUtc?.ToString("yyyy-MM-dd") ?? "Not yet validated")</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Expires</span> <span class="ps-field-value">@(safetyCase.ExpiresAtUtc?.ToString("yyyy-MM-dd") ?? "—") @(IsSafetyCaseExpiringSoon(safetyCase) ? "(expiring soon)" : "")</span></div>
+                </CardComponent>
+            }
+            else if (State.SafetyCaseAssetId is not null && State.SafetyCaseError is null)
+            {
+                <div class="ps-alert ps-alert--warning" role="status">No safety case has been validated for this asset.</div>
+            }
+            else if (State.SafetyCaseAssetId is null)
+            {
+                <div class="ps-alert ps-alert--info" role="status">Enter an autonomous vehicle asset ID above to check its safety-case currency.</div>
+            }
+        }
+        else
+        {
+            @if (State.InteractionsError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.InteractionsError</div>
+            }
+            @if (State.IsLoadingInteractions)
+            {
+                <LoadingIndicatorComponent Message="Loading human-robot interaction events…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Interactions (90 d.)"><span class="ps-field-value">@State.InteractionEvents.Count</span></CardComponent>
+                    <CardComponent Title="Contact / E-Stop"><span class="ps-field-value">@State.InteractionEvents.Count(e => e.InteractionType is "Contact" or "EStopTrigger")</span></CardComponent>
+                    <CardComponent Title="Closest Approach">
+                        <span class="ps-field-value">@(State.InteractionEvents.Any(e => e.DistanceMeters.HasValue) ? $"{State.InteractionEvents.Where(e => e.DistanceMeters.HasValue).Min(e => e.DistanceMeters!.Value):0.00} m" : "—")</span>
+                    </CardComponent>
+                </div>
+
+                <DataGridComponent TItem="HumanRobotInteractionEventDto"
+                                    Items="@(State.InteractionEvents.OrderByDescending(e => e.DetectedAtUtc).ToList())"
+                                    Headers="_interactionHeaders"
+                                    KeySelector="e => e.HumanRobotInteractionEventId"
+                                    EmptyMessage="No human-robot interaction events recorded in the trailing 90 days."
+                                    AriaLabel="Human-robot interaction events">
+                    <RowTemplate Context="evt">
+                        <td><StatusIndicatorComponent Status="@MapInteractionSeverity(evt.SeverityLevel)" Label="@evt.SeverityLevel" /></td>
+                        <td>@evt.InteractionType</td>
+                        <td>@(evt.DistanceMeters.HasValue ? $"{evt.DistanceMeters:0.00} m" : "—")</td>
+                        <td>@evt.Status</td>
+                        <td>@evt.DetectedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabs = ["Fleet Status & Geofence Map", "Safety Case Currency Board", "Human-Robot Interaction Heatmap"];
+    private static readonly string[] _geofenceHeaders = ["Geofence", "Zone Type", "Status", "Violations", "Last Audited"];
+    private static readonly string[] _interactionHeaders = ["Severity", "Interaction", "Distance", "Status", "Detected"];
+    private int _activeTab;
+    private string _assetIdInput = string.Empty;
+    private string _safetyCaseAssetIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Autonomous Vehicle Safety",
+            activeModuleCode: "autonomous-vehicle-safety",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Autonomous Vehicle Safety" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDefaultTabsAsync();
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _activeTab = index;
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadDefaultTabsAsync()
+    {
+        var siteId = TenantCtx.Tenant?.SiteId;
+        var to = DateTime.UtcNow;
+        var from90 = to.AddDays(-90);
+        var from30 = to.AddDays(-30);
+
+        State.BeginGeofencesLoad();
+        State.BeginInteractionsLoad();
+
+        var geofencesTask = ApiClient.ListActiveGeofenceViolationsAsync(siteId, from30, to);
+        var interactionsTask = ApiClient.ListHumanRobotInteractionEventsAsync(siteId, from90, to);
+        await Task.WhenAll(geofencesTask, interactionsTask);
+
+        var geofencesEnvelope = await geofencesTask;
+        if (geofencesEnvelope.IsSuccess)
+            State.SetGeofenceViolations(geofencesEnvelope.Data!.Items);
+        else
+            State.SetGeofencesError(geofencesEnvelope.IsProblem ? DescribeProblem(geofencesEnvelope.Problem!) : $"Failed to load geofence violations: {geofencesEnvelope.FaultType}");
+
+        var interactionsEnvelope = await interactionsTask;
+        if (interactionsEnvelope.IsSuccess)
+            State.SetInteractionEvents(interactionsEnvelope.Data!.Items);
+        else
+            State.SetInteractionsError(interactionsEnvelope.IsProblem ? DescribeProblem(interactionsEnvelope.Problem!) : $"Failed to load interaction events: {interactionsEnvelope.FaultType}");
+    }
+
+    private async Task LookupAssetAsync()
+    {
+        if (!Guid.TryParse(_assetIdInput, out var assetId))
+        {
+            State.SetAssetLookupError("Enter a valid autonomous vehicle asset GUID before looking it up.");
+            return;
+        }
+
+        var envelope = await ApiClient.GetAutonomousVehicleAssetByIdAsync(assetId);
+
+        if (envelope.IsSuccess)
+            State.SetLookedUpAsset(envelope.Data);
+        else if (envelope.IsProblem)
+            State.SetAssetLookupError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetAssetLookupError($"Failed to look up the asset: {envelope.FaultType}");
+    }
+
+    private async Task LookupSafetyCaseAsync()
+    {
+        if (!Guid.TryParse(_safetyCaseAssetIdInput, out var assetId))
+        {
+            State.SetSafetyCaseError("Enter a valid autonomous vehicle asset GUID before checking.");
+            return;
+        }
+
+        var envelope = await ApiClient.GetSafetyCaseStatusAsync(assetId);
+
+        if (envelope.IsSuccess)
+            State.SetSafetyCase(assetId, envelope.Data);
+        else if (envelope.IsProblem)
+            State.SetSafetyCaseError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetSafetyCaseError($"Failed to check the safety case: {envelope.FaultType}");
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static bool IsSafetyCaseExpiringSoon(SafetyCaseValidationDto safetyCase) =>
+        safetyCase.ExpiresAtUtc is { } expires && expires < DateTime.UtcNow.AddDays(30);
+
+    private static string MapAssetStatus(AutonomousVehicleAssetDto asset) => asset.Status.ToLowerInvariant() switch
+    {
+        "active" or "operational" => "Healthy",
+        "suspended" => "Critical",
+        "maintenance" => "Warning",
+        "retired" => "Offline",
+        _ => "Offline",
+    };
+
+    private static string MapGeofenceStatus(OperatingGeofenceDto geofence)
+    {
+        if (geofence.ViolationCount >= 5) return "Critical";
+        if (geofence.ViolationCount > 0) return "Warning";
+        return "Healthy";
+    }
+
+    private static string MapSafetyCaseStatus(SafetyCaseValidationDto safetyCase)
+    {
+        if (!string.Equals(safetyCase.Status, "Validated", StringComparison.OrdinalIgnoreCase))
+            return "Offline";
+        if (IsSafetyCaseExpiringSoon(safetyCase))
+            return "Warning";
+        return "Healthy";
+    }
+
+    private static string MapInteractionSeverity(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" or "contact" => "Critical",
+        "high" or "moderate" => "Warning",
+        "low" or "minor" => "Healthy",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

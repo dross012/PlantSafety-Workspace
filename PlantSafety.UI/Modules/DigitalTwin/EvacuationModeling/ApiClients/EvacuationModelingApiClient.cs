@@ -64,4 +64,12 @@ public sealed class EvacuationModelingApiClient : SafetyApiClientBase
         var query = siteId.HasValue ? $"?siteId={Uri.EscapeDataString(siteId.Value.ToString("D", CultureInfo.InvariantCulture))}" : string.Empty;
         return GetAsync<EgressSimulationDto>($"v1/digitaltwin/evacuation-modeling/zones/{zoneId:D}/simulations/latest{query}", cancellationToken);
     }
+
+    /// <summary>Retrieves the modeled evacuation routes (with nominal/planned egress times) for a zone,
+    /// feeding the Egress Simulation Comparison dashboard's "planned" side.</summary>
+    /// <param name="zoneId">The evacuation zone identifier.</param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    public Task<ApiResponseEnvelope<EvacuationRouteDto[]>> ListEvacuationRoutesByZoneAsync(
+        Guid zoneId, CancellationToken cancellationToken = default)
+        => GetAsync<EvacuationRouteDto[]>($"v1/digitaltwin/evacuation-modeling/zones/{zoneId:D}/routes", cancellationToken);
 }

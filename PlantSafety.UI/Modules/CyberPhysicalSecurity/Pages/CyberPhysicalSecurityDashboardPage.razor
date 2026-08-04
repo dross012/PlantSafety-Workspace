@@ -1,0 +1,238 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Combined CyberPhysicalSecurity dashboard page hosting the three spec'd
+     dashboards as tabs: OT Asset Security Status (looked up by asset ID — no list-all-assets read
+     model currently exists), Control-Change Audit Feed (unauthorized SCADA/HMI/ICS control-change
+     events), and Active Sabotage Indicator Board (correlated multi-source sabotage indicators).
+     Loads from the real GET api/v1/cyberphysicalsecurity/ot-assets/{id}, /control-change-events/
+     unauthorized, and /sabotage-indicators/active read-model endpoints. Built entirely from the
+     canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/cyber-physical-security"
+
+@inject CyberPhysicalSecurityState State
+@inject CyberPhysicalSecurityApiClient ApiClient
+@inject NavigationState NavState
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.CyberPhysicalSecurity.ApiClients
+@using PlantSafety.UI.Modules.CyberPhysicalSecurity.Models
+
+<PageTitle>Cyber-Physical Security — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The cyber-physical security dashboard could not be displayed." OnRetry="LoadDefaultTabsAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDefaultTabsAsync" disabled="@(State.IsLoadingChanges || State.IsLoadingIndicators)">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <TabControlComponent Tabs="_tabs" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Cyber-Physical Security dashboards" />
+
+        @if (_activeTab == 0)
+        {
+            <div class="ps-page-actions">
+                <div class="ps-form-field">
+                    <label for="assetIdInput">OT Asset ID</label>
+                    <input id="assetIdInput" type="text" @bind="_assetIdInput" placeholder="Enter OT asset GUID" />
+                </div>
+                <button class="ps-btn ps-btn-secondary ps-btn-sm" @onclick="LookupAssetAsync">Look Up</button>
+            </div>
+
+            @if (State.AssetLookupError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.AssetLookupError</div>
+            }
+            @if (State.LookedUpAsset is { } asset)
+            {
+                <CardComponent Title="@asset.AssetName">
+                    <div class="ps-field-row"><span class="ps-field-label">Status</span> <StatusIndicatorComponent Status="@MapAssetStatus(asset)" Label="@asset.Status" /></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Asset Tag</span> <span class="ps-field-value">@asset.AssetTag</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Type</span> <span class="ps-field-value">@asset.AssetType</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Vendor / Model</span> <span class="ps-field-value">@asset.Vendor @asset.Model</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Firmware</span> <span class="ps-field-value">@asset.FirmwareVersion</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Network Zone</span> <span class="ps-field-value">@asset.NetworkZone</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Criticality</span> <span class="ps-field-value">@asset.Criticality</span></div>
+                    <div class="ps-field-row"><span class="ps-field-label">Last Reconciled</span> <span class="ps-field-value">@(asset.LastReconciledAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "Never reconciled")</span></div>
+                </CardComponent>
+            }
+            else if (State.AssetLookupError is null)
+            {
+                <div class="ps-alert ps-alert--info" role="status">Enter an OT asset ID above to view its security status.</div>
+            }
+        }
+        else if (_activeTab == 1)
+        {
+            @if (State.ChangesError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.ChangesError</div>
+            }
+            @if (State.IsLoadingChanges)
+            {
+                <LoadingIndicatorComponent Message="Loading unauthorized control-change events…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Unauthorized Changes"><span class="ps-field-value">@State.UnauthorizedChanges.Count</span></CardComponent>
+                </div>
+
+                <DataGridComponent TItem="ControlChangeEventDto"
+                                    Items="@(State.UnauthorizedChanges.OrderByDescending(c => c.DetectedAtUtc).ToList())"
+                                    Headers="_changeHeaders"
+                                    KeySelector="c => c.ControlChangeEventId"
+                                    EmptyMessage="No unauthorized OT control-system changes flagged."
+                                    AriaLabel="Unauthorized control-change audit feed">
+                    <RowTemplate Context="change">
+                        <td>@change.ChangedParameter</td>
+                        <td>@change.OldValue → @change.NewValue</td>
+                        <td>@change.ChangeDescription</td>
+                        <td><span class="ps-chip ps-chip--danger">@change.AuthorizationStatus</span></td>
+                        <td>@change.DetectedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+        else
+        {
+            @if (State.IndicatorsError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.IndicatorsError</div>
+            }
+            @if (State.IsLoadingIndicators)
+            {
+                <LoadingIndicatorComponent Message="Loading active sabotage indicators…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Active Indicators"><span class="ps-field-value">@State.ActiveIndicators.Count</span></CardComponent>
+                    <CardComponent Title="Correlated (Multi-Source)"><span class="ps-field-value">@State.ActiveIndicators.Count(i => i.CorrelatedIndicatorCount > 0)</span></CardComponent>
+                    <CardComponent Title="Critical/High Severity"><span class="ps-field-value">@State.ActiveIndicators.Count(i => i.Severity is "Critical" or "High")</span></CardComponent>
+                </div>
+
+                <DataGridComponent TItem="SabotageIndicatorDto"
+                                    Items="@(State.ActiveIndicators.OrderByDescending(i => i.RaisedAtUtc).ToList())"
+                                    Headers="_indicatorHeaders"
+                                    KeySelector="i => i.SabotageIndicatorId"
+                                    EmptyMessage="No active sabotage indicators."
+                                    AriaLabel="Active sabotage indicator board">
+                    <RowTemplate Context="indicator">
+                        <td><StatusIndicatorComponent Status="@MapIndicatorSeverity(indicator.Severity)" Label="@indicator.Severity" /></td>
+                        <td>@indicator.Source</td>
+                        <td>@indicator.Description</td>
+                        <td>@indicator.CorrelatedIndicatorCount</td>
+                        <td>@indicator.RiskManagementPriority</td>
+                        <td>@indicator.RaisedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabs = ["OT Asset Security Status", "Control-Change Audit Feed", "Active Sabotage Indicator Board"];
+    private static readonly string[] _changeHeaders = ["Parameter", "Value Change", "Description", "Authorization", "Detected"];
+    private static readonly string[] _indicatorHeaders = ["Severity", "Source", "Description", "Correlated Count", "Risk Priority", "Raised"];
+    private int _activeTab;
+    private string _assetIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Cyber-Physical Security",
+            activeModuleCode: "cyber-physical-security",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Cyber-Physical Security" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDefaultTabsAsync();
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _activeTab = index;
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadDefaultTabsAsync()
+    {
+        State.BeginChangesLoad();
+        State.BeginIndicatorsLoad();
+
+        var changesTask = ApiClient.ListUnauthorizedControlChangesAsync();
+        var indicatorsTask = ApiClient.ListActiveSabotageIndicatorsAsync();
+        await Task.WhenAll(changesTask, indicatorsTask);
+
+        var changesEnvelope = await changesTask;
+        if (changesEnvelope.IsSuccess)
+            State.SetUnauthorizedChanges(changesEnvelope.Data ?? []);
+        else
+            State.SetChangesError(changesEnvelope.IsProblem ? DescribeProblem(changesEnvelope.Problem!) : $"Failed to load unauthorized control changes: {changesEnvelope.FaultType}");
+
+        var indicatorsEnvelope = await indicatorsTask;
+        if (indicatorsEnvelope.IsSuccess)
+            State.SetActiveIndicators(indicatorsEnvelope.Data ?? []);
+        else
+            State.SetIndicatorsError(indicatorsEnvelope.IsProblem ? DescribeProblem(indicatorsEnvelope.Problem!) : $"Failed to load active sabotage indicators: {indicatorsEnvelope.FaultType}");
+    }
+
+    private async Task LookupAssetAsync()
+    {
+        if (!Guid.TryParse(_assetIdInput, out var assetId))
+        {
+            State.SetAssetLookupError("Enter a valid OT asset GUID before looking it up.");
+            return;
+        }
+
+        var envelope = await ApiClient.GetOtAssetByIdAsync(assetId);
+
+        if (envelope.IsSuccess)
+            State.SetLookedUpAsset(envelope.Data);
+        else if (envelope.IsProblem)
+            State.SetAssetLookupError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetAssetLookupError($"Failed to look up the OT asset: {envelope.FaultType}");
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapAssetStatus(OtAssetDto asset) => asset.Status.ToLowerInvariant() switch
+    {
+        "active" or "reconciled" => "Healthy",
+        "unreconciled" or "stale" => "Warning",
+        "compromised" or "quarantined" => "Critical",
+        "decommissioned" => "Offline",
+        _ => "Offline",
+    };
+
+    private static string MapIndicatorSeverity(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" or "high" => "Critical",
+        "medium" => "Warning",
+        "low" => "Healthy",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -217,6 +217,42 @@ public static class RouteDefinitions
     /// <summary>Hazardous Waste Management — Accumulation Area Time-Limit Board.</summary>
     public const string HazardousWasteManagementAccumulationAreas = "/modules/hazardous-waste-management/accumulation-areas";
 
+    /// <summary>Water Discharge Compliance — Discharge Compliance Status.</summary>
+    public const string WaterDischargeComplianceStatus = "/modules/environmental-health/water-discharge-compliance";
+
+    /// <summary>Physical Access Control — Anomaly Feed (main dashboard).</summary>
+    public const string PhysicalAccessControlDashboard = "/modules/physical-access-control";
+
+    /// <summary>Logistics &amp; Transport Safety dashboard.</summary>
+    public const string LogisticsTransportSafetyDashboard = "/modules/logistics-transport-safety";
+
+    /// <summary>Community Safety dashboard.</summary>
+    public const string CommunitySafetyDashboard = "/modules/community-safety";
+
+    /// <summary>Public Safety Communication dashboard.</summary>
+    public const string PublicSafetyCommunicationDashboard = "/modules/public-safety-communication";
+
+    /// <summary>Cyber-Physical Security dashboard.</summary>
+    public const string CyberPhysicalSecurityDashboard = "/modules/cyber-physical-security";
+
+    /// <summary>Autonomous Vehicle Safety dashboard.</summary>
+    public const string AutonomousVehicleSafetyDashboard = "/modules/autonomous-vehicle-safety";
+
+    /// <summary>Machine Safety — Crane/Hoist Systems Fleet Status.</summary>
+    public const string CraneHoistSystemsFleetStatus = "/modules/machine-safety/crane-hoist-systems";
+
+    /// <summary>Local Emergency Coordination dashboard.</summary>
+    public const string LocalEmergencyCoordinationDashboard = "/modules/local-emergency-coordination";
+
+    /// <summary>Sustainability — Advanced Metrics dashboard.</summary>
+    public const string SustainabilityAdvancedMetricsDashboard = "/modules/sustainability/advanced-metrics";
+
+    /// <summary>Human Factors — Cognitive Load Analytics dashboard.</summary>
+    public const string CognitiveLoadAnalyticsDashboard = "/modules/human-factors/cognitive-load-analytics";
+
+    /// <summary>Digital Twin — Evacuation Modeling readiness board.</summary>
+    public const string EvacuationModelingReadinessBoard = "/modules/digital-twin/evacuation-modeling/readiness-board";
+
     /// <summary>Permits to Work list.</summary>
     public const string PermitsList = "/modules/permits";
 

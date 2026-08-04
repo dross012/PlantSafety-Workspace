@@ -1,0 +1,295 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Combined PublicSafetyCommunication dashboard page hosting the three spec'd
+     dashboards as tabs: Agency Notification Status Board (agency directory + dispatch status),
+     Broadcast History (active public alert broadcasts), and After-Action Communication Timeline
+     (looked up by incident ID). Loads from the real GET api/v1/publicsafetycommunication/agencies,
+     /notifications, /broadcasts/active, and /communication-log/{incidentId} read-model endpoints.
+     Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/public-safety-communication"
+
+@inject PublicSafetyCommunicationState State
+@inject PublicSafetyCommunicationApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PublicSafetyCommunication.ApiClients
+@using PlantSafety.UI.Modules.PublicSafetyCommunication.Models
+
+<PageTitle>Public Safety Communication — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The public safety communication dashboard could not be displayed." OnRetry="LoadDefaultTabsAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDefaultTabsAsync" disabled="@(State.IsLoadingStatusBoard || State.IsLoadingBroadcasts)">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <TabControlComponent Tabs="_tabs" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Public Safety Communication dashboards" />
+
+        @if (_activeTab == 0)
+        {
+            @if (State.StatusBoardError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.StatusBoardError</div>
+            }
+            @if (State.IsLoadingStatusBoard)
+            {
+                <LoadingIndicatorComponent Message="Loading agency notification status…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Agencies"><span class="ps-field-value">@State.Agencies.Count</span></CardComponent>
+                    <CardComponent Title="Verification Overdue"><span class="ps-field-value">@State.Agencies.Count(a => a.NextVerificationDueAtUtc is { } d && d < DateTime.UtcNow)</span></CardComponent>
+                    <CardComponent Title="Notifications (90 d.)"><span class="ps-field-value">@State.Notifications.Count</span></CardComponent>
+                    <CardComponent Title="Unacknowledged"><span class="ps-field-value">@State.Notifications.Count(n => n.DispatchedAtUtc.HasValue && !n.AcknowledgedAtUtc.HasValue)</span></CardComponent>
+                </div>
+
+                <h3 class="ps-section-heading">Agency Directory</h3>
+                <DataGridComponent TItem="PublicSafetyAgencyDto"
+                                    Items="State.Agencies"
+                                    Headers="_agencyHeaders"
+                                    KeySelector="a => a.PublicSafetyAgencyId"
+                                    EmptyMessage="No public-safety agencies registered."
+                                    AriaLabel="Public safety agency directory">
+                    <RowTemplate Context="agency">
+                        <td>@agency.AgencyName</td>
+                        <td>@agency.AgencyType</td>
+                        <td><StatusIndicatorComponent Status="@MapAgencyStatus(agency)" Label="@agency.Status" /></td>
+                        <td>@agency.VerificationStatus</td>
+                        <td>@(agency.NextVerificationDueAtUtc?.ToString("yyyy-MM-dd") ?? "—")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+
+                <h3 class="ps-section-heading">Recent Incident Notifications</h3>
+                <DataGridComponent TItem="IncidentNotificationDto"
+                                    Items="@(State.Notifications.OrderByDescending(n => n.DispatchedAtUtc ?? DateTime.MinValue).ToList())"
+                                    Headers="_notificationHeaders"
+                                    KeySelector="n => n.IncidentNotificationId"
+                                    EmptyMessage="No incident notifications dispatched in the trailing 90 days."
+                                    AriaLabel="Recent incident notifications">
+                    <RowTemplate Context="notification">
+                        <td><StatusIndicatorComponent Status="@MapNotificationStatus(notification)" Label="@notification.Status" /></td>
+                        <td>@notification.ChannelCode</td>
+                        <td>@(notification.DispatchedAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "Not dispatched")</td>
+                        <td>@(notification.AcknowledgedAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "Not acknowledged")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+        else if (_activeTab == 1)
+        {
+            @if (State.BroadcastsError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.BroadcastsError</div>
+            }
+            @if (State.IsLoadingBroadcasts)
+            {
+                <LoadingIndicatorComponent Message="Loading broadcast history…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Active Broadcasts"><span class="ps-field-value">@State.ActiveBroadcasts.Count</span></CardComponent>
+                    <CardComponent Title="Delivery Confirmed"><span class="ps-field-value">@State.ActiveBroadcasts.Count(b => b.DeliveryConfirmedAtUtc.HasValue)</span></CardComponent>
+                </div>
+
+                <DataGridComponent TItem="PublicAlertBroadcastDto"
+                                    Items="@(State.ActiveBroadcasts.OrderByDescending(b => b.IssuedAtUtc ?? DateTime.MinValue).ToList())"
+                                    Headers="_broadcastHeaders"
+                                    KeySelector="b => b.PublicAlertBroadcastId"
+                                    EmptyMessage="No active public alert broadcasts."
+                                    AriaLabel="Public alert broadcast history">
+                    <RowTemplate Context="broadcast">
+                        <td><StatusIndicatorComponent Status="@MapBroadcastStatus(broadcast)" Label="@broadcast.Status" /></td>
+                        <td>@broadcast.Headline</td>
+                        <td>@broadcast.SeverityCode</td>
+                        <td>@broadcast.ChannelCode</td>
+                        <td>@broadcast.TargetArea</td>
+                        <td>@(broadcast.IssuedAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "Not yet issued")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+        else
+        {
+            <div class="ps-page-actions">
+                <div class="ps-form-field">
+                    <label for="timelineIncidentIdInput">Incident ID</label>
+                    <input id="timelineIncidentIdInput" type="text" @bind="_timelineIncidentIdInput" placeholder="Enter incident GUID" />
+                </div>
+                <button class="ps-btn ps-btn-secondary ps-btn-sm" @onclick="LoadTimelineAsync">Load Timeline</button>
+            </div>
+
+            @if (State.TimelineError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.TimelineError</div>
+            }
+            @if (State.IsLoadingTimeline)
+            {
+                <LoadingIndicatorComponent Message="Loading the after-action communication timeline…" />
+            }
+            else if (State.TimelineIncidentId is null)
+            {
+                <div class="ps-alert ps-alert--info" role="status">Enter an incident ID above to view its full after-action communication timeline.</div>
+            }
+            else
+            {
+                <DataGridComponent TItem="CommunicationLogEntryDto"
+                                    Items="@(State.CommunicationLog.OrderBy(e => e.OccurredAtUtc).ToList())"
+                                    Headers="_timelineHeaders"
+                                    KeySelector="e => e.CommunicationLogEntryId"
+                                    EmptyMessage="No communications logged for this incident."
+                                    AriaLabel="After-action communication timeline for the selected incident">
+                    <RowTemplate Context="entry">
+                        <td>@entry.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@entry.Direction</td>
+                        <td>@entry.Medium</td>
+                        <td>@entry.CounterpartyName</td>
+                        <td>@entry.Summary</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabs = ["Agency Notification Status Board", "Broadcast History", "After-Action Communication Timeline"];
+    private static readonly string[] _agencyHeaders = ["Agency", "Type", "Status", "Verification", "Next Due"];
+    private static readonly string[] _notificationHeaders = ["Status", "Channel", "Dispatched", "Acknowledged"];
+    private static readonly string[] _broadcastHeaders = ["Status", "Headline", "Severity", "Channel", "Target Area", "Issued"];
+    private static readonly string[] _timelineHeaders = ["Occurred", "Direction", "Medium", "Counterparty", "Summary"];
+    private int _activeTab;
+    private string _timelineIncidentIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Public Safety Communication",
+            activeModuleCode: "public-safety-communication",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Public Safety Communication" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDefaultTabsAsync();
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _activeTab = index;
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadDefaultTabsAsync()
+    {
+        var siteId = TenantCtx.Tenant?.SiteId;
+        var to = DateTime.UtcNow.AddDays(90);
+        var from = DateTime.UtcNow.AddDays(-90);
+
+        State.BeginStatusBoardLoad();
+        State.BeginBroadcastsLoad();
+
+        var agenciesTask = ApiClient.ListPublicSafetyAgenciesAsync(siteId, activeOnly: null);
+        var notificationsTask = ApiClient.GetIncidentNotificationStatusAsync(siteId, incidentId: null, from, to);
+        var broadcastsTask = ApiClient.ListActiveBroadcastsAsync(siteId);
+        await Task.WhenAll(agenciesTask, notificationsTask, broadcastsTask);
+
+        var agenciesEnvelope = await agenciesTask;
+        var notificationsEnvelope = await notificationsTask;
+        if (agenciesEnvelope.IsSuccess && notificationsEnvelope.IsSuccess)
+        {
+            State.SetStatusBoardData(agenciesEnvelope.Data!.Items, notificationsEnvelope.Data!.Items);
+        }
+        else
+        {
+            var problem = agenciesEnvelope.Problem ?? notificationsEnvelope.Problem;
+            State.SetStatusBoardError(problem is not null
+                ? DescribeProblem(problem)
+                : $"Failed to load agency notification status: {agenciesEnvelope.FaultType ?? notificationsEnvelope.FaultType}");
+        }
+
+        var broadcastsEnvelope = await broadcastsTask;
+        if (broadcastsEnvelope.IsSuccess)
+            State.SetActiveBroadcasts(broadcastsEnvelope.Data!.Items);
+        else
+            State.SetBroadcastsError(broadcastsEnvelope.IsProblem ? DescribeProblem(broadcastsEnvelope.Problem!) : $"Failed to load active broadcasts: {broadcastsEnvelope.FaultType}");
+    }
+
+    private async Task LoadTimelineAsync()
+    {
+        if (!Guid.TryParse(_timelineIncidentIdInput, out var incidentId))
+        {
+            State.SetTimelineError("Enter a valid incident GUID before loading the timeline.");
+            return;
+        }
+
+        State.BeginTimelineLoad(incidentId);
+
+        var envelope = await ApiClient.GetCommunicationLogByIncidentAsync(incidentId);
+
+        if (envelope.IsSuccess)
+            State.SetCommunicationLog(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetTimelineError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetTimelineError($"Failed to load the communication timeline: {envelope.FaultType}");
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapAgencyStatus(PublicSafetyAgencyDto agency)
+    {
+        if (!string.Equals(agency.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            return "Offline";
+        if (agency.NextVerificationDueAtUtc is { } due && due < DateTime.UtcNow)
+            return "Warning";
+        return "Healthy";
+    }
+
+    private static string MapNotificationStatus(IncidentNotificationDto n)
+    {
+        if (n.AcknowledgedAtUtc.HasValue) return "Healthy";
+        if (n.DispatchedAtUtc.HasValue) return "Warning";
+        return n.Status.ToLowerInvariant() switch
+        {
+            "failed" => "Critical",
+            _ => "Offline",
+        };
+    }
+
+    private static string MapBroadcastStatus(PublicAlertBroadcastDto b)
+    {
+        if (b.DeliveryConfirmedAtUtc.HasValue) return "Healthy";
+        return b.Status.ToLowerInvariant() switch
+        {
+            "failed" => "Critical",
+            "issued" => "Warning",
+            _ => "Offline",
+        };
+    }
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

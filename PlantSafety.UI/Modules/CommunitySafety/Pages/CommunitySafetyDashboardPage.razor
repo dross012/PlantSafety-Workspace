@@ -1,0 +1,261 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Combined CommunitySafety dashboard page hosting the three spec'd dashboards
+     as tabs: Community Concern Tracker (open neighbor concerns), Notification History &amp; Reach
+     (outreach history over a period), and Impact Assessment Summary by incident (looked up by
+     SafetyEvents incident ID — the API deliberately exposes impact assessments per-incident, not
+     as a bulk list). Loads from the real GET api/v1/communitysafety/community-concerns/open,
+     /community-notifications, and /community-impact-assessments/by-incident/{id} read-model
+     endpoints. Built entirely from the canonical Shared component library.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/community-safety"
+
+@inject CommunitySafetyState State
+@inject CommunitySafetyApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.CommunitySafety.ApiClients
+@using PlantSafety.UI.Modules.CommunitySafety.Models
+
+<PageTitle>Community Safety — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The community safety dashboard could not be displayed." OnRetry="LoadDefaultTabsAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadDefaultTabsAsync" disabled="@(State.IsLoadingConcerns || State.IsLoadingNotifications)">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <TabControlComponent Tabs="_tabs" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Community Safety dashboards" />
+
+        @if (_activeTab == 0)
+        {
+            @if (State.ConcernsError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.ConcernsError</div>
+            }
+            @if (State.IsLoadingConcerns)
+            {
+                <LoadingIndicatorComponent Message="Loading open community concerns…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Open Concerns"><span class="ps-field-value">@State.OpenConcerns.Count</span></CardComponent>
+                    <CardComponent Title="High/Critical"><span class="ps-field-value">@State.OpenConcerns.Count(c => c.Severity is "High" or "Critical")</span></CardComponent>
+                    <CardComponent Title="Incident-Related"><span class="ps-field-value">@State.OpenConcerns.Count(c => c.RelatedIncidentId.HasValue)</span></CardComponent>
+                </div>
+
+                <DataGridComponent TItem="CommunityConcernDto"
+                                    Items="@(State.OpenConcerns.OrderByDescending(c => c.LoggedAtUtc).ToList())"
+                                    Headers="_concernHeaders"
+                                    KeySelector="c => c.CommunityConcernId"
+                                    EmptyMessage="No open community concerns."
+                                    AriaLabel="Open community concerns">
+                    <RowTemplate Context="concern">
+                        <td><StatusIndicatorComponent Status="@MapConcernSeverity(concern.Severity)" Label="@concern.Severity" /></td>
+                        <td>@concern.Category</td>
+                        <td>@concern.FacilityArea</td>
+                        <td>@concern.ConcernStatus</td>
+                        <td>@concern.LoggedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+        else if (_activeTab == 1)
+        {
+            @if (State.NotificationsError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.NotificationsError</div>
+            }
+            @if (State.IsLoadingNotifications)
+            {
+                <LoadingIndicatorComponent Message="Loading notification history…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Notifications (12 mo.)"><span class="ps-field-value">@State.Notifications.Count</span></CardComponent>
+                    <CardComponent Title="Acknowledged"><span class="ps-field-value">@State.Notifications.Count(n => n.AcknowledgedAtUtc.HasValue)</span></CardComponent>
+                    <CardComponent Title="Reach Rate">
+                        <span class="ps-field-value">@(State.Notifications.Count > 0 ? $"{(double)State.Notifications.Count(n => n.AcknowledgedAtUtc.HasValue) / State.Notifications.Count:P0}" : "—")</span>
+                    </CardComponent>
+                </div>
+
+                <DataGridComponent TItem="CommunityNotificationDto"
+                                    Items="@(State.Notifications.OrderByDescending(n => n.SentAtUtc).ToList())"
+                                    Headers="_notificationHeaders"
+                                    KeySelector="n => n.CommunityNotificationId"
+                                    EmptyMessage="No community notifications sent in the trailing 12 months."
+                                    AriaLabel="Community notification history">
+                    <RowTemplate Context="notification">
+                        <td><StatusIndicatorComponent Status="@MapNotificationStatus(notification)" Label="@notification.NotificationStatus" /></td>
+                        <td>@notification.Channel</td>
+                        <td>@notification.Subject</td>
+                        <td>@notification.SentAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@(notification.AcknowledgedAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "Not acknowledged")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+        else
+        {
+            <div class="ps-page-actions">
+                <div class="ps-form-field">
+                    <label for="incidentIdInput">SafetyEvents Incident ID</label>
+                    <input id="incidentIdInput" type="text" @bind="_incidentIdInput" placeholder="Enter incident GUID" />
+                </div>
+                <button class="ps-btn ps-btn-secondary ps-btn-sm" @onclick="LoadImpactAsync">Load Summary</button>
+            </div>
+
+            @if (State.ImpactError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.ImpactError</div>
+            }
+            @if (State.IsLoadingImpact)
+            {
+                <LoadingIndicatorComponent Message="Loading impact assessment summary…" />
+            }
+            else if (State.ImpactIncidentId is null)
+            {
+                <div class="ps-alert ps-alert--info" role="status">Enter a SafetyEvents incident ID above to view its community impact assessment summary.</div>
+            }
+            else
+            {
+                <DataGridComponent TItem="CommunityImpactAssessmentDto"
+                                    Items="@(State.ImpactAssessments.OrderByDescending(a => a.AssessedAtUtc).ToList())"
+                                    Headers="_impactHeaders"
+                                    KeySelector="a => a.CommunityImpactAssessmentId"
+                                    EmptyMessage="No community impact assessments recorded for this incident."
+                                    AriaLabel="Community impact assessment summary for the selected incident">
+                    <RowTemplate Context="assessment">
+                        <td><StatusIndicatorComponent Status="@MapAssessmentSeverity(assessment.Severity)" Label="@assessment.Severity" /></td>
+                        <td>@assessment.AffectedArea</td>
+                        <td>@(assessment.EstimatedPersonsAffected?.ToString() ?? "Unknown")</td>
+                        <td>@(assessment.RequiresRightToKnowReporting ? "Yes" : "No")</td>
+                        <td>@assessment.AssessmentStatus</td>
+                        <td>@assessment.AssessedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabs = ["Community Concern Tracker", "Notification History & Reach", "Impact Assessment Summary"];
+    private static readonly string[] _concernHeaders = ["Severity", "Category", "Facility Area", "Status", "Logged"];
+    private static readonly string[] _notificationHeaders = ["Status", "Channel", "Subject", "Sent", "Acknowledged"];
+    private static readonly string[] _impactHeaders = ["Severity", "Affected Area", "Est. Persons Affected", "Right-to-Know Reporting", "Status", "Assessed"];
+    private int _activeTab;
+    private string _incidentIdInput = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Community Safety",
+            activeModuleCode: "community-safety",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Community Safety" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadDefaultTabsAsync();
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _activeTab = index;
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadDefaultTabsAsync()
+    {
+        var siteId = TenantCtx.Tenant?.SiteId;
+        var to = DateTime.UtcNow;
+        var from = to.AddMonths(-12);
+
+        State.BeginConcernsLoad();
+        State.BeginNotificationsLoad();
+
+        var concernsTask = ApiClient.ListOpenCommunityConcernsAsync(siteId);
+        var notificationsTask = ApiClient.ListNotificationsByPeriodAsync(siteId, from, to);
+        await Task.WhenAll(concernsTask, notificationsTask);
+
+        var concernsEnvelope = await concernsTask;
+        if (concernsEnvelope.IsSuccess)
+            State.SetOpenConcerns(concernsEnvelope.Data!.Items);
+        else
+            State.SetConcernsError(concernsEnvelope.IsProblem ? DescribeProblem(concernsEnvelope.Problem!) : $"Failed to load open concerns: {concernsEnvelope.FaultType}");
+
+        var notificationsEnvelope = await notificationsTask;
+        if (notificationsEnvelope.IsSuccess)
+            State.SetNotifications(notificationsEnvelope.Data!.Items);
+        else
+            State.SetNotificationsError(notificationsEnvelope.IsProblem ? DescribeProblem(notificationsEnvelope.Problem!) : $"Failed to load notifications: {notificationsEnvelope.FaultType}");
+    }
+
+    private async Task LoadImpactAsync()
+    {
+        if (!Guid.TryParse(_incidentIdInput, out var incidentId))
+        {
+            State.SetImpactError("Enter a valid SafetyEvents incident GUID before loading.");
+            return;
+        }
+
+        State.BeginImpactLoad(incidentId);
+
+        var envelope = await ApiClient.GetImpactAssessmentsByIncidentAsync(incidentId);
+
+        if (envelope.IsSuccess)
+            State.SetImpactAssessments(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetImpactError(DescribeProblem(envelope.Problem!));
+        else
+            State.SetImpactError($"Failed to load the impact assessment summary: {envelope.FaultType}");
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapConcernSeverity(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" => "Critical",
+        "high" => "Critical",
+        "medium" => "Warning",
+        "low" => "Healthy",
+        _ => "Offline",
+    };
+
+    private static string MapNotificationStatus(CommunityNotificationDto n) =>
+        n.AcknowledgedAtUtc.HasValue ? "Healthy" : "Warning";
+
+    private static string MapAssessmentSeverity(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" or "severe" => "Critical",
+        "moderate" => "Warning",
+        "minor" or "low" => "Healthy",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

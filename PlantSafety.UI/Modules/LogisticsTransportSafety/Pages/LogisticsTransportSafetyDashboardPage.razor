@@ -1,0 +1,245 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform Team
+   CREATED: 2026-08-04
+   FILE DESCRIPTION: Combined LogisticsTransportSafety dashboard page hosting the three spec'd
+     dashboards as tabs: Fleet Safety Status (carrier safety ratings), Active Trip Tracker
+     (Planned/InProgress transport trips), and Transport Incident Trends (incident history).
+     Loads from the real GET api/v1/logisticstransportsafety/carriers, /transport-trips/active,
+     and /transport-incidents read-model endpoints. Built entirely from the canonical Shared
+     component library, following the Modules/Sustainability/AdvancedMetrics single-page-with-
+     sections exemplar pattern.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/logistics-transport-safety"
+
+@inject LogisticsTransportSafetyState State
+@inject LogisticsTransportSafetyApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.LogisticsTransportSafety.ApiClients
+@using PlantSafety.UI.Modules.LogisticsTransportSafety.Models
+
+<PageTitle>Logistics &amp; Transport Safety — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The logistics and transport safety dashboard could not be displayed." OnRetry="LoadAllAsync">
+
+        <div class="ps-page-actions">
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAllAsync" disabled="@(State.IsLoadingCarriers || State.IsLoadingTrips || State.IsLoadingIncidents)">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <TabControlComponent Tabs="_tabs" ActiveIndex="_activeTab" ActiveIndexChanged="OnTabChangedAsync" AriaLabel="Logistics and Transport Safety dashboards" />
+
+        @if (_activeTab == 0)
+        {
+            @if (State.CarriersError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.CarriersError</div>
+            }
+            @if (State.IsLoadingCarriers)
+            {
+                <LoadingIndicatorComponent Message="Loading fleet safety status…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Carriers"><span class="ps-field-value">@State.Carriers.Count</span></CardComponent>
+                    <CardComponent Title="Suspended"><span class="ps-field-value">@State.Carriers.Count(c => string.Equals(c.CarrierStatus, "Suspended", StringComparison.OrdinalIgnoreCase))</span></CardComponent>
+                    <CardComponent Title="Avg. Safety Rating">
+                        <span class="ps-field-value">@(State.Carriers.Any(c => c.SafetyRatingScore.HasValue) ? State.Carriers.Where(c => c.SafetyRatingScore.HasValue).Average(c => c.SafetyRatingScore!.Value).ToString("0.0") : "—")</span>
+                    </CardComponent>
+                </div>
+
+                <DataGridComponent TItem="CarrierDto"
+                                    Items="State.Carriers"
+                                    Headers="_carrierHeaders"
+                                    KeySelector="c => c.CarrierId"
+                                    EmptyMessage="No carriers registered."
+                                    AriaLabel="Fleet safety status by carrier">
+                    <RowTemplate Context="carrier">
+                        <td>@carrier.CarrierName</td>
+                        <td>@carrier.CarrierType</td>
+                        <td><StatusIndicatorComponent Status="@MapCarrierStatus(carrier)" Label="@carrier.CarrierStatus" /></td>
+                        <td>@(carrier.SafetyRatingScore?.ToString("0.0") ?? "Not yet qualified")</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+        else if (_activeTab == 1)
+        {
+            @if (State.TripsError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.TripsError</div>
+            }
+            @if (State.IsLoadingTrips)
+            {
+                <LoadingIndicatorComponent Message="Loading active trips…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Active Trips"><span class="ps-field-value">@State.ActiveTrips.Count</span></CardComponent>
+                    <CardComponent Title="In Progress"><span class="ps-field-value">@State.ActiveTrips.Count(t => string.Equals(t.TripStatus, "InProgress", StringComparison.OrdinalIgnoreCase))</span></CardComponent>
+                    <CardComponent Title="Hazmat Trips"><span class="ps-field-value">@State.ActiveTrips.Count(t => string.Equals(t.TripType, "HazmatTransport", StringComparison.OrdinalIgnoreCase))</span></CardComponent>
+                </div>
+
+                <DataGridComponent TItem="TransportTripDto"
+                                    Items="@(State.ActiveTrips.OrderBy(t => t.PlannedDepartureAtUtc).ToList())"
+                                    Headers="_tripHeaders"
+                                    KeySelector="t => t.TransportTripId"
+                                    EmptyMessage="No active (Planned or InProgress) trips."
+                                    AriaLabel="Active transport trips">
+                    <RowTemplate Context="trip">
+                        <td><StatusIndicatorComponent Status="@MapTripStatus(trip.TripStatus)" Label="@trip.TripStatus" /></td>
+                        <td>@trip.TripType</td>
+                        <td>@trip.RouteDescription</td>
+                        <td>@trip.PlannedDepartureAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+        else
+        {
+            @if (State.IncidentsError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.IncidentsError</div>
+            }
+            @if (State.IsLoadingIncidents)
+            {
+                <LoadingIndicatorComponent Message="Loading transport incident trends…" />
+            }
+            else
+            {
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--ps-space-4);">
+                    <CardComponent Title="Incidents (12 mo.)"><span class="ps-field-value">@State.Incidents.Count</span></CardComponent>
+                    <CardComponent Title="Critical/Major"><span class="ps-field-value">@State.Incidents.Count(i => i.Severity is "Critical" or "Major")</span></CardComponent>
+                    <CardComponent Title="Open"><span class="ps-field-value">@State.Incidents.Count(i => i.IncidentStatus is not ("Closed"))</span></CardComponent>
+                </div>
+
+                <DataGridComponent TItem="TransportIncidentDto"
+                                    Items="@(State.Incidents.OrderByDescending(i => i.OccurredAtUtc).ToList())"
+                                    Headers="_incidentHeaders"
+                                    KeySelector="i => i.TransportIncidentId"
+                                    EmptyMessage="No transport incidents recorded in the trailing 12 months."
+                                    AriaLabel="Transport incident trends">
+                    <RowTemplate Context="incident">
+                        <td><StatusIndicatorComponent Status="@MapIncidentSeverity(incident.Severity)" Label="@incident.Severity" /></td>
+                        <td>@incident.IncidentType</td>
+                        <td>@incident.IncidentStatus</td>
+                        <td>@incident.Location</td>
+                        <td>@incident.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    </RowTemplate>
+                </DataGridComponent>
+            }
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _tabs = ["Fleet Safety Status", "Active Trip Tracker", "Transport Incident Trends"];
+    private static readonly string[] _carrierHeaders = ["Carrier", "Type", "Status", "Safety Rating"];
+    private static readonly string[] _tripHeaders = ["Status", "Trip Type", "Route", "Planned Departure"];
+    private static readonly string[] _incidentHeaders = ["Severity", "Type", "Status", "Location", "Occurred"];
+    private int _activeTab;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Logistics & Transport Safety",
+            activeModuleCode: "logistics-transport-safety",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Logistics & Transport Safety" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAllAsync();
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _activeTab = index;
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadAllAsync()
+    {
+        var siteId = TenantCtx.Tenant?.SiteId;
+        var to = DateTime.UtcNow;
+        var from = to.AddMonths(-12);
+
+        State.BeginCarriersLoad();
+        State.BeginTripsLoad();
+        State.BeginIncidentsLoad();
+
+        var carriersTask = ApiClient.GetCarriersAsync(siteId, from, to);
+        var tripsTask = ApiClient.ListActiveTripsAsync(siteId);
+        var incidentsTask = ApiClient.GetTransportIncidentHistoryAsync(siteId, from, to);
+        await Task.WhenAll(carriersTask, tripsTask, incidentsTask);
+
+        var carriersEnvelope = await carriersTask;
+        if (carriersEnvelope.IsSuccess)
+            State.SetCarriers(carriersEnvelope.Data!.Items);
+        else
+            State.SetCarriersError(carriersEnvelope.IsProblem ? DescribeProblem(carriersEnvelope.Problem!) : $"Failed to load carriers: {carriersEnvelope.FaultType}");
+
+        var tripsEnvelope = await tripsTask;
+        if (tripsEnvelope.IsSuccess)
+            State.SetActiveTrips(tripsEnvelope.Data!.Items);
+        else
+            State.SetTripsError(tripsEnvelope.IsProblem ? DescribeProblem(tripsEnvelope.Problem!) : $"Failed to load active trips: {tripsEnvelope.FaultType}");
+
+        var incidentsEnvelope = await incidentsTask;
+        if (incidentsEnvelope.IsSuccess)
+            State.SetIncidents(incidentsEnvelope.Data!.Items);
+        else
+            State.SetIncidentsError(incidentsEnvelope.IsProblem ? DescribeProblem(incidentsEnvelope.Problem!) : $"Failed to load transport incidents: {incidentsEnvelope.FaultType}");
+    }
+
+    private static string DescribeProblem(PlantSafety.UI.Models.Common.ProblemDetailsDto problem) =>
+        string.IsNullOrWhiteSpace(problem.Detail) ? "The request failed." : problem.Detail;
+
+    private static string MapCarrierStatus(CarrierDto carrier)
+    {
+        if (string.Equals(carrier.CarrierStatus, "Suspended", StringComparison.OrdinalIgnoreCase) || string.Equals(carrier.CarrierStatus, "Retired", StringComparison.OrdinalIgnoreCase))
+            return "Critical";
+        if (carrier.SafetyRatingScore is { } score && score < 60)
+            return "Warning";
+        return carrier.SafetyRatingScore.HasValue ? "Healthy" : "Offline";
+    }
+
+    private static string MapTripStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "inprogress" => "Warning",
+        "planned" => "Healthy",
+        "completed" => "Healthy",
+        "cancelled" => "Offline",
+        _ => "Offline",
+    };
+
+    private static string MapIncidentSeverity(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" or "major" => "Critical",
+        "moderate" => "Warning",
+        "minor" => "Healthy",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}
