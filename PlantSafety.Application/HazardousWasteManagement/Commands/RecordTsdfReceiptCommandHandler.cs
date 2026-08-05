@@ -39,7 +39,8 @@ public sealed class RecordTsdfReceiptCommandHandler : IRequestHandler<RecordTsdf
                 return Result<HazardousWasteManifestActionResult>.Failure(new ApplicationError(
                     "HazardousWasteManagement.Manifest.NotFound",
                     "The requested manifest could not be found.",
-                    Guid.NewGuid()));
+                    Guid.NewGuid(),
+                    ErrorSeverity.NotFound));
             }
 
             var performedBy = UserId.FromGuid(request.PerformedByUserId);

@@ -37,7 +37,8 @@ public sealed class GetCommunityConcernByIdQueryHandler : IRequestHandler<GetCom
                 return Result<CommunityConcernItemDto>.Failure(new ApplicationError(
                     "CommunitySafety.CommunityConcern.NotFound",
                     "The requested CommunityConcern record could not be found.",
-                    Guid.NewGuid()));
+                    Guid.NewGuid(),
+                    ErrorSeverity.NotFound));
             }
 
             return Result<CommunityConcernItemDto>.Success(item);

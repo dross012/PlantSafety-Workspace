@@ -39,7 +39,8 @@ public sealed class CloseAccumulationContainerCommandHandler : IRequestHandler<C
                 return Result<WasteContainerActionResult>.Failure(new ApplicationError(
                     "HazardousWasteManagement.WasteContainer.NotFound",
                     "The requested WasteContainer record could not be found.",
-                    Guid.NewGuid()));
+                    Guid.NewGuid(),
+                    ErrorSeverity.NotFound));
             }
 
             var performedBy = UserId.FromGuid(request.PerformedByUserId);

@@ -39,7 +39,8 @@ public sealed class SuspendAutonomousOperationCommandHandler : IRequestHandler<S
                 return Result<AutonomousVehicleAssetActionResult>.Failure(new ApplicationError(
                     "AutonomousVehicleSafety.AutonomousVehicleAsset.NotFound",
                     "The requested AutonomousVehicleAsset record could not be found.",
-                    Guid.NewGuid()));
+                    Guid.NewGuid(),
+                    ErrorSeverity.NotFound));
             }
 
             var performedBy = UserId.FromGuid(request.PerformedByUserId);

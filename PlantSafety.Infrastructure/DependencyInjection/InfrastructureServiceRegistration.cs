@@ -30,6 +30,9 @@ using PlantSafety.Application.Abstractions.Security;
 using PlantSafety.Application.Abstractions.Identity;
 using PlantSafety.Application.Abstractions.Authentication;
 using PlantSafety.Infrastructure.Identity;
+using PlantSafety.Infrastructure.PublicSafetyCommunication.DependencyInjection;
+using PlantSafety.Infrastructure.CyberPhysicalSecurity.DependencyInjection;
+using PlantSafety.Infrastructure.DigitalTwin.EvacuationModeling.DependencyInjection;
 using PlantSafety.Infrastructure.Messaging.Publishers;
 using PlantSafety.Infrastructure.Messaging.Consumers.OperationalSafety;
 using PlantSafety.Infrastructure.Messaging.Consumers.Compliance;
@@ -791,6 +794,9 @@ public static class InfrastructureServiceRegistration
             .AddLogisticsTransportSafetyInfrastructure()
             .AddAutonomousVehicleSafetyInfrastructure()
             .AddCommunitySafetyInfrastructure()
+            .AddPublicSafetyCommunicationInfrastructure()
+            .AddCyberPhysicalSecurityInfrastructure()
+            .AddEvacuationModelingInfrastructure()
             .AddSafetyProceduresInfrastructure()
             .AddSafetyPoliciesInfrastructure()
             .AddAccidentManagementInfrastructure()

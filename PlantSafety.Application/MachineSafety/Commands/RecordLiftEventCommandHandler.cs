@@ -39,7 +39,8 @@ public sealed class RecordLiftEventCommandHandler : IRequestHandler<RecordLiftEv
                 return Result<CraneHoistSystemsActionResult>.Failure(new ApplicationError(
                     "MachineSafety.CraneHoistSystems.NotFound",
                     "The requested CraneHoistSystems record could not be found.",
-                    Guid.NewGuid()));
+                    Guid.NewGuid(),
+                    ErrorSeverity.NotFound));
             }
 
             var performedBy = UserId.FromGuid(request.PerformedByUserId);

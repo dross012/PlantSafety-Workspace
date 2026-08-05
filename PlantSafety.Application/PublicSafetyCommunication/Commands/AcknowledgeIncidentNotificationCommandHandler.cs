@@ -39,7 +39,8 @@ public sealed class AcknowledgeIncidentNotificationCommandHandler : IRequestHand
                 return Result<IncidentNotificationActionResult>.Failure(new ApplicationError(
                     "PublicSafetyCommunication.IncidentNotification.NotFound",
                     "The requested incident notification could not be found.",
-                    Guid.NewGuid()));
+                    Guid.NewGuid(),
+                    ErrorSeverity.NotFound));
             }
 
             var actorId = UserId.FromGuid(request.ActorId);

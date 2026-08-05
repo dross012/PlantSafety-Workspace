@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 //  Project:        PlantSafety.Platform
 //  Module:         IntegrationTests.Setup
 //  Layer:          IntegrationTests
@@ -15,7 +15,7 @@ namespace PlantSafety.IntegrationTests.Setup;
 /// Applies all canonical System schema objects (OutboxMessages, ProcessedEvents)
 /// against the provided Testcontainers connection string before tests execute.
 /// </summary>
-public static class TestDatabaseFactory
+public static partial class TestDatabaseFactory
 {
     /// <summary>Creates System schema and required tables.</summary>
     public static async Task ApplySchemaAsync(string connectionString, CancellationToken cancellationToken = default)
@@ -9385,6 +9385,5379 @@ ORDER BY [ScheduledAtUtc] DESC;
                 WHERE [TenantId] = @TenantId
                   AND [OccurredAtUtc] BETWEEN @FromUtc AND @ToUtc
                 ORDER BY [OccurredAtUtc] DESC;
+            END
+            """);
+    }
+
+    /// <summary>
+    /// Creates the <c>[HazardousWasteManagement]</c> schema's seven tables (WasteStreams,
+    /// WasteContainers, AccumulationAreas, Manifests, Transporters, TsdfFacilities,
+    /// DisposalCertificates) and their stored procedures against the Testcontainers database,
+    /// mirroring <c>PlantSafety.Infrastructure\HazardousWasteManagement\Sql\Tables\*.sql</c> and
+    /// <c>...\Sql\Procedures\usp_*.sql</c> verbatim. Backs the Dapper repositories under
+    /// <c>PlantSafety.Infrastructure.HazardousWasteManagement.*.Persistence</c>.
+    /// </summary>
+    public static async Task ApplyHazardousWasteManagementSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        // Schema
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'HazardousWasteManagement')
+                EXEC('CREATE SCHEMA [HazardousWasteManagement]');
+            """);
+
+        // Table: WasteStreams.sql
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'WasteStreams' AND schema_id = SCHEMA_ID('HazardousWasteManagement'))
+            BEGIN
+                CREATE TABLE [HazardousWasteManagement].[WasteStreams] (
+                    [WasteStreamId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [StreamName] NVARCHAR(400) NOT NULL,
+                    [EpaWasteCode] NVARCHAR(20) NOT NULL,
+                    [HazardClass] NVARCHAR(100) NOT NULL,
+                    [GeneratorEpaId] NVARCHAR(50) NOT NULL,
+                    [CharacterizationVersion] INT NOT NULL CONSTRAINT DF_WasteStreams_CharacterizationVersion DEFAULT (1),
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_WasteStreams_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_WasteStreams_TenantId_SiteId]
+                    ON [HazardousWasteManagement].[WasteStreams] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [StreamName]);
+            END
+            """);
+
+        // Table: WasteContainers.sql
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'WasteContainers' AND schema_id = SCHEMA_ID('HazardousWasteManagement'))
+            BEGIN
+                CREATE TABLE [HazardousWasteManagement].[WasteContainers] (
+                    [WasteContainerId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [AccumulationAreaId] UNIQUEIDENTIFIER NOT NULL,
+                    [WasteStreamId] UNIQUEIDENTIFIER NOT NULL,
+                    [ContainerLabel] NVARCHAR(200) NOT NULL,
+                    [CapacityGallons] DECIMAL(12,2) NOT NULL,
+                    [RegulatoryTimeLimitDays] INT NOT NULL CONSTRAINT DF_WasteContainers_RegulatoryTimeLimitDays DEFAULT (90),
+                    [OpenedAtUtc] DATETIME2(3) NOT NULL,
+                    [ClosedAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_WasteContainers_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_WasteContainers_AccumulationAreaId]
+                    ON [HazardousWasteManagement].[WasteContainers] ([AccumulationAreaId])
+                    INCLUDE ([Status], [OpenedAtUtc], [RegulatoryTimeLimitDays]);
+            END
+            """);
+
+        // Table: AccumulationAreas.sql
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AccumulationAreas' AND schema_id = SCHEMA_ID('HazardousWasteManagement'))
+            BEGIN
+                CREATE TABLE [HazardousWasteManagement].[AccumulationAreas] (
+                    [AccumulationAreaId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [AreaName] NVARCHAR(400) NOT NULL,
+                    [LocationDescription] NVARCHAR(1000) NOT NULL,
+                    [TimeLimitDays] INT NOT NULL CONSTRAINT DF_AccumulationAreas_TimeLimitDays DEFAULT (90),
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_AccumulationAreas_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_AccumulationAreas_TenantId_SiteId]
+                    ON [HazardousWasteManagement].[AccumulationAreas] ([TenantId], [SiteId])
+                    INCLUDE ([Status]);
+            END
+            """);
+
+        // Table: Manifests.sql
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Manifests' AND schema_id = SCHEMA_ID('HazardousWasteManagement'))
+            BEGIN
+                CREATE TABLE [HazardousWasteManagement].[Manifests] (
+                    [HazardousWasteManifestId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [ManifestNumber] NVARCHAR(50) NOT NULL,
+                    [GeneratorEpaId] NVARCHAR(50) NOT NULL,
+                    [WasteStreamId] UNIQUEIDENTIFIER NOT NULL,
+                    [TransporterId] UNIQUEIDENTIFIER NULL,
+                    [TsdfFacilityId] UNIQUEIDENTIFIER NULL,
+                    [GeneratedAtUtc] DATETIME2(3) NOT NULL,
+                    [TransporterSignedAtUtc] DATETIME2(3) NULL,
+                    [TsdfReceivedAtUtc] DATETIME2(3) NULL,
+                    [ClosedAtUtc] DATETIME2(3) NULL,
+                    [IsImmutable] BIT NOT NULL CONSTRAINT DF_Manifests_IsImmutable DEFAULT (0),
+                    [DiscrepancyReason] NVARCHAR(2000) NULL,
+                    [RetentionExpiresAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_Manifests_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE UNIQUE NONCLUSTERED INDEX [UX_Manifests_ManifestNumber]
+                    ON [HazardousWasteManagement].[Manifests] ([TenantId], [ManifestNumber]);
+
+                CREATE NONCLUSTERED INDEX [IX_Manifests_TenantId_Status]
+                    ON [HazardousWasteManagement].[Manifests] ([TenantId], [Status])
+                    INCLUDE ([SiteId], [GeneratedAtUtc]);
+            END
+            """);
+
+        // Table: Transporters.sql
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Transporters' AND schema_id = SCHEMA_ID('HazardousWasteManagement'))
+            BEGIN
+                CREATE TABLE [HazardousWasteManagement].[Transporters] (
+                    [TransporterId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [CompanyName] NVARCHAR(400) NOT NULL,
+                    [EpaTransporterId] NVARCHAR(50) NOT NULL,
+                    [LicenseExpiresAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_Transporters_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_Transporters_TenantId]
+                    ON [HazardousWasteManagement].[Transporters] ([TenantId])
+                    INCLUDE ([Status]);
+            END
+            """);
+
+        // Table: TsdfFacilities.sql
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TsdfFacilities' AND schema_id = SCHEMA_ID('HazardousWasteManagement'))
+            BEGIN
+                CREATE TABLE [HazardousWasteManagement].[TsdfFacilities] (
+                    [TsdfFacilityId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [FacilityName] NVARCHAR(400) NOT NULL,
+                    [EpaFacilityId] NVARCHAR(50) NOT NULL,
+                    [PermitExpiresAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_TsdfFacilities_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_TsdfFacilities_TenantId]
+                    ON [HazardousWasteManagement].[TsdfFacilities] ([TenantId])
+                    INCLUDE ([Status]);
+            END
+            """);
+
+        // Table: DisposalCertificates.sql
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DisposalCertificates' AND schema_id = SCHEMA_ID('HazardousWasteManagement'))
+            BEGIN
+                CREATE TABLE [HazardousWasteManagement].[DisposalCertificates] (
+                    [DisposalCertificateId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [ManifestId] UNIQUEIDENTIFIER NOT NULL,
+                    [TsdfFacilityId] UNIQUEIDENTIFIER NOT NULL,
+                    [DisposalMethod] NVARCHAR(100) NOT NULL,
+                    [DisposalDateUtc] DATETIME2(3) NOT NULL,
+                    [CertificateReceivedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_DisposalCertificates_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_DisposalCertificates_ManifestId]
+                    ON [HazardousWasteManagement].[DisposalCertificates] ([ManifestId]);
+            END
+            """);
+
+        // Procedure: usp_WasteStreams_Create.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteStreams_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @WasteStreamId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @StreamName NVARCHAR(400),
+                @EpaWasteCode NVARCHAR(20),
+                @HazardClass NVARCHAR(100),
+                @GeneratorEpaId NVARCHAR(50),
+                @CharacterizationVersion INT,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [HazardousWasteManagement].[WasteStreams]
+                        ([WasteStreamId], [TenantId], [SiteId], [Status], [StreamName], [EpaWasteCode], [HazardClass], [GeneratorEpaId], [CharacterizationVersion], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@WasteStreamId, @TenantId, @SiteId, @Status, @StreamName, @EpaWasteCode, @HazardClass, @GeneratorEpaId, @CharacterizationVersion, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_WasteStreams_GetAll.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteStreams_GetAll]
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [WasteStreamId], [TenantId], [SiteId], [Status], [StreamName], [EpaWasteCode], [HazardClass], [GeneratorEpaId], [CharacterizationVersion], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[WasteStreams]
+                WHERE ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_WasteStreams_GetById.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteStreams_GetById]
+            (
+                @WasteStreamId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [WasteStreamId], [TenantId], [SiteId], [Status], [StreamName], [EpaWasteCode], [HazardClass], [GeneratorEpaId], [CharacterizationVersion], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[WasteStreams]
+                WHERE [WasteStreamId] = @WasteStreamId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_WasteStreams_Update.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteStreams_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @WasteStreamId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(100),
+                @EpaWasteCode NVARCHAR(20),
+                @HazardClass NVARCHAR(100),
+                @CharacterizationVersion INT
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [HazardousWasteManagement].[WasteStreams]
+                    SET
+                        [Status] = @Status,
+                        [EpaWasteCode] = @EpaWasteCode,
+                        [HazardClass] = @HazardClass,
+                        [CharacterizationVersion] = @CharacterizationVersion,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [WasteStreamId] = @WasteStreamId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_WasteContainers_Create.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteContainers_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @WasteContainerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AccumulationAreaId UNIQUEIDENTIFIER,
+                @WasteStreamId UNIQUEIDENTIFIER,
+                @ContainerLabel NVARCHAR(200),
+                @CapacityGallons DECIMAL(12,2),
+                @RegulatoryTimeLimitDays INT,
+                @OpenedAtUtc DATETIME2(3),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [HazardousWasteManagement].[WasteContainers]
+                        ([WasteContainerId], [TenantId], [SiteId], [Status], [AccumulationAreaId], [WasteStreamId], [ContainerLabel], [CapacityGallons], [RegulatoryTimeLimitDays], [OpenedAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@WasteContainerId, @TenantId, @SiteId, @Status, @AccumulationAreaId, @WasteStreamId, @ContainerLabel, @CapacityGallons, @RegulatoryTimeLimitDays, @OpenedAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_WasteContainers_GetAll.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteContainers_GetAll]
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [WasteContainerId], [TenantId], [SiteId], [Status], [AccumulationAreaId], [WasteStreamId], [ContainerLabel], [CapacityGallons], [RegulatoryTimeLimitDays], [OpenedAtUtc], [ClosedAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[WasteContainers]
+                WHERE ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_WasteContainers_GetById.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteContainers_GetById]
+            (
+                @WasteContainerId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [WasteContainerId], [TenantId], [SiteId], [Status], [AccumulationAreaId], [WasteStreamId], [ContainerLabel], [CapacityGallons], [RegulatoryTimeLimitDays], [OpenedAtUtc], [ClosedAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[WasteContainers]
+                WHERE [WasteContainerId] = @WasteContainerId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_WasteContainers_ListByArea.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteContainers_ListByArea]
+                @TenantId UNIQUEIDENTIFIER,
+                @AccumulationAreaId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [WasteContainerId], [TenantId], [SiteId], [AccumulationAreaId], [WasteStreamId],
+                    [ContainerLabel], [CapacityGallons], [RegulatoryTimeLimitDays], [OpenedAtUtc], [ClosedAtUtc], [Status]
+                FROM [HazardousWasteManagement].[WasteContainers]
+                WHERE TenantId = @TenantId
+                  AND AccumulationAreaId = @AccumulationAreaId
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY OpenedAtUtc DESC;
+            END
+            """);
+
+        // Procedure: usp_WasteContainers_Update.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_WasteContainers_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @WasteContainerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(100),
+                @ClosedAtUtc DATETIME2(3) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [HazardousWasteManagement].[WasteContainers]
+                    SET
+                        [Status] = @Status,
+                        [ClosedAtUtc] = @ClosedAtUtc,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [WasteContainerId] = @WasteContainerId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_AccumulationAreas_Create.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_AccumulationAreas_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @AccumulationAreaId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AreaName NVARCHAR(400),
+                @LocationDescription NVARCHAR(1000),
+                @TimeLimitDays INT,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [HazardousWasteManagement].[AccumulationAreas]
+                        ([AccumulationAreaId], [TenantId], [SiteId], [Status], [AreaName], [LocationDescription], [TimeLimitDays], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@AccumulationAreaId, @TenantId, @SiteId, @Status, @AreaName, @LocationDescription, @TimeLimitDays, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_AccumulationAreas_GetAll.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_AccumulationAreas_GetAll]
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [AccumulationAreaId], [TenantId], [SiteId], [Status], [AreaName], [LocationDescription], [TimeLimitDays], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[AccumulationAreas]
+                WHERE ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_AccumulationAreas_GetById.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_AccumulationAreas_GetById]
+            (
+                @AccumulationAreaId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [AccumulationAreaId], [TenantId], [SiteId], [Status], [AreaName], [LocationDescription], [TimeLimitDays], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[AccumulationAreas]
+                WHERE [AccumulationAreaId] = @AccumulationAreaId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_AccumulationAreas_ListNearingTimeLimit.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_AccumulationAreas_ListNearingTimeLimit]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    a.[AccumulationAreaId], a.[TenantId], a.[SiteId], a.[AreaName], a.[LocationDescription], a.[TimeLimitDays], a.[Status],
+                    MIN(DATEADD(DAY, c.[RegulatoryTimeLimitDays], c.[OpenedAtUtc])) AS [EarliestContainerDeadlineUtc]
+                FROM [HazardousWasteManagement].[AccumulationAreas] a
+                INNER JOIN [HazardousWasteManagement].[WasteContainers] c
+                    ON c.[AccumulationAreaId] = a.[AccumulationAreaId]
+                   AND c.[Status] = 'Open'
+                   AND ISNULL(c.[IsDeleted], 0) = 0
+                WHERE a.TenantId = @TenantId
+                  AND (@SiteId IS NULL OR a.SiteId = @SiteId)
+                  AND ISNULL(a.[IsDeleted], 0) = 0
+                  AND DATEADD(DAY, c.[RegulatoryTimeLimitDays], c.[OpenedAtUtc]) <= DATEADD(DAY, 10, SYSUTCDATETIME())
+                GROUP BY a.[AccumulationAreaId], a.[TenantId], a.[SiteId], a.[AreaName], a.[LocationDescription], a.[TimeLimitDays], a.[Status]
+                ORDER BY [EarliestContainerDeadlineUtc] ASC;
+            END
+            """);
+
+        // Procedure: usp_AccumulationAreas_Update.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_AccumulationAreas_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @AccumulationAreaId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(100)
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [HazardousWasteManagement].[AccumulationAreas]
+                    SET
+                        [Status] = @Status,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [AccumulationAreaId] = @AccumulationAreaId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_Manifests_Create.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Manifests_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @HazardousWasteManifestId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @ManifestNumber NVARCHAR(50),
+                @GeneratorEpaId NVARCHAR(50),
+                @WasteStreamId UNIQUEIDENTIFIER,
+                @GeneratedAtUtc DATETIME2(3),
+                @IsImmutable BIT,
+                @RetentionExpiresAtUtc DATETIME2(3),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [HazardousWasteManagement].[Manifests]
+                        ([HazardousWasteManifestId], [TenantId], [SiteId], [Status], [ManifestNumber], [GeneratorEpaId], [WasteStreamId], [GeneratedAtUtc], [IsImmutable], [RetentionExpiresAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@HazardousWasteManifestId, @TenantId, @SiteId, @Status, @ManifestNumber, @GeneratorEpaId, @WasteStreamId, @GeneratedAtUtc, @IsImmutable, @RetentionExpiresAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_Manifests_GetAll.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Manifests_GetAll]
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [HazardousWasteManifestId], [TenantId], [SiteId], [Status], [ManifestNumber], [GeneratorEpaId], [WasteStreamId], [TransporterId], [TsdfFacilityId],
+                       [GeneratedAtUtc], [TransporterSignedAtUtc], [TsdfReceivedAtUtc], [ClosedAtUtc], [IsImmutable], [DiscrepancyReason], [RetentionExpiresAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[Manifests]
+                WHERE ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_Manifests_GetById.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Manifests_GetById]
+            (
+                @HazardousWasteManifestId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [HazardousWasteManifestId], [TenantId], [SiteId], [Status], [ManifestNumber], [GeneratorEpaId], [WasteStreamId], [TransporterId], [TsdfFacilityId],
+                       [GeneratedAtUtc], [TransporterSignedAtUtc], [TsdfReceivedAtUtc], [ClosedAtUtc], [IsImmutable], [DiscrepancyReason], [RetentionExpiresAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[Manifests]
+                WHERE [HazardousWasteManifestId] = @HazardousWasteManifestId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_Manifests_ListOpen.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Manifests_ListOpen]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT [HazardousWasteManifestId], [TenantId], [SiteId], [Status], [ManifestNumber], [GeneratorEpaId], [WasteStreamId], [TransporterId], [TsdfFacilityId],
+                       [GeneratedAtUtc], [TransporterSignedAtUtc], [TsdfReceivedAtUtc], [ClosedAtUtc], [IsImmutable], [DiscrepancyReason], [RetentionExpiresAtUtc]
+                FROM [HazardousWasteManagement].[Manifests]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND [Status] <> 'Closed'
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [GeneratedAtUtc] ASC;
+            END
+            """);
+
+        // Procedure: usp_Manifests_Update.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Manifests_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @HazardousWasteManifestId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(100),
+                @TransporterId UNIQUEIDENTIFIER = NULL,
+                @TsdfFacilityId UNIQUEIDENTIFIER = NULL,
+                @TransporterSignedAtUtc DATETIME2(3) = NULL,
+                @TsdfReceivedAtUtc DATETIME2(3) = NULL,
+                @ClosedAtUtc DATETIME2(3) = NULL,
+                @IsImmutable BIT,
+                @DiscrepancyReason NVARCHAR(2000) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [HazardousWasteManagement].[Manifests]
+                    SET
+                        [Status] = @Status,
+                        [TransporterId] = @TransporterId,
+                        [TsdfFacilityId] = @TsdfFacilityId,
+                        [TransporterSignedAtUtc] = @TransporterSignedAtUtc,
+                        [TsdfReceivedAtUtc] = @TsdfReceivedAtUtc,
+                        [ClosedAtUtc] = @ClosedAtUtc,
+                        [IsImmutable] = @IsImmutable,
+                        [DiscrepancyReason] = @DiscrepancyReason,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [HazardousWasteManifestId] = @HazardousWasteManifestId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_Transporters_Create.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Transporters_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @TransporterId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @CompanyName NVARCHAR(400),
+                @EpaTransporterId NVARCHAR(50),
+                @LicenseExpiresAtUtc DATETIME2(3) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [HazardousWasteManagement].[Transporters]
+                        ([TransporterId], [TenantId], [SiteId], [Status], [CompanyName], [EpaTransporterId], [LicenseExpiresAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@TransporterId, @TenantId, @SiteId, @Status, @CompanyName, @EpaTransporterId, @LicenseExpiresAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_Transporters_GetAll.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Transporters_GetAll]
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [TransporterId], [TenantId], [SiteId], [Status], [CompanyName], [EpaTransporterId], [LicenseExpiresAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[Transporters]
+                WHERE ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_Transporters_GetById.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Transporters_GetById]
+            (
+                @TransporterId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [TransporterId], [TenantId], [SiteId], [Status], [CompanyName], [EpaTransporterId], [LicenseExpiresAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[Transporters]
+                WHERE [TransporterId] = @TransporterId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_Transporters_Update.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_Transporters_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @TransporterId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(100)
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [HazardousWasteManagement].[Transporters]
+                    SET
+                        [Status] = @Status,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [TransporterId] = @TransporterId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_TsdfFacilities_Create.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_TsdfFacilities_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @TsdfFacilityId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @FacilityName NVARCHAR(400),
+                @EpaFacilityId NVARCHAR(50),
+                @PermitExpiresAtUtc DATETIME2(3) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [HazardousWasteManagement].[TsdfFacilities]
+                        ([TsdfFacilityId], [TenantId], [SiteId], [Status], [FacilityName], [EpaFacilityId], [PermitExpiresAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@TsdfFacilityId, @TenantId, @SiteId, @Status, @FacilityName, @EpaFacilityId, @PermitExpiresAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_TsdfFacilities_GetAll.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_TsdfFacilities_GetAll]
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [TsdfFacilityId], [TenantId], [SiteId], [Status], [FacilityName], [EpaFacilityId], [PermitExpiresAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[TsdfFacilities]
+                WHERE ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_TsdfFacilities_GetById.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_TsdfFacilities_GetById]
+            (
+                @TsdfFacilityId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [TsdfFacilityId], [TenantId], [SiteId], [Status], [FacilityName], [EpaFacilityId], [PermitExpiresAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[TsdfFacilities]
+                WHERE [TsdfFacilityId] = @TsdfFacilityId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_TsdfFacilities_Update.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_TsdfFacilities_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @TsdfFacilityId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(100)
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [HazardousWasteManagement].[TsdfFacilities]
+                    SET
+                        [Status] = @Status,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [TsdfFacilityId] = @TsdfFacilityId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_DisposalCertificates_Create.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_DisposalCertificates_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @DisposalCertificateId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @ManifestId UNIQUEIDENTIFIER,
+                @TsdfFacilityId UNIQUEIDENTIFIER,
+                @DisposalMethod NVARCHAR(100),
+                @DisposalDateUtc DATETIME2(3),
+                @CertificateReceivedAtUtc DATETIME2(3),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [HazardousWasteManagement].[DisposalCertificates]
+                        ([DisposalCertificateId], [TenantId], [SiteId], [Status], [ManifestId], [TsdfFacilityId], [DisposalMethod], [DisposalDateUtc], [CertificateReceivedAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@DisposalCertificateId, @TenantId, @SiteId, @Status, @ManifestId, @TsdfFacilityId, @DisposalMethod, @DisposalDateUtc, @CertificateReceivedAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // Procedure: usp_DisposalCertificates_GetAll.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_DisposalCertificates_GetAll]
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [DisposalCertificateId], [TenantId], [SiteId], [Status], [ManifestId], [TsdfFacilityId], [DisposalMethod], [DisposalDateUtc], [CertificateReceivedAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[DisposalCertificates]
+                WHERE ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_DisposalCertificates_GetById.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_DisposalCertificates_GetById]
+            (
+                @DisposalCertificateId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [DisposalCertificateId], [TenantId], [SiteId], [Status], [ManifestId], [TsdfFacilityId], [DisposalMethod], [DisposalDateUtc], [CertificateReceivedAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [HazardousWasteManagement].[DisposalCertificates]
+                WHERE [DisposalCertificateId] = @DisposalCertificateId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        // Procedure: usp_DisposalCertificates_GetHistoryByStream.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_DisposalCertificates_GetHistoryByStream]
+                @TenantId UNIQUEIDENTIFIER,
+                @WasteStreamId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    dc.[DisposalCertificateId], dc.[TenantId], dc.[SiteId], m.[WasteStreamId], dc.[ManifestId], dc.[TsdfFacilityId],
+                    dc.[DisposalMethod], dc.[DisposalDateUtc], dc.[CertificateReceivedAtUtc], dc.[Status]
+                FROM [HazardousWasteManagement].[DisposalCertificates] dc
+                INNER JOIN [HazardousWasteManagement].[Manifests] m ON m.[HazardousWasteManifestId] = dc.[ManifestId]
+                WHERE dc.TenantId = @TenantId
+                  AND m.[WasteStreamId] = @WasteStreamId
+                  AND ISNULL(dc.[IsDeleted], 0) = 0
+                ORDER BY dc.[CertificateReceivedAtUtc] DESC;
+            END
+            """);
+
+        // Procedure: usp_DisposalCertificates_Update.sql
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HazardousWasteManagement].[usp_DisposalCertificates_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @DisposalCertificateId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(100)
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [HazardousWasteManagement].[DisposalCertificates]
+                    SET
+                        [Status] = @Status,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [DisposalCertificateId] = @DisposalCertificateId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+    }
+
+    /// <summary>
+    /// Creates the <c>[AutonomousVehicleSafety]</c> schema's five tables (AutonomousVehicleAsset,
+    /// AutonomousVehicleIncident, HumanRobotInteractionEvent, OperatingGeofence,
+    /// SafetyCaseValidation) and their Create/GetById/GetAll/Update/read-model stored procedures
+    /// against the Testcontainers database, mirroring
+    /// <c>PlantSafety.Infrastructure\AutonomousVehicleSafety\Sql\Tables\*.sql</c> and
+    /// <c>\Procedures\usp_*.sql</c> verbatim.
+    /// </summary>
+    public static async Task ApplyAutonomousVehicleSafetySchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'AutonomousVehicleSafety')
+                EXEC('CREATE SCHEMA [AutonomousVehicleSafety]');
+            """);
+
+        // ---- Table: AutonomousVehicleAsset ---------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AutonomousVehicleAsset' AND schema_id = SCHEMA_ID('AutonomousVehicleSafety'))
+            BEGIN
+                CREATE TABLE [AutonomousVehicleSafety].[AutonomousVehicleAsset] (
+                    [AutonomousVehicleAssetId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [AssetTag] NVARCHAR(200) NOT NULL,
+                    [VehicleType] NVARCHAR(100) NOT NULL,
+                    [AutonomyLevel] NVARCHAR(100) NOT NULL,
+                    [CurrentAutonomyMode] NVARCHAR(100) NOT NULL,
+                    [SafetyCaseValidationId] UNIQUEIDENTIFIER NULL,
+                    [ModeTransitionCount] INT NOT NULL CONSTRAINT DF_AutonomousVehicleAsset_ModeTransitionCount DEFAULT (0),
+                    [SuspensionReason] NVARCHAR(1000) NULL,
+                    [SuspendedAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_AutonomousVehicleAsset_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_AutonomousVehicleAsset_TenantId_SiteId]
+                    ON [AutonomousVehicleSafety].[AutonomousVehicleAsset] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [AssetTag]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_AutonomousVehicleAsset_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AssetTag NVARCHAR(200),
+                @VehicleType NVARCHAR(100),
+                @AutonomyLevel NVARCHAR(100),
+                @CurrentAutonomyMode NVARCHAR(100),
+                @SafetyCaseValidationId UNIQUEIDENTIFIER = NULL,
+                @ModeTransitionCount INT,
+                @SuspensionReason NVARCHAR(1000) = NULL,
+                @SuspendedAtUtc DATETIME2(3) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [AutonomousVehicleSafety].[AutonomousVehicleAsset]
+                        ([AutonomousVehicleAssetId], [TenantId], [SiteId], [Status], [AssetTag], [VehicleType], [AutonomyLevel], [CurrentAutonomyMode], [SafetyCaseValidationId], [ModeTransitionCount], [SuspensionReason], [SuspendedAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@AutonomousVehicleAssetId, @TenantId, @SiteId, @Status, @AssetTag, @VehicleType, @AutonomyLevel, @CurrentAutonomyMode, @SafetyCaseValidationId, @ModeTransitionCount, @SuspensionReason, @SuspendedAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_AutonomousVehicleAsset_GetById]
+            (
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [AutonomousVehicleAssetId], [TenantId], [SiteId], [Status], [AssetTag], [VehicleType], [AutonomyLevel], [CurrentAutonomyMode], [SafetyCaseValidationId], [ModeTransitionCount], [SuspensionReason], [SuspendedAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [AutonomousVehicleSafety].[AutonomousVehicleAsset]
+                WHERE [AutonomousVehicleAssetId] = @AutonomousVehicleAssetId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_AutonomousVehicleAsset_GetItemById]
+                @TenantId UNIQUEIDENTIFIER,
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [AutonomousVehicleAssetId],
+                    [TenantId],
+                    [SiteId],
+                    [AssetTag],
+                    [VehicleType],
+                    [AutonomyLevel],
+                    [CurrentAutonomyMode],
+                    [ModeTransitionCount],
+                    [Status] AS [Status],
+                    [SuspensionReason],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [AutonomousVehicleSafety].[AutonomousVehicleAsset]
+                WHERE [TenantId] = @TenantId
+                  AND [AutonomousVehicleAssetId] = @AutonomousVehicleAssetId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_AutonomousVehicleAsset_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AssetTag NVARCHAR(200),
+                @VehicleType NVARCHAR(100),
+                @AutonomyLevel NVARCHAR(100),
+                @CurrentAutonomyMode NVARCHAR(100),
+                @SafetyCaseValidationId UNIQUEIDENTIFIER = NULL,
+                @ModeTransitionCount INT,
+                @SuspensionReason NVARCHAR(1000) = NULL,
+                @SuspendedAtUtc DATETIME2(3) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [AutonomousVehicleSafety].[AutonomousVehicleAsset]
+                    SET
+                    [SiteId] = @SiteId,
+                    [Status] = @Status,
+                    [AssetTag] = @AssetTag,
+                    [VehicleType] = @VehicleType,
+                    [AutonomyLevel] = @AutonomyLevel,
+                    [CurrentAutonomyMode] = @CurrentAutonomyMode,
+                    [SafetyCaseValidationId] = @SafetyCaseValidationId,
+                    [ModeTransitionCount] = @ModeTransitionCount,
+                    [SuspensionReason] = @SuspensionReason,
+                    [SuspendedAtUtc] = @SuspendedAtUtc,
+                    [ModifiedAtUtc] = @NowUtc,
+                    [ModifiedBy] = @ActorId,
+                    [CorrelationId] = @CorrelationId
+                    WHERE [AutonomousVehicleAssetId] = @AutonomousVehicleAssetId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- Table: AutonomousVehicleIncident -------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AutonomousVehicleIncident' AND schema_id = SCHEMA_ID('AutonomousVehicleSafety'))
+            BEGIN
+                CREATE TABLE [AutonomousVehicleSafety].[AutonomousVehicleIncident] (
+                    [AutonomousVehicleIncidentId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [AutonomousVehicleAssetId] UNIQUEIDENTIFIER NOT NULL,
+                    [IncidentType] NVARCHAR(100) NOT NULL,
+                    [SeverityLevel] NVARCHAR(100) NOT NULL,
+                    [OccurredAtUtc] DATETIME2(3) NOT NULL,
+                    [DescriptionSummary] NVARCHAR(2000) NOT NULL,
+                    [InvestigationLeadUserId] UNIQUEIDENTIFIER NULL,
+                    [SuspensionTriggered] BIT NOT NULL CONSTRAINT DF_AutonomousVehicleIncident_SuspensionTriggered DEFAULT (0),
+                    [ClosedAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_AutonomousVehicleIncident_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_AutonomousVehicleIncident_TenantId_AssetId]
+                    ON [AutonomousVehicleSafety].[AutonomousVehicleIncident] ([TenantId], [AutonomousVehicleAssetId])
+                    INCLUDE ([Status], [IncidentType], [SeverityLevel], [OccurredAtUtc]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_AutonomousVehicleIncident_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @AutonomousVehicleIncidentId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER,
+                @IncidentType NVARCHAR(100),
+                @SeverityLevel NVARCHAR(100),
+                @OccurredAtUtc DATETIME2(3),
+                @DescriptionSummary NVARCHAR(2000),
+                @InvestigationLeadUserId UNIQUEIDENTIFIER = NULL,
+                @SuspensionTriggered BIT,
+                @ClosedAtUtc DATETIME2(3) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [AutonomousVehicleSafety].[AutonomousVehicleIncident]
+                        ([AutonomousVehicleIncidentId], [TenantId], [SiteId], [Status], [AutonomousVehicleAssetId], [IncidentType], [SeverityLevel], [OccurredAtUtc], [DescriptionSummary], [InvestigationLeadUserId], [SuspensionTriggered], [ClosedAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@AutonomousVehicleIncidentId, @TenantId, @SiteId, @Status, @AutonomousVehicleAssetId, @IncidentType, @SeverityLevel, @OccurredAtUtc, @DescriptionSummary, @InvestigationLeadUserId, @SuspensionTriggered, @ClosedAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_AutonomousVehicleIncident_GetById]
+            (
+                @AutonomousVehicleIncidentId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [AutonomousVehicleIncidentId], [TenantId], [SiteId], [Status], [AutonomousVehicleAssetId], [IncidentType], [SeverityLevel], [OccurredAtUtc], [DescriptionSummary], [InvestigationLeadUserId], [SuspensionTriggered], [ClosedAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [AutonomousVehicleSafety].[AutonomousVehicleIncident]
+                WHERE [AutonomousVehicleIncidentId] = @AutonomousVehicleIncidentId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_AutonomousVehicleIncident_GetHistoryByAssetId]
+                @TenantId UNIQUEIDENTIFIER,
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [AutonomousVehicleIncidentId],
+                    [TenantId],
+                    [SiteId],
+                    [AutonomousVehicleAssetId],
+                    [IncidentType],
+                    [SeverityLevel],
+                    [Status] AS [Status],
+                    [SuspensionTriggered],
+                    [OccurredAtUtc],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [AutonomousVehicleSafety].[AutonomousVehicleIncident]
+                WHERE [TenantId] = @TenantId
+                  AND [AutonomousVehicleAssetId] = @AutonomousVehicleAssetId
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [OccurredAtUtc] DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_AutonomousVehicleIncident_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @AutonomousVehicleIncidentId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER,
+                @IncidentType NVARCHAR(100),
+                @SeverityLevel NVARCHAR(100),
+                @OccurredAtUtc DATETIME2(3),
+                @DescriptionSummary NVARCHAR(2000),
+                @InvestigationLeadUserId UNIQUEIDENTIFIER = NULL,
+                @SuspensionTriggered BIT,
+                @ClosedAtUtc DATETIME2(3) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [AutonomousVehicleSafety].[AutonomousVehicleIncident]
+                    SET
+                    [SiteId] = @SiteId,
+                    [Status] = @Status,
+                    [AutonomousVehicleAssetId] = @AutonomousVehicleAssetId,
+                    [IncidentType] = @IncidentType,
+                    [SeverityLevel] = @SeverityLevel,
+                    [OccurredAtUtc] = @OccurredAtUtc,
+                    [DescriptionSummary] = @DescriptionSummary,
+                    [InvestigationLeadUserId] = @InvestigationLeadUserId,
+                    [SuspensionTriggered] = @SuspensionTriggered,
+                    [ClosedAtUtc] = @ClosedAtUtc,
+                    [ModifiedAtUtc] = @NowUtc,
+                    [ModifiedBy] = @ActorId,
+                    [CorrelationId] = @CorrelationId
+                    WHERE [AutonomousVehicleIncidentId] = @AutonomousVehicleIncidentId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- Table: HumanRobotInteractionEvent ------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'HumanRobotInteractionEvent' AND schema_id = SCHEMA_ID('AutonomousVehicleSafety'))
+            BEGIN
+                CREATE TABLE [AutonomousVehicleSafety].[HumanRobotInteractionEvent] (
+                    [HumanRobotInteractionEventId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [AutonomousVehicleAssetId] UNIQUEIDENTIFIER NOT NULL,
+                    [InteractionType] NVARCHAR(100) NOT NULL,
+                    [SeverityLevel] NVARCHAR(100) NOT NULL,
+                    [DistanceMeters] DECIMAL(9,3) NULL,
+                    [LocationDescription] NVARCHAR(400) NOT NULL,
+                    [DetectedAtUtc] DATETIME2(3) NOT NULL,
+                    [ReviewedByUserId] UNIQUEIDENTIFIER NULL,
+                    [ReviewedAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_HumanRobotInteractionEvent_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_HumanRobotInteractionEvent_TenantId_SiteId]
+                    ON [AutonomousVehicleSafety].[HumanRobotInteractionEvent] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [InteractionType], [SeverityLevel], [DetectedAtUtc]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_HumanRobotInteractionEvent_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @HumanRobotInteractionEventId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER,
+                @InteractionType NVARCHAR(100),
+                @SeverityLevel NVARCHAR(100),
+                @DistanceMeters DECIMAL(9,3) = NULL,
+                @LocationDescription NVARCHAR(400),
+                @DetectedAtUtc DATETIME2(3),
+                @ReviewedByUserId UNIQUEIDENTIFIER = NULL,
+                @ReviewedAtUtc DATETIME2(3) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [AutonomousVehicleSafety].[HumanRobotInteractionEvent]
+                        ([HumanRobotInteractionEventId], [TenantId], [SiteId], [Status], [AutonomousVehicleAssetId], [InteractionType], [SeverityLevel], [DistanceMeters], [LocationDescription], [DetectedAtUtc], [ReviewedByUserId], [ReviewedAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@HumanRobotInteractionEventId, @TenantId, @SiteId, @Status, @AutonomousVehicleAssetId, @InteractionType, @SeverityLevel, @DistanceMeters, @LocationDescription, @DetectedAtUtc, @ReviewedByUserId, @ReviewedAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_HumanRobotInteractionEvent_GetItems]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [HumanRobotInteractionEventId],
+                    [TenantId],
+                    [SiteId],
+                    [AutonomousVehicleAssetId],
+                    [InteractionType],
+                    [SeverityLevel],
+                    [DistanceMeters],
+                    [Status] AS [Status],
+                    [DetectedAtUtc],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [AutonomousVehicleSafety].[HumanRobotInteractionEvent]
+                WHERE [TenantId] = @TenantId
+                  AND (@SiteId IS NULL OR [SiteId] = @SiteId)
+                  AND ISNULL([IsDeleted], 0) = 0
+                  AND [DetectedAtUtc] >= @FromUtc
+                  AND [DetectedAtUtc] <= @ToUtc
+                ORDER BY [DetectedAtUtc] DESC;
+            END
+            """);
+
+        // ---- Table: OperatingGeofence ----------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'OperatingGeofence' AND schema_id = SCHEMA_ID('AutonomousVehicleSafety'))
+            BEGIN
+                CREATE TABLE [AutonomousVehicleSafety].[OperatingGeofence] (
+                    [OperatingGeofenceId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [GeofenceName] NVARCHAR(200) NOT NULL,
+                    [ZoneType] NVARCHAR(100) NOT NULL,
+                    [BoundaryDefinition] NVARCHAR(MAX) NOT NULL,
+                    [MaxSpeedKph] DECIMAL(9,2) NULL,
+                    [ViolationCount] INT NOT NULL CONSTRAINT DF_OperatingGeofence_ViolationCount DEFAULT (0),
+                    [LastAuditedAtUtc] DATETIME2(3) NULL,
+                    [NextAuditDueAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_OperatingGeofence_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_OperatingGeofence_TenantId_SiteId]
+                    ON [AutonomousVehicleSafety].[OperatingGeofence] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [GeofenceName], [ViolationCount]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_OperatingGeofence_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @OperatingGeofenceId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @GeofenceName NVARCHAR(200),
+                @ZoneType NVARCHAR(100),
+                @BoundaryDefinition NVARCHAR(MAX),
+                @MaxSpeedKph DECIMAL(9,2) = NULL,
+                @ViolationCount INT,
+                @LastAuditedAtUtc DATETIME2(3) = NULL,
+                @NextAuditDueAtUtc DATETIME2(3) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [AutonomousVehicleSafety].[OperatingGeofence]
+                        ([OperatingGeofenceId], [TenantId], [SiteId], [Status], [GeofenceName], [ZoneType], [BoundaryDefinition], [MaxSpeedKph], [ViolationCount], [LastAuditedAtUtc], [NextAuditDueAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@OperatingGeofenceId, @TenantId, @SiteId, @Status, @GeofenceName, @ZoneType, @BoundaryDefinition, @MaxSpeedKph, @ViolationCount, @LastAuditedAtUtc, @NextAuditDueAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_OperatingGeofence_GetActiveViolations]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [OperatingGeofenceId],
+                    [TenantId],
+                    [SiteId],
+                    [GeofenceName],
+                    [ZoneType],
+                    [ViolationCount],
+                    [Status] AS [Status],
+                    [LastAuditedAtUtc],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [AutonomousVehicleSafety].[OperatingGeofence]
+                WHERE [TenantId] = @TenantId
+                  AND (@SiteId IS NULL OR [SiteId] = @SiteId)
+                  AND [Status] = 'Active'
+                  AND [ViolationCount] > 0
+                  AND ISNULL([IsDeleted], 0) = 0
+                  AND [CreatedAtUtc] >= @FromUtc
+                  AND [CreatedAtUtc] <= @ToUtc
+                ORDER BY [ViolationCount] DESC, [CreatedAtUtc] DESC;
+            END
+            """);
+
+        // ---- Table: SafetyCaseValidation --------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SafetyCaseValidation' AND schema_id = SCHEMA_ID('AutonomousVehicleSafety'))
+            BEGIN
+                CREATE TABLE [AutonomousVehicleSafety].[SafetyCaseValidation] (
+                    [SafetyCaseValidationId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [AutonomousVehicleAssetId] UNIQUEIDENTIFIER NOT NULL,
+                    [StandardReference] NVARCHAR(100) NOT NULL,
+                    [DocumentVersion] NVARCHAR(50) NOT NULL,
+                    [RevalidationCadenceDays] INT NOT NULL,
+                    [ValidatedByUserId] UNIQUEIDENTIFIER NULL,
+                    [ValidatedAtUtc] DATETIME2(3) NULL,
+                    [ExpiresAtUtc] DATETIME2(3) NULL,
+                    [RejectionReason] NVARCHAR(1000) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_SafetyCaseValidation_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_SafetyCaseValidation_TenantId_AssetId]
+                    ON [AutonomousVehicleSafety].[SafetyCaseValidation] ([TenantId], [AutonomousVehicleAssetId])
+                    INCLUDE ([Status], [ExpiresAtUtc], [CreatedAtUtc]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_SafetyCaseValidation_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @SafetyCaseValidationId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER,
+                @StandardReference NVARCHAR(100),
+                @DocumentVersion NVARCHAR(50),
+                @RevalidationCadenceDays INT,
+                @ValidatedByUserId UNIQUEIDENTIFIER = NULL,
+                @ValidatedAtUtc DATETIME2(3) = NULL,
+                @ExpiresAtUtc DATETIME2(3) = NULL,
+                @RejectionReason NVARCHAR(1000) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [AutonomousVehicleSafety].[SafetyCaseValidation]
+                        ([SafetyCaseValidationId], [TenantId], [SiteId], [Status], [AutonomousVehicleAssetId], [StandardReference], [DocumentVersion], [RevalidationCadenceDays], [ValidatedByUserId], [ValidatedAtUtc], [ExpiresAtUtc], [RejectionReason], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@SafetyCaseValidationId, @TenantId, @SiteId, @Status, @AutonomousVehicleAssetId, @StandardReference, @DocumentVersion, @RevalidationCadenceDays, @ValidatedByUserId, @ValidatedAtUtc, @ExpiresAtUtc, @RejectionReason, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [AutonomousVehicleSafety].[usp_SafetyCaseValidation_GetStatusByAssetId]
+                @TenantId UNIQUEIDENTIFIER,
+                @AutonomousVehicleAssetId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT TOP (1)
+                    [SafetyCaseValidationId],
+                    [TenantId],
+                    [SiteId],
+                    [AutonomousVehicleAssetId],
+                    [StandardReference],
+                    [DocumentVersion],
+                    [Status] AS [Status],
+                    [ValidatedAtUtc],
+                    [ExpiresAtUtc],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [AutonomousVehicleSafety].[SafetyCaseValidation]
+                WHERE [TenantId] = @TenantId
+                  AND [AutonomousVehicleAssetId] = @AutonomousVehicleAssetId
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [CreatedAtUtc] DESC;
+            END
+            """);
+    }
+
+    /// <summary>
+    /// Creates the <c>[CyberPhysicalSecurity]</c> schema's five tables (<c>OtAsset</c>,
+    /// <c>ControlChangeEvent</c>, <c>SensorIntegrityCheck</c>, <c>SabotageIndicator</c>,
+    /// <c>CyberPhysicalIncident</c>) and their stored procedures against the Testcontainers
+    /// database, mirroring <c>PlantSafety.Infrastructure\CyberPhysicalSecurity\Sql\Tables\*.sql</c>
+    /// and <c>\Procedures\usp_*.sql</c> verbatim. <c>ControlChangeEvent</c> and
+    /// <c>SensorIntegrityCheck</c> both FK-reference <c>OtAsset</c>, so table creation order matters.
+    /// <c>ControlChangeEvent</c> is append-only/tamper-evident: <c>usp_ControlChangeEvent_Insert</c>
+    /// never mutates <c>PriorRecordHash</c>/<c>RecordHash</c>, only
+    /// <c>usp_ControlChangeEvent_ReclassifyAuthorization</c> may update the mutable
+    /// <c>AuthorizationStatus</c> column, matching <c>ControlChangeEvent.ComputeRecordHash</c>'s
+    /// SHA-256 hash-chain in the Domain layer.
+    /// </summary>
+    public static async Task ApplyCyberPhysicalSecuritySchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'CyberPhysicalSecurity')
+                EXEC('CREATE SCHEMA [CyberPhysicalSecurity]');
+            """);
+
+        // ---- Table: OtAsset --------------------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'OtAsset' AND schema_id = SCHEMA_ID('CyberPhysicalSecurity'))
+            BEGIN
+                CREATE TABLE [CyberPhysicalSecurity].[OtAsset]
+                (
+                    OtAssetId            UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_OtAsset PRIMARY KEY,
+                    TenantId             UNIQUEIDENTIFIER NOT NULL,
+                    SiteId               UNIQUEIDENTIFIER NOT NULL,
+                    AssetTag             NVARCHAR(128)    NOT NULL,
+                    AssetName            NVARCHAR(256)    NOT NULL,
+                    AssetType            NVARCHAR(30)     NOT NULL,
+                    Vendor               NVARCHAR(128)    NOT NULL CONSTRAINT DF_OtAsset_Vendor DEFAULT (N''),
+                    Model                NVARCHAR(128)    NOT NULL CONSTRAINT DF_OtAsset_Model DEFAULT (N''),
+                    FirmwareVersion      NVARCHAR(64)     NOT NULL CONSTRAINT DF_OtAsset_Firmware DEFAULT (N''),
+                    NetworkZone          NVARCHAR(64)     NOT NULL CONSTRAINT DF_OtAsset_Zone DEFAULT (N''),
+                    Criticality          NVARCHAR(20)     NOT NULL,
+                    Status               NVARCHAR(20)     NOT NULL,
+                    LastReconciledAtUtc  DATETIME2(3)     NULL,
+                    CreatedAtUtc         DATETIME2(3)     NOT NULL,
+                    CreatedBy            UNIQUEIDENTIFIER NOT NULL,
+                    RowVersion           ROWVERSION       NOT NULL
+                );
+
+                CREATE UNIQUE NONCLUSTERED INDEX UX_OtAsset_Tenant_AssetTag ON [CyberPhysicalSecurity].[OtAsset] (TenantId, AssetTag);
+                CREATE NONCLUSTERED INDEX IX_OtAsset_Tenant_Status ON [CyberPhysicalSecurity].[OtAsset] (TenantId, Status);
+                CREATE NONCLUSTERED INDEX IX_OtAsset_Tenant_Site ON [CyberPhysicalSecurity].[OtAsset] (TenantId, SiteId);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_OtAsset_Insert]
+                @OtAssetId           UNIQUEIDENTIFIER,
+                @TenantId            UNIQUEIDENTIFIER,
+                @SiteId              UNIQUEIDENTIFIER,
+                @AssetTag            NVARCHAR(128),
+                @AssetName           NVARCHAR(256),
+                @AssetType           NVARCHAR(30),
+                @Vendor              NVARCHAR(128),
+                @Model               NVARCHAR(128),
+                @FirmwareVersion     NVARCHAR(64),
+                @NetworkZone         NVARCHAR(64),
+                @Criticality         NVARCHAR(20),
+                @Status              NVARCHAR(20),
+                @LastReconciledAtUtc DATETIME2(3) = NULL,
+                @CreatedAtUtc        DATETIME2(3),
+                @CreatedBy           UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [CyberPhysicalSecurity].[OtAsset]
+                    (OtAssetId, TenantId, SiteId, AssetTag, AssetName, AssetType, Vendor, Model, FirmwareVersion, NetworkZone, Criticality, Status, LastReconciledAtUtc, CreatedAtUtc, CreatedBy)
+                    VALUES
+                    (@OtAssetId, @TenantId, @SiteId, @AssetTag, @AssetName, @AssetType, @Vendor, @Model, @FirmwareVersion, @NetworkZone, @Criticality, @Status, @LastReconciledAtUtc, @CreatedAtUtc, @CreatedBy);
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_OtAsset_Update]
+                @OtAssetId           UNIQUEIDENTIFIER,
+                @TenantId            UNIQUEIDENTIFIER,
+                @Status              NVARCHAR(20),
+                @LastReconciledAtUtc DATETIME2(3) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    UPDATE [CyberPhysicalSecurity].[OtAsset]
+                    SET Status = @Status,
+                        LastReconciledAtUtc = @LastReconciledAtUtc
+                    WHERE OtAssetId = @OtAssetId AND TenantId = @TenantId;
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_OtAsset_GetById]
+                @OtAssetId UNIQUEIDENTIFIER,
+                @TenantId  UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT OtAssetId, TenantId, SiteId, AssetTag, AssetName, AssetType, Vendor, Model, FirmwareVersion,
+                       NetworkZone, Criticality, Status, LastReconciledAtUtc, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[OtAsset]
+                WHERE OtAssetId = @OtAssetId AND TenantId = @TenantId;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_OtAsset_GetAllActive]
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT OtAssetId, TenantId, SiteId, AssetTag, AssetName, AssetType, Vendor, Model, FirmwareVersion,
+                       NetworkZone, Criticality, Status, LastReconciledAtUtc, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[OtAsset]
+                WHERE TenantId = @TenantId
+                ORDER BY AssetTag;
+            END
+            """);
+
+        // ---- Table: ControlChangeEvent (FK -> OtAsset) -----------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ControlChangeEvent' AND schema_id = SCHEMA_ID('CyberPhysicalSecurity'))
+            BEGIN
+                CREATE TABLE [CyberPhysicalSecurity].[ControlChangeEvent]
+                (
+                    ControlChangeEventId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_ControlChangeEvent PRIMARY KEY,
+                    TenantId              UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                UNIQUEIDENTIFIER NOT NULL,
+                    OtAssetId             UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_ControlChangeEvent_OtAsset REFERENCES [CyberPhysicalSecurity].[OtAsset] (OtAssetId),
+                    ChangeDescription     NVARCHAR(2000)   NOT NULL CONSTRAINT DF_ControlChangeEvent_Desc DEFAULT (N''),
+                    ChangedParameter      NVARCHAR(256)    NOT NULL,
+                    OldValue              NVARCHAR(512)    NOT NULL CONSTRAINT DF_ControlChangeEvent_Old DEFAULT (N''),
+                    NewValue              NVARCHAR(512)    NOT NULL CONSTRAINT DF_ControlChangeEvent_New DEFAULT (N''),
+                    ChangeSourceUserId    UNIQUEIDENTIFIER NULL,
+                    AuthorizationStatus   NVARCHAR(20)     NOT NULL,
+                    DetectedAtUtc         DATETIME2(3)     NOT NULL,
+                    PriorRecordHash       CHAR(64)         NULL,
+                    RecordHash            CHAR(64)         NOT NULL,
+                    CreatedAtUtc          DATETIME2(3)     NOT NULL,
+                    CreatedBy             UNIQUEIDENTIFIER NOT NULL,
+                    RowVersion            ROWVERSION       NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_ControlChangeEvent_Tenant_Asset_DetectedAt ON [CyberPhysicalSecurity].[ControlChangeEvent] (TenantId, OtAssetId, DetectedAtUtc DESC);
+                CREATE NONCLUSTERED INDEX IX_ControlChangeEvent_Tenant_AuthStatus ON [CyberPhysicalSecurity].[ControlChangeEvent] (TenantId, AuthorizationStatus);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_ControlChangeEvent_Insert]
+                @ControlChangeEventId UNIQUEIDENTIFIER,
+                @TenantId             UNIQUEIDENTIFIER,
+                @SiteId               UNIQUEIDENTIFIER,
+                @OtAssetId            UNIQUEIDENTIFIER,
+                @ChangeDescription    NVARCHAR(2000),
+                @ChangedParameter     NVARCHAR(256),
+                @OldValue             NVARCHAR(512),
+                @NewValue             NVARCHAR(512),
+                @ChangeSourceUserId   UNIQUEIDENTIFIER = NULL,
+                @AuthorizationStatus  NVARCHAR(20),
+                @DetectedAtUtc        DATETIME2(3),
+                @PriorRecordHash      CHAR(64) = NULL,
+                @RecordHash           CHAR(64),
+                @CreatedAtUtc         DATETIME2(3),
+                @CreatedBy            UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [CyberPhysicalSecurity].[ControlChangeEvent]
+                    (ControlChangeEventId, TenantId, SiteId, OtAssetId, ChangeDescription, ChangedParameter, OldValue, NewValue,
+                     ChangeSourceUserId, AuthorizationStatus, DetectedAtUtc, PriorRecordHash, RecordHash, CreatedAtUtc, CreatedBy)
+                    VALUES
+                    (@ControlChangeEventId, @TenantId, @SiteId, @OtAssetId, @ChangeDescription, @ChangedParameter, @OldValue, @NewValue,
+                     @ChangeSourceUserId, @AuthorizationStatus, @DetectedAtUtc, @PriorRecordHash, @RecordHash, @CreatedAtUtc, @CreatedBy);
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_ControlChangeEvent_ReclassifyAuthorization]
+                @ControlChangeEventId UNIQUEIDENTIFIER,
+                @TenantId             UNIQUEIDENTIFIER,
+                @AuthorizationStatus  NVARCHAR(20)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    UPDATE [CyberPhysicalSecurity].[ControlChangeEvent]
+                    SET AuthorizationStatus = @AuthorizationStatus
+                    WHERE ControlChangeEventId = @ControlChangeEventId AND TenantId = @TenantId;
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_ControlChangeEvent_GetById]
+                @ControlChangeEventId UNIQUEIDENTIFIER,
+                @TenantId             UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT ControlChangeEventId, TenantId, SiteId, OtAssetId, ChangeDescription, ChangedParameter, OldValue, NewValue,
+                       ChangeSourceUserId, AuthorizationStatus, DetectedAtUtc, PriorRecordHash, RecordHash, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[ControlChangeEvent]
+                WHERE ControlChangeEventId = @ControlChangeEventId AND TenantId = @TenantId;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_ControlChangeEvent_GetLatestForAsset]
+                @OtAssetId UNIQUEIDENTIFIER,
+                @TenantId  UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT TOP (1) ControlChangeEventId, TenantId, SiteId, OtAssetId, ChangeDescription, ChangedParameter, OldValue, NewValue,
+                       ChangeSourceUserId, AuthorizationStatus, DetectedAtUtc, PriorRecordHash, RecordHash, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[ControlChangeEvent]
+                WHERE OtAssetId = @OtAssetId AND TenantId = @TenantId
+                ORDER BY DetectedAtUtc DESC, CreatedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_ControlChangeEvent_GetByAuthorizationStatus]
+                @TenantId            UNIQUEIDENTIFIER,
+                @AuthorizationStatus NVARCHAR(20)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT ControlChangeEventId, TenantId, SiteId, OtAssetId, ChangeDescription, ChangedParameter, OldValue, NewValue,
+                       ChangeSourceUserId, AuthorizationStatus, DetectedAtUtc, PriorRecordHash, RecordHash, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[ControlChangeEvent]
+                WHERE TenantId = @TenantId AND AuthorizationStatus = @AuthorizationStatus
+                ORDER BY DetectedAtUtc DESC;
+            END
+            """);
+
+        // ---- Table: SensorIntegrityCheck (FK -> OtAsset) ---------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SensorIntegrityCheck' AND schema_id = SCHEMA_ID('CyberPhysicalSecurity'))
+            BEGIN
+                CREATE TABLE [CyberPhysicalSecurity].[SensorIntegrityCheck]
+                (
+                    SensorIntegrityCheckId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_SensorIntegrityCheck PRIMARY KEY,
+                    TenantId                UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                  UNIQUEIDENTIFIER NOT NULL,
+                    OtAssetId               UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_SensorIntegrityCheck_OtAsset REFERENCES [CyberPhysicalSecurity].[OtAsset] (OtAssetId),
+                    CheckType               NVARCHAR(20)     NOT NULL,
+                    Result                  NVARCHAR(20)     NOT NULL,
+                    Details                 NVARCHAR(2000)   NOT NULL CONSTRAINT DF_SensorIntegrityCheck_Details DEFAULT (N''),
+                    CheckedAtUtc            DATETIME2(3)     NOT NULL,
+                    NextCheckDueUtc         DATETIME2(3)     NULL,
+                    CreatedAtUtc            DATETIME2(3)     NOT NULL,
+                    CreatedBy               UNIQUEIDENTIFIER NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_SensorIntegrityCheck_Tenant_Asset_CheckedAt ON [CyberPhysicalSecurity].[SensorIntegrityCheck] (TenantId, OtAssetId, CheckedAtUtc DESC);
+                CREATE NONCLUSTERED INDEX IX_SensorIntegrityCheck_Tenant_NextDue ON [CyberPhysicalSecurity].[SensorIntegrityCheck] (TenantId, NextCheckDueUtc);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SensorIntegrityCheck_Insert]
+                @SensorIntegrityCheckId UNIQUEIDENTIFIER,
+                @TenantId               UNIQUEIDENTIFIER,
+                @SiteId                 UNIQUEIDENTIFIER,
+                @OtAssetId              UNIQUEIDENTIFIER,
+                @CheckType              NVARCHAR(20),
+                @Result                 NVARCHAR(20),
+                @Details                NVARCHAR(2000),
+                @CheckedAtUtc           DATETIME2(3),
+                @NextCheckDueUtc        DATETIME2(3) = NULL,
+                @CreatedAtUtc           DATETIME2(3),
+                @CreatedBy              UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [CyberPhysicalSecurity].[SensorIntegrityCheck]
+                    (SensorIntegrityCheckId, TenantId, SiteId, OtAssetId, CheckType, Result, Details, CheckedAtUtc, NextCheckDueUtc, CreatedAtUtc, CreatedBy)
+                    VALUES
+                    (@SensorIntegrityCheckId, @TenantId, @SiteId, @OtAssetId, @CheckType, @Result, @Details, @CheckedAtUtc, @NextCheckDueUtc, @CreatedAtUtc, @CreatedBy);
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SensorIntegrityCheck_GetById]
+                @SensorIntegrityCheckId UNIQUEIDENTIFIER,
+                @TenantId               UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT SensorIntegrityCheckId, TenantId, SiteId, OtAssetId, CheckType, Result, Details, CheckedAtUtc, NextCheckDueUtc, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[SensorIntegrityCheck]
+                WHERE SensorIntegrityCheckId = @SensorIntegrityCheckId AND TenantId = @TenantId;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SensorIntegrityCheck_GetHistoryForAsset]
+                @OtAssetId UNIQUEIDENTIFIER,
+                @TenantId  UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT SensorIntegrityCheckId, TenantId, SiteId, OtAssetId, CheckType, Result, Details, CheckedAtUtc, NextCheckDueUtc, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[SensorIntegrityCheck]
+                WHERE OtAssetId = @OtAssetId AND TenantId = @TenantId
+                ORDER BY CheckedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SensorIntegrityCheck_GetAssetsWithChecksDue]
+                @TenantId UNIQUEIDENTIFIER,
+                @AsOfUtc  DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                ;WITH LatestPerAsset AS
+                (
+                    SELECT OtAssetId, NextCheckDueUtc,
+                           ROW_NUMBER() OVER (PARTITION BY OtAssetId ORDER BY CheckedAtUtc DESC) AS rn
+                    FROM [CyberPhysicalSecurity].[SensorIntegrityCheck]
+                    WHERE TenantId = @TenantId
+                )
+                SELECT OtAssetId
+                FROM LatestPerAsset
+                WHERE rn = 1 AND (NextCheckDueUtc IS NULL OR NextCheckDueUtc <= @AsOfUtc);
+            END
+            """);
+
+        // ---- Table: SabotageIndicator -----------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SabotageIndicator' AND schema_id = SCHEMA_ID('CyberPhysicalSecurity'))
+            BEGIN
+                CREATE TABLE [CyberPhysicalSecurity].[SabotageIndicator]
+                (
+                    SabotageIndicatorId     UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_SabotageIndicator PRIMARY KEY,
+                    TenantId                 UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                   UNIQUEIDENTIFIER NOT NULL,
+                    Source                   NVARCHAR(30)     NOT NULL,
+                    SourceReferenceId        UNIQUEIDENTIFIER NULL,
+                    Description              NVARCHAR(2000)   NOT NULL CONSTRAINT DF_SabotageIndicator_Desc DEFAULT (N''),
+                    Severity                 NVARCHAR(20)     NOT NULL,
+                    Status                   NVARCHAR(30)     NOT NULL,
+                    CorrelatedIndicatorCount INT              NOT NULL CONSTRAINT DF_SabotageIndicator_Correlated DEFAULT (1),
+                    RaisedAtUtc              DATETIME2(3)     NOT NULL,
+                    RiskManagementPriority   NVARCHAR(5)      NOT NULL,
+                    CreatedAtUtc             DATETIME2(3)     NOT NULL,
+                    CreatedBy                UNIQUEIDENTIFIER NOT NULL,
+                    RowVersion               ROWVERSION       NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_SabotageIndicator_Tenant_Status ON [CyberPhysicalSecurity].[SabotageIndicator] (TenantId, Status);
+                CREATE NONCLUSTERED INDEX IX_SabotageIndicator_Tenant_RaisedAt ON [CyberPhysicalSecurity].[SabotageIndicator] (TenantId, RaisedAtUtc DESC);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SabotageIndicator_Insert]
+                @SabotageIndicatorId      UNIQUEIDENTIFIER,
+                @TenantId                 UNIQUEIDENTIFIER,
+                @SiteId                   UNIQUEIDENTIFIER,
+                @Source                   NVARCHAR(30),
+                @SourceReferenceId        UNIQUEIDENTIFIER = NULL,
+                @Description              NVARCHAR(2000),
+                @Severity                 NVARCHAR(20),
+                @Status                   NVARCHAR(30),
+                @CorrelatedIndicatorCount INT,
+                @RaisedAtUtc              DATETIME2(3),
+                @RiskManagementPriority   NVARCHAR(5),
+                @CreatedAtUtc             DATETIME2(3),
+                @CreatedBy                UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [CyberPhysicalSecurity].[SabotageIndicator]
+                    (SabotageIndicatorId, TenantId, SiteId, Source, SourceReferenceId, Description, Severity, Status,
+                     CorrelatedIndicatorCount, RaisedAtUtc, RiskManagementPriority, CreatedAtUtc, CreatedBy)
+                    VALUES
+                    (@SabotageIndicatorId, @TenantId, @SiteId, @Source, @SourceReferenceId, @Description, @Severity, @Status,
+                     @CorrelatedIndicatorCount, @RaisedAtUtc, @RiskManagementPriority, @CreatedAtUtc, @CreatedBy);
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SabotageIndicator_Update]
+                @SabotageIndicatorId      UNIQUEIDENTIFIER,
+                @TenantId                 UNIQUEIDENTIFIER,
+                @SiteId                   UNIQUEIDENTIFIER,
+                @Source                   NVARCHAR(30),
+                @SourceReferenceId        UNIQUEIDENTIFIER = NULL,
+                @Description              NVARCHAR(2000),
+                @Severity                 NVARCHAR(20),
+                @Status                   NVARCHAR(30),
+                @CorrelatedIndicatorCount INT,
+                @RaisedAtUtc              DATETIME2(3),
+                @RiskManagementPriority   NVARCHAR(5),
+                @CreatedAtUtc             DATETIME2(3),
+                @CreatedBy                UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    UPDATE [CyberPhysicalSecurity].[SabotageIndicator]
+                    SET Severity = @Severity,
+                        Status = @Status,
+                        CorrelatedIndicatorCount = @CorrelatedIndicatorCount,
+                        RiskManagementPriority = @RiskManagementPriority
+                    WHERE SabotageIndicatorId = @SabotageIndicatorId AND TenantId = @TenantId;
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SabotageIndicator_GetById]
+                @SabotageIndicatorId UNIQUEIDENTIFIER,
+                @TenantId            UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT SabotageIndicatorId, TenantId, SiteId, Source, SourceReferenceId, Description, Severity, Status,
+                       CorrelatedIndicatorCount, RaisedAtUtc, RiskManagementPriority, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[SabotageIndicator]
+                WHERE SabotageIndicatorId = @SabotageIndicatorId AND TenantId = @TenantId;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SabotageIndicator_GetActive]
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT SabotageIndicatorId, TenantId, SiteId, Source, SourceReferenceId, Description, Severity, Status,
+                       CorrelatedIndicatorCount, RaisedAtUtc, RiskManagementPriority, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[SabotageIndicator]
+                WHERE TenantId = @TenantId AND Status IN (N'Open', N'UnderInvestigation')
+                ORDER BY RaisedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_SabotageIndicator_GetForCorrelationWindow]
+                @TenantId       UNIQUEIDENTIFIER,
+                @WindowStartUtc DATETIME2(3),
+                @WindowEndUtc   DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT SabotageIndicatorId, TenantId, SiteId, Source, SourceReferenceId, Description, Severity, Status,
+                       CorrelatedIndicatorCount, RaisedAtUtc, RiskManagementPriority, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[SabotageIndicator]
+                WHERE TenantId = @TenantId
+                  AND Status IN (N'Open', N'UnderInvestigation')
+                  AND RaisedAtUtc BETWEEN @WindowStartUtc AND @WindowEndUtc
+                ORDER BY RaisedAtUtc DESC;
+            END
+            """);
+
+        // ---- Table: CyberPhysicalIncident --------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CyberPhysicalIncident' AND schema_id = SCHEMA_ID('CyberPhysicalSecurity'))
+            BEGIN
+                CREATE TABLE [CyberPhysicalSecurity].[CyberPhysicalIncident]
+                (
+                    CyberPhysicalIncidentId    UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_CyberPhysicalIncident PRIMARY KEY,
+                    TenantId                     UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                       UNIQUEIDENTIFIER NOT NULL,
+                    Title                        NVARCHAR(256)    NOT NULL,
+                    Description                  NVARCHAR(4000)   NOT NULL CONSTRAINT DF_CyberPhysicalIncident_Desc DEFAULT (N''),
+                    Severity                     NVARCHAR(20)     NOT NULL,
+                    Status                       NVARCHAR(20)     NOT NULL,
+                    RelatedSabotageIndicatorIds  NVARCHAR(4000)   NULL,
+                    OwnerId                      UNIQUEIDENTIFIER NOT NULL,
+                    OpenedAtUtc                  DATETIME2(3)     NOT NULL,
+                    ClosedAtUtc                  DATETIME2(3)     NULL,
+                    ResponseTimeMinutes          INT              NULL,
+                    CreatedAtUtc                 DATETIME2(3)     NOT NULL,
+                    CreatedBy                    UNIQUEIDENTIFIER NOT NULL,
+                    RowVersion                   ROWVERSION       NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_CyberPhysicalIncident_Tenant_Status ON [CyberPhysicalSecurity].[CyberPhysicalIncident] (TenantId, Status);
+                CREATE NONCLUSTERED INDEX IX_CyberPhysicalIncident_Tenant_OpenedAt ON [CyberPhysicalSecurity].[CyberPhysicalIncident] (TenantId, OpenedAtUtc DESC);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_CyberPhysicalIncident_Insert]
+                @CyberPhysicalIncidentId     UNIQUEIDENTIFIER,
+                @TenantId                    UNIQUEIDENTIFIER,
+                @SiteId                      UNIQUEIDENTIFIER,
+                @Title                       NVARCHAR(256),
+                @Description                 NVARCHAR(4000),
+                @Severity                    NVARCHAR(20),
+                @Status                      NVARCHAR(20),
+                @RelatedSabotageIndicatorIds NVARCHAR(4000) = NULL,
+                @OwnerId                     UNIQUEIDENTIFIER,
+                @OpenedAtUtc                 DATETIME2(3),
+                @ClosedAtUtc                 DATETIME2(3) = NULL,
+                @ResponseTimeMinutes         INT = NULL,
+                @CreatedAtUtc                DATETIME2(3),
+                @CreatedBy                   UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [CyberPhysicalSecurity].[CyberPhysicalIncident]
+                    (CyberPhysicalIncidentId, TenantId, SiteId, Title, Description, Severity, Status, RelatedSabotageIndicatorIds,
+                     OwnerId, OpenedAtUtc, ClosedAtUtc, ResponseTimeMinutes, CreatedAtUtc, CreatedBy)
+                    VALUES
+                    (@CyberPhysicalIncidentId, @TenantId, @SiteId, @Title, @Description, @Severity, @Status, @RelatedSabotageIndicatorIds,
+                     @OwnerId, @OpenedAtUtc, @ClosedAtUtc, @ResponseTimeMinutes, @CreatedAtUtc, @CreatedBy);
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_CyberPhysicalIncident_Update]
+                @CyberPhysicalIncidentId UNIQUEIDENTIFIER,
+                @TenantId                UNIQUEIDENTIFIER,
+                @Status                  NVARCHAR(20),
+                @ClosedAtUtc             DATETIME2(3) = NULL,
+                @ResponseTimeMinutes     INT = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    UPDATE [CyberPhysicalSecurity].[CyberPhysicalIncident]
+                    SET Status = @Status,
+                        ClosedAtUtc = @ClosedAtUtc,
+                        ResponseTimeMinutes = @ResponseTimeMinutes
+                    WHERE CyberPhysicalIncidentId = @CyberPhysicalIncidentId AND TenantId = @TenantId;
+                END TRY
+                BEGIN CATCH
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_CyberPhysicalIncident_GetById]
+                @CyberPhysicalIncidentId UNIQUEIDENTIFIER,
+                @TenantId                UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT CyberPhysicalIncidentId, TenantId, SiteId, Title, Description, Severity, Status, RelatedSabotageIndicatorIds,
+                       OwnerId, OpenedAtUtc, ClosedAtUtc, ResponseTimeMinutes, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[CyberPhysicalIncident]
+                WHERE CyberPhysicalIncidentId = @CyberPhysicalIncidentId AND TenantId = @TenantId;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CyberPhysicalSecurity].[usp_CyberPhysicalIncident_GetAll]
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT CyberPhysicalIncidentId, TenantId, SiteId, Title, Description, Severity, Status, RelatedSabotageIndicatorIds,
+                       OwnerId, OpenedAtUtc, ClosedAtUtc, ResponseTimeMinutes, CreatedAtUtc, CreatedBy
+                FROM [CyberPhysicalSecurity].[CyberPhysicalIncident]
+                WHERE TenantId = @TenantId
+                ORDER BY OpenedAtUtc DESC;
+            END
+            """);
+    }
+
+    /// <summary>
+    /// Creates EnvironmentalHealth.WaterDischargeCompliance schema objects (6 aggregates:
+    /// DischargePermit, DischargePoint, EffluentSample, DischargeLimit, LimitExceedance,
+    /// DischargeMonitoringReport) -- tables plus Create/GetById/Update stored procedures,
+    /// mirrored verbatim from PlantSafety.Infrastructure\EnvironmentalHealth\WaterDischargeCompliance\*\Sql\
+    /// (embeds schema rather than executing the on-disk Scripts folder, matching every other
+    /// ApplyXSchemaAsync method above). GetAll/GetItems procedures are intentionally omitted --
+    /// list query handlers are covered at the unit-test layer with fakes, not DB round-trips.
+    /// </summary>
+    public static async Task ApplyWaterDischargeComplianceSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        // ---- DischargePermit ------------------------------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'EnvironmentalHealth')
+            BEGIN
+                EXEC('CREATE SCHEMA [EnvironmentalHealth]');
+            END
+            
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DischargePermit' AND schema_id = SCHEMA_ID('EnvironmentalHealth'))
+            BEGIN
+                CREATE TABLE [EnvironmentalHealth].[DischargePermit] (
+                    [DischargePermitId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [PermitNumber] NVARCHAR(100) NOT NULL,
+                    [RegulatoryProgram] NVARCHAR(50) NOT NULL,
+                    [IssuingAuthority] NVARCHAR(200) NOT NULL,
+                    [EffectiveAtUtc] DATETIME2(3) NOT NULL,
+                    [ExpiresAtUtc] DATETIME2(3) NOT NULL,
+                    [RenewalCount] INT NOT NULL CONSTRAINT DF_DischargePermit_RenewalCount DEFAULT (0),
+                    [PermitConditionSummary] NVARCHAR(1000) NOT NULL CONSTRAINT DF_DischargePermit_PermitConditionSummary DEFAULT (N''),
+                    [LifecycleActionReason] NVARCHAR(500) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_DischargePermit_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+            
+                CREATE NONCLUSTERED INDEX [IX_DischargePermit_TenantId_SiteId]
+                    ON [EnvironmentalHealth].[DischargePermit] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [PermitNumber], [ExpiresAtUtc]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargePermit_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @DischargePermitId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @PermitNumber NVARCHAR(100),
+                @RegulatoryProgram NVARCHAR(50),
+                @IssuingAuthority NVARCHAR(200),
+                @EffectiveAtUtc DATETIME2(3),
+                @ExpiresAtUtc DATETIME2(3),
+                @RenewalCount INT,
+                @PermitConditionSummary NVARCHAR(1000),
+                @LifecycleActionReason NVARCHAR(500) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [EnvironmentalHealth].[DischargePermit]
+                        ([DischargePermitId], [TenantId], [SiteId], [Status], [PermitNumber], [RegulatoryProgram], [IssuingAuthority],
+                         [EffectiveAtUtc], [ExpiresAtUtc], [RenewalCount], [PermitConditionSummary], [LifecycleActionReason],
+                         [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@DischargePermitId, @TenantId, @SiteId, @Status, @PermitNumber, @RegulatoryProgram, @IssuingAuthority,
+                         @EffectiveAtUtc, @ExpiresAtUtc, @RenewalCount, @PermitConditionSummary, @LifecycleActionReason,
+                         @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargePermit_GetById]
+            (
+                @DischargePermitId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+            
+                SELECT [DischargePermitId], [TenantId], [SiteId], [Status], [PermitNumber], [RegulatoryProgram], [IssuingAuthority],
+                       [EffectiveAtUtc], [ExpiresAtUtc], [RenewalCount], [PermitConditionSummary], [LifecycleActionReason],
+                       [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[DischargePermit]
+                WHERE [DischargePermitId] = @DischargePermitId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargePermit_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @DischargePermitId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @PermitNumber NVARCHAR(100),
+                @RegulatoryProgram NVARCHAR(50),
+                @IssuingAuthority NVARCHAR(200),
+                @EffectiveAtUtc DATETIME2(3),
+                @ExpiresAtUtc DATETIME2(3),
+                @RenewalCount INT,
+                @PermitConditionSummary NVARCHAR(1000),
+                @LifecycleActionReason NVARCHAR(500) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [EnvironmentalHealth].[DischargePermit]
+                    SET
+                        [SiteId] = @SiteId,
+                        [Status] = @Status,
+                        [ExpiresAtUtc] = @ExpiresAtUtc,
+                        [RenewalCount] = @RenewalCount,
+                        [LifecycleActionReason] = @LifecycleActionReason,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [DischargePermitId] = @DischargePermitId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- DischargePoint ------------------------------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'EnvironmentalHealth')
+            BEGIN
+                EXEC('CREATE SCHEMA [EnvironmentalHealth]');
+            END
+            
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DischargePoint' AND schema_id = SCHEMA_ID('EnvironmentalHealth'))
+            BEGIN
+                CREATE TABLE [EnvironmentalHealth].[DischargePoint] (
+                    [DischargePointId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [DischargePermitId] UNIQUEIDENTIFIER NOT NULL,
+                    [PointCode] NVARCHAR(50) NOT NULL,
+                    [PointName] NVARCHAR(200) NOT NULL,
+                    [ReceivingWaterBody] NVARCHAR(200) NOT NULL,
+                    [Outfall] NVARCHAR(50) NOT NULL,
+                    [Latitude] DECIMAL(9,6) NULL,
+                    [Longitude] DECIMAL(9,6) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_DischargePoint_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+            
+                CREATE NONCLUSTERED INDEX [IX_DischargePoint_TenantId_SiteId]
+                    ON [EnvironmentalHealth].[DischargePoint] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [PointCode]);
+                CREATE NONCLUSTERED INDEX [IX_DischargePoint_DischargePermitId]
+                    ON [EnvironmentalHealth].[DischargePoint] ([DischargePermitId]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargePoint_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @DischargePointId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @DischargePermitId UNIQUEIDENTIFIER,
+                @PointCode NVARCHAR(50),
+                @PointName NVARCHAR(200),
+                @ReceivingWaterBody NVARCHAR(200),
+                @Outfall NVARCHAR(50),
+                @Latitude DECIMAL(9,6) = NULL,
+                @Longitude DECIMAL(9,6) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [EnvironmentalHealth].[DischargePoint]
+                        ([DischargePointId], [TenantId], [SiteId], [Status], [DischargePermitId], [PointCode], [PointName],
+                         [ReceivingWaterBody], [Outfall], [Latitude], [Longitude], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@DischargePointId, @TenantId, @SiteId, @Status, @DischargePermitId, @PointCode, @PointName,
+                         @ReceivingWaterBody, @Outfall, @Latitude, @Longitude, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargePoint_GetById]
+            (
+                @DischargePointId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+            
+                SELECT [DischargePointId], [TenantId], [SiteId], [Status], [DischargePermitId], [PointCode], [PointName],
+                       [ReceivingWaterBody], [Outfall], [Latitude], [Longitude], [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[DischargePoint]
+                WHERE [DischargePointId] = @DischargePointId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargePoint_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @DischargePointId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @PointName NVARCHAR(200),
+                @ReceivingWaterBody NVARCHAR(200)
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [EnvironmentalHealth].[DischargePoint]
+                    SET
+                        [SiteId] = @SiteId,
+                        [Status] = @Status,
+                        [PointName] = @PointName,
+                        [ReceivingWaterBody] = @ReceivingWaterBody,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [DischargePointId] = @DischargePointId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- EffluentSample ------------------------------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'EnvironmentalHealth')
+            BEGIN
+                EXEC('CREATE SCHEMA [EnvironmentalHealth]');
+            END
+            
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'EffluentSample' AND schema_id = SCHEMA_ID('EnvironmentalHealth'))
+            BEGIN
+                CREATE TABLE [EnvironmentalHealth].[EffluentSample] (
+                    [EffluentSampleId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [DischargePointId] UNIQUEIDENTIFIER NOT NULL,
+                    [Parameter] NVARCHAR(50) NOT NULL,
+                    [MeasuredValue] DECIMAL(18,4) NOT NULL,
+                    [UnitOfMeasure] NVARCHAR(50) NOT NULL,
+                    [SampledAtUtc] DATETIME2(3) NOT NULL,
+                    [CollectedByUserId] UNIQUEIDENTIFIER NOT NULL,
+                    [LabSourceSystem] NVARCHAR(100) NOT NULL,
+                    [ChainOfCustodyReference] NVARCHAR(200) NOT NULL,
+                    [CorrectionOfSampleId] UNIQUEIDENTIFIER NULL,
+                    [CorrectionReason] NVARCHAR(500) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_EffluentSample_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+            
+                CREATE NONCLUSTERED INDEX [IX_EffluentSample_TenantId_DischargePointId]
+                    ON [EnvironmentalHealth].[EffluentSample] ([TenantId], [DischargePointId], [SampledAtUtc]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_EffluentSample_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @EffluentSampleId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @DischargePointId UNIQUEIDENTIFIER,
+                @Parameter NVARCHAR(50),
+                @MeasuredValue DECIMAL(18,4),
+                @UnitOfMeasure NVARCHAR(50),
+                @SampledAtUtc DATETIME2(3),
+                @CollectedByUserId UNIQUEIDENTIFIER,
+                @LabSourceSystem NVARCHAR(100),
+                @ChainOfCustodyReference NVARCHAR(200),
+                @CorrectionOfSampleId UNIQUEIDENTIFIER = NULL,
+                @CorrectionReason NVARCHAR(500) = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [EnvironmentalHealth].[EffluentSample]
+                        ([EffluentSampleId], [TenantId], [SiteId], [Status], [DischargePointId], [Parameter], [MeasuredValue],
+                         [UnitOfMeasure], [SampledAtUtc], [CollectedByUserId], [LabSourceSystem], [ChainOfCustodyReference],
+                         [CorrectionOfSampleId], [CorrectionReason], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@EffluentSampleId, @TenantId, @SiteId, @Status, @DischargePointId, @Parameter, @MeasuredValue,
+                         @UnitOfMeasure, @SampledAtUtc, @CollectedByUserId, @LabSourceSystem, @ChainOfCustodyReference,
+                         @CorrectionOfSampleId, @CorrectionReason, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_EffluentSample_GetById]
+            (
+                @EffluentSampleId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+            
+                SELECT [EffluentSampleId], [TenantId], [SiteId], [Status], [DischargePointId], [Parameter], [MeasuredValue],
+                       [UnitOfMeasure], [SampledAtUtc], [CollectedByUserId], [LabSourceSystem], [ChainOfCustodyReference],
+                       [CorrectionOfSampleId], [CorrectionReason], [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[EffluentSample]
+                WHERE [EffluentSampleId] = @EffluentSampleId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_EffluentSample_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @EffluentSampleId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50)
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [EnvironmentalHealth].[EffluentSample]
+                    SET
+                        [Status] = @Status,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [EffluentSampleId] = @EffluentSampleId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- DischargeLimit ------------------------------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'EnvironmentalHealth')
+            BEGIN
+                EXEC('CREATE SCHEMA [EnvironmentalHealth]');
+            END
+            
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DischargeLimit' AND schema_id = SCHEMA_ID('EnvironmentalHealth'))
+            BEGIN
+                CREATE TABLE [EnvironmentalHealth].[DischargeLimit] (
+                    [DischargeLimitId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [DischargePointId] UNIQUEIDENTIFIER NOT NULL,
+                    [DischargePermitId] UNIQUEIDENTIFIER NOT NULL,
+                    [Parameter] NVARCHAR(50) NOT NULL,
+                    [LimitBasis] NVARCHAR(50) NOT NULL,
+                    [LimitValue] DECIMAL(18,4) NOT NULL,
+                    [UnitOfMeasure] NVARCHAR(50) NOT NULL,
+                    [EffectiveAtUtc] DATETIME2(3) NOT NULL,
+                    [PermitConditionReference] NVARCHAR(200) NOT NULL,
+                    [RevisionCount] INT NOT NULL CONSTRAINT DF_DischargeLimit_RevisionCount DEFAULT (0),
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_DischargeLimit_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+            
+                CREATE NONCLUSTERED INDEX [IX_DischargeLimit_TenantId_DischargePointId]
+                    ON [EnvironmentalHealth].[DischargeLimit] ([TenantId], [DischargePointId])
+                    INCLUDE ([Status], [Parameter]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargeLimit_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @DischargeLimitId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @DischargePointId UNIQUEIDENTIFIER,
+                @DischargePermitId UNIQUEIDENTIFIER,
+                @Parameter NVARCHAR(50),
+                @LimitBasis NVARCHAR(50),
+                @LimitValue DECIMAL(18,4),
+                @UnitOfMeasure NVARCHAR(50),
+                @EffectiveAtUtc DATETIME2(3),
+                @PermitConditionReference NVARCHAR(200),
+                @RevisionCount INT,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [EnvironmentalHealth].[DischargeLimit]
+                        ([DischargeLimitId], [TenantId], [SiteId], [Status], [DischargePointId], [DischargePermitId], [Parameter],
+                         [LimitBasis], [LimitValue], [UnitOfMeasure], [EffectiveAtUtc], [PermitConditionReference], [RevisionCount],
+                         [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@DischargeLimitId, @TenantId, @SiteId, @Status, @DischargePointId, @DischargePermitId, @Parameter,
+                         @LimitBasis, @LimitValue, @UnitOfMeasure, @EffectiveAtUtc, @PermitConditionReference, @RevisionCount,
+                         @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargeLimit_GetById]
+            (
+                @DischargeLimitId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+            
+                SELECT [DischargeLimitId], [TenantId], [SiteId], [Status], [DischargePointId], [DischargePermitId], [Parameter],
+                       [LimitBasis], [LimitValue], [UnitOfMeasure], [EffectiveAtUtc], [PermitConditionReference], [RevisionCount],
+                       [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[DischargeLimit]
+                WHERE [DischargeLimitId] = @DischargeLimitId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargeLimit_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @DischargeLimitId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @LimitValue DECIMAL(18,4),
+                @RevisionCount INT
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [EnvironmentalHealth].[DischargeLimit]
+                    SET
+                        [Status] = @Status,
+                        [LimitValue] = @LimitValue,
+                        [RevisionCount] = @RevisionCount,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [DischargeLimitId] = @DischargeLimitId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- DischargeMonitoringReport ------------------------------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'EnvironmentalHealth')
+            BEGIN
+                EXEC('CREATE SCHEMA [EnvironmentalHealth]');
+            END
+            
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DischargeMonitoringReport' AND schema_id = SCHEMA_ID('EnvironmentalHealth'))
+            BEGIN
+                CREATE TABLE [EnvironmentalHealth].[DischargeMonitoringReport] (
+                    [DischargeMonitoringReportId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [DischargePermitId] UNIQUEIDENTIFIER NOT NULL,
+                    [ReportingPeriodStartUtc] DATETIME2(3) NOT NULL,
+                    [ReportingPeriodEndUtc] DATETIME2(3) NOT NULL,
+                    [DueAtUtc] DATETIME2(3) NOT NULL,
+                    [SubmittedAtUtc] DATETIME2(3) NULL,
+                    [SubmittedByUserId] UNIQUEIDENTIFIER NULL,
+                    [SamplesWithinLimitCount] INT NOT NULL CONSTRAINT DF_DischargeMonitoringReport_SamplesWithinLimitCount DEFAULT (0),
+                    [TotalSamplesCount] INT NOT NULL CONSTRAINT DF_DischargeMonitoringReport_TotalSamplesCount DEFAULT (0),
+                    [RetentionExpiresAtUtc] DATETIME2(3) NULL,
+                    [RejectionReason] NVARCHAR(500) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_DischargeMonitoringReport_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+            
+                CREATE NONCLUSTERED INDEX [IX_DischargeMonitoringReport_TenantId_Period]
+                    ON [EnvironmentalHealth].[DischargeMonitoringReport] ([TenantId], [ReportingPeriodStartUtc], [ReportingPeriodEndUtc])
+                    INCLUDE ([Status], [SiteId]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargeMonitoringReport_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @DischargeMonitoringReportId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @DischargePermitId UNIQUEIDENTIFIER,
+                @ReportingPeriodStartUtc DATETIME2(3),
+                @ReportingPeriodEndUtc DATETIME2(3),
+                @DueAtUtc DATETIME2(3),
+                @SamplesWithinLimitCount INT,
+                @TotalSamplesCount INT,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [EnvironmentalHealth].[DischargeMonitoringReport]
+                        ([DischargeMonitoringReportId], [TenantId], [SiteId], [Status], [DischargePermitId], [ReportingPeriodStartUtc],
+                         [ReportingPeriodEndUtc], [DueAtUtc], [SamplesWithinLimitCount], [TotalSamplesCount],
+                         [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@DischargeMonitoringReportId, @TenantId, @SiteId, @Status, @DischargePermitId, @ReportingPeriodStartUtc,
+                         @ReportingPeriodEndUtc, @DueAtUtc, @SamplesWithinLimitCount, @TotalSamplesCount,
+                         @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargeMonitoringReport_GetById]
+            (
+                @DischargeMonitoringReportId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+            
+                SELECT [DischargeMonitoringReportId], [TenantId], [SiteId], [Status], [DischargePermitId], [ReportingPeriodStartUtc],
+                       [ReportingPeriodEndUtc], [DueAtUtc], [SubmittedAtUtc], [SubmittedByUserId], [SamplesWithinLimitCount],
+                       [TotalSamplesCount], [RetentionExpiresAtUtc], [RejectionReason], [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[DischargeMonitoringReport]
+                WHERE [DischargeMonitoringReportId] = @DischargeMonitoringReportId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargeMonitoringReport_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @DischargeMonitoringReportId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @SubmittedAtUtc DATETIME2(3) = NULL,
+                @SubmittedByUserId UNIQUEIDENTIFIER = NULL,
+                @SamplesWithinLimitCount INT,
+                @TotalSamplesCount INT,
+                @RetentionExpiresAtUtc DATETIME2(3) = NULL,
+                @RejectionReason NVARCHAR(500) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [EnvironmentalHealth].[DischargeMonitoringReport]
+                    SET
+                        [Status] = @Status,
+                        [SubmittedAtUtc] = @SubmittedAtUtc,
+                        [SubmittedByUserId] = @SubmittedByUserId,
+                        [SamplesWithinLimitCount] = @SamplesWithinLimitCount,
+                        [TotalSamplesCount] = @TotalSamplesCount,
+                        [RetentionExpiresAtUtc] = @RetentionExpiresAtUtc,
+                        [RejectionReason] = @RejectionReason,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [DischargeMonitoringReportId] = @DischargeMonitoringReportId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- LimitExceedance ------------------------------------------------------------------
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'EnvironmentalHealth')
+            BEGIN
+                EXEC('CREATE SCHEMA [EnvironmentalHealth]');
+            END
+            
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'LimitExceedance' AND schema_id = SCHEMA_ID('EnvironmentalHealth'))
+            BEGIN
+                CREATE TABLE [EnvironmentalHealth].[LimitExceedance] (
+                    [LimitExceedanceId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [DischargePointId] UNIQUEIDENTIFIER NOT NULL,
+                    [EffluentSampleId] UNIQUEIDENTIFIER NOT NULL,
+                    [DischargeLimitId] UNIQUEIDENTIFIER NOT NULL,
+                    [ParameterName] NVARCHAR(100) NOT NULL,
+                    [MeasuredValue] DECIMAL(18,4) NOT NULL,
+                    [LimitValue] DECIMAL(18,4) NOT NULL,
+                    [ExceedancePercentage] DECIMAL(9,2) NOT NULL,
+                    [Severity] NVARCHAR(50) NOT NULL,
+                    [DetectedAtUtc] DATETIME2(3) NOT NULL,
+                    [RepeatExceedanceCount] INT NOT NULL CONSTRAINT DF_LimitExceedance_RepeatExceedanceCount DEFAULT (0),
+                    [ResponseInitiatedAtUtc] DATETIME2(3) NULL,
+                    [ResponseInitiatedByUserId] UNIQUEIDENTIFIER NULL,
+                    [ResponseNotes] NVARCHAR(1000) NULL,
+                    [ClosedAtUtc] DATETIME2(3) NULL,
+                    [ClosedByUserId] UNIQUEIDENTIFIER NULL,
+                    [ResolutionNotes] NVARCHAR(1000) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_LimitExceedance_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+            
+                CREATE NONCLUSTERED INDEX [IX_LimitExceedance_TenantId_SiteId_Status]
+                    ON [EnvironmentalHealth].[LimitExceedance] ([TenantId], [SiteId], [Status]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_LimitExceedance_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @LimitExceedanceId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @DischargePointId UNIQUEIDENTIFIER,
+                @EffluentSampleId UNIQUEIDENTIFIER,
+                @DischargeLimitId UNIQUEIDENTIFIER,
+                @ParameterName NVARCHAR(100),
+                @MeasuredValue DECIMAL(18,4),
+                @LimitValue DECIMAL(18,4),
+                @ExceedancePercentage DECIMAL(9,2),
+                @Severity NVARCHAR(50),
+                @DetectedAtUtc DATETIME2(3),
+                @RepeatExceedanceCount INT,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [EnvironmentalHealth].[LimitExceedance]
+                        ([LimitExceedanceId], [TenantId], [SiteId], [Status], [DischargePointId], [EffluentSampleId], [DischargeLimitId],
+                         [ParameterName], [MeasuredValue], [LimitValue], [ExceedancePercentage], [Severity], [DetectedAtUtc],
+                         [RepeatExceedanceCount], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@LimitExceedanceId, @TenantId, @SiteId, @Status, @DischargePointId, @EffluentSampleId, @DischargeLimitId,
+                         @ParameterName, @MeasuredValue, @LimitValue, @ExceedancePercentage, @Severity, @DetectedAtUtc,
+                         @RepeatExceedanceCount, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_LimitExceedance_GetById]
+            (
+                @LimitExceedanceId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+            
+                SELECT [LimitExceedanceId], [TenantId], [SiteId], [Status], [DischargePointId], [EffluentSampleId], [DischargeLimitId],
+                       [ParameterName], [MeasuredValue], [LimitValue], [ExceedancePercentage], [Severity], [DetectedAtUtc],
+                       [RepeatExceedanceCount], [ResponseInitiatedAtUtc], [ResponseInitiatedByUserId], [ResponseNotes],
+                       [ClosedAtUtc], [ClosedByUserId], [ResolutionNotes], [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[LimitExceedance]
+                WHERE [LimitExceedanceId] = @LimitExceedanceId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_LimitExceedance_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @LimitExceedanceId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @ResponseInitiatedAtUtc DATETIME2(3) = NULL,
+                @ResponseInitiatedByUserId UNIQUEIDENTIFIER = NULL,
+                @ResponseNotes NVARCHAR(1000) = NULL,
+                @ClosedAtUtc DATETIME2(3) = NULL,
+                @ClosedByUserId UNIQUEIDENTIFIER = NULL,
+                @ResolutionNotes NVARCHAR(1000) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [EnvironmentalHealth].[LimitExceedance]
+                    SET
+                        [Status] = @Status,
+                        [ResponseInitiatedAtUtc] = @ResponseInitiatedAtUtc,
+                        [ResponseInitiatedByUserId] = @ResponseInitiatedByUserId,
+                        [ResponseNotes] = @ResponseNotes,
+                        [ClosedAtUtc] = @ClosedAtUtc,
+                        [ClosedByUserId] = @ClosedByUserId,
+                        [ResolutionNotes] = @ResolutionNotes,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [LimitExceedanceId] = @LimitExceedanceId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+    }
+
+    /// <summary>
+    /// Creates the <c>[CommunitySafety]</c> schema's five tables (CommunityContact,
+    /// CommunityConcern, CommunityImpactAssessment, CommunityNotification,
+    /// CommunityMeetingRecord) and their stored procedures against the Testcontainers database,
+    /// mirroring <c>PlantSafety.Infrastructure\CommunitySafety\Sql\Tables\*.sql</c> and
+    /// <c>...\Sql\Procedures\usp_*.sql</c> verbatim. Backs the Dapper repositories under
+    /// <c>PlantSafety.Infrastructure.CommunitySafety.*.Persistence</c>.
+    /// </summary>
+    public static async Task ApplyCommunitySafetySchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'CommunitySafety')
+                EXEC('CREATE SCHEMA [CommunitySafety]');
+            """);
+
+        // ---- CommunityContact ------------------------------------------------------------
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommunityContact' AND schema_id = SCHEMA_ID('CommunitySafety'))
+            BEGIN
+                CREATE TABLE [CommunitySafety].[CommunityContact] (
+                    [CommunityContactId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [DisplayName] NVARCHAR(200) NOT NULL,
+                    [ContactType] NVARCHAR(50) NOT NULL,
+                    [Organization] NVARCHAR(200) NULL,
+                    [CommunityArea] NVARCHAR(200) NOT NULL,
+                    [Email] NVARCHAR(320) NOT NULL,
+                    [Phone] NVARCHAR(32) NULL,
+                    [OptedInForNotifications] BIT NOT NULL CONSTRAINT DF_CommunityContact_OptedIn DEFAULT (1),
+                    [ArchivedAtUtc] DATETIME2(3) NULL,
+                    [ArchivalReason] NVARCHAR(1000) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_CommunityContact_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_CommunityContact_TenantId_SiteId]
+                    ON [CommunitySafety].[CommunityContact] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [DisplayName], [ContactType]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityContact_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @CommunityContactId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @DisplayName NVARCHAR(200),
+                @ContactType NVARCHAR(50),
+                @Organization NVARCHAR(200) = NULL,
+                @CommunityArea NVARCHAR(200),
+                @Email NVARCHAR(320),
+                @Phone NVARCHAR(32) = NULL,
+                @OptedInForNotifications BIT,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [CommunitySafety].[CommunityContact]
+                        ([CommunityContactId], [TenantId], [SiteId], [Status], [DisplayName], [ContactType], [Organization], [CommunityArea], [Email], [Phone], [OptedInForNotifications], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@CommunityContactId, @TenantId, @SiteId, @Status, @DisplayName, @ContactType, @Organization, @CommunityArea, @Email, @Phone, @OptedInForNotifications, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityContact_GetById]
+            (
+                @CommunityContactId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [CommunityContactId], [TenantId], [SiteId], [Status], [DisplayName], [ContactType], [Organization], [CommunityArea], [Email], [Phone], [OptedInForNotifications], [ArchivedAtUtc], [ArchivalReason], [CreatedAtUtc], [CreatedBy]
+                FROM [CommunitySafety].[CommunityContact]
+                WHERE [CommunityContactId] = @CommunityContactId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityContact_GetItems]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [CommunityContactId], [TenantId], [SiteId], [DisplayName], [ContactType], [Organization],
+                    [CommunityArea], [OptedInForNotifications], [Status], [CreatedAtUtc], [CreatedBy]
+                FROM [CommunitySafety].[CommunityContact]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND ISNULL([IsDeleted], 0) = 0
+                  AND CreatedAtUtc >= @FromUtc
+                  AND CreatedAtUtc <= @ToUtc
+                ORDER BY CreatedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityContact_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @CommunityContactId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @OptedInForNotifications BIT,
+                @ArchivedAtUtc DATETIME2(3) = NULL,
+                @ArchivalReason NVARCHAR(1000) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [CommunitySafety].[CommunityContact]
+                    SET
+                        [Status] = @Status,
+                        [OptedInForNotifications] = @OptedInForNotifications,
+                        [ArchivedAtUtc] = @ArchivedAtUtc,
+                        [ArchivalReason] = @ArchivalReason,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [CommunityContactId] = @CommunityContactId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- CommunityConcern -------------------------------------------------------------
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommunityConcern' AND schema_id = SCHEMA_ID('CommunitySafety'))
+            BEGIN
+                CREATE TABLE [CommunitySafety].[CommunityConcern] (
+                    [CommunityConcernId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NOT NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [Category] NVARCHAR(50) NOT NULL,
+                    [Severity] NVARCHAR(30) NOT NULL,
+                    [FacilityArea] NVARCHAR(200) NOT NULL,
+                    [Description] NVARCHAR(4000) NOT NULL,
+                    [ReportedByContactId] UNIQUEIDENTIFIER NULL,
+                    [RelatedIncidentId] UNIQUEIDENTIFIER NULL,
+                    [LoggedAtUtc] DATETIME2(3) NOT NULL,
+                    [EscalationCount] INT NOT NULL CONSTRAINT DF_CommunityConcern_EscalationCount DEFAULT (0),
+                    [EscalationReason] NVARCHAR(1000) NULL,
+                    [EscalatedAtUtc] DATETIME2(3) NULL,
+                    [ResolutionNotes] NVARCHAR(4000) NULL,
+                    [ResolvedAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_CommunityConcern_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_CommunityConcern_TenantId_SiteId]
+                    ON [CommunitySafety].[CommunityConcern] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [Category], [Severity], [FacilityArea]);
+
+                CREATE NONCLUSTERED INDEX [IX_CommunityConcern_FacilityArea_LoggedAtUtc]
+                    ON [CommunitySafety].[CommunityConcern] ([TenantId], [FacilityArea], [LoggedAtUtc])
+                    INCLUDE ([Status]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityConcern_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @CommunityConcernId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @Category NVARCHAR(50),
+                @Severity NVARCHAR(30),
+                @FacilityArea NVARCHAR(200),
+                @Description NVARCHAR(4000),
+                @ReportedByContactId UNIQUEIDENTIFIER = NULL,
+                @RelatedIncidentId UNIQUEIDENTIFIER = NULL,
+                @LoggedAtUtc DATETIME2(3),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [CommunitySafety].[CommunityConcern]
+                        ([CommunityConcernId], [TenantId], [SiteId], [Status], [Category], [Severity], [FacilityArea], [Description], [ReportedByContactId], [RelatedIncidentId], [LoggedAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@CommunityConcernId, @TenantId, @SiteId, @Status, @Category, @Severity, @FacilityArea, @Description, @ReportedByContactId, @RelatedIncidentId, @LoggedAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityConcern_GetById]
+            (
+                @CommunityConcernId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER = NULL
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT
+                    [CommunityConcernId], [TenantId], [SiteId], [Category], [Severity], [FacilityArea], [Description],
+                    [ReportedByContactId], [RelatedIncidentId], [Status] AS [ConcernStatus], [LoggedAtUtc], [ResolvedAtUtc],
+                    [CreatedAtUtc], [CreatedBy]
+                FROM [CommunitySafety].[CommunityConcern]
+                WHERE [CommunityConcernId] = @CommunityConcernId
+                  AND (@TenantId IS NULL OR [TenantId] = @TenantId)
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityConcern_GetOpen]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [CommunityConcernId], [TenantId], [SiteId], [Category], [Severity], [FacilityArea], [Description],
+                    [ReportedByContactId], [RelatedIncidentId], [Status] AS [ConcernStatus], [LoggedAtUtc], [ResolvedAtUtc],
+                    [CreatedAtUtc], [CreatedBy]
+                FROM [CommunitySafety].[CommunityConcern]
+                WHERE [TenantId] = @TenantId
+                  AND (@SiteId IS NULL OR [SiteId] = @SiteId)
+                  AND [Status] NOT IN (N'Resolved', N'Archived')
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [LoggedAtUtc] DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityConcern_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @CommunityConcernId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @Severity NVARCHAR(30),
+                @EscalationCount INT,
+                @EscalationReason NVARCHAR(1000) = NULL,
+                @EscalatedAtUtc DATETIME2(3) = NULL,
+                @ResolutionNotes NVARCHAR(4000) = NULL,
+                @ResolvedAtUtc DATETIME2(3) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [CommunitySafety].[CommunityConcern]
+                    SET
+                        [Status] = @Status,
+                        [Severity] = @Severity,
+                        [EscalationCount] = @EscalationCount,
+                        [EscalationReason] = @EscalationReason,
+                        [EscalatedAtUtc] = @EscalatedAtUtc,
+                        [ResolutionNotes] = @ResolutionNotes,
+                        [ResolvedAtUtc] = @ResolvedAtUtc,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [CommunityConcernId] = @CommunityConcernId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- CommunityImpactAssessment ----------------------------------------------------
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommunityImpactAssessment' AND schema_id = SCHEMA_ID('CommunitySafety'))
+            BEGIN
+                CREATE TABLE [CommunitySafety].[CommunityImpactAssessment] (
+                    [CommunityImpactAssessmentId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NOT NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [IncidentId] UNIQUEIDENTIFIER NOT NULL,
+                    [Severity] NVARCHAR(30) NOT NULL,
+                    [AffectedArea] NVARCHAR(200) NOT NULL,
+                    [EstimatedPersonsAffected] INT NULL,
+                    [Description] NVARCHAR(4000) NOT NULL,
+                    [RequiresRightToKnowReporting] BIT NOT NULL CONSTRAINT DF_CommunityImpactAssessment_RTK DEFAULT (0),
+                    [AssessedByUserId] UNIQUEIDENTIFIER NOT NULL,
+                    [AssessedAtUtc] DATETIME2(3) NOT NULL,
+                    [FinalizedAtUtc] DATETIME2(3) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_CommunityImpactAssessment_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_CommunityImpactAssessment_TenantId_IncidentId]
+                    ON [CommunitySafety].[CommunityImpactAssessment] ([TenantId], [IncidentId])
+                    INCLUDE ([Status], [Severity]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityImpactAssessment_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @CommunityImpactAssessmentId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @IncidentId UNIQUEIDENTIFIER,
+                @Severity NVARCHAR(30),
+                @AffectedArea NVARCHAR(200),
+                @EstimatedPersonsAffected INT = NULL,
+                @Description NVARCHAR(4000),
+                @RequiresRightToKnowReporting BIT,
+                @AssessedByUserId UNIQUEIDENTIFIER,
+                @AssessedAtUtc DATETIME2(3),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [CommunitySafety].[CommunityImpactAssessment]
+                        ([CommunityImpactAssessmentId], [TenantId], [SiteId], [Status], [IncidentId], [Severity], [AffectedArea], [EstimatedPersonsAffected], [Description], [RequiresRightToKnowReporting], [AssessedByUserId], [AssessedAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@CommunityImpactAssessmentId, @TenantId, @SiteId, @Status, @IncidentId, @Severity, @AffectedArea, @EstimatedPersonsAffected, @Description, @RequiresRightToKnowReporting, @AssessedByUserId, @AssessedAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityImpactAssessment_GetById]
+            (
+                @CommunityImpactAssessmentId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [CommunityImpactAssessmentId], [TenantId], [SiteId], [Status], [IncidentId], [Severity], [AffectedArea], [EstimatedPersonsAffected], [Description], [RequiresRightToKnowReporting], [AssessedByUserId], [AssessedAtUtc], [CreatedAtUtc], [CreatedBy], [FinalizedAtUtc]
+                FROM [CommunitySafety].[CommunityImpactAssessment]
+                WHERE [CommunityImpactAssessmentId] = @CommunityImpactAssessmentId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityImpactAssessment_GetByIncident]
+                @TenantId   UNIQUEIDENTIFIER,
+                @IncidentId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [CommunityImpactAssessmentId], [TenantId], [SiteId], [IncidentId], [Severity], [AffectedArea],
+                    [EstimatedPersonsAffected], [Description], [RequiresRightToKnowReporting],
+                    [Status] AS [AssessmentStatus], [AssessedAtUtc], [CreatedAtUtc], [CreatedBy]
+                FROM [CommunitySafety].[CommunityImpactAssessment]
+                WHERE [TenantId] = @TenantId
+                  AND [IncidentId] = @IncidentId
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [AssessedAtUtc] DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityImpactAssessment_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @CommunityImpactAssessmentId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @FinalizedAtUtc DATETIME2(3) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [CommunitySafety].[CommunityImpactAssessment]
+                    SET
+                        [Status] = @Status,
+                        [FinalizedAtUtc] = @FinalizedAtUtc,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [CommunityImpactAssessmentId] = @CommunityImpactAssessmentId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- CommunityNotification ---------------------------------------------------------
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommunityNotification' AND schema_id = SCHEMA_ID('CommunitySafety'))
+            BEGIN
+                CREATE TABLE [CommunitySafety].[CommunityNotification] (
+                    [CommunityNotificationId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [Channel] NVARCHAR(50) NOT NULL,
+                    [RecipientContactId] UNIQUEIDENTIFIER NOT NULL,
+                    [Subject] NVARCHAR(300) NOT NULL,
+                    [MessageBody] NVARCHAR(MAX) NOT NULL,
+                    [RelatedConcernId] UNIQUEIDENTIFIER NULL,
+                    [RelatedIncidentId] UNIQUEIDENTIFIER NULL,
+                    [SentAtUtc] DATETIME2(3) NOT NULL,
+                    [AcknowledgedAtUtc] DATETIME2(3) NULL,
+                    [FailureReason] NVARCHAR(1000) NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_CommunityNotification_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_CommunityNotification_TenantId_SiteId_SentAtUtc]
+                    ON [CommunitySafety].[CommunityNotification] ([TenantId], [SiteId], [SentAtUtc])
+                    INCLUDE ([Status], [Channel], [RecipientContactId]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityNotification_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @CommunityNotificationId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @Channel NVARCHAR(50),
+                @RecipientContactId UNIQUEIDENTIFIER,
+                @Subject NVARCHAR(300),
+                @MessageBody NVARCHAR(MAX),
+                @RelatedConcernId UNIQUEIDENTIFIER = NULL,
+                @RelatedIncidentId UNIQUEIDENTIFIER = NULL,
+                @SentAtUtc DATETIME2(3),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [CommunitySafety].[CommunityNotification]
+                        ([CommunityNotificationId], [TenantId], [SiteId], [Status], [Channel], [RecipientContactId], [Subject], [MessageBody], [RelatedConcernId], [RelatedIncidentId], [SentAtUtc], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@CommunityNotificationId, @TenantId, @SiteId, @Status, @Channel, @RecipientContactId, @Subject, @MessageBody, @RelatedConcernId, @RelatedIncidentId, @SentAtUtc, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityNotification_GetById]
+            (
+                @CommunityNotificationId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [CommunityNotificationId], [TenantId], [SiteId], [Status], [Channel], [RecipientContactId], [Subject], [MessageBody], [RelatedConcernId], [RelatedIncidentId], [SentAtUtc], [AcknowledgedAtUtc], [FailureReason], [CreatedAtUtc], [CreatedBy]
+                FROM [CommunitySafety].[CommunityNotification]
+                WHERE [CommunityNotificationId] = @CommunityNotificationId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityNotification_GetItems]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [CommunityNotificationId],
+                    [TenantId],
+                    [SiteId],
+                    [Channel],
+                    [RecipientContactId],
+                    [Subject],
+                    [RelatedConcernId],
+                    [RelatedIncidentId],
+                    [Status] AS [NotificationStatus],
+                    [SentAtUtc],
+                    [AcknowledgedAtUtc],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [CommunitySafety].[CommunityNotification]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND ISNULL([IsDeleted], 0) = 0
+                  AND SentAtUtc >= @FromUtc
+                  AND SentAtUtc <= @ToUtc
+                ORDER BY SentAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityNotification_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @CommunityNotificationId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @AcknowledgedAtUtc DATETIME2(3) = NULL,
+                @FailureReason NVARCHAR(1000) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [CommunitySafety].[CommunityNotification]
+                    SET
+                        [Status] = @Status,
+                        [AcknowledgedAtUtc] = @AcknowledgedAtUtc,
+                        [FailureReason] = @FailureReason,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [CommunityNotificationId] = @CommunityNotificationId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        // ---- CommunityMeetingRecord ---------------------------------------------------------
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommunityMeetingRecord' AND schema_id = SCHEMA_ID('CommunitySafety'))
+            BEGIN
+                CREATE TABLE [CommunitySafety].[CommunityMeetingRecord] (
+                    [CommunityMeetingRecordId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NOT NULL,
+                    [Status] NVARCHAR(50) NOT NULL,
+                    [MeetingTitle] NVARCHAR(300) NOT NULL,
+                    [MeetingDateUtc] DATETIME2(3) NOT NULL,
+                    [Location] NVARCHAR(300) NOT NULL,
+                    [AttendeeCount] INT NOT NULL CONSTRAINT DF_CommunityMeetingRecord_AttendeeCount DEFAULT (0),
+                    [TopicsSummary] NVARCHAR(4000) NOT NULL,
+                    [ActionItems] NVARCHAR(4000) NULL,
+                    [RecordedByUserId] UNIQUEIDENTIFIER NOT NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_CommunityMeetingRecord_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_CommunityMeetingRecord_TenantId_SiteId_MeetingDateUtc]
+                    ON [CommunitySafety].[CommunityMeetingRecord] ([TenantId], [SiteId], [MeetingDateUtc])
+                    INCLUDE ([Status], [MeetingTitle]);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityMeetingRecord_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @CommunityMeetingRecordId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @MeetingTitle NVARCHAR(300),
+                @MeetingDateUtc DATETIME2(3),
+                @Location NVARCHAR(300),
+                @AttendeeCount INT,
+                @TopicsSummary NVARCHAR(4000),
+                @ActionItems NVARCHAR(4000) = NULL,
+                @RecordedByUserId UNIQUEIDENTIFIER,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [CommunitySafety].[CommunityMeetingRecord]
+                        ([CommunityMeetingRecordId], [TenantId], [SiteId], [Status], [MeetingTitle], [MeetingDateUtc], [Location], [AttendeeCount], [TopicsSummary], [ActionItems], [RecordedByUserId], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@CommunityMeetingRecordId, @TenantId, @SiteId, @Status, @MeetingTitle, @MeetingDateUtc, @Location, @AttendeeCount, @TopicsSummary, @ActionItems, @RecordedByUserId, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityMeetingRecord_GetById]
+            (
+                @CommunityMeetingRecordId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [CommunityMeetingRecordId], [TenantId], [SiteId], [Status], [MeetingTitle], [MeetingDateUtc], [Location], [AttendeeCount], [TopicsSummary], [ActionItems], [RecordedByUserId], [CreatedAtUtc], [CreatedBy]
+                FROM [CommunitySafety].[CommunityMeetingRecord]
+                WHERE [CommunityMeetingRecordId] = @CommunityMeetingRecordId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityMeetingRecord_GetItems]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [CommunityMeetingRecordId],
+                    [TenantId],
+                    [SiteId],
+                    [MeetingTitle],
+                    [MeetingDateUtc],
+                    [Location],
+                    [AttendeeCount],
+                    [TopicsSummary],
+                    [ActionItems],
+                    [Status] AS [RecordStatus],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [CommunitySafety].[CommunityMeetingRecord]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND ISNULL([IsDeleted], 0) = 0
+                  AND MeetingDateUtc >= @FromUtc
+                  AND MeetingDateUtc <= @ToUtc
+                ORDER BY MeetingDateUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [CommunitySafety].[usp_CommunityMeetingRecord_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @CommunityMeetingRecordId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50)
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [CommunitySafety].[CommunityMeetingRecord]
+                    SET
+                        [Status] = @Status,
+                        [ModifiedAtUtc] = @NowUtc,
+                        [ModifiedBy] = @ActorId,
+                        [CorrelationId] = @CorrelationId
+                    WHERE [CommunityMeetingRecordId] = @CommunityMeetingRecordId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+    }
+
+    /// <summary>
+    /// Creates the <c>[PublicSafetyCommunication]</c> schema (PublicSafetyAgency, AgencyContact,
+    /// IncidentNotification, PublicAlertBroadcast, CommunicationLogEntry tables) and their backing
+    /// stored procedures against the Testcontainers database, mirroring
+    /// PlantSafety.Infrastructure/PublicSafetyCommunication/Sql/Tables and /Sql/Procedures
+    /// verbatim except that the AuditLog/ErrorLog CATCH-block writes are stripped from
+    /// <c>[PlantSafety.AuditDB].dbo.</c> / <c>[PlantSafety.ErrorDB].dbo.</c> down to plain
+    /// <c>dbo.AuditLog</c> / <c>dbo.ErrorLog</c>, matching the single-database Testcontainers
+    /// topology (both tables are created by <see cref="ApplySharedAuditLoggingSchemaAsync"/>,
+    /// which must run before this method -- see that method's own remarks for the same pattern
+    /// applied to every other module in this file).
+    /// </summary>
+    public static async Task ApplyPublicSafetyCommunicationSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'PublicSafetyCommunication')
+                EXEC('CREATE SCHEMA [PublicSafetyCommunication] AUTHORIZATION dbo;');
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PublicSafetyAgency' AND schema_id = SCHEMA_ID('PublicSafetyCommunication'))
+            BEGIN
+                CREATE TABLE [PublicSafetyCommunication].[PublicSafetyAgency]
+                (
+                    PublicSafetyAgencyId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_PublicSafetyAgency PRIMARY KEY,
+                    TenantId UNIQUEIDENTIFIER NOT NULL,
+                    SiteId UNIQUEIDENTIFIER NULL,
+                    Status NVARCHAR(50) NOT NULL,
+                    AgencyName NVARCHAR(400) NOT NULL,
+                    AgencyType NVARCHAR(64) NOT NULL,
+                    JurisdictionDescription NVARCHAR(400) NOT NULL,
+                    PrimaryPhoneNumber NVARCHAR(64) NOT NULL,
+                    PrimaryEmail NVARCHAR(320) NULL,
+                    VerificationStatus NVARCHAR(50) NOT NULL,
+                    LastVerifiedAtUtc DATETIME2(3) NULL,
+                    NextVerificationDueAtUtc DATETIME2(3) NULL,
+                    CreatedAtUtc DATETIME2(3) NOT NULL,
+                    CreatedBy UNIQUEIDENTIFIER NOT NULL,
+                    UpdatedAtUtc DATETIME2(3) NULL,
+                    UpdatedBy UNIQUEIDENTIFIER NULL,
+                    IsDeleted BIT NOT NULL CONSTRAINT DF_PublicSafetyAgency_IsDeleted DEFAULT (0),
+                    RowVersion ROWVERSION NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_PublicSafetyAgency_TenantId_Site ON [PublicSafetyCommunication].[PublicSafetyAgency] (TenantId, SiteId, IsDeleted);
+                CREATE NONCLUSTERED INDEX IX_PublicSafetyAgency_Status ON [PublicSafetyCommunication].[PublicSafetyAgency] (Status, IsDeleted);
+                CREATE NONCLUSTERED INDEX IX_PublicSafetyAgency_AgencyType ON [PublicSafetyCommunication].[PublicSafetyAgency] (AgencyType, IsDeleted);
+                CREATE NONCLUSTERED INDEX IX_PublicSafetyAgency_NextVerificationDueAtUtc ON [PublicSafetyCommunication].[PublicSafetyAgency] (NextVerificationDueAtUtc);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'AgencyContact' AND schema_id = SCHEMA_ID('PublicSafetyCommunication'))
+            BEGIN
+                CREATE TABLE [PublicSafetyCommunication].[AgencyContact]
+                (
+                    AgencyContactId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_AgencyContact PRIMARY KEY,
+                    PublicSafetyAgencyId UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_AgencyContact_PublicSafetyAgency REFERENCES [PublicSafetyCommunication].[PublicSafetyAgency] (PublicSafetyAgencyId),
+                    Role NVARCHAR(64) NOT NULL,
+                    ContactName NVARCHAR(400) NOT NULL,
+                    PhoneNumber NVARCHAR(64) NOT NULL,
+                    Email NVARCHAR(320) NULL,
+                    LastVerifiedAtUtc DATETIME2(3) NULL,
+                    CreatedAtUtc DATETIME2(3) NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_AgencyContact_PublicSafetyAgencyId ON [PublicSafetyCommunication].[AgencyContact] (PublicSafetyAgencyId);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'IncidentNotification' AND schema_id = SCHEMA_ID('PublicSafetyCommunication'))
+            BEGIN
+                CREATE TABLE [PublicSafetyCommunication].[IncidentNotification]
+                (
+                    IncidentNotificationId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_IncidentNotification PRIMARY KEY,
+                    TenantId UNIQUEIDENTIFIER NOT NULL,
+                    SiteId UNIQUEIDENTIFIER NULL,
+                    Status NVARCHAR(50) NOT NULL,
+                    IncidentId UNIQUEIDENTIFIER NULL,
+                    PublicSafetyAgencyId UNIQUEIDENTIFIER NOT NULL,
+                    ChannelCode NVARCHAR(64) NOT NULL,
+                    Message NVARCHAR(MAX) NOT NULL,
+                    DispatchedAtUtc DATETIME2(3) NULL,
+                    DispatchedBy UNIQUEIDENTIFIER NULL,
+                    AcknowledgedAtUtc DATETIME2(3) NULL,
+                    AcknowledgedByContactName NVARCHAR(400) NULL,
+                    ClosedAtUtc DATETIME2(3) NULL,
+                    FailureReason NVARCHAR(400) NULL,
+                    CreatedAtUtc DATETIME2(3) NOT NULL,
+                    CreatedBy UNIQUEIDENTIFIER NOT NULL,
+                    UpdatedAtUtc DATETIME2(3) NULL,
+                    UpdatedBy UNIQUEIDENTIFIER NULL,
+                    IsDeleted BIT NOT NULL CONSTRAINT DF_IncidentNotification_IsDeleted DEFAULT (0),
+                    RowVersion ROWVERSION NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_IncidentNotification_TenantId_Site ON [PublicSafetyCommunication].[IncidentNotification] (TenantId, SiteId, IsDeleted);
+                CREATE NONCLUSTERED INDEX IX_IncidentNotification_IncidentId ON [PublicSafetyCommunication].[IncidentNotification] (IncidentId);
+                CREATE NONCLUSTERED INDEX IX_IncidentNotification_Status ON [PublicSafetyCommunication].[IncidentNotification] (Status, IsDeleted);
+                CREATE NONCLUSTERED INDEX IX_IncidentNotification_PublicSafetyAgencyId ON [PublicSafetyCommunication].[IncidentNotification] (PublicSafetyAgencyId);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'PublicAlertBroadcast' AND schema_id = SCHEMA_ID('PublicSafetyCommunication'))
+            BEGIN
+                CREATE TABLE [PublicSafetyCommunication].[PublicAlertBroadcast]
+                (
+                    PublicAlertBroadcastId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_PublicAlertBroadcast PRIMARY KEY,
+                    TenantId UNIQUEIDENTIFIER NOT NULL,
+                    SiteId UNIQUEIDENTIFIER NULL,
+                    Status NVARCHAR(50) NOT NULL,
+                    IncidentId UNIQUEIDENTIFIER NULL,
+                    SeverityCode NVARCHAR(64) NOT NULL,
+                    ChannelCode NVARCHAR(64) NOT NULL,
+                    Headline NVARCHAR(200) NOT NULL,
+                    Message NVARCHAR(MAX) NOT NULL,
+                    TargetArea NVARCHAR(400) NOT NULL,
+                    IssuedAtUtc DATETIME2(3) NULL,
+                    IssuedBy UNIQUEIDENTIFIER NULL,
+                    DeliveryConfirmedAtUtc DATETIME2(3) NULL,
+                    FailureReason NVARCHAR(400) NULL,
+                    CancelledAtUtc DATETIME2(3) NULL,
+                    CreatedAtUtc DATETIME2(3) NOT NULL,
+                    CreatedBy UNIQUEIDENTIFIER NOT NULL,
+                    UpdatedAtUtc DATETIME2(3) NULL,
+                    UpdatedBy UNIQUEIDENTIFIER NULL,
+                    IsDeleted BIT NOT NULL CONSTRAINT DF_PublicAlertBroadcast_IsDeleted DEFAULT (0),
+                    RowVersion ROWVERSION NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_PublicAlertBroadcast_TenantId_Site ON [PublicSafetyCommunication].[PublicAlertBroadcast] (TenantId, SiteId, IsDeleted);
+                CREATE NONCLUSTERED INDEX IX_PublicAlertBroadcast_IncidentId ON [PublicSafetyCommunication].[PublicAlertBroadcast] (IncidentId);
+                CREATE NONCLUSTERED INDEX IX_PublicAlertBroadcast_Status ON [PublicSafetyCommunication].[PublicAlertBroadcast] (Status, IsDeleted);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommunicationLogEntry' AND schema_id = SCHEMA_ID('PublicSafetyCommunication'))
+            BEGIN
+                CREATE TABLE [PublicSafetyCommunication].[CommunicationLogEntry]
+                (
+                    CommunicationLogEntryId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_CommunicationLogEntry PRIMARY KEY,
+                    TenantId UNIQUEIDENTIFIER NOT NULL,
+                    SiteId UNIQUEIDENTIFIER NULL,
+                    IncidentId UNIQUEIDENTIFIER NULL,
+                    RelatedIncidentNotificationId UNIQUEIDENTIFIER NULL,
+                    RelatedPublicAlertBroadcastId UNIQUEIDENTIFIER NULL,
+                    Direction NVARCHAR(32) NOT NULL,
+                    Medium NVARCHAR(32) NOT NULL,
+                    CounterpartyName NVARCHAR(400) NOT NULL,
+                    Summary NVARCHAR(MAX) NOT NULL,
+                    OccurredAtUtc DATETIME2(3) NOT NULL,
+                    CreatedAtUtc DATETIME2(3) NOT NULL,
+                    CreatedBy UNIQUEIDENTIFIER NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_CommunicationLogEntry_TenantId_Site ON [PublicSafetyCommunication].[CommunicationLogEntry] (TenantId, SiteId);
+                CREATE NONCLUSTERED INDEX IX_CommunicationLogEntry_IncidentId ON [PublicSafetyCommunication].[CommunicationLogEntry] (IncidentId, OccurredAtUtc);
+            END
+            """);
+
+        // ---- Stored procedures: PublicSafetyAgency / AgencyContact ------------------------
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicSafetyAgency_Insert]
+                @PublicSafetyAgencyId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @AgencyName NVARCHAR(400),
+                @AgencyType NVARCHAR(64),
+                @JurisdictionDescription NVARCHAR(400),
+                @PrimaryPhoneNumber NVARCHAR(64),
+                @PrimaryEmail NVARCHAR(320) = NULL,
+                @VerificationStatus NVARCHAR(50),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [PublicSafetyCommunication].[PublicSafetyAgency]
+                    (
+                        PublicSafetyAgencyId, TenantId, SiteId, Status, AgencyName, AgencyType, JurisdictionDescription,
+                        PrimaryPhoneNumber, PrimaryEmail, VerificationStatus, CreatedAtUtc, CreatedBy, IsDeleted
+                    )
+                    VALUES
+                    (
+                        @PublicSafetyAgencyId, @TenantId, @SiteId, @Status, @AgencyName, @AgencyType, @JurisdictionDescription,
+                        @PrimaryPhoneNumber, @PrimaryEmail, @VerificationStatus, @CreatedAtUtc, @CreatedBy, 0
+                    );
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'PublicSafetyAgency', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'PublicSafetyAgencyId=', @PublicSafetyAgencyId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PublicSafetyAgencyId=', @PublicSafetyAgencyId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+                        N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+                        N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicSafetyAgency_GetById]
+                @PublicSafetyAgencyId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT PublicSafetyAgencyId, TenantId, SiteId, Status, AgencyName, AgencyType, JurisdictionDescription,
+                    PrimaryPhoneNumber, PrimaryEmail, VerificationStatus, LastVerifiedAtUtc, NextVerificationDueAtUtc,
+                    CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                FROM [PublicSafetyCommunication].[PublicSafetyAgency]
+                WHERE PublicSafetyAgencyId = @PublicSafetyAgencyId AND IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicSafetyAgency_GetAllActive]
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT PublicSafetyAgencyId, TenantId, SiteId, Status, AgencyName, AgencyType, JurisdictionDescription,
+                    PrimaryPhoneNumber, PrimaryEmail, VerificationStatus, LastVerifiedAtUtc, NextVerificationDueAtUtc,
+                    CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy
+                FROM [PublicSafetyCommunication].[PublicSafetyAgency]
+                WHERE IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicSafetyAgency_ListByTenant]
+                @TenantId    UNIQUEIDENTIFIER,
+                @SiteId      UNIQUEIDENTIFIER = NULL,
+                @AgencyType  NVARCHAR(64) = NULL,
+                @ActiveOnly  BIT = 0
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT PublicSafetyAgencyId, TenantId, SiteId, Status, AgencyName, AgencyType, JurisdictionDescription,
+                    PrimaryPhoneNumber, PrimaryEmail, VerificationStatus, LastVerifiedAtUtc, NextVerificationDueAtUtc, CreatedAtUtc,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                FROM [PublicSafetyCommunication].[PublicSafetyAgency]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND (@AgencyType IS NULL OR AgencyType = @AgencyType)
+                  AND (@ActiveOnly = 0 OR Status = N'Active')
+                  AND IsDeleted = 0
+                ORDER BY AgencyName ASC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicSafetyAgency_Update]
+                @PublicSafetyAgencyId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @AgencyName NVARCHAR(400),
+                @AgencyType NVARCHAR(64),
+                @JurisdictionDescription NVARCHAR(400),
+                @PrimaryPhoneNumber NVARCHAR(64),
+                @PrimaryEmail NVARCHAR(320) = NULL,
+                @VerificationStatus NVARCHAR(50),
+                @LastVerifiedAtUtc DATETIME2(3) = NULL,
+                @NextVerificationDueAtUtc DATETIME2(3) = NULL,
+                @UpdatedBy UNIQUEIDENTIFIER = NULL,
+                @ETag NVARCHAR(64) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    IF NOT EXISTS (SELECT 1 FROM [PublicSafetyCommunication].[PublicSafetyAgency] WHERE PublicSafetyAgencyId = @PublicSafetyAgencyId AND IsDeleted = 0)
+                        THROW 50004, N'PublicSafetyAgency not found or has been deleted.', 1;
+
+                    UPDATE [PublicSafetyCommunication].[PublicSafetyAgency]
+                    SET
+                        Status = @Status,
+                        AgencyName = @AgencyName,
+                        AgencyType = @AgencyType,
+                        JurisdictionDescription = @JurisdictionDescription,
+                        PrimaryPhoneNumber = @PrimaryPhoneNumber,
+                        PrimaryEmail = @PrimaryEmail,
+                        VerificationStatus = @VerificationStatus,
+                        LastVerifiedAtUtc = @LastVerifiedAtUtc,
+                        NextVerificationDueAtUtc = @NextVerificationDueAtUtc,
+                        UpdatedBy = @UpdatedBy,
+                        UpdatedAtUtc = SYSUTCDATETIME()
+                    WHERE PublicSafetyAgencyId = @PublicSafetyAgencyId AND IsDeleted = 0
+                      AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+                    DECLARE @RowsAffected INT = @@ROWCOUNT;
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'PublicSafetyAgency', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'PublicSafetyAgencyId=', @PublicSafetyAgencyId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    SELECT @RowsAffected;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PublicSafetyAgencyId=', @PublicSafetyAgencyId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+                        N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+                        N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_AgencyContact_Insert]
+                @AgencyContactId UNIQUEIDENTIFIER,
+                @PublicSafetyAgencyId UNIQUEIDENTIFIER,
+                @Role NVARCHAR(64),
+                @ContactName NVARCHAR(400),
+                @PhoneNumber NVARCHAR(64),
+                @Email NVARCHAR(320) = NULL,
+                @CreatedAtUtc DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [PublicSafetyCommunication].[AgencyContact]
+                    (AgencyContactId, PublicSafetyAgencyId, Role, ContactName, PhoneNumber, Email, CreatedAtUtc)
+                    VALUES
+                    (@AgencyContactId, @PublicSafetyAgencyId, @Role, @ContactName, @PhoneNumber, @Email, @CreatedAtUtc);
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'AgencyContactId=', @AgencyContactId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+                        N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+                        N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_AgencyContact_GetByAgencyId]
+                @PublicSafetyAgencyId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT AgencyContactId, PublicSafetyAgencyId, Role, ContactName, PhoneNumber, Email, LastVerifiedAtUtc, CreatedAtUtc
+                FROM [PublicSafetyCommunication].[AgencyContact]
+                WHERE PublicSafetyAgencyId = @PublicSafetyAgencyId
+                ORDER BY CreatedAtUtc ASC;
+            END
+            """);
+
+        // ---- Stored procedures: IncidentNotification ---------------------------------------
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_IncidentNotification_Insert]
+                @IncidentNotificationId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @IncidentId UNIQUEIDENTIFIER = NULL,
+                @PublicSafetyAgencyId UNIQUEIDENTIFIER,
+                @ChannelCode NVARCHAR(64),
+                @Message NVARCHAR(MAX),
+                @DispatchedAtUtc DATETIME2(3) = NULL,
+                @DispatchedBy UNIQUEIDENTIFIER = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [PublicSafetyCommunication].[IncidentNotification]
+                    (
+                        IncidentNotificationId, TenantId, SiteId, Status, IncidentId, PublicSafetyAgencyId, ChannelCode, Message,
+                        DispatchedAtUtc, DispatchedBy, CreatedAtUtc, CreatedBy, IsDeleted
+                    )
+                    VALUES
+                    (
+                        @IncidentNotificationId, @TenantId, @SiteId, @Status, @IncidentId, @PublicSafetyAgencyId, @ChannelCode, @Message,
+                        @DispatchedAtUtc, @DispatchedBy, @CreatedAtUtc, @CreatedBy, 0
+                    );
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'IncidentNotification', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'IncidentNotificationId=', @IncidentNotificationId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'IncidentNotificationId=', @IncidentNotificationId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+                        N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+                        N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_IncidentNotification_GetById]
+                @IncidentNotificationId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT IncidentNotificationId, TenantId, SiteId, Status, IncidentId, PublicSafetyAgencyId, ChannelCode, Message,
+                    DispatchedAtUtc, DispatchedBy, AcknowledgedAtUtc, AcknowledgedByContactName, ClosedAtUtc, FailureReason,
+                    CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                FROM [PublicSafetyCommunication].[IncidentNotification]
+                WHERE IncidentNotificationId = @IncidentNotificationId AND IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_IncidentNotification_GetAllActive]
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT IncidentNotificationId, TenantId, SiteId, Status, IncidentId, PublicSafetyAgencyId, ChannelCode, Message,
+                    DispatchedAtUtc, DispatchedBy, AcknowledgedAtUtc, AcknowledgedByContactName, ClosedAtUtc, FailureReason,
+                    CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy
+                FROM [PublicSafetyCommunication].[IncidentNotification]
+                WHERE IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_IncidentNotification_GetStatus]
+                @TenantId   UNIQUEIDENTIFIER,
+                @SiteId     UNIQUEIDENTIFIER = NULL,
+                @IncidentId UNIQUEIDENTIFIER = NULL,
+                @FromUtc    DATETIME2(3),
+                @ToUtc      DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT IncidentNotificationId, TenantId, SiteId, Status, IncidentId, PublicSafetyAgencyId, ChannelCode, Message,
+                    DispatchedAtUtc, AcknowledgedAtUtc, AcknowledgedByContactName, ClosedAtUtc, FailureReason, CreatedAtUtc,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                FROM [PublicSafetyCommunication].[IncidentNotification]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND (@IncidentId IS NULL OR IncidentId = @IncidentId)
+                  AND CreatedAtUtc >= @FromUtc AND CreatedAtUtc <= @ToUtc
+                  AND IsDeleted = 0
+                ORDER BY CreatedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_IncidentNotification_Update]
+                @IncidentNotificationId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @AcknowledgedAtUtc DATETIME2(3) = NULL,
+                @AcknowledgedByContactName NVARCHAR(400) = NULL,
+                @ClosedAtUtc DATETIME2(3) = NULL,
+                @FailureReason NVARCHAR(400) = NULL,
+                @UpdatedBy UNIQUEIDENTIFIER = NULL,
+                @ETag NVARCHAR(64) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    IF NOT EXISTS (SELECT 1 FROM [PublicSafetyCommunication].[IncidentNotification] WHERE IncidentNotificationId = @IncidentNotificationId AND IsDeleted = 0)
+                        THROW 50004, N'IncidentNotification not found or has been deleted.', 1;
+
+                    UPDATE [PublicSafetyCommunication].[IncidentNotification]
+                    SET
+                        Status = @Status,
+                        AcknowledgedAtUtc = @AcknowledgedAtUtc,
+                        AcknowledgedByContactName = @AcknowledgedByContactName,
+                        ClosedAtUtc = @ClosedAtUtc,
+                        FailureReason = @FailureReason,
+                        UpdatedBy = @UpdatedBy,
+                        UpdatedAtUtc = SYSUTCDATETIME()
+                    WHERE IncidentNotificationId = @IncidentNotificationId AND IsDeleted = 0
+                      AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+                    DECLARE @RowsAffected INT = @@ROWCOUNT;
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'IncidentNotification', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'IncidentNotificationId=', @IncidentNotificationId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    SELECT @RowsAffected;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'IncidentNotificationId=', @IncidentNotificationId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+                        N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+                        N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        // ---- Stored procedures: PublicAlertBroadcast ----------------------------------------
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicAlertBroadcast_Insert]
+                @PublicAlertBroadcastId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(50),
+                @IncidentId UNIQUEIDENTIFIER = NULL,
+                @SeverityCode NVARCHAR(64),
+                @ChannelCode NVARCHAR(64),
+                @Headline NVARCHAR(200),
+                @Message NVARCHAR(MAX),
+                @TargetArea NVARCHAR(400),
+                @IssuedAtUtc DATETIME2(3) = NULL,
+                @IssuedBy UNIQUEIDENTIFIER = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [PublicSafetyCommunication].[PublicAlertBroadcast]
+                    (
+                        PublicAlertBroadcastId, TenantId, SiteId, Status, IncidentId, SeverityCode, ChannelCode, Headline, Message,
+                        TargetArea, IssuedAtUtc, IssuedBy, CreatedAtUtc, CreatedBy, IsDeleted
+                    )
+                    VALUES
+                    (
+                        @PublicAlertBroadcastId, @TenantId, @SiteId, @Status, @IncidentId, @SeverityCode, @ChannelCode, @Headline, @Message,
+                        @TargetArea, @IssuedAtUtc, @IssuedBy, @CreatedAtUtc, @CreatedBy, 0
+                    );
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'PublicAlertBroadcast', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'PublicAlertBroadcastId=', @PublicAlertBroadcastId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PublicAlertBroadcastId=', @PublicAlertBroadcastId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+                        N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+                        N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicAlertBroadcast_GetById]
+                @PublicAlertBroadcastId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT PublicAlertBroadcastId, TenantId, SiteId, Status, IncidentId, SeverityCode, ChannelCode, Headline, Message,
+                    TargetArea, IssuedAtUtc, IssuedBy, DeliveryConfirmedAtUtc, FailureReason, CancelledAtUtc,
+                    CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                FROM [PublicSafetyCommunication].[PublicAlertBroadcast]
+                WHERE PublicAlertBroadcastId = @PublicAlertBroadcastId AND IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicAlertBroadcast_GetAllActive]
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT PublicAlertBroadcastId, TenantId, SiteId, Status, IncidentId, SeverityCode, ChannelCode, Headline, Message,
+                    TargetArea, IssuedAtUtc, IssuedBy, DeliveryConfirmedAtUtc, FailureReason, CancelledAtUtc,
+                    CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy
+                FROM [PublicSafetyCommunication].[PublicAlertBroadcast]
+                WHERE IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicAlertBroadcast_ListActive]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT PublicAlertBroadcastId, TenantId, SiteId, Status, IncidentId, SeverityCode, ChannelCode, Headline, Message,
+                    TargetArea, IssuedAtUtc, DeliveryConfirmedAtUtc, FailureReason, CreatedAtUtc,
+                    CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
+                FROM [PublicSafetyCommunication].[PublicAlertBroadcast]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND Status IN (N'Sent', N'Delivered')
+                  AND IsDeleted = 0
+                ORDER BY IssuedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_PublicAlertBroadcast_Update]
+                @PublicAlertBroadcastId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @DeliveryConfirmedAtUtc DATETIME2(3) = NULL,
+                @FailureReason NVARCHAR(400) = NULL,
+                @CancelledAtUtc DATETIME2(3) = NULL,
+                @UpdatedBy UNIQUEIDENTIFIER = NULL,
+                @ETag NVARCHAR(64) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    IF NOT EXISTS (SELECT 1 FROM [PublicSafetyCommunication].[PublicAlertBroadcast] WHERE PublicAlertBroadcastId = @PublicAlertBroadcastId AND IsDeleted = 0)
+                        THROW 50004, N'PublicAlertBroadcast not found or has been deleted.', 1;
+
+                    UPDATE [PublicSafetyCommunication].[PublicAlertBroadcast]
+                    SET
+                        Status = @Status,
+                        DeliveryConfirmedAtUtc = @DeliveryConfirmedAtUtc,
+                        FailureReason = @FailureReason,
+                        CancelledAtUtc = @CancelledAtUtc,
+                        UpdatedBy = @UpdatedBy,
+                        UpdatedAtUtc = SYSUTCDATETIME()
+                    WHERE PublicAlertBroadcastId = @PublicAlertBroadcastId AND IsDeleted = 0
+                      AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+                    DECLARE @RowsAffected INT = @@ROWCOUNT;
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'PublicAlertBroadcast', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'PublicAlertBroadcastId=', @PublicAlertBroadcastId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    SELECT @RowsAffected;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'PublicAlertBroadcastId=', @PublicAlertBroadcastId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+                        N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+                        N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        // ---- Stored procedures: CommunicationLogEntry (append-only) ------------------------
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_CommunicationLogEntry_Insert]
+                @CommunicationLogEntryId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @IncidentId UNIQUEIDENTIFIER = NULL,
+                @RelatedIncidentNotificationId UNIQUEIDENTIFIER = NULL,
+                @RelatedPublicAlertBroadcastId UNIQUEIDENTIFIER = NULL,
+                @Direction NVARCHAR(32),
+                @Medium NVARCHAR(32),
+                @CounterpartyName NVARCHAR(400),
+                @Summary NVARCHAR(MAX),
+                @OccurredAtUtc DATETIME2(3),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [PublicSafetyCommunication].[CommunicationLogEntry]
+                    (
+                        CommunicationLogEntryId, TenantId, SiteId, IncidentId, RelatedIncidentNotificationId, RelatedPublicAlertBroadcastId,
+                        Direction, Medium, CounterpartyName, Summary, OccurredAtUtc, CreatedAtUtc, CreatedBy
+                    )
+                    VALUES
+                    (
+                        @CommunicationLogEntryId, @TenantId, @SiteId, @IncidentId, @RelatedIncidentNotificationId, @RelatedPublicAlertBroadcastId,
+                        @Direction, @Medium, @CounterpartyName, @Summary, @OccurredAtUtc, @CreatedAtUtc, @CreatedBy
+                    );
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'CommunicationLogEntry', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CommunicationLogEntryId=', @CommunicationLogEntryId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CommunicationLogEntryId=', @CommunicationLogEntryId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(
+                        N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorState=', ERROR_STATE(), N'; ',
+                        N'ErrorSeverity=', ERROR_SEVERITY(), N'; ErrorProcedure=', ISNULL(ERROR_PROCEDURE(), N'NULL'), N'; ',
+                        N'ErrorLine=', ERROR_LINE(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_CommunicationLogEntry_GetById]
+                @CommunicationLogEntryId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT CommunicationLogEntryId, TenantId, SiteId, IncidentId, RelatedIncidentNotificationId, RelatedPublicAlertBroadcastId,
+                    Direction, Medium, CounterpartyName, Summary, OccurredAtUtc, CreatedAtUtc, CreatedBy
+                FROM [PublicSafetyCommunication].[CommunicationLogEntry]
+                WHERE CommunicationLogEntryId = @CommunicationLogEntryId;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_CommunicationLogEntry_GetAllActive]
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT CommunicationLogEntryId, TenantId, SiteId, IncidentId, RelatedIncidentNotificationId, RelatedPublicAlertBroadcastId,
+                    Direction, Medium, CounterpartyName, Summary, OccurredAtUtc, CreatedAtUtc, CreatedBy
+                FROM [PublicSafetyCommunication].[CommunicationLogEntry];
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [PublicSafetyCommunication].[usp_CommunicationLogEntry_GetByIncident]
+                @TenantId   UNIQUEIDENTIFIER,
+                @IncidentId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT CommunicationLogEntryId, TenantId, SiteId, IncidentId, RelatedIncidentNotificationId, RelatedPublicAlertBroadcastId,
+                    Direction, Medium, CounterpartyName, Summary, OccurredAtUtc, CreatedAtUtc
+                FROM [PublicSafetyCommunication].[CommunicationLogEntry]
+                WHERE TenantId = @TenantId AND IncidentId = @IncidentId
+                ORDER BY OccurredAtUtc ASC;
+            END
+            """);
+    }
+
+    /// <summary>
+    /// Creates the <c>[MachineSafety].[CraneHoistSystems]</c> table and its 8 stored procedures
+    /// (Create, Update, GetById, GetAll, GetItems, GetItemById, ListDueForInspection,
+    /// ListExpiringQualifications) against the Testcontainers database, mirroring
+    /// <c>PlantSafety.Infrastructure\MachineSafety\Sql\Tables\CraneHoistSystems.sql</c> and
+    /// <c>...\Sql\Procedures\usp_CraneHoistSystems_*.sql</c> verbatim. Backs
+    /// <c>CraneHoistSystemsDapperRepository</c> (both the Domain write repository and the
+    /// Application read-model repository). Scoped only to the CraneHoistSystems sub-aggregate of
+    /// MachineSafety -- the other 6 MachineSafety sub-aggregates (LotoSystems,
+    /// EmergencyStopDevices, MachineGuardsBarriers, PresenceSensingDevices, SafetyValvesRelays,
+    /// TwoHandControls) are out of scope for this method and are applied separately, if/when
+    /// their own integration-test suites are built out.
+    /// </summary>
+    public static async Task ApplyMachineSafetyCraneHoistSystemsSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'MachineSafety')
+                EXEC('CREATE SCHEMA [MachineSafety]');
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CraneHoistSystems' AND schema_id = SCHEMA_ID('MachineSafety'))
+            BEGIN
+                CREATE TABLE [MachineSafety].[CraneHoistSystems] (
+                    [CraneHoistSystemsId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+                    [SiteId] UNIQUEIDENTIFIER NULL,
+                    [Status] NVARCHAR(100) NOT NULL,
+                    [AssetTag] NVARCHAR(400) NOT NULL,
+                    [AssetTitle] NVARCHAR(400) NOT NULL,
+                    [AssetType] NVARCHAR(100) NOT NULL,
+                    [RatedLoadCapacityKg] DECIMAL(12,2) NOT NULL,
+                    [LastObservedLoadKg] DECIMAL(12,2) NULL,
+                    [LastLiftAtUtc] DATETIME2(3) NULL,
+                    [OverloadEventCount] INT NOT NULL CONSTRAINT DF_CraneHoistSystems_OverloadEventCount DEFAULT (0),
+                    [OverloadFlagged] BIT NOT NULL CONSTRAINT DF_CraneHoistSystems_OverloadFlagged DEFAULT (0),
+                    [InspectionDueAtUtc] DATETIME2(3) NULL,
+                    [LastInspectionAtUtc] DATETIME2(3) NULL,
+                    [LastInspectionPassed] BIT NULL,
+                    [OperatorUserId] UNIQUEIDENTIFIER NOT NULL,
+                    [OperatorQualifiedAtUtc] DATETIME2(3) NULL,
+                    [OperatorQualificationExpiresAtUtc] DATETIME2(3) NULL,
+                    [OperatorQualificationSuspended] BIT NOT NULL CONSTRAINT DF_CraneHoistSystems_OperatorQualificationSuspended DEFAULT (0),
+                    [LastRiggingInspectionAtUtc] DATETIME2(3) NULL,
+                    [LastRiggingDefectDetected] BIT NULL,
+                    [CreatedAtUtc] DATETIME2(3) NOT NULL,
+                    [CreatedBy] UNIQUEIDENTIFIER NOT NULL,
+                    [IsDeleted] BIT NOT NULL CONSTRAINT DF_CraneHoistSystems_IsDeleted DEFAULT (0),
+                    [ModifiedAtUtc] DATETIME2(3) NULL,
+                    [ModifiedBy] UNIQUEIDENTIFIER NULL,
+                    [CorrelationId] UNIQUEIDENTIFIER NULL,
+                    [ActorId] UNIQUEIDENTIFIER NULL
+                );
+
+                CREATE NONCLUSTERED INDEX [IX_CraneHoistSystems_TenantId_SiteId]
+                    ON [MachineSafety].[CraneHoistSystems] ([TenantId], [SiteId])
+                    INCLUDE ([Status], [AssetTitle]);
+
+                CREATE NONCLUSTERED INDEX [IX_CraneHoistSystems_InspectionDueAtUtc]
+                    ON [MachineSafety].[CraneHoistSystems] ([TenantId], [InspectionDueAtUtc])
+                    INCLUDE ([SiteId], [Status]);
+
+                CREATE NONCLUSTERED INDEX [IX_CraneHoistSystems_OperatorQualificationExpiresAtUtc]
+                    ON [MachineSafety].[CraneHoistSystems] ([TenantId], [OperatorQualificationExpiresAtUtc])
+                    INCLUDE ([SiteId], [OperatorUserId]);
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [MachineSafety].[usp_CraneHoistSystems_Create]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @CraneHoistSystemsId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AssetTag NVARCHAR(400),
+                @AssetTitle NVARCHAR(400),
+                @AssetType NVARCHAR(100),
+                @RatedLoadCapacityKg DECIMAL(12,2),
+                @LastObservedLoadKg DECIMAL(12,2) = NULL,
+                @LastLiftAtUtc DATETIME2(3) = NULL,
+                @OverloadEventCount INT,
+                @OverloadFlagged BIT,
+                @InspectionDueAtUtc DATETIME2(3) = NULL,
+                @LastInspectionAtUtc DATETIME2(3) = NULL,
+                @LastInspectionPassed BIT = NULL,
+                @OperatorUserId UNIQUEIDENTIFIER,
+                @OperatorQualifiedAtUtc DATETIME2(3) = NULL,
+                @OperatorQualificationExpiresAtUtc DATETIME2(3) = NULL,
+                @OperatorQualificationSuspended BIT,
+                @LastRiggingInspectionAtUtc DATETIME2(3) = NULL,
+                @LastRiggingDefectDetected BIT = NULL,
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    INSERT INTO [MachineSafety].[CraneHoistSystems]
+                        ([CraneHoistSystemsId], [TenantId], [SiteId], [Status], [AssetTag], [AssetTitle], [AssetType], [RatedLoadCapacityKg], [LastObservedLoadKg], [LastLiftAtUtc], [OverloadEventCount], [OverloadFlagged], [InspectionDueAtUtc], [LastInspectionAtUtc], [LastInspectionPassed], [OperatorUserId], [OperatorQualifiedAtUtc], [OperatorQualificationExpiresAtUtc], [OperatorQualificationSuspended], [LastRiggingInspectionAtUtc], [LastRiggingDefectDetected], [CreatedAtUtc], [CreatedBy], [CorrelationId], [ActorId])
+                    VALUES
+                        (@CraneHoistSystemsId, @TenantId, @SiteId, @Status, @AssetTag, @AssetTitle, @AssetType, @RatedLoadCapacityKg, @LastObservedLoadKg, @LastLiftAtUtc, @OverloadEventCount, @OverloadFlagged, @InspectionDueAtUtc, @LastInspectionAtUtc, @LastInspectionPassed, @OperatorUserId, @OperatorQualifiedAtUtc, @OperatorQualificationExpiresAtUtc, @OperatorQualificationSuspended, @LastRiggingInspectionAtUtc, @LastRiggingDefectDetected, @CreatedAtUtc, @CreatedBy, @CorrelationId, @ActorId);
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [MachineSafety].[usp_CraneHoistSystems_Update]
+                @CorrelationId UNIQUEIDENTIFIER = NULL,
+                @ActorId       UNIQUEIDENTIFIER = NULL,
+                @NowUtc        DATETIME2(3),
+                @CraneHoistSystemsId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @Status NVARCHAR(100),
+                @AssetTag NVARCHAR(400),
+                @AssetTitle NVARCHAR(400),
+                @AssetType NVARCHAR(100),
+                @RatedLoadCapacityKg DECIMAL(12,2),
+                @LastObservedLoadKg DECIMAL(12,2) = NULL,
+                @LastLiftAtUtc DATETIME2(3) = NULL,
+                @OverloadEventCount INT,
+                @OverloadFlagged BIT,
+                @InspectionDueAtUtc DATETIME2(3) = NULL,
+                @LastInspectionAtUtc DATETIME2(3) = NULL,
+                @LastInspectionPassed BIT = NULL,
+                @OperatorUserId UNIQUEIDENTIFIER,
+                @OperatorQualifiedAtUtc DATETIME2(3) = NULL,
+                @OperatorQualificationExpiresAtUtc DATETIME2(3) = NULL,
+                @OperatorQualificationSuspended BIT,
+                @LastRiggingInspectionAtUtc DATETIME2(3) = NULL,
+                @LastRiggingDefectDetected BIT = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN TRY
+                BEGIN TRANSACTION;
+                    UPDATE [MachineSafety].[CraneHoistSystems]
+                    SET
+                    [SiteId] = @SiteId,
+                    [Status] = @Status,
+                    [AssetTag] = @AssetTag,
+                    [AssetTitle] = @AssetTitle,
+                    [AssetType] = @AssetType,
+                    [RatedLoadCapacityKg] = @RatedLoadCapacityKg,
+                    [LastObservedLoadKg] = @LastObservedLoadKg,
+                    [LastLiftAtUtc] = @LastLiftAtUtc,
+                    [OverloadEventCount] = @OverloadEventCount,
+                    [OverloadFlagged] = @OverloadFlagged,
+                    [InspectionDueAtUtc] = @InspectionDueAtUtc,
+                    [LastInspectionAtUtc] = @LastInspectionAtUtc,
+                    [LastInspectionPassed] = @LastInspectionPassed,
+                    [OperatorUserId] = @OperatorUserId,
+                    [OperatorQualifiedAtUtc] = @OperatorQualifiedAtUtc,
+                    [OperatorQualificationExpiresAtUtc] = @OperatorQualificationExpiresAtUtc,
+                    [OperatorQualificationSuspended] = @OperatorQualificationSuspended,
+                    [LastRiggingInspectionAtUtc] = @LastRiggingInspectionAtUtc,
+                    [LastRiggingDefectDetected] = @LastRiggingDefectDetected,
+                    [ModifiedAtUtc] = @NowUtc,
+                    [ModifiedBy] = @ActorId,
+                    [CorrelationId] = @CorrelationId
+                    WHERE [CraneHoistSystemsId] = @CraneHoistSystemsId
+                      AND [TenantId] = @TenantId
+                      AND ISNULL([IsDeleted], 0) = 0;
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+                THROW;
+            END CATCH;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [MachineSafety].[usp_CraneHoistSystems_GetById]
+            (
+                @CraneHoistSystemsId UNIQUEIDENTIFIER
+            )
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [CraneHoistSystemsId], [TenantId], [SiteId], [Status], [AssetTag], [AssetTitle], [AssetType], [RatedLoadCapacityKg], [LastObservedLoadKg], [LastLiftAtUtc], [OverloadEventCount], [OverloadFlagged], [InspectionDueAtUtc], [LastInspectionAtUtc], [LastInspectionPassed], [OperatorUserId], [OperatorQualifiedAtUtc], [OperatorQualificationExpiresAtUtc], [OperatorQualificationSuspended], [LastRiggingInspectionAtUtc], [LastRiggingDefectDetected], [CreatedAtUtc], [CreatedBy]
+                FROM [MachineSafety].[CraneHoistSystems]
+                WHERE [CraneHoistSystemsId] = @CraneHoistSystemsId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [MachineSafety].[usp_CraneHoistSystems_GetAll]
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+
+                SELECT [CraneHoistSystemsId], [TenantId], [SiteId], [Status], [AssetTag], [AssetTitle], [AssetType], [RatedLoadCapacityKg], [LastObservedLoadKg], [LastLiftAtUtc], [OverloadEventCount], [OverloadFlagged], [InspectionDueAtUtc], [LastInspectionAtUtc], [LastInspectionPassed], [OperatorUserId], [OperatorQualifiedAtUtc], [OperatorQualificationExpiresAtUtc], [OperatorQualificationSuspended], [LastRiggingInspectionAtUtc], [LastRiggingDefectDetected], [CreatedAtUtc], [CreatedBy]
+                FROM [MachineSafety].[CraneHoistSystems]
+                WHERE ISNULL([IsDeleted], 0) = 0;
+            END;
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [MachineSafety].[usp_CraneHoistSystems_GetItems]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @FromUtc  DATETIME2(3),
+                @ToUtc    DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [CraneHoistSystemsId],
+                    [TenantId],
+                    [SiteId],
+                    [AssetTag],
+                    [AssetTitle],
+                    [AssetType],
+                    [RatedLoadCapacityKg],
+                    [LastObservedLoadKg],
+                    [OverloadEventCount],
+                    [InspectionDueAtUtc],
+                    [OperatorQualificationExpiresAtUtc],
+                    [Status] AS [SystemStatus],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [MachineSafety].[CraneHoistSystems]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND ISNULL([IsDeleted], 0) = 0
+                  AND CreatedAtUtc >= @FromUtc
+                  AND CreatedAtUtc <= @ToUtc
+                ORDER BY CreatedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [MachineSafety].[usp_CraneHoistSystems_GetItemById]
+                @TenantId UNIQUEIDENTIFIER,
+                @CraneHoistSystemsId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [CraneHoistSystemsId],
+                    [TenantId],
+                    [SiteId],
+                    [AssetTag],
+                    [AssetTitle],
+                    [AssetType],
+                    [RatedLoadCapacityKg],
+                    [LastObservedLoadKg],
+                    [OverloadEventCount],
+                    [InspectionDueAtUtc],
+                    [OperatorQualificationExpiresAtUtc],
+                    [Status] AS [SystemStatus],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [MachineSafety].[CraneHoistSystems]
+                WHERE TenantId = @TenantId
+                  AND CraneHoistSystemsId = @CraneHoistSystemsId
+                  AND ISNULL([IsDeleted], 0) = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [MachineSafety].[usp_CraneHoistSystems_ListDueForInspection]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL,
+                @AsOfUtc  DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    [CraneHoistSystemsId],
+                    [TenantId],
+                    [SiteId],
+                    [AssetTag],
+                    [AssetTitle],
+                    [AssetType],
+                    [RatedLoadCapacityKg],
+                    [LastObservedLoadKg],
+                    [OverloadEventCount],
+                    [InspectionDueAtUtc],
+                    [OperatorQualificationExpiresAtUtc],
+                    [Status] AS [SystemStatus],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [MachineSafety].[CraneHoistSystems]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND ISNULL([IsDeleted], 0) = 0
+                  AND (
+                        [Status] IN (N'InspectionDue', N'InspectionOverdue')
+                        OR ([InspectionDueAtUtc] IS NOT NULL AND [InspectionDueAtUtc] <= @AsOfUtc)
+                      )
+                ORDER BY [InspectionDueAtUtc] ASC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [MachineSafety].[usp_CraneHoistSystems_ListExpiringQualifications]
+                @TenantId   UNIQUEIDENTIFIER,
+                @SiteId     UNIQUEIDENTIFIER = NULL,
+                @WithinDays INT
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                DECLARE @NowUtc DATETIME2(3) = SYSUTCDATETIME();
+                DECLARE @HorizonUtc DATETIME2(3) = DATEADD(DAY, @WithinDays, @NowUtc);
+
+                SELECT
+                    [CraneHoistSystemsId],
+                    [TenantId],
+                    [SiteId],
+                    [AssetTag],
+                    [AssetTitle],
+                    [AssetType],
+                    [RatedLoadCapacityKg],
+                    [LastObservedLoadKg],
+                    [OverloadEventCount],
+                    [InspectionDueAtUtc],
+                    [OperatorQualificationExpiresAtUtc],
+                    [Status] AS [SystemStatus],
+                    [CreatedAtUtc],
+                    [CreatedBy]
+                FROM [MachineSafety].[CraneHoistSystems]
+                WHERE TenantId = @TenantId
+                  AND (@SiteId IS NULL OR SiteId = @SiteId)
+                  AND ISNULL([IsDeleted], 0) = 0
+                  AND ISNULL([OperatorQualificationSuspended], 0) = 0
+                  AND [OperatorQualificationExpiresAtUtc] IS NOT NULL
+                  AND [OperatorQualificationExpiresAtUtc] BETWEEN @NowUtc AND @HorizonUtc
+                ORDER BY [OperatorQualificationExpiresAtUtc] ASC;
+            END
+            """);
+    }
+
+    /// <summary>
+    /// Creates the <c>[HumanFactorsCognitiveLoadAnalytics]</c> schema's tables (CognitiveLoadLedger
+    /// header + CognitiveLoadReading/TaskComplexityProfile/WorkloadTrendRecord children +
+    /// CognitiveRiskPrediction) and stored procedures, backing
+    /// CognitiveLoadLedgerDapperRepository / CognitiveRiskPredictionDapperRepository /
+    /// CognitiveLoadAnalyticsReadDapperRepository (HumanFactors.CognitiveLoadAnalytics sub-module,
+    /// Testing Agent build-out, 2026-08-04). Mirrors
+    /// PlantSafety.Infrastructure\HumanFactors\CognitiveLoadAnalytics\Sql\Tables\
+    /// CognitiveLoadAnalytics.sql and \Procedures\*.sql verbatim, minus the leading
+    /// <c>USE [PlantSafety.CoreDB];</c> statements and with the <c>[PlantSafety.AuditDB]</c> /
+    /// <c>[PlantSafety.ErrorDB]</c> three-part prefixes stripped down to <c>dbo.AuditLog</c> /
+    /// <c>dbo.ErrorLog</c>, matching every other ApplyXSchemaAsync method above (both tables are
+    /// created by <see cref="ApplySharedAuditLoggingSchemaAsync"/>).
+    /// </summary>
+    public static async Task ApplyHumanFactorsCognitiveLoadAnalyticsSchemaAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(cancellationToken);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'HumanFactorsCognitiveLoadAnalytics')
+                EXEC('CREATE SCHEMA HumanFactorsCognitiveLoadAnalytics AUTHORIZATION dbo;');
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CognitiveLoadLedger' AND schema_id = SCHEMA_ID('HumanFactorsCognitiveLoadAnalytics'))
+            BEGIN
+                CREATE TABLE [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger]
+                (
+                    CognitiveLoadLedgerId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_CognitiveLoadLedger PRIMARY KEY,
+                    TenantId               UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                 UNIQUEIDENTIFIER NULL,
+                    ShiftType               NVARCHAR(20)     NOT NULL,
+                    ShiftDateUtc             DATETIME2(3)     NOT NULL,
+                    Status                   NVARCHAR(50)     NOT NULL CONSTRAINT DF_CognitiveLoadLedger_Status DEFAULT (N'Open'),
+                    CreatedAtUtc             DATETIME2(3)     NOT NULL,
+                    CreatedBy                UNIQUEIDENTIFIER NOT NULL,
+                    UpdatedAtUtc             DATETIME2(3)     NULL,
+                    UpdatedBy                UNIQUEIDENTIFIER NULL,
+                    IsDeleted                BIT              NOT NULL CONSTRAINT DF_CognitiveLoadLedger_IsDeleted DEFAULT (0),
+                    RowVersion               ROWVERSION       NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_CognitiveLoadLedger_TenantId_Site ON [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger] (TenantId, SiteId, IsDeleted);
+                CREATE NONCLUSTERED INDEX IX_CognitiveLoadLedger_OpenShift ON [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger] (TenantId, SiteId, ShiftType, ShiftDateUtc, Status) WHERE IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CognitiveLoadReading' AND schema_id = SCHEMA_ID('HumanFactorsCognitiveLoadAnalytics'))
+            BEGIN
+                CREATE TABLE [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadReading]
+                (
+                    CognitiveLoadReadingId  UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_CognitiveLoadReading PRIMARY KEY,
+                    CognitiveLoadLedgerId    UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_CognitiveLoadReading_Ledger REFERENCES [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger] (CognitiveLoadLedgerId),
+                    TenantId                  UNIQUEIDENTIFIER NOT NULL,
+                    WorkerUserId               UNIQUEIDENTIFIER NOT NULL,
+                    TaskComplexityProfileId    UNIQUEIDENTIFIER NULL,
+                    CognitiveLoadScore         DECIMAL(5,2)     NOT NULL,
+                    WorkloadLevel               NVARCHAR(20)     NOT NULL,
+                    MeasurementMethod           NVARCHAR(100)    NOT NULL,
+                    MeasuredAtUtc                DATETIME2(3)     NOT NULL,
+                    RecordedAtUtc                DATETIME2(3)     NOT NULL,
+                    RecordedBy                    UNIQUEIDENTIFIER NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_CognitiveLoadReading_Ledger ON [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadReading] (CognitiveLoadLedgerId, MeasuredAtUtc);
+                CREATE NONCLUSTERED INDEX IX_CognitiveLoadReading_TenantId_Worker ON [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadReading] (TenantId, WorkerUserId, MeasuredAtUtc);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TaskComplexityProfile' AND schema_id = SCHEMA_ID('HumanFactorsCognitiveLoadAnalytics'))
+            BEGIN
+                CREATE TABLE [HumanFactorsCognitiveLoadAnalytics].[TaskComplexityProfile]
+                (
+                    TaskComplexityProfileId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_TaskComplexityProfile PRIMARY KEY,
+                    CognitiveLoadLedgerId     UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_TaskComplexityProfile_Ledger REFERENCES [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger] (CognitiveLoadLedgerId),
+                    TenantId                   UNIQUEIDENTIFIER NOT NULL,
+                    TaskCode                   NVARCHAR(50)     NOT NULL,
+                    TaskName                   NVARCHAR(200)    NOT NULL,
+                    ComplexityScore             INT              NOT NULL,
+                    Description                 NVARCHAR(1000)   NOT NULL CONSTRAINT DF_TaskComplexityProfile_Description DEFAULT (N''),
+                    DefinedAtUtc                DATETIME2(3)     NOT NULL,
+                    DefinedBy                    UNIQUEIDENTIFIER NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_TaskComplexityProfile_Ledger ON [HumanFactorsCognitiveLoadAnalytics].[TaskComplexityProfile] (CognitiveLoadLedgerId);
+                CREATE NONCLUSTERED INDEX IX_TaskComplexityProfile_TenantId_Code ON [HumanFactorsCognitiveLoadAnalytics].[TaskComplexityProfile] (TenantId, TaskCode);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'WorkloadTrendRecord' AND schema_id = SCHEMA_ID('HumanFactorsCognitiveLoadAnalytics'))
+            BEGIN
+                CREATE TABLE [HumanFactorsCognitiveLoadAnalytics].[WorkloadTrendRecord]
+                (
+                    WorkloadTrendRecordId   UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_WorkloadTrendRecord PRIMARY KEY,
+                    CognitiveLoadLedgerId     UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_WorkloadTrendRecord_Ledger REFERENCES [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger] (CognitiveLoadLedgerId),
+                    TenantId                   UNIQUEIDENTIFIER NOT NULL,
+                    PeriodStartUtc              DATETIME2(3)     NOT NULL,
+                    PeriodEndUtc                 DATETIME2(3)     NOT NULL,
+                    MeanCognitiveLoadScore       DECIMAL(5,2)     NOT NULL,
+                    OverloadEventCount            INT              NOT NULL,
+                    ReadingCount                   INT              NOT NULL,
+                    RecalculatedAtUtc               DATETIME2(3)     NOT NULL,
+                    RecalculatedBy                   UNIQUEIDENTIFIER NOT NULL
+                );
+
+                CREATE NONCLUSTERED INDEX IX_WorkloadTrendRecord_Ledger ON [HumanFactorsCognitiveLoadAnalytics].[WorkloadTrendRecord] (CognitiveLoadLedgerId, RecalculatedAtUtc);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CognitiveRiskPrediction' AND schema_id = SCHEMA_ID('HumanFactorsCognitiveLoadAnalytics'))
+            BEGIN
+                CREATE TABLE [HumanFactorsCognitiveLoadAnalytics].[CognitiveRiskPrediction]
+                (
+                    CognitiveRiskPredictionId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_CognitiveRiskPrediction PRIMARY KEY,
+                    TenantId                   UNIQUEIDENTIFIER NOT NULL,
+                    SiteId                     UNIQUEIDENTIFIER NULL,
+                    WorkerUserId                UNIQUEIDENTIFIER NOT NULL,
+                    SourceLedgerId               UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_CognitiveRiskPrediction_Ledger REFERENCES [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger] (CognitiveLoadLedgerId),
+                    PredictedRiskLevel            NVARCHAR(20)     NOT NULL,
+                    PredictionScore                DECIMAL(6,4)     NOT NULL,
+                    ModelVersion                    NVARCHAR(100)    NOT NULL,
+                    PredictionBasis                  NVARCHAR(1000)   NOT NULL CONSTRAINT DF_CognitiveRiskPrediction_Basis DEFAULT (N''),
+                    Status                            NVARCHAR(20)     NOT NULL CONSTRAINT DF_CognitiveRiskPrediction_Status DEFAULT (N'Generated'),
+                    GeneratedAtUtc                     DATETIME2(3)     NOT NULL,
+                    GeneratedBy                         UNIQUEIDENTIFIER NOT NULL,
+                    AcknowledgedAtUtc                    DATETIME2(3)     NULL,
+                    AcknowledgedBy                        UNIQUEIDENTIFIER NULL,
+                    AcknowledgementNotes                   NVARCHAR(1000)   NULL,
+                    IsDeleted                                BIT              NOT NULL CONSTRAINT DF_CognitiveRiskPrediction_IsDeleted DEFAULT (0)
+                );
+
+                CREATE NONCLUSTERED INDEX IX_CognitiveRiskPrediction_TenantId_Site ON [HumanFactorsCognitiveLoadAnalytics].[CognitiveRiskPrediction] (TenantId, SiteId, IsDeleted);
+                CREATE NONCLUSTERED INDEX IX_CognitiveRiskPrediction_Elevated ON [HumanFactorsCognitiveLoadAnalytics].[CognitiveRiskPrediction] (TenantId, SiteId, PredictedRiskLevel, Status) WHERE IsDeleted = 0;
+                CREATE NONCLUSTERED INDEX IX_CognitiveRiskPrediction_SourceLedger ON [HumanFactorsCognitiveLoadAnalytics].[CognitiveRiskPrediction] (SourceLedgerId);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveLoadLedger_Insert]
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @ShiftType NVARCHAR(20),
+                @ShiftDateUtc DATETIME2(3),
+                @Status NVARCHAR(50),
+                @CreatedAtUtc DATETIME2(3),
+                @CreatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger]
+                    (CognitiveLoadLedgerId, TenantId, SiteId, ShiftType, ShiftDateUtc, Status, CreatedAtUtc, CreatedBy, IsDeleted)
+                    VALUES
+                    (@CognitiveLoadLedgerId, @TenantId, @SiteId, @ShiftType, @ShiftDateUtc, @Status, @CreatedAtUtc, @CreatedBy, 0);
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'CognitiveLoadLedger', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CognitiveLoadLedgerId=', @CognitiveLoadLedgerId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CognitiveLoadLedgerId=', @CognitiveLoadLedgerId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveLoadLedger_GetById]
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT CognitiveLoadLedgerId, TenantId, SiteId, ShiftType, ShiftDateUtc, Status, CreatedAtUtc, CreatedBy
+                FROM [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger]
+                WHERE CognitiveLoadLedgerId = @CognitiveLoadLedgerId AND TenantId = @TenantId AND IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveLoadLedger_GetOpenByShift]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @ShiftType NVARCHAR(20),
+                @ShiftDateUtc DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT TOP (1) CognitiveLoadLedgerId, TenantId, SiteId, ShiftType, ShiftDateUtc, Status, CreatedAtUtc, CreatedBy
+                FROM [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger]
+                WHERE TenantId = @TenantId
+                  AND ((@SiteId IS NULL AND SiteId IS NULL) OR SiteId = @SiteId)
+                  AND ShiftType = @ShiftType
+                  AND ShiftDateUtc = @ShiftDateUtc
+                  AND Status = N'Open'
+                  AND IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveLoadLedger_UpdateStatus]
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(50),
+                @UpdatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                UPDATE [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger]
+                SET Status = @Status, UpdatedAtUtc = SYSUTCDATETIME(), UpdatedBy = @UpdatedBy
+                WHERE CognitiveLoadLedgerId = @CognitiveLoadLedgerId AND TenantId = @TenantId AND IsDeleted = 0;
+
+                SELECT @@ROWCOUNT AS RowsAffected;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveLoadReading_Insert]
+                @CognitiveLoadReadingId UNIQUEIDENTIFIER,
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @WorkerUserId UNIQUEIDENTIFIER,
+                @TaskComplexityProfileId UNIQUEIDENTIFIER = NULL,
+                @CognitiveLoadScore DECIMAL(5,2),
+                @WorkloadLevel NVARCHAR(20),
+                @MeasurementMethod NVARCHAR(100),
+                @MeasuredAtUtc DATETIME2(3),
+                @RecordedAtUtc DATETIME2(3),
+                @RecordedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadReading] WHERE CognitiveLoadReadingId = @CognitiveLoadReadingId)
+                INSERT INTO [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadReading]
+                (CognitiveLoadReadingId, CognitiveLoadLedgerId, TenantId, WorkerUserId, TaskComplexityProfileId, CognitiveLoadScore, WorkloadLevel, MeasurementMethod, MeasuredAtUtc, RecordedAtUtc, RecordedBy)
+                VALUES
+                (@CognitiveLoadReadingId, @CognitiveLoadLedgerId, @TenantId, @WorkerUserId, @TaskComplexityProfileId, @CognitiveLoadScore, @WorkloadLevel, @MeasurementMethod, @MeasuredAtUtc, @RecordedAtUtc, @RecordedBy);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveLoadReading_ListByLedger]
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT CognitiveLoadReadingId, WorkerUserId, TaskComplexityProfileId, CognitiveLoadScore, WorkloadLevel, MeasurementMethod, MeasuredAtUtc, RecordedAtUtc, RecordedBy
+                FROM [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadReading]
+                WHERE CognitiveLoadLedgerId = @CognitiveLoadLedgerId AND TenantId = @TenantId
+                ORDER BY MeasuredAtUtc ASC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_TaskComplexityProfile_Insert]
+                @TaskComplexityProfileId UNIQUEIDENTIFIER,
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @TaskCode NVARCHAR(50),
+                @TaskName NVARCHAR(200),
+                @ComplexityScore INT,
+                @Description NVARCHAR(1000),
+                @DefinedAtUtc DATETIME2(3),
+                @DefinedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM [HumanFactorsCognitiveLoadAnalytics].[TaskComplexityProfile] WHERE TaskComplexityProfileId = @TaskComplexityProfileId)
+                INSERT INTO [HumanFactorsCognitiveLoadAnalytics].[TaskComplexityProfile]
+                (TaskComplexityProfileId, CognitiveLoadLedgerId, TenantId, TaskCode, TaskName, ComplexityScore, Description, DefinedAtUtc, DefinedBy)
+                VALUES
+                (@TaskComplexityProfileId, @CognitiveLoadLedgerId, @TenantId, @TaskCode, @TaskName, @ComplexityScore, @Description, @DefinedAtUtc, @DefinedBy);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_TaskComplexityProfile_ListByLedger]
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT TaskComplexityProfileId, TaskCode, TaskName, ComplexityScore, Description, DefinedAtUtc, DefinedBy
+                FROM [HumanFactorsCognitiveLoadAnalytics].[TaskComplexityProfile]
+                WHERE CognitiveLoadLedgerId = @CognitiveLoadLedgerId AND TenantId = @TenantId
+                ORDER BY DefinedAtUtc ASC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_TaskComplexityProfile_GetByCode]
+                @TenantId UNIQUEIDENTIFIER,
+                @TaskCode NVARCHAR(50)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT TOP (1)
+                    TaskComplexityProfileId, CognitiveLoadLedgerId, TaskCode, TaskName, ComplexityScore, Description, DefinedAtUtc
+                FROM [HumanFactorsCognitiveLoadAnalytics].[TaskComplexityProfile]
+                WHERE TenantId = @TenantId AND TaskCode = @TaskCode
+                ORDER BY DefinedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_WorkloadTrendRecord_Insert]
+                @WorkloadTrendRecordId UNIQUEIDENTIFIER,
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @PeriodStartUtc DATETIME2(3),
+                @PeriodEndUtc DATETIME2(3),
+                @MeanCognitiveLoadScore DECIMAL(5,2),
+                @OverloadEventCount INT,
+                @ReadingCount INT,
+                @RecalculatedAtUtc DATETIME2(3),
+                @RecalculatedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM [HumanFactorsCognitiveLoadAnalytics].[WorkloadTrendRecord] WHERE WorkloadTrendRecordId = @WorkloadTrendRecordId)
+                INSERT INTO [HumanFactorsCognitiveLoadAnalytics].[WorkloadTrendRecord]
+                (WorkloadTrendRecordId, CognitiveLoadLedgerId, TenantId, PeriodStartUtc, PeriodEndUtc, MeanCognitiveLoadScore, OverloadEventCount, ReadingCount, RecalculatedAtUtc, RecalculatedBy)
+                VALUES
+                (@WorkloadTrendRecordId, @CognitiveLoadLedgerId, @TenantId, @PeriodStartUtc, @PeriodEndUtc, @MeanCognitiveLoadScore, @OverloadEventCount, @ReadingCount, @RecalculatedAtUtc, @RecalculatedBy);
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_WorkloadTrendRecord_ListByLedger]
+                @CognitiveLoadLedgerId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT WorkloadTrendRecordId, PeriodStartUtc, PeriodEndUtc, MeanCognitiveLoadScore, OverloadEventCount, ReadingCount, RecalculatedAtUtc, RecalculatedBy
+                FROM [HumanFactorsCognitiveLoadAnalytics].[WorkloadTrendRecord]
+                WHERE CognitiveLoadLedgerId = @CognitiveLoadLedgerId AND TenantId = @TenantId
+                ORDER BY RecalculatedAtUtc ASC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveRiskPrediction_GetById]
+                @CognitiveRiskPredictionId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    CognitiveRiskPredictionId, TenantId, SiteId, WorkerUserId, SourceLedgerId, PredictedRiskLevel, PredictionScore,
+                    ModelVersion, PredictionBasis, Status, GeneratedAtUtc, GeneratedBy, AcknowledgedAtUtc, AcknowledgedBy, AcknowledgementNotes
+                FROM [HumanFactorsCognitiveLoadAnalytics].[CognitiveRiskPrediction]
+                WHERE CognitiveRiskPredictionId = @CognitiveRiskPredictionId AND TenantId = @TenantId AND IsDeleted = 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveRiskPrediction_Insert]
+                @CognitiveRiskPredictionId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @WorkerUserId UNIQUEIDENTIFIER,
+                @SourceLedgerId UNIQUEIDENTIFIER,
+                @PredictedRiskLevel NVARCHAR(20),
+                @PredictionScore DECIMAL(6,4),
+                @ModelVersion NVARCHAR(100),
+                @PredictionBasis NVARCHAR(1000),
+                @Status NVARCHAR(20),
+                @GeneratedAtUtc DATETIME2(3),
+                @GeneratedBy UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    INSERT INTO [HumanFactorsCognitiveLoadAnalytics].[CognitiveRiskPrediction]
+                    (CognitiveRiskPredictionId, TenantId, SiteId, WorkerUserId, SourceLedgerId, PredictedRiskLevel, PredictionScore, ModelVersion, PredictionBasis, Status, GeneratedAtUtc, GeneratedBy, IsDeleted)
+                    VALUES
+                    (@CognitiveRiskPredictionId, @TenantId, @SiteId, @WorkerUserId, @SourceLedgerId, @PredictedRiskLevel, @PredictionScore, @ModelVersion, @PredictionBasis, @Status, @GeneratedAtUtc, @GeneratedBy, 0);
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'CognitiveRiskPrediction', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CognitiveRiskPredictionId=', @CognitiveRiskPredictionId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CognitiveRiskPredictionId=', @CognitiveRiskPredictionId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                    VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+
+                    THROW;
+                END CATCH
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveRiskPrediction_ListElevatedByTenant]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    CognitiveRiskPredictionId, WorkerUserId, SourceLedgerId, PredictedRiskLevel, PredictionScore,
+                    ModelVersion, Status, GeneratedAtUtc, AcknowledgedAtUtc
+                FROM [HumanFactorsCognitiveLoadAnalytics].[CognitiveRiskPrediction]
+                WHERE TenantId = @TenantId
+                  AND ((@SiteId IS NULL) OR SiteId = @SiteId)
+                  AND PredictedRiskLevel IN (N'Elevated', N'Critical')
+                  AND Status <> N'Dismissed'
+                  AND IsDeleted = 0
+                ORDER BY GeneratedAtUtc DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveRiskPrediction_UpdateAcknowledgement]
+                @CognitiveRiskPredictionId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER,
+                @Status NVARCHAR(20),
+                @AcknowledgedAtUtc DATETIME2(3) = NULL,
+                @AcknowledgedBy UNIQUEIDENTIFIER = NULL,
+                @AcknowledgementNotes NVARCHAR(1000) = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                UPDATE [HumanFactorsCognitiveLoadAnalytics].[CognitiveRiskPrediction]
+                SET Status = @Status,
+                    AcknowledgedAtUtc = @AcknowledgedAtUtc,
+                    AcknowledgedBy = @AcknowledgedBy,
+                    AcknowledgementNotes = @AcknowledgementNotes
+                WHERE CognitiveRiskPredictionId = @CognitiveRiskPredictionId AND TenantId = @TenantId AND IsDeleted = 0;
+
+                SELECT @@ROWCOUNT AS RowsAffected;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveLoadAnalytics_GetCognitiveLoadByWorker]
+                @TenantId UNIQUEIDENTIFIER,
+                @WorkerUserId UNIQUEIDENTIFIER,
+                @PeriodStartUtc DATETIME2(3),
+                @PeriodEndUtc DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    @WorkerUserId AS WorkerUserId,
+                    @PeriodStartUtc AS PeriodStartUtc,
+                    @PeriodEndUtc AS PeriodEndUtc,
+                    ISNULL(AVG(r.CognitiveLoadScore), 0) AS MeanCognitiveLoadScore,
+                    ISNULL(MAX(r.CognitiveLoadScore), 0) AS PeakCognitiveLoadScore,
+                    SUM(CASE WHEN r.WorkloadLevel = N'Overload' THEN 1 ELSE 0 END) AS OverloadEventCount,
+                    COUNT(r.CognitiveLoadReadingId) AS ReadingCount
+                FROM [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadReading] AS r
+                WHERE r.TenantId = @TenantId
+                  AND r.WorkerUserId = @WorkerUserId
+                  AND r.MeasuredAtUtc >= @PeriodStartUtc
+                  AND r.MeasuredAtUtc <= @PeriodEndUtc
+                HAVING COUNT(r.CognitiveLoadReadingId) > 0;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [HumanFactorsCognitiveLoadAnalytics].[usp_CognitiveLoadAnalytics_GetWorkloadTrendByShift]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId UNIQUEIDENTIFIER = NULL,
+                @ShiftType NVARCHAR(20),
+                @PeriodStartUtc DATETIME2(3),
+                @PeriodEndUtc DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT
+                    t.WorkloadTrendRecordId, t.CognitiveLoadLedgerId, l.ShiftType,
+                    t.PeriodStartUtc, t.PeriodEndUtc, t.MeanCognitiveLoadScore, t.OverloadEventCount, t.ReadingCount, t.RecalculatedAtUtc
+                FROM [HumanFactorsCognitiveLoadAnalytics].[WorkloadTrendRecord] AS t
+                INNER JOIN [HumanFactorsCognitiveLoadAnalytics].[CognitiveLoadLedger] AS l ON l.CognitiveLoadLedgerId = t.CognitiveLoadLedgerId
+                WHERE l.TenantId = @TenantId
+                  AND ((@SiteId IS NULL AND l.SiteId IS NULL) OR l.SiteId = @SiteId)
+                  AND l.ShiftType = @ShiftType
+                  AND t.PeriodStartUtc >= @PeriodStartUtc
+                  AND t.PeriodEndUtc <= @PeriodEndUtc
+                  AND l.IsDeleted = 0
+                ORDER BY t.RecalculatedAtUtc ASC;
             END
             """);
     }

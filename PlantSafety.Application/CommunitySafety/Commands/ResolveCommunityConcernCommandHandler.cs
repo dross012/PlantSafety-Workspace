@@ -39,7 +39,8 @@ public sealed class ResolveCommunityConcernCommandHandler : IRequestHandler<Reso
                 return Result<CommunityConcernActionResult>.Failure(new ApplicationError(
                     "CommunitySafety.CommunityConcern.NotFound",
                     "The requested CommunityConcern record could not be found.",
-                    Guid.NewGuid()));
+                    Guid.NewGuid(),
+                    ErrorSeverity.NotFound));
             }
 
             var performedBy = UserId.FromGuid(request.PerformedByUserId);

@@ -57,6 +57,66 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
         // AuthorizationBehavior's PermissionUsageLog capture and GetTenantAuditStreamQuery.
         await TestDatabaseFactory.ApplyComplianceMonitoringSchemaAsync(ConnectionString);
 
+        // HazardousWasteManagement module (Testing Agent, 2026-08-04): backs the WasteStreams,
+        // WasteContainers, AccumulationAreas, Manifests, Transporters, TsdfFacilities, and
+        // DisposalCertificates Dapper repositories for full command/query round-trip tests.
+        await TestDatabaseFactory.ApplyHazardousWasteManagementSchemaAsync(ConnectionString);
+
+        // AutonomousVehicleSafety module (Testing Agent, 2026-08-04): backs the
+        // AutonomousVehicleAsset, AutonomousVehicleIncident, HumanRobotInteractionEvent,
+        // OperatingGeofence, and SafetyCaseValidation Dapper repositories for full
+        // command/query round-trip and API integration tests.
+        await TestDatabaseFactory.ApplyAutonomousVehicleSafetySchemaAsync(ConnectionString);
+
+        // CyberPhysicalSecurity module (Testing Agent, 2026-08-04): backs the OtAsset,
+        // ControlChangeEvent (tamper-evident SHA-256 hash chain), SensorIntegrityCheck,
+        // SabotageIndicator, and CyberPhysicalIncident Dapper repositories for full
+        // command/query round-trip and API integration tests.
+        await TestDatabaseFactory.ApplyCyberPhysicalSecuritySchemaAsync(ConnectionString);
+
+        // EnvironmentalHealth.WaterDischargeCompliance module (Testing Agent, 2026-08-04): backs
+        // the DischargePermit, DischargePoint, EffluentSample, DischargeLimit, LimitExceedance,
+        // and DischargeMonitoringReport Dapper repositories for full command/query round-trip and
+        // API integration tests.
+        await TestDatabaseFactory.ApplyWaterDischargeComplianceSchemaAsync(ConnectionString);
+
+        // LogisticsTransportSafety module (Testing Agent, 2026-08-04): backs the
+        // TransportVehicle, Carrier, DriverQualification, TransportTrip, LoadSecurementCheck,
+        // and TransportIncident Dapper repositories for full command/query round-trip and API
+        // integration tests.
+        await TestDatabaseFactory.ApplyLogisticsTransportSafetySchemaAsync(ConnectionString);
+
+        // CommunitySafety module (Testing Agent, 2026-08-04): backs the CommunityContact,
+        // CommunityConcern, CommunityImpactAssessment, CommunityNotification, and
+        // CommunityMeetingRecord Dapper repositories for full command/query round-trip and API
+        // integration tests.
+        await TestDatabaseFactory.ApplyCommunitySafetySchemaAsync(ConnectionString);
+
+        // PhysicalAccessControl module (Testing Agent, 2026-08-04): backs the AccessPoint,
+        // Credential, AccessEvent, SafetyZone, AccessAnomaly, and RestrictedZonePolicy Dapper
+        // repositories for full command/query round-trip integration tests.
+        await TestDatabaseFactory.ApplyPhysicalAccessControlSchemaAsync(ConnectionString);
+
+        // PublicSafetyCommunication module (Testing Agent, 2026-08-04): backs the
+        // PublicSafetyAgency (+ AgencyContact), IncidentNotification, PublicAlertBroadcast, and
+        // append-only CommunicationLogEntry Dapper repositories for full command/query
+        // round-trip and API integration tests.
+        await TestDatabaseFactory.ApplyPublicSafetyCommunicationSchemaAsync(ConnectionString);
+
+        // MachineSafety.CraneHoistSystems sub-aggregate (Testing Agent, 2026-08-04): backs
+        // CraneHoistSystemsDapperRepository (asset registry, load-limit enforcement, inspection
+        // cycle, operator qualification, rigging safety) for full command/query round-trip and
+        // API integration tests. Scoped only to CraneHoistSystems -- the other 6 MachineSafety
+        // sub-aggregates are out of scope here.
+        await TestDatabaseFactory.ApplyMachineSafetyCraneHoistSystemsSchemaAsync(ConnectionString);
+
+        // HumanFactors.CognitiveLoadAnalytics sub-module (Testing Agent, 2026-08-04): backs
+        // CognitiveLoadLedgerDapperRepository, CognitiveRiskPredictionDapperRepository, and
+        // CognitiveLoadAnalyticsReadDapperRepository for full command/query round-trip and API
+        // integration tests. Scoped only to CognitiveLoadAnalytics -- the base HumanFactors
+        // aggregate is out of scope here.
+        await TestDatabaseFactory.ApplyHumanFactorsCognitiveLoadAnalyticsSchemaAsync(ConnectionString);
+
         await TestDataSeeder.SeedAsync(ConnectionString);
     }
 
