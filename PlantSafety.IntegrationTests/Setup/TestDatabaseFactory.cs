@@ -754,6 +754,7 @@ public static partial class TestDatabaseFactory
         await conn.ExecuteAsync(@"
             CREATE OR ALTER PROCEDURE [RiskMgmt].[usp_Risk_Update]
                 @RiskId              UNIQUEIDENTIFIER,
+                @TenantId            UNIQUEIDENTIFIER,
                 @Status              NVARCHAR(30),
                 @Category            NVARCHAR(30),
                 @CurrentSeverity     INT = NULL,
@@ -768,7 +769,8 @@ public static partial class TestDatabaseFactory
                 @NextReviewDueUtc    DATETIME2(3) = NULL,
                 @ReviewCount         INT,
                 @RiskVersion         INT,
-                @UpdatedBy           UNIQUEIDENTIFIER = NULL
+                @UpdatedBy           UNIQUEIDENTIFIER = NULL,
+                @ETag                NVARCHAR(64) = NULL
             AS
             SET NOCOUNT ON;
             BEGIN
@@ -795,7 +797,10 @@ public static partial class TestDatabaseFactory
                         UpdatedBy = @UpdatedBy,
                         UpdatedAtUtc = SYSUTCDATETIME(),
                         ConcurrencyToken = NEWID()
-                    WHERE RiskId = @RiskId AND IsDeleted = 0;
+                    WHERE RiskId = @RiskId AND TenantId = @TenantId AND IsDeleted = 0
+                      AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+                    DECLARE @RowsAffected INT = @@ROWCOUNT;
 
                     BEGIN TRY
                         INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -804,9 +809,7 @@ public static partial class TestDatabaseFactory
                     BEGIN CATCH
                     END CATCH;
 
-                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
-                    FROM [RiskMgmt].[Risk]
-                    WHERE RiskId = @RiskId;
+                    SELECT @RowsAffected;
                 END TRY
                 BEGIN CATCH
                     DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'RiskId=', @RiskId, N'; User=', SYSTEM_USER);
@@ -1099,7 +1102,8 @@ public static partial class TestDatabaseFactory
                 @RegulatoryReferenceNumber NVARCHAR(100) = NULL,
                 @RegulatoryFiledAtUtc      DATETIME2(3) = NULL,
                 @ClosedAtUtc               DATETIME2(3) = NULL,
-                @UpdatedBy                 UNIQUEIDENTIFIER = NULL
+                @UpdatedBy                 UNIQUEIDENTIFIER = NULL,
+                @ETag                      NVARCHAR(64) = NULL
             AS
             SET NOCOUNT ON;
             BEGIN
@@ -1124,7 +1128,10 @@ public static partial class TestDatabaseFactory
                         UpdatedBy = @UpdatedBy,
                         UpdatedAtUtc = SYSUTCDATETIME(),
                         ConcurrencyToken = NEWID()
-                    WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0;
+                    WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0
+                      AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
+
+                    DECLARE @RowsAffected INT = @@ROWCOUNT;
 
                     BEGIN TRY
                         INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
@@ -1133,9 +1140,7 @@ public static partial class TestDatabaseFactory
                     BEGIN CATCH
                     END CATCH;
 
-                    SELECT CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
-                    FROM [AccidentManagement].[Accident]
-                    WHERE AccidentId = @AccidentId AND TenantId = @TenantId;
+                    SELECT @RowsAffected;
                 END TRY
                 BEGIN CATCH
                     DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'AccidentId=', @AccidentId, N'; User=', SYSTEM_USER);

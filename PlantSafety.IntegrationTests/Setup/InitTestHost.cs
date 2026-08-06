@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using PlantSafety.Application.Abstractions.Security;
 using PlantSafety.Infrastructure.Common.Configuration;
 using Shared.AuditLogging.Infrastructure.Options;
 
@@ -172,6 +173,24 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
         {
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();
+
+            // NOTE on the tenant-context fix: an earlier version of this change added a blanket
+            // authentication-scheme override here (every Client request auto-authenticated as the
+            // TestIds identity). Reverted -- it broke ~122 "...WithoutAuth_ShouldReturn401" /
+            // "...InvalidTenant..." tests that deliberately send unauthenticated requests through
+            // the same shared Client to verify [Authorize] actually rejects them, since there was
+            // no way to distinguish "wants real auth" from "wants to test the 401 path" on the
+            // same client instance. The dominant root cause (~125 of ~135 failures) was
+            // ServiceProviderExtensions.GetScopedService -- see its header comment -- which needed
+            // no HTTP auth scheme at all, since it never goes through HTTP. If a genuine future
+            // need arises for an authenticated Client in a specific test, prefer a
+            // second/dedicated HttpClient with an explicit test bearer token over re-introducing a
+            // blanket override here.
+
+            // See AllowAllTestPermissionService's header comment: these tests verify handler-to-
+            // SQL round-trips, not fine-grained permission-string enforcement.
+            services.RemoveAll<IPermissionService>();
+            services.AddScoped<IPermissionService, AllowAllTestPermissionService>();
         });
     }
 }
