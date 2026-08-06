@@ -47,6 +47,12 @@ GO
 -- always populated explicitly by usp_PredictiveMaintenanceAlert_Insert going forward.
 -- ============================================================================
 
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[PredictiveMaintenanceReadModel]') AND name = 'ReviewedAtUtc')
+BEGIN
+    ALTER TABLE [Operational].[PredictiveMaintenanceReadModel] ADD ReviewedAtUtc DATETIME2(3) NULL;
+END
+GO
+
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('[Operational].[PredictiveMaintenanceReadModel]') AND name = 'ActionScheduledBy')
 BEGIN
     ALTER TABLE [Operational].[PredictiveMaintenanceReadModel] ADD ActionScheduledBy UNIQUEIDENTIFIER NULL;
