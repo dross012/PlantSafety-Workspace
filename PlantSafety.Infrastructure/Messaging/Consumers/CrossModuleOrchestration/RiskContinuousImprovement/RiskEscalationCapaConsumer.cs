@@ -31,9 +31,12 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using PlantSafety.Application.Features.ContinuousImprovement.Handlers.CAPA;
+using PlantSafety.Domain.ContinuousImprovement.CAPA.Aggregates;
 using PlantSafety.Domain.RiskManagement.Enums;
 using PlantSafety.Domain.RiskManagement.Events;
 using PlantSafety.SharedKernel.Abstractions.Concurrency;
+using PlantSafety.SharedKernel.Identifiers;
+using PlantSafety.SharedKernel.Primitives.ValueTypes;
 
 namespace PlantSafety.Infrastructure.Messaging.Consumers.CrossModuleOrchestration.RiskContinuousImprovement;
 
@@ -111,11 +114,15 @@ public sealed class RiskEscalationCapaConsumer(
         }
 
         var isCritical = evt.Level == RiskLevel.Critical;
-        var caId = Guid.NewGuid();
         var dueAtUtc = evt.ScoredAtUtc.Value.AddDays(isCritical ? 3 : 14);
+        var actorUserId = UserId.FromGuid(actorId);
 
-        await correctiveActionRepository.CreateAsync(
-            caId: caId,
+        var aggregate = CorrectiveAction.Create(
+            createdBy: actorUserId,
+            createdAtUtc: UtcTimestamp.Now(),
+            correlationId: evt.CorrelationId,
+            causationId: new CausationId(evt.EventId.Value),
+            actor: PerformedByActor.User(actorUserId),
             tenantId: tenantId,
             sourceEventId: evt.RiskId.Value,
             sourceEventType: SourceEventType,
@@ -124,14 +131,13 @@ public sealed class RiskEscalationCapaConsumer(
                           $"(Severity {evt.Score.Severity} x Likelihood {evt.Score.Likelihood} = {evt.Score.Score}) recorded for Risk {evt.RiskId}.",
             actionType: "Corrective",
             priority: isCritical ? "Critical" : "High",
-            assignedToWorkerId: actorId,
-            dueAtUtc: dueAtUtc,
-            actorId: actorId,
-            correlationId: evt.CorrelationId.Value,
-            cancellationToken: cancellationToken);
+            assignedToWorkerId: actorUserId,
+            dueAtUtc: UtcTimestamp.From(dueAtUtc));
+
+        await correctiveActionRepository.AddAsync(aggregate, actorId, evt.CorrelationId.Value, cancellationToken);
 
         Logger.LogInformation(
             "RiskEscalationCapaConsumer: CAPA {CaId} opened for {Level} risk {RiskId} (due {DueAtUtc:u}).",
-            caId, evt.Level.Code, evt.RiskId, dueAtUtc);
+            aggregate.CorrectiveActionId.Value, evt.Level.Code, evt.RiskId, dueAtUtc);
     }
 }

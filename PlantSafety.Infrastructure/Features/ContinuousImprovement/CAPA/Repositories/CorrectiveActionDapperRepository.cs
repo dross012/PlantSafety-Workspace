@@ -5,11 +5,22 @@
 //  File:           CorrectiveActionDapperRepository.cs
 //  Created:        2026-07-12
 //  Author:         PlantSafety Platform Team
-//  SchemaVersion:  2026.1
+//  Updated:        2026-08-06 -- CreateAsync(primitives) replaced by AddAsync(CorrectiveAction
+//                  aggregate): the aggregate (Domain.ContinuousImprovement.CAPA.Aggregates.
+//                  CorrectiveAction) previously existed but was never actually constructed by any
+//                  command handler, so CorrectiveActionCreatedEvent was never raised despite
+//                  CrossModuleDomainEventMapper having a registered case arm for it. AddAsync now
+//                  persists the real aggregate and relays its domain events to both the outbox and
+//                  (for the curated subset with a registered cross-module DTO) Shared.EventBus,
+//                  mirroring RiskDapperRepository/AccidentDapperRepository/
+//                  ComplianceEvaluationDapperRepository's Publish-After-Commit pattern.
+//  SchemaVersion:  2026.2
 //  Description:    Dapper repository for the CorrectiveAction aggregate. All DB access via
 //                  stored procedures in the [ContinuousImprovement] schema. Additive-only evolution.
 // ============================================================================
 using PlantSafety.Application.Features.ContinuousImprovement.Handlers.CAPA;
+using PlantSafety.Domain.ContinuousImprovement.CAPA.Aggregates;
+using PlantSafety.Infrastructure.Messaging.CrossModule;
 
 namespace PlantSafety.Infrastructure.Features.ContinuousImprovement.CAPA.Repositories;
 
@@ -21,44 +32,45 @@ public sealed class CorrectiveActionDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperCommandExecutor commandExecutor,
     DapperQueryExecutor queryExecutor,
-    ILogger<CorrectiveActionDapperRepository> logger)
+    IOutboxWriter outboxWriter,
+    ILogger<CorrectiveActionDapperRepository> logger,
+    ICrossModuleEventRelay? crossModuleEventRelay = null)
     : ICorrectiveActionRepository
 {
     /// <inheritdoc/>
-    public async Task CreateAsync(
-        Guid caId,
-        Guid tenantId,
-        Guid sourceEventId,
-        string sourceEventType,
-        string title,
-        string description,
-        string actionType,
-        string priority,
-        Guid assignedToWorkerId,
-        DateTimeOffset dueAtUtc,
-        Guid actorId,
-        Guid correlationId,
-        CancellationToken cancellationToken)
+    public async Task AddAsync(CorrectiveAction aggregate, Guid actorId, Guid correlationId, CancellationToken cancellationToken)
     {
-        logger.LogDebug("Create CorrectiveAction {CaId} for tenant {TenantId}", caId, tenantId);
+        logger.LogDebug("Add CorrectiveAction {CaId} for tenant {TenantId}", aggregate.CorrectiveActionId.Value, aggregate.TenantId);
         using var conn = connectionFactory.CreateConnection();
         using var tx   = conn.BeginTransaction(IsolationLevel.ReadCommitted);
 
         var parameters = new StoredProcedureBuilder()
-            .WithCanonicalHeaders(tenantId, correlationId, actorId, DateTime.UtcNow)
-            .AddGuid("CaId", caId)
-            .AddGuid("SourceEventId", sourceEventId)
-            .AddString("SourceEventType", sourceEventType, 100)
-            .AddString("Title", title, 200)
-            .AddString("Description", description, 4000)
-            .AddString("ActionType", actionType, 50)
-            .AddString("Priority", priority, 50)
-            .AddGuid("AssignedToWorkerId", assignedToWorkerId)
-            .AddDateTime("DueAtUtc", dueAtUtc.UtcDateTime)
+            .WithCanonicalHeaders(aggregate.TenantId, correlationId, actorId, aggregate.CreatedAtUtc.Value)
+            .AddGuid("CaId", aggregate.CorrectiveActionId.Value)
+            .AddGuid("SourceEventId", aggregate.SourceEventId)
+            .AddString("SourceEventType", aggregate.SourceEventType, 100)
+            .AddString("Title", aggregate.Title, 200)
+            .AddString("Description", aggregate.Description, 4000)
+            .AddString("ActionType", aggregate.ActionType, 50)
+            .AddString("Priority", aggregate.Priority, 50)
+            .AddGuid("AssignedToWorkerId", aggregate.AssignedToWorkerId.Value)
+            .AddDateTime("DueAtUtc", aggregate.DueAtUtc.Value)
             .Build();
 
         await commandExecutor.ExecuteAsync(conn, "[ContinuousImprovement].[usp_CorrectiveAction_Create]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
+
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), actorId.ToString(), correlationId.ToString());
+            crossModuleEventRelay?.Enqueue(domainEvent, aggregate.TenantId.ToString(), actorId.ToString(), correlationId.ToString());
+        }
+        aggregate.ClearDomainEvents();
+
+        // Publish-After-Commit: the SQL transaction above has already committed, so it is safe to
+        // relay onto Shared.EventBus now (mirrors UnitOfWork.CommitAsync's discipline).
+        if (crossModuleEventRelay is { HasPendingEvents: true })
+            await crossModuleEventRelay.FlushAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
