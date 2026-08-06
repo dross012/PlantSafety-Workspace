@@ -13,6 +13,8 @@ using PlantSafety.Domain.Compliance.RulesEngine.Factories;
 using PlantSafety.Domain.Compliance.RulesEngine.Interfaces;
 using PlantSafety.Application.Compliance.RulesEngine.Evaluator;
 using PlantSafety.Application.Compliance.RulesEngine.Rules;
+using PlantSafety.Application.Compliance.RulesEngine.Rules.CrossDomain;
+using PlantSafety.Application.Compliance.RulesEngine.Rules.FactProviders;
 using PlantSafety.Application.Compliance.RulesEngine.Rules.InternalPolicy;
 using PlantSafety.Application.Compliance.RulesEngine.Rules.Regulatory;
 using PlantSafety.Application.Compliance.RulesEngine.Rules.Safety;
@@ -36,6 +38,10 @@ public static class ComplianceRulesEngineApplicationServiceRegistration
         // Internal policy pipeline
         services.AddTransient<IComplianceRule, ManagementOfChangeApprovalComplianceRule>();
         services.AddTransient<IComplianceRule, PolicyAcknowledgmentComplianceRule>();
+
+        // Cross-domain pipeline (Safety category; combines facts from more than one module)
+        services.AddTransient<IComplianceRule, PermitRequiresTrainingRule>();
+        services.AddTransient<WorkerTrainingFactsProvider>();
 
         services.AddScoped<IComplianceEvaluationFactory, ComplianceEvaluationFactory>();
         services.AddScoped<ComplianceEvaluator>();

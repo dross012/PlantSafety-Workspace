@@ -10,6 +10,13 @@
 //                  (Handbook Rule 2.3). Mirrors
 //                  PlantSafety.Application.RiskManagement.Validation.CreateRiskCommandValidator.
 //                  Additive-only evolution.
+//
+//                  NOTE (2026-08-05): the cross-domain "permit requires training" check
+//                  deliberately does NOT live here. A newly-created Permits record starts in
+//                  Status=Created (see Permits.Create in the Domain aggregate), not Active --
+//                  training is only meaningful to check once the permit is actually about to
+//                  authorize work, i.e. on ApprovePermitsCommand (Created -> Active). See
+//                  ApprovePermitsCommandValidator.
 // ============================================================================
 using FluentValidation;
 
