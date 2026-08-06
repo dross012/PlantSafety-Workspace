@@ -110,8 +110,8 @@ public static partial class TestDatabaseFactory
                            WHERE TABLE_SCHEMA = 'System' AND TABLE_NAME = 'CrossModuleDedupKeys')
             BEGIN
                 CREATE TABLE [System].[CrossModuleDedupKeys] (
-                    ConsumerName   NVARCHAR(200)    NOT NULL,
-                    BusinessKey    NVARCHAR(400)    NOT NULL,
+                    ConsumerName   NVARCHAR(128)    NOT NULL,
+                    BusinessKey    NVARCHAR(300)    NOT NULL,
                     EventId        UNIQUEIDENTIFIER NOT NULL,
                     ProcessedAtUtc DATETIME2(3)     NOT NULL CONSTRAINT DF_CrossModuleDedupKeys_ProcessedAtUtc DEFAULT (SYSUTCDATETIME()),
                     CONSTRAINT PK_CrossModuleDedupKeys PRIMARY KEY (ConsumerName, BusinessKey)
