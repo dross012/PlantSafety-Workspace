@@ -42,6 +42,7 @@ public static class ComplianceRulesEngineApplicationServiceRegistration
         // Cross-domain pipeline (Safety category; combines facts from more than one module)
         services.AddTransient<IComplianceRule, PermitRequiresTrainingRule>();
         services.AddTransient<WorkerTrainingFactsProvider>();
+        services.AddTransient<PermitComplianceFactProvider>();
 
         services.AddScoped<IComplianceEvaluationFactory, ComplianceEvaluationFactory>();
         services.AddScoped<ComplianceEvaluator>();
