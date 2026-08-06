@@ -36,6 +36,7 @@ using PlantSafety.Domain.RiskManagement.Interfaces;
 using PlantSafety.Domain.RiskManagement.Specifications;
 using PlantSafety.Domain.RiskManagement.ValueObjects;
 using PlantSafety.Domain.RiskManagement.ValueObjects.Ids;
+using PlantSafety.Infrastructure.Messaging.CrossModule;
 using PlantSafety.Infrastructure.Persistence.Reflection;
 
 namespace PlantSafety.Infrastructure.RiskManagement.Persistence;
@@ -46,7 +47,8 @@ public sealed class RiskDapperRepository(
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
     IOutboxWriter outboxWriter,
-    ILogger<RiskDapperRepository> logger)
+    ILogger<RiskDapperRepository> logger,
+    ICrossModuleEventRelay? crossModuleEventRelay = null)
     : IRiskRepository
 {
     private static readonly (string Category, string[] Keywords)[] HazardDomainKeywordMap =
@@ -142,17 +144,13 @@ public sealed class RiskDapperRepository(
 
         await commandExecutor.ExecuteAsync(conn, "[RiskMgmt].[usp_Risk_Insert]", parameters, tx, cancellationToken: cancellationToken);
         tx.Commit();
-    
+
         // Outbox wiring (platform-wide domain-event fix): enqueue any domain events
         // raised by the aggregate during this write so TransactionalUnitOfWork.CommitAsync
         // (invoked by TransactionBehavior after the handler returns) can flush them to
         // [System].[OutboxMessages]. See TransactionalUnitOfWork remarks for the known
         // eventual-consistency gap (outbox flush is not in the same SQL transaction).
-        foreach (var domainEvent in aggregate.DomainEvents)
-        {
-            outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
-        }
-        aggregate.ClearDomainEvents();
+        await RelayDomainEventsAsync(aggregate, cancellationToken);
 }
 
     /// <inheritdoc/>
@@ -213,11 +211,28 @@ public sealed class RiskDapperRepository(
 
         tx.Commit();
 
+        await RelayDomainEventsAsync(aggregate, cancellationToken);
+    }
+
+    /// <summary>
+    /// Enqueues the aggregate's pending domain events to both the intra-platform outbox and (for
+    /// the curated subset with a registered cross-module DTO) Shared.EventBus, then flushes the
+    /// cross-module relay now that the SQL transaction above has already committed
+    /// (Publish-After-Commit; mirrors UnitOfWork.CommitAsync's discipline). This repository owns
+    /// its own connection/transaction rather than going through TransactionBehavior/UnitOfWork, so
+    /// it must drive the relay itself.
+    /// </summary>
+    private async Task RelayDomainEventsAsync(Risk aggregate, CancellationToken cancellationToken)
+    {
         foreach (var domainEvent in aggregate.DomainEvents)
         {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+            crossModuleEventRelay?.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
         }
         aggregate.ClearDomainEvents();
+
+        if (crossModuleEventRelay is { HasPendingEvents: true })
+            await crossModuleEventRelay.FlushAsync(cancellationToken);
     }
 
     private async Task<IReadOnlyList<ControlMeasureRow>> GetControlMeasureRowsAsync(RiskId id, CancellationToken cancellationToken)

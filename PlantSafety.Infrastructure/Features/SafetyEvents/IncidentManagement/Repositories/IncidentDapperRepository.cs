@@ -20,6 +20,7 @@
 // ============================================================================
 using PlantSafety.Application.Common.Errors;
 using PlantSafety.Application.Features.SafetyEvents.Handlers.IncidentManagement;
+using PlantSafety.Infrastructure.Messaging.CrossModule;
 using IncidentAggregate = PlantSafety.Domain.SafetyEvents.IncidentManagement.Aggregates.IncidentManagement;
 
 namespace PlantSafety.Infrastructure.Features.SafetyEvents.IncidentManagement.Repositories;
@@ -33,7 +34,8 @@ public sealed class IncidentDapperRepository(
     DapperCommandExecutor commandExecutor,
     DapperQueryExecutor queryExecutor,
     IOutboxWriter outboxWriter,
-    ILogger<IncidentDapperRepository> logger)
+    ILogger<IncidentDapperRepository> logger,
+    ICrossModuleEventRelay? crossModuleEventRelay = null)
     : IIncidentRepository
 {
     /// <inheritdoc/>
@@ -65,7 +67,7 @@ public sealed class IncidentDapperRepository(
         await commandExecutor.ExecuteAsync(conn, "[SafetyEvents].[usp_Incident_Create]", parameters, tx);
         tx.Commit();
 
-        EnqueuePendingEvents(aggregate, actorId, correlationId);
+        await EnqueuePendingEvents(aggregate, actorId, correlationId, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -108,22 +110,29 @@ public sealed class IncidentDapperRepository(
 
         tx.Commit();
 
-        EnqueuePendingEvents(aggregate, actorId, correlationId);
+        await EnqueuePendingEvents(aggregate, actorId, correlationId, cancellationToken);
     }
 
     /// <summary>
     /// Enqueues the aggregate's pending domain events (raised by <c>Create</c>/<c>UpdateDetails</c>)
-    /// to the outbox after a successful SQL commit, then clears them from the in-memory aggregate.
-    /// Mirrors <c>AccidentDapperRepository.AddAsync</c>/<c>UpdateAsync</c>.
+    /// to both the outbox and (for the curated subset with a registered cross-module DTO)
+    /// Shared.EventBus after a successful SQL commit, then clears them from the in-memory
+    /// aggregate. Mirrors <c>AccidentDapperRepository.AddAsync</c>/<c>UpdateAsync</c>. The
+    /// cross-module relay is flushed here too (Publish-After-Commit) since this repository owns
+    /// its own connection/transaction rather than going through TransactionBehavior/UnitOfWork.
     /// </summary>
-    private void EnqueuePendingEvents(IncidentAggregate aggregate, Guid actorId, Guid correlationId)
+    private async Task EnqueuePendingEvents(IncidentAggregate aggregate, Guid actorId, Guid correlationId, CancellationToken cancellationToken)
     {
         foreach (var domainEvent in aggregate.DomainEvents)
         {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), actorId.ToString(), correlationId.ToString());
+            crossModuleEventRelay?.Enqueue(domainEvent, aggregate.TenantId.ToString(), actorId.ToString(), correlationId.ToString());
         }
 
         aggregate.ClearDomainEvents();
+
+        if (crossModuleEventRelay is { HasPendingEvents: true })
+            await crossModuleEventRelay.FlushAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -181,7 +190,7 @@ public sealed class IncidentDapperRepository(
         tx.Commit();
 
         await PersistPendingTimelineEntriesAsync(conn, aggregate, cancellationToken);
-        EnqueuePendingEvents(aggregate, actorId, correlationId);
+        await EnqueuePendingEvents(aggregate, actorId, correlationId, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -209,7 +218,7 @@ public sealed class IncidentDapperRepository(
         tx.Commit();
 
         await PersistPendingTimelineEntriesAsync(conn, aggregate, cancellationToken);
-        EnqueuePendingEvents(aggregate, actorId, correlationId);
+        await EnqueuePendingEvents(aggregate, actorId, correlationId, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -226,7 +235,7 @@ public sealed class IncidentDapperRepository(
         // entry (persisted below) is the sole record of truth, so no write-side stored procedure
         // call against the Incident row itself is required here.
         await PersistPendingTimelineEntriesAsync(conn, aggregate, cancellationToken);
-        EnqueuePendingEvents(aggregate, actorId, correlationId);
+        await EnqueuePendingEvents(aggregate, actorId, correlationId, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -252,7 +261,7 @@ public sealed class IncidentDapperRepository(
         tx.Commit();
 
         await PersistPendingTimelineEntriesAsync(conn, aggregate, cancellationToken);
-        EnqueuePendingEvents(aggregate, actorId, correlationId);
+        await EnqueuePendingEvents(aggregate, actorId, correlationId, cancellationToken);
     }
 
     /// <summary>
