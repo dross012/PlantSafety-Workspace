@@ -84,7 +84,10 @@ public sealed class ObservationDapperRepository(
             .AddString("ETag", eTag, size: 64)
             .Build();
 
-        var rowsAffected = await commandExecutor.ExecuteAsync(conn, "[SafetyEvents].[usp_Observation_Update]", parameters, tx);
+        // Must be invoked via ExecuteScalarAsync (not ExecuteAsync/ExecuteNonQuery): the proc's
+        // SET NOCOUNT ON makes ExecuteNonQuery always return -1, which would silently disable the
+        // @ETag concurrency check below. See usp_Observation_Update.sql remarks.
+        var rowsAffected = await commandExecutor.ExecuteScalarAsync(conn, "[SafetyEvents].[usp_Observation_Update]", parameters, tx);
         if (rowsAffected == 0)
         {
             throw new ConcurrencyConflictException(
