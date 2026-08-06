@@ -85,4 +85,28 @@ public sealed class PlanningProjectsApiClient : SafetyApiClientBase
         Guid projectId,
         CancellationToken cancellationToken = default)
         => GetAsync<SafetyProjectDto>($"v1/features/planning-projects/projects/{projectId}", cancellationToken);
+
+    /// <summary>
+    /// Creates a new Project (Planning status). The project's <c>TargetCompletionUtc</c> IS the
+    /// scheduling input — Project Scheduling and Project Budgeting are read-only projections over
+    /// this same data, so no separate scheduling-create endpoint exists. Backed by
+    /// POST <c>v1/planning-projects/projects</c> (requires the Project Write authorization policy).
+    /// </summary>
+    public Task<ApiResponseEnvelope<ProjectStatusResult>> CreateProjectAsync(
+        CreateProjectRequest request,
+        CancellationToken cancellationToken = default)
+        => PostAsync<CreateProjectRequest, ProjectStatusResult>(
+            "v1/planning-projects/projects", request, cancellationToken);
+
+    /// <summary>
+    /// Adds a milestone to an existing Project — the "Milestones" scheduling checkpoint input.
+    /// Backed by POST <c>v1/planning-projects/projects/{projectId}/milestones</c> (requires the
+    /// Project Write authorization policy).
+    /// </summary>
+    public Task<ApiResponseEnvelope<ProjectStatusResult>> AddMilestoneAsync(
+        Guid projectId,
+        AddProjectMilestoneRequest request,
+        CancellationToken cancellationToken = default)
+        => PostAsync<AddProjectMilestoneRequest, ProjectStatusResult>(
+            $"v1/planning-projects/projects/{projectId}/milestones", request, cancellationToken);
 }

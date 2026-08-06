@@ -6,7 +6,10 @@
      client-side title filter, and a DataGridComponent listing of MOC
      workflow instances with StatusIndicatorComponent per row. Built
      entirely from the canonical Shared component library.
-   SchemaVersion: 2026.1
+   UPDATED: 2026-08-05 — Added a "New MOC Request" action linking to
+     CreateMocPage.razor (POST v1/features/compliance/management-of-change,
+     the real CreateMocCommand).
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -32,6 +35,9 @@
     <ErrorBoundaryComponent Message="The Management of Change list could not be displayed." OnRetry="LoadPageAsync">
 
         <div class="ps-page-actions">
+            <a href="@RouteDefinitions.MocCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-circle" aria-hidden="true"></span> New MOC Request
+            </a>
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>

@@ -29,6 +29,13 @@ public sealed class ObservationState
     private int _totalCount;
     private int _totalPages;
 
+    private bool _isCreating;
+    private string? _createError;
+    private Guid? _createdId;
+
+    private bool _isSaving;
+    private string? _saveError;
+
     /// <summary>Gets the current page of observation list items. Never null; empty when not loaded.</summary>
     public IReadOnlyList<ObservationDto> Items => _items;
 
@@ -55,6 +62,21 @@ public sealed class ObservationState
 
     /// <summary>Gets the total number of pages.</summary>
     public int TotalPages => _totalPages;
+
+    /// <summary>Gets a value indicating whether a Create Observation submission is in flight.</summary>
+    public bool IsCreating => _isCreating;
+
+    /// <summary>Gets a sanitized Create Observation submission error, or null.</summary>
+    public string? CreateError => _createError;
+
+    /// <summary>Gets the identifier of the most recently created observation, or null.</summary>
+    public Guid? CreatedId => _createdId;
+
+    /// <summary>Gets a value indicating whether an Edit Observation submission is in flight.</summary>
+    public bool IsSaving => _isSaving;
+
+    /// <summary>Gets a sanitized Edit Observation submission error, or null.</summary>
+    public string? SaveError => _saveError;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -92,6 +114,27 @@ public sealed class ObservationState
 
     /// <summary>Clears the selected observation.</summary>
     public void ClearSelection() { _selected = null; NotifyStateChanged(); }
+
+    /// <summary>Marks a Create Observation submission as in flight.</summary>
+    public void BeginCreate() { _isCreating = true; _createError = null; _createdId = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Create Observation submission.</summary>
+    public void SetCreateSuccess(Guid id) { _createdId = id; _isCreating = false; _createError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a Create Observation submission failure with a sanitized message.</summary>
+    public void SetCreateError(string sanitizedError) { _createError = sanitizedError; _isCreating = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Create Observation submission state.</summary>
+    public void ResetCreate() { _isCreating = false; _createError = null; _createdId = null; NotifyStateChanged(); }
+
+    /// <summary>Marks an Edit Observation submission as in flight.</summary>
+    public void BeginSave() { _isSaving = true; _saveError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Edit Observation submission.</summary>
+    public void SetSaveSuccess() { _isSaving = false; _saveError = null; NotifyStateChanged(); }
+
+    /// <summary>Records an Edit Observation submission failure with a sanitized message.</summary>
+    public void SetSaveError(string sanitizedError) { _saveError = sanitizedError; _isSaving = false; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

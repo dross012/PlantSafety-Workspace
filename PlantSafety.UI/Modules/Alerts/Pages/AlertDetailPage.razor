@@ -1,9 +1,14 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-06-17
-   FILE DESCRIPTION: Alert detail page. Loads the full AlertDto by route
-     parameter, displays all fields, and provides an Acknowledge action.
-     Correlation ID is displayed for support reference — never PII.
+   UPDATED: 2026-08-05 — Corrected to display the real AlertDto fields
+     (CategoryCode/SeverityCode/SourceType/LocationZoneName/TriggeredAtUtc)
+     and exposes the module's real lifecycle commands (Dispatch/Escalate/
+     Resolve/Close) as action buttons alongside the existing Acknowledge —
+     the aggregate has no field-level Update command. Close doubles as this
+     module's soft-close/retire (Delete) action, confirm-gated. Adds a Print
+     button (window.print via JS interop).
+   FILE DESCRIPTION: Alert detail page.
    SchemaVersion: 2026.1
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
@@ -14,10 +19,12 @@
 @inject AlertsApiClient ApiClient
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
 @using PlantSafety.UI.Modules.Alerts.ApiClients
+@using PlantSafety.UI.Modules.Alerts.Models
 
 <PageTitle>Alert Detail — PlantSafety</PageTitle>
 
@@ -39,34 +46,122 @@
         <div class="ps-detail-card">
             <div class="ps-detail-header">
                 <h2 class="ps-detail-title">@alert.Title</h2>
-                <span class="ps-badge ps-badge--@alert.Severity.ToLowerInvariant()">@alert.Severity</span>
+                <span class="ps-badge ps-badge--@alert.SeverityCode.ToLowerInvariant()">@alert.SeverityCode</span>
                 <span class="ps-badge">@alert.Status</span>
             </div>
 
+            @if (State.ActionMessage is not null)
+            {
+                <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+            }
+            @if (State.ActionError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+            }
+
             <dl class="ps-detail-fields">
-                <dt>Description</dt>     <dd>@alert.Description</dd>
-                <dt>Alert Type</dt>      <dd>@alert.AlertType</dd>
-                <dt>Source Module</dt>   <dd>@alert.SourceModule</dd>
-                <dt>Subject</dt>         <dd>@alert.SubjectEntityType @(alert.SubjectEntityId.HasValue ? $"({alert.SubjectEntityId})" : string.Empty)</dd>
-                <dt>Raised</dt>          <dd>@alert.RaisedAtUtc.ToString("u") UTC</dd>
-                <dt>Last Updated</dt>    <dd>@alert.UpdatedAtUtc.ToString("u") UTC</dd>
-                @if (alert.IsAcknowledged)
+                <dt>Category</dt>        <dd>@alert.CategoryDisplayName (@alert.CategoryCode)</dd>
+                <dt>Source Type</dt>     <dd>@alert.SourceType</dd>
+                <dt>Location Zone</dt>   <dd>@alert.LocationZoneName</dd>
+                @if (alert.Latitude.HasValue && alert.Longitude.HasValue)
                 {
-                    <dt>Acknowledged</dt><dd>@alert.AcknowledgedAtUtc?.ToString("u") UTC by @alert.AcknowledgedByName</dd>
+                    <dt>Coordinates</dt><dd>@alert.Latitude, @alert.Longitude</dd>
                 }
-                <dt>Correlation ID</dt>  <dd class="ps-mono">@alert.CorrelationId</dd>
+                <dt>Triggered</dt>       <dd>@alert.TriggeredAtUtc.ToString("u") UTC</dd>
+                @if (alert.AcknowledgedAtUtc.HasValue)
+                {
+                    <dt>Acknowledged</dt><dd>@alert.AcknowledgedAtUtc?.ToString("u") UTC</dd>
+                }
+                @if (alert.ResolvedAtUtc.HasValue)
+                {
+                    <dt>Resolved</dt><dd>@alert.ResolvedAtUtc?.ToString("u") UTC</dd>
+                }
+                @if (alert.ClosedAtUtc.HasValue)
+                {
+                    <dt>Closed</dt><dd>@alert.ClosedAtUtc?.ToString("u") UTC</dd>
+                }
+                @if (alert.CloseOutVerification is not null)
+                {
+                    <dt>Close-Out Verification</dt><dd>@alert.CloseOutVerification</dd>
+                }
+                @if (alert.SiteId.HasValue)
+                {
+                    <dt>Site</dt><dd class="ps-mono">@alert.SiteId</dd>
+                }
             </dl>
+
+            <CardComponent Title="Lifecycle Actions">
+                @if (!alert.IsAcknowledged)
+                {
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="AcknowledgeAsync" disabled="@State.IsBusy">
+                        <span class="bi bi-check-lg" aria-hidden="true"></span> Acknowledge
+                    </button>
+                }
+
+                @if (alert.IsAcknowledged && !alert.ResolvedAtUtc.HasValue && !alert.ClosedAtUtc.HasValue)
+                {
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="dispatched-to">Dispatched To</label>
+                        <input id="dispatched-to" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_dispatchedTo" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="DispatchAsync" disabled="@State.IsBusy">
+                        <span class="bi bi-send" aria-hidden="true"></span> Dispatch
+                    </button>
+
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="escalation-reason">Escalation Reason</label>
+                        <input id="escalation-reason" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_escalationReason" />
+                    </div>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="EscalateAsync" disabled="@State.IsBusy">
+                        <span class="bi bi-arrow-up-circle" aria-hidden="true"></span> Escalate
+                    </button>
+
+                    <div class="ps-field-row">
+                        <label class="ps-field-label" for="response-actions">Response Actions Taken</label>
+                        <input id="response-actions" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_responseActionsTaken" />
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ResolveAsync" disabled="@State.IsBusy">
+                        <span class="bi bi-check-circle" aria-hidden="true"></span> Resolve
+                    </button>
+                }
+
+                @if (alert.ResolvedAtUtc.HasValue && !alert.ClosedAtUtc.HasValue)
+                {
+                    @if (!_confirmClose)
+                    {
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmClose = true" disabled="@State.IsBusy">
+                            <span class="bi bi-x-circle" aria-hidden="true"></span> Close Alert
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="ps-alert ps-alert--warning" role="alertdialog">
+                            <div class="ps-field-row">
+                                <label class="ps-field-label" for="close-out-verification">Close-Out Verification</label>
+                                <input id="close-out-verification" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_closeOutVerification" />
+                            </div>
+                            Closing this alert is final. Are you sure?
+                            <div class="ps-form-actions">
+                                <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">Confirm Close</button>
+                                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmClose = false" disabled="@State.IsBusy">Cancel</button>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (alert.ClosedAtUtc.HasValue)
+                {
+                    <p class="ps-text-muted">This alert is closed. No further lifecycle actions are available.</p>
+                }
+            </CardComponent>
 
             <div class="ps-detail-actions">
                 <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AlertsList)">
                     <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Alerts
                 </button>
-                @if (!alert.IsAcknowledged)
-                {
-                    <button class="ps-btn ps-btn-primary" @onclick="AcknowledgeAsync">
-                        <span class="bi bi-check-lg" aria-hidden="true"></span> Acknowledge
-                    </button>
-                }
+                <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                    <span class="bi bi-printer" aria-hidden="true"></span> Print
+                </button>
             </div>
         </div>
     }
@@ -74,6 +169,12 @@
 
 @code {
     [Parameter] public Guid AlertId { get; set; }
+
+    private string _dispatchedTo = string.Empty;
+    private string _escalationReason = string.Empty;
+    private string _responseActionsTaken = string.Empty;
+    private string _closeOutVerification = string.Empty;
+    private bool _confirmClose;
 
     protected override void OnInitialized()
     {
@@ -93,7 +194,11 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+        await LoadAsync();
+    }
 
+    private async Task LoadAsync()
+    {
         State.BeginDetailLoad();
         var envelope = await ApiClient.GetAlertAsync(AlertId);
 
@@ -107,14 +212,88 @@
 
     private async Task AcknowledgeAsync()
     {
+        State.BeginAction();
         var envelope = await ApiClient.AcknowledgeAlertAsync(AlertId);
         if (envelope.IsSuccess)
-            State.SetSelectedAlert(envelope.Data!);
-        else if (envelope.IsProblem)
-            State.SetDetailError(envelope.Problem!.Detail);
+        {
+            State.CompleteAction("Alert acknowledged.");
+            await LoadAsync();
+        }
         else
-            State.SetDetailError($"Acknowledge failed: {envelope.FaultType}");
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
     }
+
+    private async Task DispatchAsync()
+    {
+        State.BeginAction();
+        var envelope = await ApiClient.DispatchAsync(AlertId, new DispatchAlertRequest { DispatchedTo = _dispatchedTo });
+        if (envelope.IsSuccess)
+        {
+            State.CompleteAction("Dispatch recorded.");
+            _dispatchedTo = string.Empty;
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
+    }
+
+    private async Task EscalateAsync()
+    {
+        State.BeginAction();
+        var envelope = await ApiClient.EscalateAsync(AlertId, new EscalateAlertRequest { EscalationReason = _escalationReason, WasAutoEscalated = false });
+        if (envelope.IsSuccess)
+        {
+            State.CompleteAction("Alert escalated.");
+            _escalationReason = string.Empty;
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
+    }
+
+    private async Task ResolveAsync()
+    {
+        State.BeginAction();
+        var envelope = await ApiClient.ResolveAsync(AlertId, new ResolveAlertRequest { ResponseActionsTaken = _responseActionsTaken });
+        if (envelope.IsSuccess)
+        {
+            State.CompleteAction("Alert resolved.");
+            _responseActionsTaken = string.Empty;
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var envelope = await ApiClient.CloseAsync(AlertId, new CloseAlertRequest { CloseOutVerification = _closeOutVerification });
+        _confirmClose = false;
+        if (envelope.IsSuccess)
+        {
+            State.CompleteAction("Alert closed.");
+            _closeOutVerification = string.Empty;
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

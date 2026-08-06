@@ -34,7 +34,9 @@
             <a href="/modules/predictive-maintenance/predictions" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-list-ul" aria-hidden="true"></span> All Predictions</a>
             <a href="/modules/predictive-maintenance/sensors" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-graph-up" aria-hidden="true"></span> Sensor Explorer</a>
             <a href="/modules/predictive-maintenance/reports" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-file-earmark-bar-graph" aria-hidden="true"></span> Reports</a>
-            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+            <a href="@RouteDefinitions.PredictiveMaintenanceAlertCreate" class="ps-btn ps-btn-primary ps-btn-sm"><span class="bi bi-plus-lg" aria-hidden="true"></span> Raise Alert</a>
+            <a href="@RouteDefinitions.PredictiveMaintenanceAlertFind" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-search" aria-hidden="true"></span> Find Alert</a>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
         </div>

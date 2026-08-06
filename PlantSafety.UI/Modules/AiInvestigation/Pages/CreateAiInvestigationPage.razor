@@ -1,0 +1,136 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create AI Investigation input form. Submits a
+     CreateAiInvestigationRequest via POST v1/intelligence/ai-investigations
+     (AiInvestigationApiClient.CreateAsync -> CreateAIInvestigationCommand) and
+     navigates to the new investigation's detail page on success. No field-level
+     update endpoint exists — lifecycle transitions (StartReview/Close/Archive)
+     are exposed as action buttons on the detail page instead. Follows the
+     canonical Blazor UI form pattern established in CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/ai-investigation/new"
+
+@inject AiInvestigationState State
+@inject AiInvestigationApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.AiInvestigation.ApiClients
+@using PlantSafety.UI.Modules.AiInvestigation.Models
+
+<PageTitle>New AI Investigation — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Investigation form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New AI Investigation</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="incident-reference">Incident Reference</label>
+                        <InputText id="incident-reference" @bind-Value="_model.IncidentReference" placeholder="e.g. INC-2026-0142" />
+                        <ValidationMessage For="() => _model.IncidentReference" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="ai-confidence">AI Confidence Score (0.0-1.0)</label>
+                        <InputNumber id="ai-confidence" @bind-Value="_model.AiConfidenceScore" step="0.01" />
+                        <ValidationMessage For="() => _model.AiConfidenceScore" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="summary">AI-Generated Summary</label>
+                        <InputTextArea id="summary" @bind-Value="_model.Summary" rows="4" />
+                        <ValidationMessage For="() => _model.Summary" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Open Investigation</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateAiInvestigationRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New AI Investigation",
+            activeModuleCode: "ai-investigation",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "AI Investigation", Href = RouteDefinitions.AiInvestigationList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        var envelope = await ApiClient.CreateAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"{RouteDefinitions.AiInvestigationList}/{envelope.Data!.AIInvestigationId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to open investigation: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.AiInvestigationList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

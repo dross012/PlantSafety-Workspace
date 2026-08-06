@@ -34,9 +34,12 @@
     <ErrorBoundaryComponent Message="The Permits to Work list could not be displayed." OnRetry="LoadAsync">
 
         <div class="ps-page-actions">
+            <a href="@RouteDefinitions.PermitCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-lg" aria-hidden="true"></span> New Permit
+            </a>
             <SearchBoxComponent Value="State.SearchText" Placeholder="Search permit type, work, or status" ValueChanged="OnSearchChangedAsync" />
             <DateRangePickerComponent StartDate="State.StartDate" EndDate="State.EndDate" RangeChanged="OnRangeChangedAsync" />
-            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
         </div>

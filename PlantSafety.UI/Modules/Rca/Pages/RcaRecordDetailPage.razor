@@ -1,0 +1,271 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: ContinuousImprovement.RCA generic record detail page.
+     Loads the real by-id read-model endpoint (GET
+     v1/continuous-improvement/rca/{id}) and exposes the module's real
+     lifecycle commands (StartAnalysis/SubmitForApproval/Close/Archive) as
+     action buttons since the aggregate has no field-level Update command.
+     Archive doubles as this module's soft-delete/retire (Delete) action,
+     confirm-gated. Adds a Print button (window.print via JS interop).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/rca/records/{RcaId:guid}"
+
+@inject RcaRecordState State
+@inject RcaApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Rca.ApiClients
+@using PlantSafety.UI.Modules.Rca.Models
+@using PlantSafety.UI.Modules.Rca.State
+
+<PageTitle>RCA Record — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The RCA record could not be displayed.">
+
+        @if (State.IsLoadingRecord)
+        {
+            <LoadingIndicatorComponent Message="Loading RCA record…" />
+        }
+        else if (State.RecordError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.RecordError</div>
+        }
+        else if (State.SelectedRecord is { } rca)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@rca.ProblemStatement</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(rca.Status)" Label="@rca.Status" />
+                </div>
+
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
+                <dl class="ps-detail-fields">
+                    <dt>Methodology</dt> <dd>@rca.Methodology</dd>
+                    <dt>Owner</dt>       <dd class="ps-mono">@rca.OwnerUserId</dd>
+                    <dt>Site</dt>        <dd class="ps-mono">@(rca.SiteId?.ToString() ?? "All sites")</dd>
+                    <dt>Initiated</dt>   <dd>@rca.InitiatedAtUtc.ToString("u") UTC</dd>
+                    @if (!string.IsNullOrWhiteSpace(rca.Findings))
+                    {
+                        <dt>Findings</dt><dd>@rca.Findings</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(rca.RootCauseSummary))
+                    {
+                        <dt>Root Cause Summary</dt><dd>@rca.RootCauseSummary</dd>
+                    }
+                    <dt>Created</dt>     <dd>@rca.CreatedAtUtc.ToString("u") UTC</dd>
+                </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (string.Equals(rca.Status, "Initiated", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="StartAnalysisAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-play-circle" aria-hidden="true"></span> Start Analysis
+                        </button>
+                    }
+
+                    @if (string.Equals(rca.Status, "InProgress", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="findings">Findings (optional)</label>
+                            <input id="findings" type="text" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_findings" />
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SubmitForApprovalAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-send" aria-hidden="true"></span> Submit for Approval
+                        </button>
+                    }
+
+                    @if (string.Equals(rca.Status, "PendingApproval", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="root-cause-summary">Root Cause Summary (optional)</label>
+                            <input id="root-cause-summary" type="text" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_rootCauseSummary" />
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> Approve &amp; Close
+                        </button>
+                    }
+
+                    @if (string.Equals(rca.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        @if (!_confirmArchive)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = true" disabled="@State.IsBusy">
+                                <span class="bi bi-archive" aria-hidden="true"></span> Archive (Retire)
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Archiving retires this RCA record permanently for compliance retention. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ArchiveAsync" disabled="@State.IsBusy">Confirm Archive</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (string.Equals(rca.Status, "Archived", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <p class="ps-text-muted">This RCA record is archived. No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.RcaRecordsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to RCA Records
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RcaId { get; set; }
+
+    private string _findings = string.Empty;
+    private string _rootCauseSummary = string.Empty;
+    private bool _confirmArchive;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "RCA Record",
+            activeModuleCode: "rca",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "RCA", Href = RouteDefinitions.RcaList },
+                new BreadcrumbItem { Label = "Records", Href = RouteDefinitions.RcaRecordsList },
+                new BreadcrumbItem { Label = "Record Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginRecordLoad();
+        var envelope = await ApiClient.GetRcaRecordByIdAsync(RcaId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedRecord(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetRecordError(envelope.Problem!.Detail);
+        else
+            State.SetRecordError($"Failed to load RCA record: {envelope.FaultType}");
+    }
+
+    private async Task StartAnalysisAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.StartRcaRecordAnalysisAsync(RcaId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Analysis started.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task SubmitForApprovalAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.SubmitRcaRecordForApprovalAsync(RcaId, new SubmitRcaRecordForApprovalRequest
+        {
+            Findings = string.IsNullOrWhiteSpace(_findings) ? null : _findings,
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Submitted for approval.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.CloseRcaRecordAsync(RcaId, new CloseRcaRecordRequest
+        {
+            RootCauseSummary = string.IsNullOrWhiteSpace(_rootCauseSummary) ? null : _rootCauseSummary,
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("RCA approved and closed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ArchiveRcaRecordAsync(RcaId, State.SelectedRecord?.ETag);
+        _confirmArchive = false;
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("RCA record archived.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "closed" or "archived" => "Healthy",
+        "initiated" or "inprogress" or "pendingapproval" => "Warning",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

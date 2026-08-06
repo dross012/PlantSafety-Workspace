@@ -1,9 +1,14 @@
 ﻿@* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
+   UPDATED: 2026-08-05 — Added a Status/Drill Type filter bar (bound to the
+     real ListDrillsQuery Status/DrillType parameters) and a "New Drill"
+     action linking to CreateDrillPage. Removed the stale "needs backend
+     wiring" notice — the List/GetById endpoints have existed since this
+     module's DrillsV1Controller was introduced.
    FILE DESCRIPTION: Drills & Exercises list page. Calls the real paginated
      List endpoint at /v1/features/safety-events/drills.
-   SchemaVersion: 2026.1
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -28,6 +33,27 @@
     <ErrorBoundaryComponent Message="The Drills list could not be displayed." OnRetry="LoadPageAsync">
 
         <div class="ps-page-actions">
+            <a href="@RouteDefinitions.DrillsCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-circle" aria-hidden="true"></span> New Drill
+            </a>
+            <label class="ps-field-label" for="drill-status-filter">Status</label>
+            <select id="drill-status-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnStatusChangedAsync">
+                <option value="">All</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+            <label class="ps-field-label" for="drill-type-filter">Type</label>
+            <select id="drill-type-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnDrillTypeChangedAsync">
+                <option value="">All</option>
+                <option value="EvacuationDrill">EvacuationDrill</option>
+                <option value="FireDrill">FireDrill</option>
+                <option value="MedicalEmergency">MedicalEmergency</option>
+                <option value="HazMatResponse">HazMatResponse</option>
+                <option value="ActiveThreat">ActiveThreat</option>
+                <option value="TableTop">TableTop</option>
+                <option value="FullScale">FullScale</option>
+            </select>
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
@@ -35,14 +61,7 @@
 
         @if (State.ListError is not null)
         {
-            <div class="ps-alert ps-alert--warning" role="alert">
-                @State.ListError
-                <p class="ps-needs-backend">
-                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
-                    The Drills list needs backend wiring — only the "schedule drill" command endpoint
-                    exists today (no list/get-by-id read endpoints yet).
-                </p>
-            </div>
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
         }
 
         @if (State.IsLoadingList)
@@ -110,7 +129,11 @@
     private async Task GoToPageAsync(int page)
     {
         State.BeginListLoad();
-        var envelope = await ApiClient.ListDrillsAsync(pageNumber: page, pageSize: 25);
+        var envelope = await ApiClient.ListDrillsAsync(
+            pageNumber: page,
+            pageSize: 25,
+            status: State.StatusFilter,
+            drillType: State.DrillTypeFilter);
 
         if (envelope.IsSuccess)
             State.SetItems(envelope.Data!);
@@ -118,6 +141,18 @@
             State.SetListError(envelope.Problem!.Detail);
         else
             State.SetListError($"Failed to load drills: {envelope.FaultType}");
+    }
+
+    private async Task OnStatusChangedAsync(ChangeEventArgs e)
+    {
+        State.SetStatusFilter(e.Value?.ToString());
+        await GoToPageAsync(1);
+    }
+
+    private async Task OnDrillTypeChangedAsync(ChangeEventArgs e)
+    {
+        State.SetDrillTypeFilter(e.Value?.ToString());
+        await GoToPageAsync(1);
     }
 
     public void Dispose() => State.OnChange -= StateHasChanged;

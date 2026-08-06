@@ -1,0 +1,252 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Generic RegulatoryCalendar obligation record detail
+     page, distinct from RegulatoryCalendarDetailPage.razor (which shows the
+     read-only per-source projections). Loads the real by-id read-model
+     endpoint (GET v1/compliance/regulatorycalendar/{id}) and exposes the
+     module's real lifecycle commands (Activate/RecordCompliance/Close/
+     Archive) as action buttons since the aggregate has no field-level
+     Update command. Archive doubles as this module's soft-delete/retire
+     (Delete) action, confirm-gated. Adds a Print button (window.print via
+     JS interop).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/regulatory-calendar/record/{RegulatoryCalendarId:guid}"
+
+@inject RegulatoryCalendarState State
+@inject RegulatoryCalendarApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.RegulatoryCalendar.ApiClients
+@using PlantSafety.UI.Modules.RegulatoryCalendar.Models
+@using PlantSafety.UI.Modules.RegulatoryCalendar.State
+
+<PageTitle>Regulatory Obligation — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The regulatory obligation record could not be displayed.">
+
+        @if (State.IsLoadingRecord)
+        {
+            <LoadingIndicatorComponent Message="Loading obligation…" />
+        }
+        else if (State.RecordError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.RecordError</div>
+        }
+        else if (State.SelectedRecord is { } record)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@record.EventTitle</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(record.Status)" Label="@record.Status" />
+                </div>
+
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
+                <dl class="ps-detail-fields">
+                    <dt>Regulatory Body</dt>    <dd>@record.RegulatoryBody</dd>
+                    <dt>Jurisdiction</dt>       <dd>@record.JurisdictionCode</dd>
+                    <dt>Compliance Category</dt><dd>@record.ComplianceCategory</dd>
+                    <dt>Responsible Party</dt>  <dd class="ps-mono">@(record.ResponsiblePartyId?.ToString() ?? "—")</dd>
+                    <dt>Site</dt>               <dd class="ps-mono">@(record.SiteId?.ToString() ?? "All sites")</dd>
+                    @if (record.DueAtUtc.HasValue)
+                    {
+                        <dt>Due</dt><dd>@record.DueAtUtc?.ToString("u") UTC</dd>
+                    }
+                    <dt>Reminder Lead Days</dt> <dd>@record.ReminderLeadDays</dd>
+                    <dt>Created</dt>            <dd>@record.CreatedAtUtc.ToString("u") UTC</dd>
+                </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (string.Equals(record.Status, "Created", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ActivateAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check2-circle" aria-hidden="true"></span> Activate
+                        </button>
+                    }
+
+                    @if (string.Equals(record.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="RecordComplianceAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-clipboard-check" aria-hidden="true"></span> Record Compliance
+                        </button>
+                    }
+
+                    @if (string.Equals(record.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-flag" aria-hidden="true"></span> Close
+                        </button>
+                    }
+
+                    @if (string.Equals(record.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        @if (!_confirmArchive)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = true" disabled="@State.IsBusy">
+                                <span class="bi bi-archive" aria-hidden="true"></span> Archive (Retire)
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Archiving retires this obligation permanently for compliance retention. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ArchiveAsync" disabled="@State.IsBusy">Confirm Archive</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (string.Equals(record.Status, "Archived", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <p class="ps-text-muted">This obligation is archived. No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.RegulatoryCalendar)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Regulatory Calendar
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid RegulatoryCalendarId { get; set; }
+
+    private bool _confirmArchive;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Regulatory Obligation",
+            activeModuleCode: "regulatory-calendar",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Regulatory Calendar", Href = RouteDefinitions.RegulatoryCalendar },
+                new BreadcrumbItem { Label = "Record Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginRecordLoad();
+        var envelope = await ApiClient.GetRegulatoryCalendarRecordAsync(RegulatoryCalendarId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedRecord(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetRecordError(envelope.Problem!.Detail);
+        else
+            State.SetRecordError($"Failed to load obligation: {envelope.FaultType}");
+    }
+
+    private async Task ActivateAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ActivateRegulatoryCalendarRecordAsync(RegulatoryCalendarId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Obligation activated.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task RecordComplianceAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.RecordRegulatoryCalendarComplianceAsync(RegulatoryCalendarId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Compliance recorded.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.CloseRegulatoryCalendarRecordAsync(RegulatoryCalendarId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Obligation closed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ArchiveRegulatoryCalendarRecordAsync(RegulatoryCalendarId, State.SelectedRecord?.ETag);
+        _confirmArchive = false;
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Obligation archived.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" or "closed" or "archived" or "completed" => "Healthy",
+        "created" => "Warning",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

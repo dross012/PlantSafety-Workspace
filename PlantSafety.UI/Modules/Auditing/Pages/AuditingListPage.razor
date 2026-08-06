@@ -36,7 +36,10 @@
     <ErrorBoundaryComponent Message="The Auditing list could not be displayed." OnRetry="LoadAsync">
 
         <div class="ps-page-actions">
-            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+            <a href="@RouteDefinitions.AuditCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-lg" aria-hidden="true"></span> New Audit
+            </a>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
             <a href="@RouteDefinitions.AuditTimeline" class="ps-btn ps-btn-ghost ps-btn-sm">
@@ -49,6 +52,16 @@
 
         <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
         <SearchBoxComponent Value="_searchText" Placeholder="Search by audit type or status" ValueChanged="OnSearchChangedAsync" />
+
+        <CardComponent Title="Filters">
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="filter-site">Site Id (optional)</label>
+                <input id="filter-site" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_filterSiteId" placeholder="GUID" />
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-search" aria-hidden="true"></span> Search
+            </button>
+        </CardComponent>
 
         @if (State.ListError is not null)
         {
@@ -92,6 +105,7 @@
     private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2));
     private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
     private string _searchText = string.Empty;
+    private string _filterSiteId = string.Empty;
     private int _currentPage = 1;
 
     private IReadOnlyList<AuditItemDto> FilteredItems =>
@@ -131,9 +145,10 @@
     private async Task LoadAsync()
     {
         State.BeginListLoad();
+        Guid? siteId = Guid.TryParse(_filterSiteId, out var parsedSiteId) ? parsedSiteId : null;
         var envelope = await ApiClient.GetAuditsAsync(
             ResolveTenantId(),
-            siteId: null,
+            siteId: siteId,
             from: _startDate.ToDateTime(TimeOnly.MinValue),
             to: _endDate.ToDateTime(TimeOnly.MaxValue));
 

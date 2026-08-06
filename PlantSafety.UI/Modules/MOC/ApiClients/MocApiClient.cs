@@ -3,8 +3,11 @@
 // CREATED: 2026-07-14
 // FILE DESCRIPTION: Typed API client for the Management of Change module.
 //   Wraps HTTP communication for the MOC Workflows/Approvals/RiskAssessments
-//   read-model list endpoints. All methods return ApiResponseEnvelope<T>.
-//   No HttpClient calls are permitted outside this class for the MOC module.
+//   read-model list endpoints, plus the real Create command exposed by the
+//   Features/Compliance/ManagementOfChange bounded context
+//   (POST v1/features/compliance/management-of-change, CreateMocCommand).
+//   All methods return ApiResponseEnvelope<T>. No HttpClient calls are
+//   permitted outside this class for the MOC module.
 // SchemaVersion: 2026.1
 // Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
 // ============================================================
@@ -57,6 +60,18 @@ public sealed class MocApiClient : SafetyApiClientBase
         => GetAsync<MocRiskAssessmentsResponseDto>(
             BuildQuery("v1/compliance/management-of-change/riskassessments", tenantId, siteId, fromUtc, toUtc),
             cancellationToken);
+
+    /// <summary>
+    /// Initiates a new Management of Change request in Draft status. Backed by
+    /// POST <c>v1/features/compliance/management-of-change</c> (CreateMocCommand).
+    /// </summary>
+    /// <param name="request">The MOC fields to submit.</param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    /// <returns>An envelope containing the new MOC request's identifier or a problem/fault.</returns>
+    public Task<ApiResponseEnvelope<Guid>> CreateMocAsync(
+        Models.CreateMocRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<Models.CreateMocRequest, Guid>(
+            "v1/features/compliance/management-of-change", request, cancellationToken);
 
     /// <summary>Builds the canonical TenantId/SiteId/From/To query string shared by every MOC read-model endpoint.</summary>
     private static string BuildQuery(string path, Guid tenantId, Guid? siteId, DateTime fromUtc, DateTime toUtc)

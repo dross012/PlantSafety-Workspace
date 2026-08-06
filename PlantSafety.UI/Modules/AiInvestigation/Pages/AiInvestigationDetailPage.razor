@@ -1,10 +1,14 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
-   FILE DESCRIPTION: AI Investigation detail page. The read-model endpoint has
-     no by-id GET, so the detail view ensures the parent investigation window
-     is loaded (via AiInvestigationState) and looks the record up client-side
-     by InvestigationId — the natural single-entity drilldown for this module.
+   UPDATED: 2026-08-05 — Now loads the real by-id read-model endpoint
+     (GET v1/intelligence/ai-investigations/{id}) rather than a client-side
+     lookup against the 90-day list window, and exposes the module's real
+     lifecycle commands (StartReview/Close/Archive) as action buttons since
+     the aggregate has no field-level Update command. Archive doubles as this
+     module's soft-delete/retire action per the write-surface batch
+     conventions. Adds a Print button (window.print via JS interop).
+   FILE DESCRIPTION: AI Investigation detail page.
    SchemaVersion: 2026.1
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
@@ -13,10 +17,9 @@
 
 @inject AiInvestigationState State
 @inject AiInvestigationApiClient ApiClient
-@inject UserSessionState UserSession
-@inject TenantState TenantCtx
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -28,18 +31,15 @@
 
     <ErrorBoundaryComponent Message="The investigation detail could not be displayed.">
 
-        @if (_isLoading)
+        @if (State.IsLoadingDetail)
         {
             <LoadingIndicatorComponent Message="Loading investigation…" />
         }
-        else if (_notFound)
+        else if (State.DetailError is not null)
         {
-            <div class="ps-alert ps-alert--danger" role="alert">
-                Investigation @InvestigationId was not found in the current 90-day window.
-                Try widening the date range on the AI Investigation dashboard.
-            </div>
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
         }
-        else if (State.Selected is { } investigation)
+        else if (State.SelectedDetail is { } investigation)
         {
             <div class="ps-detail-card">
                 <div class="ps-detail-header">
@@ -47,8 +47,17 @@
                     <StatusIndicatorComponent Status="@MapStatus(investigation.Status)" Label="@investigation.Status" />
                 </div>
 
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
                 <dl class="ps-detail-fields">
-                    <dt>Investigation ID</dt>  <dd class="ps-mono">@investigation.InvestigationId</dd>
+                    <dt>Investigation ID</dt>  <dd class="ps-mono">@investigation.AIInvestigationId</dd>
                     <dt>Incident Reference</dt><dd>@investigation.IncidentReference</dd>
                     <dt>AI Confidence</dt>     <dd>@investigation.AiConfidenceScore.ToString("P0")</dd>
                     <dt>Summary</dt>           <dd>@(investigation.Summary ?? "No AI-generated summary available.")</dd>
@@ -59,11 +68,75 @@
                     {
                         <dt>Site</dt><dd class="ps-mono">@investigation.SiteId</dd>
                     }
+                    @if (investigation.ReviewStartedAtUtc.HasValue)
+                    {
+                        <dt>Review Started</dt><dd>@investigation.ReviewStartedAtUtc?.ToString("u") UTC by <span class="ps-mono">@investigation.ReviewStartedBy</span></dd>
+                    }
+                    @if (investigation.ClosedAtUtc.HasValue)
+                    {
+                        <dt>Closed</dt><dd>@investigation.ClosedAtUtc?.ToString("u") UTC by <span class="ps-mono">@investigation.ClosedBy</span></dd>
+                    }
+                    @if (investigation.ResolutionSummary is not null)
+                    {
+                        <dt>Resolution Summary</dt><dd>@investigation.ResolutionSummary</dd>
+                    }
+                    @if (investigation.ArchivedAtUtc.HasValue)
+                    {
+                        <dt>Archived</dt><dd>@investigation.ArchivedAtUtc?.ToString("u") UTC</dd>
+                    }
                 </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (string.Equals(investigation.Status, "Open", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="StartReviewAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-play-circle" aria-hidden="true"></span> Start Review
+                        </button>
+                    }
+
+                    @if (string.Equals(investigation.Status, "InProgress", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="resolution-summary">Resolution Summary</label>
+                            <input id="resolution-summary" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_resolutionSummary" />
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> Close Investigation
+                        </button>
+                    }
+
+                    @if (string.Equals(investigation.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        @if (!_confirmArchive)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = true" disabled="@State.IsBusy">
+                                <span class="bi bi-archive" aria-hidden="true"></span> Archive (Retire)
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Archiving retires this investigation permanently for compliance retention. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ArchiveAsync" disabled="@State.IsBusy">Confirm Archive</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (string.Equals(investigation.Status, "Archived", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <p class="ps-text-muted">This investigation is archived. No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
 
                 <div class="ps-detail-actions">
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AiInvestigationList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to AI Investigation
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
                     </button>
                 </div>
             </div>
@@ -76,8 +149,8 @@
 @code {
     [Parameter] public Guid InvestigationId { get; set; }
 
-    private bool _isLoading;
-    private bool _notFound;
+    private string _resolutionSummary = string.Empty;
+    private bool _confirmArchive;
 
     protected override void OnInitialized()
     {
@@ -97,31 +170,81 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+        await LoadAsync();
+    }
 
-        if (State.SelectById(InvestigationId))
-            return;
+    private async Task LoadAsync()
+    {
+        State.BeginDetailLoad();
 
-        _isLoading = true;
-        StateHasChanged();
-
-        var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
-        var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-
-        var envelope = await ApiClient.GetInvestigationsAsync(tenantId, siteId: null, from, to);
+        var envelope = await ApiClient.GetByIdAsync(InvestigationId);
 
         if (envelope.IsSuccess)
-            State.SetInvestigations(envelope.Data!.Items);
-
-        _notFound = !State.SelectById(InvestigationId);
-        _isLoading = false;
+            State.SetSelectedDetail(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load investigation: {envelope.FaultType}");
     }
+
+    private async Task StartReviewAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.StartReviewAsync(InvestigationId, State.SelectedDetail?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Review started.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.CloseAsync(InvestigationId, _resolutionSummary, State.SelectedDetail?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Investigation closed.");
+            _resolutionSummary = string.Empty;
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ArchiveAsync(InvestigationId, State.SelectedDetail?.ETag);
+        _confirmArchive = false;
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Investigation archived.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
 
     private static string MapStatus(string status) => status.ToLowerInvariant() switch
     {
         "closed" => "Healthy",
         "inprogress" or "in progress" => "Warning",
         "open" => "Critical",
+        "archived" => "Offline",
         _ => "Offline",
     };
 

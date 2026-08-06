@@ -29,6 +29,14 @@ using PlantSafety.UI.Modules.Permits.Models;
 
 namespace PlantSafety.UI.Modules.Permits.ApiClients;
 
+// ============================================================
+// Compliance.Permits write/lifecycle surface (api/v1/compliance/permits) —
+// Create -> Approve/Reject -> Complete/Expire -> Close -> Archive, plus a real by-id GET.
+// This is a distinct, generic Permit-to-Work aggregate from the read-only Operational.
+// PermitsToWork read-model above (no write commands exist there); this is where
+// CreatePermitsCommand and its lifecycle actions actually live.
+// ============================================================
+
 /// <summary>
 /// Typed API client for the Permits to Work module.
 /// Components MUST inject this class and call its methods rather than
@@ -73,6 +81,52 @@ public sealed class PermitsApiClient : SafetyApiClientBase
 
         return Unwrap(envelope);
     }
+
+    /// <summary>Retrieves a single generic Permit record by identity, including its ETag. Backed by GET <c>v1/compliance/permits/{id}</c>.</summary>
+    public Task<ApiResponseEnvelope<PermitsItemDto>> GetPermitByIdAsync(
+        Guid permitsId, CancellationToken cancellationToken = default)
+        => GetAsync<PermitsItemDto>($"v1/compliance/permits/{permitsId}", cancellationToken);
+
+    /// <summary>Submits a new generic Permit record via the real CreatePermitsCommand.</summary>
+    public Task<ApiResponseEnvelope<CreatePermitsResultDto>> CreatePermitAsync(
+        CreatePermitsRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreatePermitsRequest, CreatePermitsResultDto>("v1/compliance/permits", request, cancellationToken);
+
+    /// <summary>Approves and issues a Permit request (Created -&gt; Active) via ApprovePermitsCommand.</summary>
+    public Task<ApiResponseEnvelope<PermitsStatusResultDto>> ApprovePermitAsync(
+        Guid permitsId, ApprovePermitsRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<ApprovePermitsRequest, PermitsStatusResultDto>(
+            $"v1/compliance/permits/{permitsId}/approve", request, cancellationToken);
+
+    /// <summary>Declines a Permit request (Created -&gt; Rejected) via RejectPermitsCommand.</summary>
+    public Task<ApiResponseEnvelope<PermitsStatusResultDto>> RejectPermitAsync(
+        Guid permitsId, RejectPermitsRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<RejectPermitsRequest, PermitsStatusResultDto>(
+            $"v1/compliance/permits/{permitsId}/reject", request, cancellationToken);
+
+    /// <summary>Marks the permitted work completed (Active -&gt; Completed) via CompletePermitsCommand.</summary>
+    public Task<ApiResponseEnvelope<PermitsStatusResultDto>> CompletePermitAsync(
+        Guid permitsId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PermitsStatusResultDto>(
+            $"v1/compliance/permits/{permitsId}/complete", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Expires an issued permit that passed its validity window (Active -&gt; Expired) via ExpirePermitsCommand.</summary>
+    public Task<ApiResponseEnvelope<PermitsStatusResultDto>> ExpirePermitAsync(
+        Guid permitsId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PermitsStatusResultDto>(
+            $"v1/compliance/permits/{permitsId}/expire", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Formally closes a completed permit (Completed -&gt; Closed) via ClosePermitsCommand. Used as this module's soft-delete/retire action.</summary>
+    public Task<ApiResponseEnvelope<PermitsStatusResultDto>> ClosePermitAsync(
+        Guid permitsId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PermitsStatusResultDto>(
+            $"v1/compliance/permits/{permitsId}/close", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Archives a closed permit for compliance retention (Closed -&gt; Archived) via ArchivePermitsCommand.</summary>
+    public Task<ApiResponseEnvelope<PermitsStatusResultDto>> ArchivePermitAsync(
+        Guid permitsId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PermitsStatusResultDto>(
+            $"v1/compliance/permits/{permitsId}/archive", new EtagRequest { ETag = eTag }, cancellationToken);
 
     /// <summary>
     /// Unwraps the server's <c>ApiResponse&lt;T&gt;</c> envelope (Success/Data/Errors) into the

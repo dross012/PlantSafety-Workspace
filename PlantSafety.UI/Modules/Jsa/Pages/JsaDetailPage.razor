@@ -23,6 +23,7 @@
 @inject NavigationManager Nav
 @inject TenantState TenantCtx
 @inject UserSessionState UserSession
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -47,6 +48,7 @@
         }
         else if (State.SelectedItem is { } record)
         {
+            <div class="ps-detail-card">
             <div class="ps-detail-header">
                 <h2 class="ps-detail-title">@record.TaskName</h2>
                 <SeverityBadgeComponent Severity="@JsaUiService.NormalizeSeverity(record.RiskLevel)" />
@@ -109,6 +111,9 @@
                         <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => Nav.NavigateTo(RouteDefinitions.JsaList)">
                             <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to JSA
                         </button>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="PrintAsync">
+                            <span class="bi bi-printer" aria-hidden="true"></span> Print
+                        </button>
                         <button class="ps-btn ps-btn-primary ps-btn-sm" disabled aria-label="Approve JSA">
                             <span class="bi bi-check2-circle" aria-hidden="true"></span> Approve
                         </button>
@@ -123,6 +128,7 @@
                     </CardComponent>
                 }
 
+            </div>
             </div>
         }
 
@@ -205,6 +211,8 @@
         _activeTab = index;
         return Task.CompletedTask;
     }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

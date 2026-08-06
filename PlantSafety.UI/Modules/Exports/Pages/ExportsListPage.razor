@@ -1,11 +1,15 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
+   UPDATED: 2026-08-05 — Added a client-side search box (matched against
+     TargetSystem/ExportType/Status — the backend GetExportQuery has no
+     free-text filter parameter, so filtering happens client-side over the
+     already-loaded date-range window).
    FILE DESCRIPTION: Exports list page. Loads scheduled/automated data export
      runs via ExportsApiClient for a selectable date window, shows KPI summary
      cards (Total/Completed/Failed/Records Exported), and a sortable export
      run grid. Built entirely from the canonical Shared component library.
-   SchemaVersion: 2026.1
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -36,6 +40,8 @@
         </div>
 
         <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        <SearchBoxComponent Value="State.SearchText" Placeholder="Search by target system, export type, or status" ValueChanged="OnSearchChangedAsync" />
 
         @if (State.LoadError is not null)
         {
@@ -104,6 +110,12 @@
     {
         State.SetRange(range.Start, range.End);
         await LoadAsync();
+    }
+
+    private Task OnSearchChangedAsync(string text)
+    {
+        State.SetSearchText(text);
+        return Task.CompletedTask;
     }
 
     private async Task LoadAsync()

@@ -30,6 +30,7 @@
     <ErrorBoundaryComponent Message="The incidents list could not be displayed." OnRetry="LoadPageAsync">
 
         <div class="ps-page-actions">
+            <a href="@RouteDefinitions.IncidentManagementCreate" class="ps-btn ps-btn-primary ps-btn-sm"><span class="bi bi-plus-circle" aria-hidden="true"></span> New Incident</a>
             <a href="/modules/incident-management/sla-monitor" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-stopwatch" aria-hidden="true"></span> SLA Monitor</a>
             <label class="ps-field-label" for="incident-severity-filter">Severity</label>
             <select id="incident-severity-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnSeverityChangedAsync">
@@ -39,6 +40,16 @@
                 <option value="Moderate">Moderate</option>
                 <option value="Minor">Minor</option>
             </select>
+            <label class="ps-field-label" for="incident-status-filter">Status</label>
+            <select id="incident-status-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnStatusChangedAsync">
+                <option value="">All</option>
+                <option value="Reported">Reported</option>
+                <option value="UnderInvestigation">Under Investigation</option>
+                <option value="Escalated">Escalated</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+            </select>
+            <DateRangePickerComponent StartDate="State.StartDate" EndDate="State.EndDate" RangeChanged="OnRangeChangedAsync" />
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoading">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
@@ -108,7 +119,17 @@
     private async Task GoToPageAsync(int page)
     {
         State.BeginLoad();
-        var envelope = await ApiClient.GetIncidentsAsync(pageNumber: page, pageSize: 25, severityFilter: State.SeverityFilter, statusFilter: State.StatusFilter);
+
+        var occurredFromUtc = new DateTimeOffset(State.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        var occurredToUtc = new DateTimeOffset(State.EndDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc));
+
+        var envelope = await ApiClient.GetIncidentsAsync(
+            pageNumber: page,
+            pageSize: 25,
+            severityFilter: State.SeverityFilter,
+            statusFilter: State.StatusFilter,
+            occurredFromUtc: occurredFromUtc,
+            occurredToUtc: occurredToUtc);
 
         if (envelope.IsSuccess)
             State.SetIncidents(envelope.Data!);
@@ -122,6 +143,19 @@
     {
         var value = e.Value?.ToString();
         State.SetFilters(string.IsNullOrWhiteSpace(value) ? null : value, State.StatusFilter);
+        await GoToPageAsync(1);
+    }
+
+    private async Task OnStatusChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetFilters(State.SeverityFilter, string.IsNullOrWhiteSpace(value) ? null : value);
+        await GoToPageAsync(1);
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetDateRange(range.Start, range.End);
         await GoToPageAsync(1);
     }
 

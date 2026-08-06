@@ -70,6 +70,9 @@
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PlanningProjectsList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Planning Projects
                     </button>
+                    <button class="ps-btn ps-btn-primary" @onclick="NavigateToAddMilestone">
+                        <span class="bi bi-plus-circle" aria-hidden="true"></span> Add Milestone
+                    </button>
                 </div>
             </div>
 
@@ -104,6 +107,8 @@
     }
 
     protected override async Task OnParametersSetAsync() => await State.LoadDetailAsync(ApiClient, ProjectId);
+
+    private void NavigateToAddMilestone() => Nav.NavigateTo($"{RouteDefinitions.PlanningProjectsList}/{ProjectId}/milestones/new");
 
     public void Dispose()
     {

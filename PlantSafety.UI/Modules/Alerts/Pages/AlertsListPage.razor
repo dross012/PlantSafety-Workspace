@@ -1,9 +1,14 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-06-17
-   FILE DESCRIPTION: Alerts list page. Loads the paginated alert list via
+   UPDATED: 2026-08-05 — Repointed to the real, filterable
+     GET v1/alerts/history endpoint (was calling a non-existent
+     "GET v1/alerts" route) and added a Search filter bar (Site Id + UTC
+     date range, both real GetAlertHistoryQuery parameters) plus a
+     "New Alert" link to the Trigger form.
+   FILE DESCRIPTION: Alerts list page. Loads the paginated alert history via
      AlertsApiClient, populates AlertsState, and renders the alert table with
-     severity badges, status badges, and pagination controls.
+     severity badges, status badges, filters, and pagination controls.
      Exemplar pattern for all module list pages.
    SchemaVersion: 2026.1
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
@@ -26,10 +31,31 @@
 <div class="ps-page-container">
 
     <div class="ps-page-actions">
-        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+        <a href="@RouteDefinitions.AlertCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+            <span class="bi bi-plus-lg" aria-hidden="true"></span> New Alert
+        </a>
+        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
             <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
         </button>
     </div>
+
+    <CardComponent Title="Filters">
+        <div class="ps-field-row">
+            <label class="ps-field-label" for="filter-site">Site Id (optional)</label>
+            <input id="filter-site" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_filterSiteId" placeholder="GUID" />
+        </div>
+        <div class="ps-field-row">
+            <label class="ps-field-label" for="filter-from">From (UTC)</label>
+            <input id="filter-from" type="date" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_filterFrom" />
+        </div>
+        <div class="ps-field-row">
+            <label class="ps-field-label" for="filter-to">To (UTC)</label>
+            <input id="filter-to" type="date" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_filterTo" />
+        </div>
+        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+            <span class="bi bi-search" aria-hidden="true"></span> Search
+        </button>
+    </CardComponent>
 
     @if (State.ListError is not null)
     {
@@ -52,7 +78,7 @@
                     <th scope="col">Title</th>
                     <th scope="col">Status</th>
                     <th scope="col">Source</th>
-                    <th scope="col">Raised</th>
+                    <th scope="col">Triggered</th>
                     <th scope="col"><span class="visually-hidden">Actions</span></th>
                 </tr>
             </thead>
@@ -60,11 +86,11 @@
                 @foreach (var alert in State.Alerts)
                 {
                     <tr>
-                        <td><span class="ps-badge ps-badge--@SeverityClass(alert.Severity)">@alert.Severity</span></td>
+                        <td><span class="ps-badge ps-badge--@SeverityClass(alert.SeverityCode)">@alert.SeverityCode</span></td>
                         <td>@alert.Title</td>
                         <td>@alert.Status</td>
-                        <td>@alert.SourceModule</td>
-                        <td>@alert.RaisedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@alert.SourceType</td>
+                        <td>@alert.TriggeredAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
                         <td>
                             <a href="@RouteDefinitions.AlertsList/@alert.AlertId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a>
                         </td>
@@ -100,6 +126,10 @@
 </div>
 
 @code {
+    private string _filterSiteId = string.Empty;
+    private DateOnly _filterFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-90));
+    private DateOnly _filterTo = DateOnly.FromDateTime(DateTime.UtcNow);
+
     protected override void OnInitialized()
     {
         NavState.SetContext(
@@ -124,7 +154,12 @@
     private async Task GoToPageAsync(int page)
     {
         State.BeginListLoad();
-        var envelope = await ApiClient.GetAlertsAsync(pageNumber: page, pageSize: 25);
+
+        var from = _filterFrom.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = _filterTo.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+        Guid? siteId = Guid.TryParse(_filterSiteId, out var parsedSiteId) ? parsedSiteId : null;
+
+        var envelope = await ApiClient.GetAlertsAsync(from, to, siteId, pageNumber: page, pageSize: 25);
 
         if (envelope.IsSuccess)
             State.SetAlerts(envelope.Data!);

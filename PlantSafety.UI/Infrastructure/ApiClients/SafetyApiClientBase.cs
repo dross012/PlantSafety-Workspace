@@ -41,7 +41,7 @@ public abstract class SafetyApiClientBase
     protected readonly HttpClient Http;
     private readonly ILogger _logger;
 
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Initializes the base client with a configured <see cref="HttpClient"/> and logger.
@@ -92,7 +92,7 @@ public abstract class SafetyApiClientBase
     {
         try
         {
-            var response = await Http.PostAsJsonAsync(relativeUri, payload, SerializerOptions, cancellationToken)
+            var response = await Http.PostAsJsonAsync(relativeUri, payload, _serializerOptions, cancellationToken)
                                      .ConfigureAwait(false);
             return await ReadEnvelopeAsync<TResponse>(response, cancellationToken).ConfigureAwait(false);
         }
@@ -118,7 +118,7 @@ public abstract class SafetyApiClientBase
     {
         try
         {
-            var response = await Http.PutAsJsonAsync(relativeUri, payload, SerializerOptions, cancellationToken)
+            var response = await Http.PutAsJsonAsync(relativeUri, payload, _serializerOptions, cancellationToken)
                                      .ConfigureAwait(false);
             return await ReadEnvelopeAsync<TResponse>(response, cancellationToken).ConfigureAwait(false);
         }
@@ -160,7 +160,7 @@ public abstract class SafetyApiClientBase
             // ({ success, data, errors, metadata } on the wire). Unwrap "data" here so downstream
             // state containers and components work with the plain payload type T.
             var wire = await response.Content
-                .ReadFromJsonAsync<ApiEnvelopeWireDto<T>>(SerializerOptions, cancellationToken)
+                .ReadFromJsonAsync<ApiEnvelopeWireDto<T>>(_serializerOptions, cancellationToken)
                 .ConfigureAwait(false);
 
             return ApiResponseEnvelope<T>.Success(wire!.Data!);
@@ -170,7 +170,7 @@ public abstract class SafetyApiClientBase
         try
         {
             problem = await response.Content
-                .ReadFromJsonAsync<ProblemDetailsDto>(SerializerOptions, cancellationToken)
+                .ReadFromJsonAsync<ProblemDetailsDto>(_serializerOptions, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch

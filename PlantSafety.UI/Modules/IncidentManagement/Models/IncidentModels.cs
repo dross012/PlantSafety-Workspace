@@ -93,6 +93,98 @@ public sealed class IncidentDetailDto
 
     /// <summary>Gets the UTC timestamp when the incident was closed, if applicable.</summary>
     public DateTimeOffset? ClosedAtUtc { get; init; }
+
+    /// <summary>
+    /// Gets the optimistic-concurrency row version. Required by the Update/Delete lifecycle
+    /// commands. FIXED 2026-08-05 (UI write-surface pass): this field was previously missing
+    /// from the client-side DTO even though the server's IncidentDto always returns it —
+    /// without it, Edit/Delete could never be wired up because the required ETag body field
+    /// had nothing to bind to.
+    /// </summary>
+    public string? ETag { get; init; }
+
+    /// <summary>Gets the site where the incident occurred.</summary>
+    public Guid SiteId { get; init; }
+
+    /// <summary>Gets the reason recorded for the most recent escalation, if any.</summary>
+    public string? EscalationReason { get; init; }
+
+    /// <summary>Gets the number of times this incident has been escalated.</summary>
+    public int EscalationCount { get; init; }
+}
+
+/// <summary>Request body for creating a new Incident (mirrors server CreateIncidentRequest).</summary>
+public sealed class CreateIncidentRequest
+{
+    /// <summary>Site where the incident occurred.</summary>
+    public Guid SiteId { get; set; }
+
+    /// <summary>Short descriptive title. Max 200 characters.</summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(200, ErrorMessage = "Title must not exceed 200 characters.")]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Detailed narrative description. Max 4000 characters.</summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(4000, ErrorMessage = "Description must not exceed 4000 characters.")]
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>UTC timestamp when the incident actually occurred. Cannot be in the future.</summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    public DateTimeOffset IncidentOccurredAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Initial severity classification (Minor, Moderate, Serious, Critical).</summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    public string Severity { get; set; } = "Minor";
+
+    /// <summary>Physical or logical location description. Max 500 characters.</summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(500, ErrorMessage = "Location must not exceed 500 characters.")]
+    public string Location { get; set; } = string.Empty;
+
+    /// <summary>Worker who is reporting the incident.</summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    public Guid ReportedByWorkerId { get; set; }
+
+    /// <summary>Worker assigned as investigator, if known at time of creation.</summary>
+    public Guid? AssignedInvestigatorId { get; set; }
+}
+
+/// <summary>Request body for updating an existing Incident (mirrors server UpdateIncidentRequest). Null fields mean no change.</summary>
+public sealed class UpdateIncidentRequest
+{
+    /// <summary>Updated title. Max 200 characters. Null means no change.</summary>
+    [System.ComponentModel.DataAnnotations.StringLength(200, ErrorMessage = "Title must not exceed 200 characters.")]
+    public string? Title { get; set; }
+
+    /// <summary>Updated description. Max 4000 characters. Null means no change.</summary>
+    [System.ComponentModel.DataAnnotations.StringLength(4000, ErrorMessage = "Description must not exceed 4000 characters.")]
+    public string? Description { get; set; }
+
+    /// <summary>Updated severity. Null means no change.</summary>
+    public string? Severity { get; set; }
+
+    /// <summary>Updated location. Null means no change.</summary>
+    [System.ComponentModel.DataAnnotations.StringLength(500, ErrorMessage = "Location must not exceed 500 characters.")]
+    public string? Location { get; set; }
+
+    /// <summary>Updated investigator assignment. Null means no change; empty Guid means unassign.</summary>
+    public Guid? AssignedInvestigatorId { get; set; }
+
+    /// <summary>Optimistic concurrency token from the last read of this Incident. Required by the server.</summary>
+    public string? ETag { get; set; }
+}
+
+/// <summary>Request body for soft-deleting an Incident (mirrors server DeleteIncidentRequest).</summary>
+public sealed class DeleteIncidentRequest
+{
+    /// <summary>Reason for deletion, required for audit trail. Max 1000 characters.</summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(1000, ErrorMessage = "Deletion reason must not exceed 1000 characters.")]
+    public string DeletionReason { get; set; } = string.Empty;
+
+    /// <summary>Optimistic concurrency token from the last read of this Incident. Required by the server.</summary>
+    public string? ETag { get; set; }
 }
 
 /// <summary>Single incident timeline entry (Volume ID1/IT1).</summary>

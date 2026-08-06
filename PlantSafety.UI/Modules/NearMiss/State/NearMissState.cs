@@ -30,6 +30,18 @@ public sealed class NearMissState
     private int _totalCount;
     private int _totalPages;
 
+    private string? _potentialSeverityFilter;
+    private string? _hazardCategoryFilter;
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-2));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    private bool _isCreating;
+    private string? _createError;
+    private Guid? _createdId;
+
+    private bool _isSaving;
+    private string? _saveError;
+
     /// <summary>Gets the current page of near miss list items. Never null; empty when not loaded.</summary>
     public IReadOnlyList<NearMissDto> Items => _items;
 
@@ -56,6 +68,33 @@ public sealed class NearMissState
 
     /// <summary>Gets the total number of pages.</summary>
     public int TotalPages => _totalPages;
+
+    /// <summary>Gets the current server-side potential-severity filter, or null for "All".</summary>
+    public string? PotentialSeverityFilter => _potentialSeverityFilter;
+
+    /// <summary>Gets the current server-side hazard-category filter, or null for "All".</summary>
+    public string? HazardCategoryFilter => _hazardCategoryFilter;
+
+    /// <summary>Gets the inclusive start of the loaded occurrence-date range.</summary>
+    public DateOnly StartDate => _startDate;
+
+    /// <summary>Gets the inclusive end of the loaded occurrence-date range.</summary>
+    public DateOnly EndDate => _endDate;
+
+    /// <summary>Gets a value indicating whether a Create Near Miss submission is in flight.</summary>
+    public bool IsCreating => _isCreating;
+
+    /// <summary>Gets a sanitized Create Near Miss submission error, or null.</summary>
+    public string? CreateError => _createError;
+
+    /// <summary>Gets the identifier of the most recently created near miss, or null.</summary>
+    public Guid? CreatedId => _createdId;
+
+    /// <summary>Gets a value indicating whether an Edit Near Miss submission is in flight.</summary>
+    public bool IsSaving => _isSaving;
+
+    /// <summary>Gets a sanitized Edit Near Miss submission error, or null.</summary>
+    public string? SaveError => _saveError;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -93,6 +132,38 @@ public sealed class NearMissState
 
     /// <summary>Clears the selected near miss.</summary>
     public void ClearSelection() { _selected = null; NotifyStateChanged(); }
+
+    /// <summary>Updates the server-side severity/hazard-category filters.</summary>
+    public void SetFilters(string? potentialSeverity, string? hazardCategory)
+    {
+        _potentialSeverityFilter = potentialSeverity;
+        _hazardCategoryFilter = hazardCategory;
+        NotifyStateChanged();
+    }
+
+    /// <summary>Updates the loaded occurrence-date range. Callers MUST re-fetch after calling this.</summary>
+    public void SetDateRange(DateOnly start, DateOnly end) { _startDate = start; _endDate = end; NotifyStateChanged(); }
+
+    /// <summary>Marks a Create Near Miss submission as in flight.</summary>
+    public void BeginCreate() { _isCreating = true; _createError = null; _createdId = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Create Near Miss submission.</summary>
+    public void SetCreateSuccess(Guid id) { _createdId = id; _isCreating = false; _createError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a Create Near Miss submission failure with a sanitized message.</summary>
+    public void SetCreateError(string sanitizedError) { _createError = sanitizedError; _isCreating = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Create Near Miss submission state.</summary>
+    public void ResetCreate() { _isCreating = false; _createError = null; _createdId = null; NotifyStateChanged(); }
+
+    /// <summary>Marks an Edit Near Miss submission as in flight.</summary>
+    public void BeginSave() { _isSaving = true; _saveError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Edit Near Miss submission.</summary>
+    public void SetSaveSuccess() { _isSaving = false; _saveError = null; NotifyStateChanged(); }
+
+    /// <summary>Records an Edit Near Miss submission failure with a sanitized message.</summary>
+    public void SetSaveError(string sanitizedError) { _saveError = sanitizedError; _isSaving = false; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

@@ -98,4 +98,37 @@ public sealed class FinancialsApiClient : SafetyApiClientBase
 
         return GetAsync<SafetyRoiDto>($"v1/features/financials/roi?{query}", cancellationToken);
     }
+
+    /// <summary>
+    /// Creates a new Safety Budget in Draft status. Backed by
+    /// POST <c>v1/features/financials/budgets</c> (requires the Write safety tier policy).
+    /// </summary>
+    public Task<ApiResponseEnvelope<CreateBudgetResponse>> CreateBudgetAsync(
+        CreateBudgetRequest request,
+        CancellationToken cancellationToken = default)
+        => PostAsync<CreateBudgetRequest, CreateBudgetResponse>(
+            "v1/features/financials/budgets", request, cancellationToken);
+
+    /// <summary>
+    /// Records a new Safety ROI calculation. Backed by
+    /// POST <c>v1/features/financials/roi</c> (requires the Write safety tier policy).
+    /// Each call creates a new calculation record — there is no update endpoint.
+    /// </summary>
+    public Task<ApiResponseEnvelope<CalculateRoiResponse>> CalculateRoiAsync(
+        CalculateRoiRequest request,
+        CancellationToken cancellationToken = default)
+        => PostAsync<CalculateRoiRequest, CalculateRoiResponse>(
+            "v1/features/financials/roi", request, cancellationToken);
+
+    /// <summary>
+    /// Creates a new FinancialRecord (Status=Draft) — the "costs" input surface, a distinct
+    /// aggregate from Budget. Backed by POST <c>v1/financial-records</c>
+    /// (FinancialRecordV1Controller — note the different route root, NOT
+    /// v1/features/financials/..., requires the Write safety tier policy).
+    /// </summary>
+    public Task<ApiResponseEnvelope<CreateFinancialRecordResult>> CreateFinancialRecordAsync(
+        CreateFinancialRecordRequest request,
+        CancellationToken cancellationToken = default)
+        => PostAsync<CreateFinancialRecordRequest, CreateFinancialRecordResult>(
+            "v1/financial-records", request, cancellationToken);
 }

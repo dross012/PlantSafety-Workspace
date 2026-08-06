@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlantSafety.UI.Modules.Training.Models;
 
@@ -78,4 +79,44 @@ public sealed record ReadModelEnvelopeDto<TItem>
 
     /// <summary>Gets human-readable error messages. Empty on success.</summary>
     public IReadOnlyList<string> Errors { get; init; } = [];
+}
+
+/// <summary>
+/// Request body for assigning a safety training course to a worker. Mirrors
+/// PlantSafety.Api.Features.Operational.Training.Contracts.Requests.AssignTrainingRequest, with
+/// DataAnnotations mirroring AssignTrainingCommandValidator's rules (WorkerId required;
+/// TrainingCourseCode required, max 50 chars; TrainingCourseName required; DeliveryMethod one of
+/// InPerson/Online/OJT; DueDateUtc required and must be UTC). Backed by
+/// POST v1/features/operational/training.
+/// </summary>
+public sealed class AssignTrainingRequest
+{
+    /// <summary>Worker being assigned the training.</summary>
+    [Required(ErrorMessage = "Worker is required.")]
+    public Guid WorkerId { get; set; }
+
+    /// <summary>Training course code.</summary>
+    [Required(ErrorMessage = "Training course code is required.")]
+    [StringLength(50, ErrorMessage = "Training course code must be 50 characters or fewer.")]
+    public string TrainingCourseCode { get; set; } = string.Empty;
+
+    /// <summary>Training course name.</summary>
+    [Required(ErrorMessage = "Training course name is required.")]
+    [StringLength(500, ErrorMessage = "Training course name must be 500 characters or fewer.")]
+    public string TrainingCourseName { get; set; } = string.Empty;
+
+    /// <summary>Delivery method (InPerson, Online, OJT).</summary>
+    [Required(ErrorMessage = "Delivery method is required.")]
+    public string DeliveryMethod { get; set; } = "InPerson";
+
+    /// <summary>Due date for completion (UTC).</summary>
+    [Required(ErrorMessage = "Due date is required.")]
+    public DateTimeOffset DueDateUtc { get; set; } = DateTimeOffset.UtcNow.AddDays(30);
+}
+
+/// <summary>Response payload after assigning a training course (POST v1/features/operational/training).</summary>
+public sealed class AssignTrainingResponse
+{
+    /// <summary>Gets the identifier of the newly created training assignment record.</summary>
+    public Guid TrainingRecordId { get; init; }
 }

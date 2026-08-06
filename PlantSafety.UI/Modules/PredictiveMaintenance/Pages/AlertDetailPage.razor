@@ -1,0 +1,312 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: PredictiveMaintenanceAlert detail page. Loads the real
+     by-id read-model endpoint (GET
+     v1/operational/predictive-maintenance/alerts/{id}) and exposes the
+     module's real lifecycle commands (Review/ScheduleAction/Resolve/
+     Dismiss/Close) as action buttons since the aggregate has no
+     field-level Update command. Close doubles as this module's
+     soft-delete/retire (Delete) action, confirm-gated. Adds a Print button
+     (window.print via JS interop).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/alerts/{AlertId:guid}"
+
+@inject PredictiveMaintenanceAlertState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.Models
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Maintenance Alert — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The maintenance alert could not be displayed.">
+
+        @if (State.IsLoadingRecord)
+        {
+            <LoadingIndicatorComponent Message="Loading alert…" />
+        }
+        else if (State.RecordError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.RecordError</div>
+        }
+        else if (State.SelectedRecord is { } alert)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@alert.PredictedFailureType</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(alert.Status)" Label="@alert.Status" />
+                </div>
+
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
+                <dl class="ps-detail-fields">
+                    <dt>Equipment Id</dt>   <dd class="ps-mono">@alert.EquipmentId</dd>
+                    <dt>Predicted At</dt>   <dd>@alert.PredictedAtUtc.ToString("u") UTC</dd>
+                    <dt>Site</dt>           <dd class="ps-mono">@(alert.SiteId?.ToString() ?? "All sites")</dd>
+                    @if (!string.IsNullOrWhiteSpace(alert.WorkOrderReference))
+                    {
+                        <dt>Work Order</dt><dd>@alert.WorkOrderReference</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(alert.ResolutionNotes))
+                    {
+                        <dt>Resolution Notes</dt><dd>@alert.ResolutionNotes</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(alert.DismissedReason))
+                    {
+                        <dt>Dismissed Reason</dt><dd>@alert.DismissedReason</dd>
+                    }
+                    <dt>Created</dt>        <dd>@alert.CreatedAtUtc.ToString("u") UTC</dd>
+                </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (string.Equals(alert.Status, "Raised", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ReviewAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-eye" aria-hidden="true"></span> Review
+                        </button>
+                    }
+
+                    @if (alert.Status is "Raised" or "UnderReview")
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="dismiss-reason">Dismiss Reason</label>
+                            <input id="dismiss-reason" type="text" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_dismissReason" />
+                        </div>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="DismissAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-x-circle" aria-hidden="true"></span> Dismiss
+                        </button>
+                    }
+
+                    @if (string.Equals(alert.Status, "UnderReview", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="work-order-ref">Work Order Reference (optional)</label>
+                            <input id="work-order-ref" type="text" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_workOrderReference" />
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ScheduleActionAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-calendar-check" aria-hidden="true"></span> Schedule Action
+                        </button>
+                    }
+
+                    @if (string.Equals(alert.Status, "ActionScheduled", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="resolution-notes">Resolution Notes (optional)</label>
+                            <input id="resolution-notes" type="text" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_resolutionNotes" />
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ResolveAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> Resolve
+                        </button>
+                    }
+
+                    @if (alert.Status is "Resolved" or "Dismissed")
+                    {
+                        @if (!_confirmClose)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmClose = true" disabled="@State.IsBusy">
+                                <span class="bi bi-flag" aria-hidden="true"></span> Close
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Closing this alert formally retires it. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">Confirm Close</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmClose = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (string.Equals(alert.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <p class="ps-text-muted">This alert is closed. No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PredictiveMaintenanceDashboard)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid AlertId { get; set; }
+
+    private string _dismissReason = string.Empty;
+    private string _workOrderReference = string.Empty;
+    private string _resolutionNotes = string.Empty;
+    private bool _confirmClose;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Maintenance Alert",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Alert Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginRecordLoad();
+        var envelope = await ApiClient.GetAlertByIdAsync(AlertId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedRecord(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetRecordError(envelope.Problem!.Detail);
+        else
+            State.SetRecordError($"Failed to load alert: {envelope.FaultType}");
+    }
+
+    private async Task ReviewAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ReviewAlertAsync(AlertId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Alert reviewed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ScheduleActionAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ScheduleAlertActionAsync(AlertId, new ScheduleAlertActionRequest
+        {
+            WorkOrderReference = string.IsNullOrWhiteSpace(_workOrderReference) ? null : _workOrderReference,
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Corrective action scheduled.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ResolveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ResolveAlertAsync(AlertId, new ResolveAlertRequest
+        {
+            ResolutionNotes = string.IsNullOrWhiteSpace(_resolutionNotes) ? null : _resolutionNotes,
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Alert resolved.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task DismissAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_dismissReason))
+        {
+            State.SetActionError("A dismissal reason is required.");
+            return;
+        }
+
+        State.BeginAction();
+        var result = await ApiClient.DismissAlertAsync(AlertId, new DismissAlertRequest
+        {
+            Reason = _dismissReason,
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Alert dismissed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.CloseAlertAsync(AlertId, State.SelectedRecord?.ETag);
+        _confirmClose = false;
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Alert closed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "resolved" or "closed" => "Healthy",
+        "raised" or "underreview" or "actionscheduled" => "Warning",
+        "dismissed" => "Offline",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

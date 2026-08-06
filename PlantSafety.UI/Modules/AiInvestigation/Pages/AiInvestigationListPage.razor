@@ -32,12 +32,25 @@
     <ErrorBoundaryComponent Message="The AI Investigation queue could not be displayed." OnRetry="LoadAsync">
 
         <div class="ps-page-actions">
-            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+            <a href="@RouteDefinitions.AiInvestigationCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-lg" aria-hidden="true"></span> New Investigation
+            </a>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
         </div>
 
         <DateRangePickerComponent StartDate="State.RangeStart" EndDate="State.RangeEnd" RangeChanged="OnRangeChangedAsync" />
+
+        <CardComponent Title="Filters">
+            <div class="ps-field-row">
+                <label class="ps-field-label" for="filter-site">Site Id (optional)</label>
+                <input id="filter-site" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_filterSiteId" placeholder="GUID" />
+            </div>
+            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoading">
+                <span class="bi bi-search" aria-hidden="true"></span> Search
+            </button>
+        </CardComponent>
 
         @if (State.LoadError is not null)
         {
@@ -83,6 +96,8 @@
 @code {
     private static readonly string[] _headers = ["Status", "Incident", "AI Confidence", "Opened", "Actions"];
 
+    private string _filterSiteId = string.Empty;
+
     protected override void OnInitialized()
     {
         NavState.SetContext(
@@ -115,8 +130,9 @@
         var tenantId = TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
         var from = State.RangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
         var to = State.RangeEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+        Guid? siteId = Guid.TryParse(_filterSiteId, out var parsedSiteId) ? parsedSiteId : null;
 
-        var envelope = await ApiClient.GetInvestigationsAsync(tenantId, siteId: null, from, to);
+        var envelope = await ApiClient.GetInvestigationsAsync(tenantId, siteId, from, to);
 
         if (envelope.IsSuccess)
             State.SetInvestigations(envelope.Data!.Items);

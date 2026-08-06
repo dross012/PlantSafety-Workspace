@@ -1,0 +1,189 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Edit Safety Observation form. Loads the current
+     observation (for its ETag/optimistic-concurrency token and current field
+     values), then submits an UpdateObservationRequest via PUT
+     v1/features/safety-events/observations/{id}
+     (ObservationApiClient.UpdateObservationAsync, backed by the real
+     UpdateObservationCommand). Only the fields the real command accepts are
+     surfaced: Title, Description, ObservationType. Follows the canonical
+     pattern established in Modules/IncidentManagement/Pages/EditIncidentPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/observations/{ObservationId:guid}/edit"
+
+@inject ObservationState State
+@inject ObservationApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Observations.ApiClients
+@using PlantSafety.UI.Modules.Observations.Models
+@using PlantSafety.UI.Modules.Observations.State
+
+<PageTitle>Edit Observation — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Edit Observation form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Edit Observation</h2>
+        </div>
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading observation…" />
+        }
+        else if (_loadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_loadError</div>
+        }
+        else
+        {
+            @if (State.SaveError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.SaveError</div>
+            }
+
+            <div class="ps-form-card">
+                <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="ps-form-error" />
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="title">Title</label>
+                            <InputText id="title" @bind-Value="_model.Title" maxlength="200" />
+                            <ValidationMessage For="() => _model.Title" class="ps-form-error" />
+                        </div>
+
+                        <div class="ps-field">
+                            <label class="ps-label" for="observation-type">Observation Type</label>
+                            <InputSelect id="observation-type" @bind-Value="_model.ObservationType">
+                                <option value="Positive">Positive</option>
+                                <option value="AtRisk">At Risk</option>
+                                <option value="Unsafe">Unsafe</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="description">Description</label>
+                            <InputTextArea id="description" @bind-Value="_model.Description" maxlength="4000" />
+                            <ValidationMessage For="() => _model.Description" class="ps-form-error" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-actions">
+                        <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsSaving">
+                            @if (State.IsSaving)
+                            {
+                                <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Saving…</text>
+                            }
+                            else
+                            {
+                                <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Save Changes</text>
+                            }
+                        </button>
+                        <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToDetail" disabled="@State.IsSaving">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ObservationId { get; set; }
+
+    private readonly UpdateObservationRequest _model = new();
+    private bool _isLoading = true;
+    private string? _loadError;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Edit Observation",
+            activeModuleCode: "observations",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Observations", Href = RouteDefinitions.ObservationList },
+                new BreadcrumbItem { Label = "Edit" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        var envelope = await ApiClient.GetObservationAsync(ObservationId);
+
+        if (envelope.IsSuccess)
+        {
+            var observation = envelope.Data!;
+            _model.Title = observation.Title;
+            _model.Description = observation.Description;
+            _model.ObservationType = observation.ObservationType;
+            _model.ETag = observation.ETag;
+            _isLoading = false;
+        }
+        else if (envelope.IsProblem)
+        {
+            _loadError = envelope.Problem!.Detail;
+            _isLoading = false;
+        }
+        else
+        {
+            _loadError = $"Failed to load observation: {envelope.FaultType}";
+            _isLoading = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginSave();
+
+        var envelope = await ApiClient.UpdateObservationAsync(ObservationId, _model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetSaveSuccess();
+            Nav.NavigateTo($"{RouteDefinitions.ObservationList}/{ObservationId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetSaveError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetSaveError($"Failed to save observation: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToDetail() => Nav.NavigateTo($"{RouteDefinitions.ObservationList}/{ObservationId}");
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

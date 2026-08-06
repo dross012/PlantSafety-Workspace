@@ -23,6 +23,9 @@ public sealed class IncidentDetailState
     private bool _isLoading;
     private bool _isLoadingTimeline;
     private string? _errorMessage;
+    private bool _isBusy;
+    private string? _actionMessage;
+    private string? _actionError;
 
     /// <summary>Gets the loaded incident, or null when not yet loaded.</summary>
     public IncidentDetailDto? Incident => _incident;
@@ -38,6 +41,15 @@ public sealed class IncidentDetailState
 
     /// <summary>Gets a sanitized load error, or null.</summary>
     public string? ErrorMessage => _errorMessage;
+
+    /// <summary>Gets a value indicating whether a lifecycle action (assign/escalate/note/resolve/edit/delete) is in flight.</summary>
+    public bool IsBusy => _isBusy;
+
+    /// <summary>Gets the most recent successful action's confirmation message, or null.</summary>
+    public string? ActionMessage => _actionMessage;
+
+    /// <summary>Gets the most recent action failure's sanitized message, or null.</summary>
+    public string? ActionError => _actionError;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -61,6 +73,15 @@ public sealed class IncidentDetailState
 
     /// <summary>Records a load failure with a sanitized message.</summary>
     public void SetError(string sanitizedError) { _errorMessage = sanitizedError; _isLoading = false; _isLoadingTimeline = false; NotifyStateChanged(); }
+
+    /// <summary>Marks a lifecycle action as in flight.</summary>
+    public void BeginAction() { _isBusy = true; _actionError = null; _actionMessage = null; NotifyStateChanged(); }
+
+    /// <summary>Records a lifecycle action success with a confirmation message.</summary>
+    public void CompleteAction(string message) { _isBusy = false; _actionMessage = message; _actionError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a lifecycle action failure with a sanitized message.</summary>
+    public void SetActionError(string sanitizedError) { _isBusy = false; _actionError = sanitizedError; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

@@ -1,15 +1,19 @@
 // ============================================================
 // AUTHOR: PlantSafety Platform
 // CREATED: 2026-06-17
-// FILE DESCRIPTION: Typed API client for the Alerts module. Wraps all
-//   HTTP communication for alerts CRUD and lifecycle operations.
-//   All methods return ApiResponseEnvelope<T>. No HttpClient calls
-//   are permitted outside this class for the Alerts module.
+// UPDATED: 2026-08-05 — Repointed the list query from a non-existent
+//   "GET v1/alerts?pageNumber=..." endpoint to the real, filterable
+//   GET v1/alerts/history endpoint (GetAlertHistoryQuery: SiteId/From/To/
+//   PageNumber/PageSize), and added the module's real write/lifecycle
+//   commands (Trigger/Dispatch/Escalate/Resolve/Close) alongside the
+//   existing Acknowledge. All methods return ApiResponseEnvelope<T>. No
+//   HttpClient calls are permitted outside this class for the Alerts module.
 // SchemaVersion: 2026.1
 // Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
 // ============================================================
 
 using System;
+using System.Globalization;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,19 +44,32 @@ public sealed class AlertsApiClient : SafetyApiClientBase
     }
 
     /// <summary>
-    /// Retrieves a paginated list of alerts for the authenticated tenant.
+    /// Retrieves a paginated page of Alert history for the authenticated tenant within the
+    /// requested UTC date range, optionally scoped to a single site. Backed by the real
+    /// GetAlertHistoryQuery (GET v1/alerts/history).
     /// </summary>
+    /// <param name="from">Inclusive start of the date range (UTC).</param>
+    /// <param name="to">Inclusive end of the date range (UTC).</param>
+    /// <param name="siteId">Optional site filter.</param>
     /// <param name="pageNumber">One-based page number.</param>
     /// <param name="pageSize">Maximum items per page (API enforces max).</param>
     /// <param name="cancellationToken">Propagated cancellation token.</param>
     /// <returns>An envelope containing the paginated alert list or a problem/fault.</returns>
-    public Task<ApiResponseEnvelope<PaginatedResponseDto<AlertListItemDto>>> GetAlertsAsync(
+    public Task<ApiResponseEnvelope<PaginatedResponseDto<AlertDto>>> GetAlertsAsync(
+        DateTime from,
+        DateTime to,
+        Guid? siteId = null,
         int pageNumber = 1,
         int pageSize = 25,
         CancellationToken cancellationToken = default)
-        => GetAsync<PaginatedResponseDto<AlertListItemDto>>(
-            $"v1/alerts?pageNumber={pageNumber}&pageSize={pageSize}",
-            cancellationToken);
+    {
+        var query = $"From={Uri.EscapeDataString(from.ToString("O", CultureInfo.InvariantCulture))}" +
+                    $"&To={Uri.EscapeDataString(to.ToString("O", CultureInfo.InvariantCulture))}" +
+                    $"&PageNumber={pageNumber}&PageSize={pageSize}";
+        if (siteId.HasValue) query += $"&SiteId={siteId.Value}";
+
+        return GetAsync<PaginatedResponseDto<AlertDto>>($"v1/alerts/history?{query}", cancellationToken);
+    }
 
     /// <summary>
     /// Retrieves the full detail for a single alert by its identifier.
@@ -65,17 +82,42 @@ public sealed class AlertsApiClient : SafetyApiClientBase
         CancellationToken cancellationToken = default)
         => GetAsync<AlertDto>($"v1/alerts/{alertId}", cancellationToken);
 
+    /// <summary>Triggers a new Alert via the real TriggerAlertCommand.</summary>
+    public Task<ApiResponseEnvelope<TriggerAlertResultDto>> TriggerAsync(
+        TriggerAlertRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<TriggerAlertRequest, TriggerAlertResultDto>("v1/alerts", request, cancellationToken);
+
     /// <summary>
     /// Acknowledges an alert, transitioning it to the Acknowledged status.
     /// </summary>
     /// <param name="alertId">The identifier of the alert to acknowledge.</param>
     /// <param name="cancellationToken">Propagated cancellation token.</param>
     /// <returns>An envelope containing the updated <see cref="AlertDto"/> or a problem/fault.</returns>
-    public Task<ApiResponseEnvelope<AlertDto>> AcknowledgeAlertAsync(
+    public Task<ApiResponseEnvelope<AcknowledgeAlertResultDto>> AcknowledgeAlertAsync(
         Guid alertId,
         CancellationToken cancellationToken = default)
-        => PostAsync<object, AlertDto>(
+        => PostAsync<object, AcknowledgeAlertResultDto>(
             $"v1/alerts/{alertId}/acknowledge",
             new { },
             cancellationToken);
+
+    /// <summary>Records that a response has been dispatched for an acknowledged Alert via DispatchAlertCommand.</summary>
+    public Task<ApiResponseEnvelope<DispatchAlertResultDto>> DispatchAsync(
+        Guid alertId, DispatchAlertRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<DispatchAlertRequest, DispatchAlertResultDto>($"v1/alerts/{alertId}/dispatch", request, cancellationToken);
+
+    /// <summary>Escalates an Alert via EscalateAlertCommand.</summary>
+    public Task<ApiResponseEnvelope<EscalateAlertResultDto>> EscalateAsync(
+        Guid alertId, EscalateAlertRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<EscalateAlertRequest, EscalateAlertResultDto>($"v1/alerts/{alertId}/escalate", request, cancellationToken);
+
+    /// <summary>Resolves the underlying hazard/condition behind an Alert via ResolveAlertCommand.</summary>
+    public Task<ApiResponseEnvelope<ResolveAlertResultDto>> ResolveAsync(
+        Guid alertId, ResolveAlertRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<ResolveAlertRequest, ResolveAlertResultDto>($"v1/alerts/{alertId}/resolve", request, cancellationToken);
+
+    /// <summary>Closes a resolved Alert via CloseAlertCommand. Used as this module's soft-delete/retire action.</summary>
+    public Task<ApiResponseEnvelope<CloseAlertResultDto>> CloseAsync(
+        Guid alertId, CloseAlertRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CloseAlertRequest, CloseAlertResultDto>($"v1/alerts/{alertId}/close", request, cancellationToken);
 }

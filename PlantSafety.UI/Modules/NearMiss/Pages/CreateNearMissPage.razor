@@ -1,0 +1,201 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create Near Miss form. Submits a CreateNearMissRequest via
+     POST v1/features/safety-events/near-misses (NearMissApiClient.CreateNearMissAsync,
+     backed by the real CreateNearMissCommand) and navigates to the new near
+     miss's detail page on success. Follows the canonical Blazor UI form
+     pattern established in Modules/Financials/Pages/CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/near-miss/new"
+
+@inject NearMissState State
+@inject NearMissApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.NearMiss.ApiClients
+@using PlantSafety.UI.Modules.NearMiss.Models
+@using PlantSafety.UI.Modules.NearMiss.State
+
+<PageTitle>New Near Miss — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Near Miss form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Report Near Miss</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="title">Title</label>
+                        <InputText id="title" @bind-Value="_model.Title" maxlength="200" />
+                        <ValidationMessage For="() => _model.Title" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="potential-severity">Potential Severity</label>
+                        <InputSelect id="potential-severity" @bind-Value="_model.PotentialSeverity">
+                            <option value="Minor">Minor</option>
+                            <option value="Moderate">Moderate</option>
+                            <option value="Serious">Serious</option>
+                            <option value="Critical">Critical</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="description">Description</label>
+                        <InputTextArea id="description" @bind-Value="_model.Description" maxlength="4000" />
+                        <ValidationMessage For="() => _model.Description" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="hazard-category">Hazard Category</label>
+                        <InputSelect id="hazard-category" @bind-Value="_model.HazardCategory">
+                            <option value="Chemical">Chemical</option>
+                            <option value="Mechanical">Mechanical</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Ergonomic">Ergonomic</option>
+                            <option value="Biological">Biological</option>
+                            <option value="Radiation">Radiation</option>
+                            <option value="Thermal">Thermal</option>
+                            <option value="Other">Other</option>
+                        </InputSelect>
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="site-id">Site Id</label>
+                        <InputText id="site-id" @bind-Value="_siteIdText" placeholder="GUID" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="reported-by">Reported By Worker Id</label>
+                        <InputText id="reported-by" @bind-Value="_reportedByText" placeholder="GUID" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="occurred-at">Occurred At</label>
+                        <InputDate id="occurred-at" Type="InputDateType.DateTimeLocal" @bind-Value="_occurredAtLocal" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Submitting…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Report Near Miss</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateNearMissRequest _model = new();
+    private string _siteIdText = string.Empty;
+    private string _reportedByText = string.Empty;
+    private DateTime? _occurredAtLocal = DateTime.Now;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Report Near Miss",
+            activeModuleCode: "near-miss",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Near Miss", Href = RouteDefinitions.NearMissList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+
+        var siteId = TenantCtx.Tenant?.SiteId;
+        if (siteId is not null)
+            _siteIdText = siteId.Value.ToString();
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (!Guid.TryParse(_siteIdText, out var siteId))
+        {
+            State.SetCreateError("Site Id must be a valid GUID.");
+            return;
+        }
+
+        if (!Guid.TryParse(_reportedByText, out var reportedById))
+        {
+            State.SetCreateError("Reported By Worker Id must be a valid GUID.");
+            return;
+        }
+
+        if (_occurredAtLocal is null)
+        {
+            State.SetCreateError("Occurred At date is required.");
+            return;
+        }
+
+        _model.SiteId = siteId;
+        _model.ReportedByWorkerId = reportedById;
+        _model.OccurredAtUtc = new DateTimeOffset(DateTime.SpecifyKind(_occurredAtLocal.Value, DateTimeKind.Utc));
+
+        State.BeginCreate();
+
+        var envelope = await ApiClient.CreateNearMissAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetCreateSuccess(envelope.Data!);
+            Nav.NavigateTo($"{RouteDefinitions.NearMissList}/{envelope.Data!}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to report near miss: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.NearMissList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

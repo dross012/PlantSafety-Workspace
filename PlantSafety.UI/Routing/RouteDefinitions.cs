@@ -91,6 +91,9 @@ public static class RouteDefinitions
     /// <summary>Alert detail page. Requires {id} route parameter.</summary>
     public const string AlertDetail = "/modules/alerts/{id}";
 
+    /// <summary>New Alert (Trigger) form.</summary>
+    public const string AlertCreate = "/modules/alerts/new";
+
     /// <summary>Auditing list.</summary>
     public const string AuditingList = "/modules/auditing";
 
@@ -99,6 +102,9 @@ public static class RouteDefinitions
 
     /// <summary>Audit report generation/export/download page (Phase 5 §6.2).</summary>
     public const string AuditReports = "/modules/auditing/reports";
+
+    /// <summary>New audit creation form.</summary>
+    public const string AuditCreate = "/modules/auditing/new";
 
     /// <summary>Worker management list.</summary>
     public const string WorkerManagementList = "/modules/worker-management";
@@ -115,6 +121,12 @@ public static class RouteDefinitions
     /// <summary>Certifications list.</summary>
     public const string CertificationsList = "/modules/certifications";
 
+    /// <summary>New (generic) certification creation form.</summary>
+    public const string CertificationCreate = "/modules/certifications/new";
+
+    /// <summary>Generic Certification record detail page (distinct from the per-category tabbed detail). Requires {certificationId} route parameter.</summary>
+    public const string CertificationRecordDetail = "/modules/certifications/record/{certificationId}";
+
     /// <summary>PPE management.</summary>
     public const string PpeList = "/modules/ppe";
 
@@ -130,6 +142,15 @@ public static class RouteDefinitions
     /// <summary>Predictive maintenance dashboard.</summary>
     public const string PredictiveMaintenanceDashboard = "/modules/predictive-maintenance";
 
+    /// <summary>Raise a new PredictiveMaintenanceAlert (Operational.PredictiveMaintenance write surface).</summary>
+    public const string PredictiveMaintenanceAlertCreate = "/modules/predictive-maintenance/alerts/new";
+
+    /// <summary>Find a PredictiveMaintenanceAlert by id (no list endpoint exists for alerts — this is the real, reachable lookup surface).</summary>
+    public const string PredictiveMaintenanceAlertFind = "/modules/predictive-maintenance/alerts/find";
+
+    /// <summary>PredictiveMaintenanceAlert detail page. Requires {alertId} route parameter.</summary>
+    public const string PredictiveMaintenanceAlertDetail = "/modules/predictive-maintenance/alerts/{alertId}";
+
     /// <summary>Production tracking dashboard.</summary>
     public const string ProductionTrackingDashboard = "/modules/production-tracking";
 
@@ -142,8 +163,17 @@ public static class RouteDefinitions
     /// <summary>Safety programs list.</summary>
     public const string SafetyProgramsList = "/modules/safety-programs";
 
+    /// <summary>New safety program creation form (CreateSafetyProgramCommand).</summary>
+    public const string SafetyProgramsCreate = "/modules/safety-programs/new";
+
+    /// <summary>Assign a new training record to a worker (AssignTrainingCommand — the real, controller-wired write surface at api/v1/features/operational/training, distinct from the read-only Operational Training list this module's list/detail pages already render).</summary>
+    public const string TrainingAssign = "/modules/training/new";
+
     /// <summary>Incident management list.</summary>
     public const string IncidentManagementList = "/modules/incident-management";
+
+    /// <summary>Incident management — new incident (Create).</summary>
+    public const string IncidentManagementCreate = "/modules/incident-management/new";
 
     /// <summary>Document management list.</summary>
     public const string DocumentManagementList = "/modules/document-management";
@@ -162,17 +192,38 @@ public static class RouteDefinitions
     /// <summary>Drills and exercises list.</summary>
     public const string DrillsList = "/modules/drills";
 
+    /// <summary>New (schedule) drill form.</summary>
+    public const string DrillsCreate = "/modules/drills/new";
+
     /// <summary>Emergency management dashboard.</summary>
     public const string EmergencyManagementDashboard = "/modules/emergency-management";
 
     /// <summary>Near miss list.</summary>
     public const string NearMissList = "/modules/near-miss";
 
+    /// <summary>New near miss form.</summary>
+    public const string NearMissCreate = "/modules/near-miss/new";
+
     /// <summary>Observation list.</summary>
     public const string ObservationList = "/modules/observations";
 
+    /// <summary>New observation form.</summary>
+    public const string ObservationCreate = "/modules/observations/new";
+
     /// <summary>Root cause analysis list.</summary>
     public const string RcaList = "/modules/rca";
+
+    /// <summary>Create RCA linked to an Incident/NearMiss (Features.SafetyEvents.RootCauseAnalysis write surface).</summary>
+    public const string RcaCreate = "/modules/rca/new";
+
+    /// <summary>ContinuousImprovement.RCA generic records list (real List/Search endpoint — distinct aggregate from the Incident/NearMiss-linked RCA above).</summary>
+    public const string RcaRecordsList = "/modules/rca/records";
+
+    /// <summary>Create a generic ContinuousImprovement.RCA record.</summary>
+    public const string RcaRecordCreate = "/modules/rca/records/new";
+
+    /// <summary>ContinuousImprovement.RCA generic record detail page. Requires {rcaId} route parameter.</summary>
+    public const string RcaRecordDetail = "/modules/rca/records/{rcaId}";
 
     // ── Section 3 — Human Factors ─────────────────────────────────────────────
 
@@ -256,6 +307,12 @@ public static class RouteDefinitions
     /// <summary>Permits to Work list.</summary>
     public const string PermitsList = "/modules/permits";
 
+    /// <summary>Create generic Permit (Compliance.Permits write surface).</summary>
+    public const string PermitCreate = "/modules/permits/new";
+
+    /// <summary>Generic Permit record detail page (distinct from the Operational.PermitsToWork read-only detail). Requires {permitsId} route parameter.</summary>
+    public const string PermitRecordDetail = "/modules/permits/record/{permitsId}";
+
     // ── Section 5 — Analytics ─────────────────────────────────────────────────
 
     /// <summary>Culture analytics dashboard.</summary>
@@ -293,11 +350,26 @@ public static class RouteDefinitions
     /// <summary>Management of Change list.</summary>
     public const string MocList = "/modules/moc";
 
+    /// <summary>New Management of Change request form.</summary>
+    public const string MocCreate = "/modules/moc/new";
+
     /// <summary>Policies and procedures list.</summary>
     public const string PoliciesList = "/modules/policies";
 
+    /// <summary>Create generic Policy (Compliance.Policy write surface).</summary>
+    public const string PolicyRecordCreate = "/modules/policies/new";
+
+    /// <summary>Generic Policy record detail page (distinct from the read-only Policy/Procedure detail pages). Requires {policyId} route parameter.</summary>
+    public const string PolicyRecordDetail = "/modules/policies/record/{policyId}";
+
     /// <summary>Regulatory calendar.</summary>
     public const string RegulatoryCalendar = "/modules/regulatory-calendar";
+
+    /// <summary>Create generic RegulatoryCalendar obligation (Compliance.RegulatoryCalendar write surface).</summary>
+    public const string RegulatoryCalendarRecordCreate = "/modules/regulatory-calendar/new";
+
+    /// <summary>Generic RegulatoryCalendar obligation record detail page (distinct from the read-only per-source detail page). Requires {regulatoryCalendarId} route parameter.</summary>
+    public const string RegulatoryCalendarRecordDetail = "/modules/regulatory-calendar/record/{regulatoryCalendarId}";
 
     /// <summary>Compliance Rules Engine evaluation trigger + results view (Phase 5 §6.3).</summary>
     public const string ComplianceEvaluation = "/modules/compliance/evaluation";
@@ -310,8 +382,20 @@ public static class RouteDefinitions
     /// <summary>ROI analysis dashboard.</summary>
     public const string RoiDashboard = "/modules/roi";
 
+    /// <summary>Create Budget input form (Financials).</summary>
+    public const string FinancialsCreateBudget = "/modules/financials/budgets/new";
+
+    /// <summary>Record Cost (FinancialRecord create) input form (Financials).</summary>
+    public const string FinancialsRecordCost = "/modules/financials/costs/new";
+
+    /// <summary>Calculate/Record ROI input form.</summary>
+    public const string RoiCalculate = "/modules/roi/calculate";
+
     /// <summary>Checklist list.</summary>
     public const string ChecklistList = "/modules/checklists";
+
+    /// <summary>New checklist template creation/management workspace.</summary>
+    public const string ChecklistCreate = "/modules/checklists/new";
 
     /// <summary>Contractor management list.</summary>
     public const string ContractorManagementList = "/modules/contractor-management";
@@ -323,6 +407,9 @@ public static class RouteDefinitions
 
     /// <summary>AI investigation list.</summary>
     public const string AiInvestigationList = "/modules/ai-investigation";
+
+    /// <summary>New AI investigation form.</summary>
+    public const string AiInvestigationCreate = "/modules/ai-investigation/new";
 
     /// <summary>Data lake explorer.</summary>
     public const string DataLakeExplorer = "/modules/data-lake";
@@ -355,6 +442,14 @@ public static class RouteDefinitions
 
     /// <summary>Planning projects list.</summary>
     public const string PlanningProjectsList = "/modules/planning-projects";
+
+    /// <summary>Create Planning Project input form. Covers Plans/Projects/Scheduling data entry
+    /// (a Project's TargetCompletionUtc IS the schedule input — there is no separate
+    /// scheduling-create endpoint).</summary>
+    public const string PlanningProjectsCreate = "/modules/planning-projects/new";
+
+    /// <summary>Add Milestone input form. Requires {ProjectId} route parameter.</summary>
+    public const string PlanningProjectsAddMilestone = "/modules/planning-projects/{ProjectId}/milestones/new";
 
     /// <summary>Project budgeting dashboard.</summary>
     public const string ProjectBudgetingDashboard = "/modules/project-budgeting";

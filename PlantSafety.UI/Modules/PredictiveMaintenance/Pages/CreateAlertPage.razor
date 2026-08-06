@@ -1,0 +1,152 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Raise (create) a new PredictiveMaintenanceAlert. Submits a
+     RaisePredictiveMaintenanceAlertRequest via POST
+     v1/operational/predictive-maintenance/alerts
+     (PredictiveMaintenanceApiClient.RaiseAlertAsync ->
+     RaisePredictiveMaintenanceAlertCommand) and navigates to the new alert's
+     detail page on success. This is a distinct, generic maintenance-alert
+     aggregate from the read-only ML-generated Predictions/Recommendations/
+     Sensor data shown on the other Predictive Maintenance pages — those have
+     no write commands; this is where Raise/Review/ScheduleAction/Resolve/
+     Dismiss/Close actually live. Follows the canonical Blazor UI form pattern
+     established in CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/alerts/new"
+
+@inject PredictiveMaintenanceAlertState State
+@inject PredictiveMaintenanceApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PredictiveMaintenance.ApiClients
+@using PlantSafety.UI.Modules.PredictiveMaintenance.Models
+@using PlantSafety.UI.Modules.PredictiveMaintenance.State
+
+<PageTitle>Raise Maintenance Alert — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Raise Alert form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Raise Predictive Maintenance Alert</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="equipment-id">Equipment Id</label>
+                        <InputText id="equipment-id" @bind-Value="_equipmentIdText" placeholder="GUID" />
+                        <ValidationMessage For="() => _model.EquipmentId" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="predicted-failure-type">Predicted Failure Type</label>
+                        <InputText id="predicted-failure-type" @bind-Value="_model.PredictedFailureType" placeholder="e.g. BearingFailure, Overheating, VibrationAnomaly" />
+                        <ValidationMessage For="() => _model.PredictedFailureType" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="predicted-at">Predicted At (UTC)</label>
+                        <InputDate id="predicted-at" @bind-Value="_predictedAt" />
+                        <ValidationMessage For="() => _model.PredictedAtUtc" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Raising…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Raise Alert</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToDashboard" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly RaisePredictiveMaintenanceAlertRequest _model = new();
+    private string _equipmentIdText = string.Empty;
+    private DateTime _predictedAt = DateTime.UtcNow;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Raise Alert",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Raise Alert" }
+            ]);
+
+        State.ResetCreate();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        if (!Guid.TryParse(_equipmentIdText, out var equipmentId))
+        {
+            State.SetCreateError("Equipment Id must be a valid GUID.");
+            return;
+        }
+
+        _model.EquipmentId = equipmentId;
+        _model.PredictedAtUtc = DateTime.SpecifyKind(_predictedAt, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.RaiseAlertAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"/modules/predictive-maintenance/alerts/{envelope.Data!.PredictiveMaintenanceAlertId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to raise alert: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToDashboard() => Nav.NavigateTo(RouteDefinitions.PredictiveMaintenanceDashboard);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -120,4 +120,43 @@ public sealed class AuditingApiClient : SafetyApiClientBase
         Guid tenantId, Guid auditReportId, CancellationToken cancellationToken = default)
         => GetAsync<AuditReportContentDto>(
             $"v1/auditing/audit-reports/{auditReportId}/content?TenantId={tenantId:D}", cancellationToken);
+
+    // ============================================================
+    // Compliance.Auditing write/lifecycle surface (api/v1/compliance/auditing) —
+    // Create -> Start -> RecordFindings -> Close -> Archive, plus a real by-id GET.
+    // ============================================================
+
+    /// <summary>Retrieves a single Auditing read-model record by identity, including its ETag.</summary>
+    public Task<ApiResponseEnvelope<AuditingItemDto>> GetAuditingByIdAsync(
+        Guid auditingId, CancellationToken cancellationToken = default)
+        => GetAsync<AuditingItemDto>($"v1/compliance/auditing/{auditingId}", cancellationToken);
+
+    /// <summary>Submits a new Auditing record via the real CreateAuditingCommand.</summary>
+    public Task<ApiResponseEnvelope<CreateAuditingResultDto>> CreateAuditingAsync(
+        CreateAuditingRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreateAuditingRequest, CreateAuditingResultDto>("v1/compliance/auditing", request, cancellationToken);
+
+    /// <summary>Starts an audit program/execution (Created -&gt; Active) via StartAuditingCommand.</summary>
+    public Task<ApiResponseEnvelope<AuditingStatusResultDto>> StartAuditingAsync(
+        Guid auditingId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, AuditingStatusResultDto>(
+            $"v1/compliance/auditing/{auditingId}/start", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Records an audit's findings and compliance score (Active -&gt; Completed) via RecordAuditingFindingsCommand.</summary>
+    public Task<ApiResponseEnvelope<AuditingStatusResultDto>> RecordAuditingFindingsAsync(
+        Guid auditingId, RecordAuditingFindingsRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<RecordAuditingFindingsRequest, AuditingStatusResultDto>(
+            $"v1/compliance/auditing/{auditingId}/record-findings", request, cancellationToken);
+
+    /// <summary>Formally closes a completed audit (Completed -&gt; Closed) via CloseAuditingCommand.</summary>
+    public Task<ApiResponseEnvelope<AuditingStatusResultDto>> CloseAuditingAsync(
+        Guid auditingId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, AuditingStatusResultDto>(
+            $"v1/compliance/auditing/{auditingId}/close", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Archives a closed audit for compliance retention (Closed -&gt; Archived) via ArchiveAuditingCommand. Used as this module's soft-delete/retire action.</summary>
+    public Task<ApiResponseEnvelope<AuditingStatusResultDto>> ArchiveAuditingAsync(
+        Guid auditingId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, AuditingStatusResultDto>(
+            $"v1/compliance/auditing/{auditingId}/archive", new EtagRequest { ETag = eTag }, cancellationToken);
 }

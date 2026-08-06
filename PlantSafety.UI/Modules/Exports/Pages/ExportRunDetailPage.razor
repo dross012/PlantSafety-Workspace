@@ -1,11 +1,16 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
+   UPDATED: 2026-08-05 — Added a Print action (window.print via JS interop).
+     The Integrations.Export read-model has no Create/Update/Delete command
+     anywhere in the Application layer — this module is a pure read-only
+     projection of scheduled/automated export runs, so no Edit/Delete
+     actions are offered. Search now exists client-side on the list page.
    FILE DESCRIPTION: Export run detail page. The read-model endpoint has no
      by-id GET, so the detail view ensures the parent run window is loaded
      (via ExportsState) and looks the record up client-side by ExportRunId —
      the natural single-entity drilldown for this module.
-   SchemaVersion: 2026.1
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -17,6 +22,7 @@
 @inject TenantState TenantCtx
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -64,6 +70,9 @@
                 <div class="ps-detail-actions">
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ExportsList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Exports
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
                     </button>
                 </div>
             </div>
@@ -124,6 +133,8 @@
         "failed" => "Critical",
         _ => "Offline",
     };
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

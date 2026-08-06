@@ -66,4 +66,52 @@ public sealed class PoliciesApiClient : SafetyApiClientBase
 
         return $"{path}?{query}";
     }
+
+    // ============================================================
+    // Compliance.Policy write/lifecycle surface (api/v1/compliance/policy) —
+    // Create -> Approve -> RecordAcknowledgment (repeatable) -> Supersede -> Close -> Archive,
+    // plus a real by-id GET. Distinct generic Policy aggregate from the read-only Safety
+    // Policies/SOPs read-models above — those have no write commands; this is where
+    // CreatePolicyCommand and its lifecycle actions actually live.
+    // ============================================================
+
+    /// <summary>Retrieves a single generic Policy record by identity, including its ETag. Backed by GET <c>v1/compliance/policy/{id}</c>.</summary>
+    public Task<ApiResponseEnvelope<PolicyRecordItemDto>> GetPolicyRecordAsync(
+        Guid policyId, CancellationToken cancellationToken = default)
+        => GetAsync<PolicyRecordItemDto>($"v1/compliance/policy/{policyId}", cancellationToken);
+
+    /// <summary>Submits a new generic Policy document via the real CreatePolicyCommand.</summary>
+    public Task<ApiResponseEnvelope<CreatePolicyResultDto>> CreatePolicyRecordAsync(
+        CreatePolicyRecordRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreatePolicyRecordRequest, CreatePolicyResultDto>("v1/compliance/policy", request, cancellationToken);
+
+    /// <summary>Approves a Policy and makes it effective (Created -&gt; Active) via ApprovePolicyCommand.</summary>
+    public Task<ApiResponseEnvelope<PolicyStatusResultDto>> ApprovePolicyRecordAsync(
+        Guid policyId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PolicyStatusResultDto>(
+            $"v1/compliance/policy/{policyId}/approve", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Records an acknowledgment of an active Policy by the caller via RecordPolicyAcknowledgmentCommand.</summary>
+    public Task<ApiResponseEnvelope<PolicyStatusResultDto>> AcknowledgePolicyRecordAsync(
+        Guid policyId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PolicyStatusResultDto>(
+            $"v1/compliance/policy/{policyId}/acknowledge", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Supersedes an active Policy with a newer revision (Active -&gt; Completed) via SupersedePolicyCommand.</summary>
+    public Task<ApiResponseEnvelope<PolicyStatusResultDto>> SupersedePolicyRecordAsync(
+        Guid policyId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PolicyStatusResultDto>(
+            $"v1/compliance/policy/{policyId}/supersede", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Formally closes a superseded Policy (Completed -&gt; Closed) via ClosePolicyCommand.</summary>
+    public Task<ApiResponseEnvelope<PolicyStatusResultDto>> ClosePolicyRecordAsync(
+        Guid policyId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PolicyStatusResultDto>(
+            $"v1/compliance/policy/{policyId}/close", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Archives a closed Policy for compliance retention (Closed -&gt; Archived) via ArchivePolicyCommand. Used as this module's soft-delete/retire action.</summary>
+    public Task<ApiResponseEnvelope<PolicyStatusResultDto>> ArchivePolicyRecordAsync(
+        Guid policyId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PolicyStatusResultDto>(
+            $"v1/compliance/policy/{policyId}/archive", new EtagRequest { ETag = eTag }, cancellationToken);
 }

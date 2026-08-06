@@ -1,0 +1,220 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Edit Incident form. Loads the current incident (for its
+     ETag/optimistic-concurrency token and current field values), then submits
+     an UpdateIncidentRequest via PUT v1/features/safety-events/incidents/{id}
+     (IncidentManagementApiClient.UpdateIncidentAsync, backed by the real
+     UpdateIncidentCommand). Only the fields the real command accepts are
+     surfaced: Title, Description, Severity, Location, AssignedInvestigatorId.
+     Follows the canonical Blazor UI form pattern established in
+     Modules/Financials/Pages/CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/incident-management/{IncidentId:guid}/edit"
+
+@inject IncidentManagementApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.IncidentManagement.ApiClients
+@using PlantSafety.UI.Modules.IncidentManagement.Models
+
+<PageTitle>Edit Incident — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Edit Incident form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Edit Incident</h2>
+        </div>
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading incident…" />
+        }
+        else if (_loadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_loadError</div>
+        }
+        else
+        {
+            @if (_saveError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@_saveError</div>
+            }
+
+            <div class="ps-form-card">
+                <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="ps-form-error" />
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="title">Title</label>
+                            <InputText id="title" @bind-Value="_model.Title" maxlength="200" />
+                            <ValidationMessage For="() => _model.Title" class="ps-form-error" />
+                        </div>
+
+                        <div class="ps-field">
+                            <label class="ps-label" for="severity">Severity</label>
+                            <InputSelect id="severity" @bind-Value="_model.Severity">
+                                <option value="Minor">Minor</option>
+                                <option value="Moderate">Moderate</option>
+                                <option value="Serious">Serious</option>
+                                <option value="Critical">Critical</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="description">Description</label>
+                            <InputTextArea id="description" @bind-Value="_model.Description" maxlength="4000" />
+                            <ValidationMessage For="() => _model.Description" class="ps-form-error" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="location">Location</label>
+                            <InputText id="location" @bind-Value="_model.Location" maxlength="500" />
+                            <ValidationMessage For="() => _model.Location" class="ps-form-error" />
+                        </div>
+
+                        <div class="ps-field">
+                            <label class="ps-label" for="assigned-investigator">Assigned Investigator Id</label>
+                            <InputText id="assigned-investigator" @bind-Value="_assignedInvestigatorIdText" placeholder="GUID (blank to unassign)" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-actions">
+                        <button type="submit" class="ps-btn ps-btn-primary" disabled="@_isSubmitting">
+                            @if (_isSubmitting)
+                            {
+                                <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Saving…</text>
+                            }
+                            else
+                            {
+                                <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Save Changes</text>
+                            }
+                        </button>
+                        <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToDetail" disabled="@_isSubmitting">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid IncidentId { get; set; }
+
+    private readonly UpdateIncidentRequest _model = new();
+    private string _assignedInvestigatorIdText = string.Empty;
+    private string? _etag;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _loadError;
+    private string? _saveError;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Edit Incident",
+            activeModuleCode: "incident-management",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Incident Management", Href = RouteDefinitions.IncidentManagementList },
+                new BreadcrumbItem { Label = "Edit" }
+            ]);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        var envelope = await ApiClient.GetIncidentAsync(IncidentId);
+
+        if (envelope.IsSuccess)
+        {
+            var incident = envelope.Data!;
+            _model.Title = incident.Title;
+            _model.Description = incident.Description;
+            _model.Severity = incident.Severity;
+            _model.Location = incident.Location;
+            _etag = incident.ETag;
+            _assignedInvestigatorIdText = string.Empty;
+            _isLoading = false;
+        }
+        else if (envelope.IsProblem)
+        {
+            _loadError = envelope.Problem!.Detail;
+            _isLoading = false;
+        }
+        else
+        {
+            _loadError = $"Failed to load incident: {envelope.FaultType}";
+            _isLoading = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _saveError = null;
+
+        Guid? assignedInvestigatorId = null;
+        if (!string.IsNullOrWhiteSpace(_assignedInvestigatorIdText))
+        {
+            if (!Guid.TryParse(_assignedInvestigatorIdText, out var parsedInvestigatorId))
+            {
+                _saveError = "Assigned Investigator Id must be a valid GUID when provided.";
+                return;
+            }
+            assignedInvestigatorId = parsedInvestigatorId;
+        }
+
+        _model.AssignedInvestigatorId = assignedInvestigatorId;
+        _model.ETag = _etag;
+
+        _isSubmitting = true;
+        var envelope = await ApiClient.UpdateIncidentAsync(IncidentId, _model);
+        _isSubmitting = false;
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"{RouteDefinitions.IncidentManagementList}/{IncidentId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            _saveError = envelope.Problem!.Detail;
+        }
+        else
+        {
+            _saveError = $"Failed to save incident: {envelope.FaultType}";
+        }
+    }
+
+    private void NavigateToDetail() => Nav.NavigateTo($"{RouteDefinitions.IncidentManagementList}/{IncidentId}");
+
+    public void Dispose() { }
+}

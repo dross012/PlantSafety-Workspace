@@ -9,6 +9,7 @@
 // ============================================================
 
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlantSafety.UI.Modules.Observations.Models;
 
@@ -47,4 +48,61 @@ public sealed class ObservationDto
 
     /// <summary>Gets the row version for concurrency.</summary>
     public string ETag { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for creating a new Safety Observation. Mirrors
+/// PlantSafety.Api.Features.SafetyEvents.Observation.Contracts.Requests.CreateObservationRequest,
+/// with DataAnnotations mirroring CreateObservationCommandValidator's rules.
+/// Backed by POST v1/features/safety-events/observations.
+/// </summary>
+public sealed class CreateObservationRequest
+{
+    /// <summary>Site where the observation was made.</summary>
+    [Required(ErrorMessage = "Site is required.")]
+    public Guid? SiteId { get; set; }
+
+    /// <summary>Short title. Max 200 characters.</summary>
+    [Required(ErrorMessage = "Title is required.")]
+    [StringLength(200, ErrorMessage = "Title must be 200 characters or fewer.")]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Narrative description. Max 4000 characters.</summary>
+    [Required(ErrorMessage = "Description is required.")]
+    [StringLength(4000, ErrorMessage = "Description must be 4000 characters or fewer.")]
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>Observation type: Positive, AtRisk, Unsafe.</summary>
+    [Required(ErrorMessage = "Observation type is required.")]
+    public string ObservationType { get; set; } = "Positive";
+
+    /// <summary>UTC timestamp when the observation was made. Cannot be in the future.</summary>
+    [Required(ErrorMessage = "Observed date is required.")]
+    public DateTimeOffset? ObservedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Worker who made the observation.</summary>
+    [Required(ErrorMessage = "Observing worker is required.")]
+    public Guid? ObservedByWorkerId { get; set; }
+}
+
+/// <summary>
+/// Request body for updating an existing Safety Observation. Mirrors
+/// PlantSafety.Api.Features.SafetyEvents.Observation.Contracts.Requests.UpdateObservationRequest.
+/// Null fields mean "no change". Backed by PUT v1/features/safety-events/observations/{id}.
+/// </summary>
+public sealed class UpdateObservationRequest
+{
+    /// <summary>Updated title. Null means no change.</summary>
+    [StringLength(200, ErrorMessage = "Title must be 200 characters or fewer.")]
+    public string? Title { get; set; }
+
+    /// <summary>Updated description. Null means no change.</summary>
+    [StringLength(4000, ErrorMessage = "Description must be 4000 characters or fewer.")]
+    public string? Description { get; set; }
+
+    /// <summary>Updated observation type. Null means no change.</summary>
+    public string? ObservationType { get; set; }
+
+    /// <summary>Optimistic concurrency token from the last read of this Observation.</summary>
+    public string? ETag { get; set; }
 }

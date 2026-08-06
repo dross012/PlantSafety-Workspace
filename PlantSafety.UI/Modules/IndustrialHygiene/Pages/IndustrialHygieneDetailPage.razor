@@ -16,6 +16,7 @@
 @inject UserSessionState UserSession
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -61,6 +62,9 @@
                 <div class="ps-detail-actions">
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.IndustrialHygieneList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Industrial Hygiene
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
                     </button>
                 </div>
             </div>
@@ -128,6 +132,8 @@
             State.SetError($"Failed to load industrial hygiene samples: {envelope.FaultType}");
         }
     }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

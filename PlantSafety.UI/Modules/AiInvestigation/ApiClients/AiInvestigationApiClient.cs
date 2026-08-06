@@ -61,4 +61,35 @@ public sealed class AiInvestigationApiClient : SafetyApiClientBase
 
         return query;
     }
+
+    /// <summary>Retrieves a single AIInvestigation read-model record by identity, including its ETag.</summary>
+    public Task<ApiResponseEnvelope<AiInvestigationDetailDto>> GetByIdAsync(
+        Guid investigationId, CancellationToken cancellationToken = default)
+        => GetAsync<AiInvestigationDetailDto>($"v1/intelligence/ai-investigations/{investigationId}", cancellationToken);
+
+    /// <summary>Opens a new AI-assisted safety investigation via the real CreateAIInvestigationCommand.</summary>
+    public Task<ApiResponseEnvelope<AiInvestigationStatusResultDto>> CreateAsync(
+        CreateAiInvestigationRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreateAiInvestigationRequest, AiInvestigationStatusResultDto>(
+            "v1/intelligence/ai-investigations", request, cancellationToken);
+
+    /// <summary>Starts review of an AIInvestigation (Open -&gt; InProgress) via StartReviewAIInvestigationCommand.</summary>
+    public Task<ApiResponseEnvelope<AiInvestigationStatusResultDto>> StartReviewAsync(
+        Guid investigationId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, AiInvestigationStatusResultDto>(
+            $"v1/intelligence/ai-investigations/{investigationId}/start-review", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Closes an AIInvestigation (InProgress -&gt; Closed) via CloseAIInvestigationCommand.</summary>
+    public Task<ApiResponseEnvelope<AiInvestigationStatusResultDto>> CloseAsync(
+        Guid investigationId, string? resolutionSummary, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<CloseAiInvestigationRequest, AiInvestigationStatusResultDto>(
+            $"v1/intelligence/ai-investigations/{investigationId}/close",
+            new CloseAiInvestigationRequest { ResolutionSummary = resolutionSummary, ETag = eTag },
+            cancellationToken);
+
+    /// <summary>Archives a closed AIInvestigation (Closed -&gt; Archived) via ArchiveAIInvestigationCommand. Used as this module's soft-delete/retire action.</summary>
+    public Task<ApiResponseEnvelope<AiInvestigationStatusResultDto>> ArchiveAsync(
+        Guid investigationId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, AiInvestigationStatusResultDto>(
+            $"v1/intelligence/ai-investigations/{investigationId}/archive", new EtagRequest { ETag = eTag }, cancellationToken);
 }

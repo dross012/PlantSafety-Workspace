@@ -1,0 +1,155 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create (generic) Permit input form. Submits a
+     CreatePermitsRequest via POST v1/compliance/permits
+     (PermitsApiClient.CreatePermitAsync -> CreatePermitsCommand) and
+     navigates to the new record's generic detail page on success. This is a
+     distinct, generic Permit-to-Work aggregate from the read-only
+     Operational.PermitsToWork record set shown on PermitsListPage — that
+     read-model has no write commands; this is where Create/Approve/Reject/
+     Complete/Expire/Close/Archive actually live. Follows the canonical
+     Blazor UI form pattern established in CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/permits/new"
+
+@inject PermitsState State
+@inject PermitsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Permits.ApiClients
+@using PlantSafety.UI.Modules.Permits.Models
+@using PlantSafety.UI.Modules.Permits.State
+
+<PageTitle>New Permit — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Permit form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Permit</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="permit-type">Permit Type</label>
+                        <InputText id="permit-type" @bind-Value="_model.PermitType" placeholder="e.g. HotWork, ConfinedSpace, Excavation, LOTO" />
+                        <ValidationMessage For="() => _model.PermitType" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="permit-number">Permit Number</label>
+                        <InputText id="permit-number" @bind-Value="_model.PermitNumber" />
+                        <ValidationMessage For="() => _model.PermitNumber" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="work-description">Work Description</label>
+                        <InputTextArea id="work-description" @bind-Value="_model.WorkDescription" rows="3" />
+                        <ValidationMessage For="() => _model.WorkDescription" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="location">Location</label>
+                        <InputText id="location" @bind-Value="_model.Location" />
+                        <ValidationMessage For="() => _model.Location" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="hazards-identified">Hazards Identified</label>
+                        <InputTextArea id="hazards-identified" @bind-Value="_model.HazardsIdentified" rows="3" />
+                        <ValidationMessage For="() => _model.HazardsIdentified" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create Permit</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreatePermitsRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Permit",
+            activeModuleCode: "permits",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Permits to Work", Href = RouteDefinitions.PermitsList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        var envelope = await ApiClient.CreatePermitAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"/modules/permits/record/{envelope.Data!.PermitsId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to create permit: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.PermitsList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

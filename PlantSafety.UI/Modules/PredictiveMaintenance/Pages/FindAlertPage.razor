@@ -1,0 +1,92 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Find (search) a PredictiveMaintenanceAlert by identity.
+     No list endpoint exists for the Operational.PredictiveMaintenance Alert
+     aggregate (only Raise/lifecycle/by-id GET are wired) — this page is the
+     real, reachable Search surface: it accepts an Alert Id and navigates to
+     AlertDetailPage.razor, which loads it via the genuine
+     GetPredictiveMaintenanceAlertByIdQuery.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/predictive-maintenance/alerts/find"
+
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+<PageTitle>Find Maintenance Alert — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Find Alert form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Find Predictive Maintenance Alert</h2>
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_error</div>
+        }
+
+        <div class="ps-form-card">
+            <div class="ps-form">
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="alert-id">Alert Id</label>
+                        <input id="alert-id" type="text" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_alertIdText" placeholder="GUID" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="button" class="ps-btn ps-btn-primary" @onclick="GoToAlert">
+                        <span class="bi bi-search" aria-hidden="true"></span> Open Alert
+                    </button>
+                    <a href="@RouteDefinitions.PredictiveMaintenanceAlertCreate" class="ps-btn ps-btn-ghost">
+                        <span class="bi bi-plus-lg" aria-hidden="true"></span> Raise New Alert
+                    </a>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PredictiveMaintenanceDashboard)">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private string _alertIdText = string.Empty;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Find Alert",
+            activeModuleCode: "predictive-maintenance",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Predictive Maintenance", Href = RouteDefinitions.PredictiveMaintenanceDashboard },
+                new BreadcrumbItem { Label = "Find Alert" }
+            ]);
+    }
+
+    private void GoToAlert()
+    {
+        if (!Guid.TryParse(_alertIdText, out var alertId))
+        {
+            _error = "Alert Id must be a valid GUID.";
+            return;
+        }
+
+        Nav.NavigateTo($"/modules/predictive-maintenance/alerts/{alertId}");
+    }
+
+    public void Dispose() { }
+}

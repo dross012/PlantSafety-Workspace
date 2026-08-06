@@ -1,0 +1,194 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Schedule Drill input form. Submits a CreateDrillRequest
+     via POST v1/features/safety-events/drills (DrillsApiClient.CreateDrillAsync)
+     and navigates to the new drill's detail page on success. No field-level
+     Update/Delete endpoint exists for drills — Create (schedule) only.
+     Follows the canonical Blazor UI form pattern established by
+     Modules/Financials/Pages/CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/drills/new"
+
+@inject DrillsState State
+@inject DrillsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Drills.ApiClients
+@using PlantSafety.UI.Modules.Drills.Models
+@using PlantSafety.UI.Modules.Drills.State
+
+<PageTitle>Schedule Drill — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Schedule Drill form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Schedule Drill</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="drill-title">Title</label>
+                        <InputText id="drill-title" @bind-Value="_model.Title" placeholder="e.g. Q3 Building A Fire Drill" />
+                        <ValidationMessage For="() => _model.Title" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="drill-type">Drill Type</label>
+                        <InputSelect id="drill-type" @bind-Value="_model.DrillType">
+                            <option value="">— Select —</option>
+                            @foreach (var type in DrillTypes)
+                            {
+                                <option value="@type">@type</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _model.DrillType" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="drill-site">Site ID</label>
+                        <InputText id="drill-site" @bind-Value="_siteIdText" placeholder="Site GUID" />
+                        <ValidationMessage For="() => _model.SiteId" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="drill-coordinator">Coordinator ID</label>
+                        <InputText id="drill-coordinator" @bind-Value="_coordinatorIdText" placeholder="Coordinator user GUID" />
+                        <ValidationMessage For="() => _model.CoordinatorId" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="drill-scheduled">Scheduled At (UTC)</label>
+                        <InputDate id="drill-scheduled" Type="InputDateType.DateTimeLocal" @bind-Value="_scheduledAtLocal" />
+                        <ValidationMessage For="() => _model.ScheduledAtUtc" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field" style="flex:1 1 100%;">
+                        <label class="ps-label" for="drill-description">Description</label>
+                        <InputTextArea id="drill-description" @bind-Value="_model.Description" rows="4" placeholder="Objectives and scope of this drill" />
+                        <ValidationMessage For="() => _model.Description" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Scheduling…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Schedule Drill</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToDrills" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] DrillTypes =
+        ["EvacuationDrill", "FireDrill", "MedicalEmergency", "HazMatResponse", "ActiveThreat", "TableTop", "FullScale"];
+
+    private readonly CreateDrillRequest _model = new();
+    private string _siteIdText = string.Empty;
+    private string _coordinatorIdText = string.Empty;
+    private DateTime _scheduledAtLocal = DateTime.UtcNow.AddDays(7);
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Schedule Drill",
+            activeModuleCode: "drills",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Drills & Exercises", Href = RouteDefinitions.DrillsList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+
+        var tenantSiteId = TenantCtx.Tenant?.SiteId;
+        if (tenantSiteId.HasValue)
+        {
+            _model.SiteId = tenantSiteId.Value;
+            _siteIdText = tenantSiteId.Value.ToString();
+        }
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (!Guid.TryParse(_siteIdText, out var siteId))
+        {
+            State.SetCreateError("Site ID must be a valid GUID.");
+            return;
+        }
+
+        if (!Guid.TryParse(_coordinatorIdText, out var coordinatorId))
+        {
+            State.SetCreateError("Coordinator ID must be a valid GUID.");
+            return;
+        }
+
+        _model.SiteId = siteId;
+        _model.CoordinatorId = coordinatorId;
+        _model.ScheduledAtUtc = new DateTimeOffset(DateTime.SpecifyKind(_scheduledAtLocal, DateTimeKind.Utc));
+
+        State.BeginCreate();
+
+        var envelope = await ApiClient.CreateDrillAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetCreateSuccess(envelope.Data!.DrillId);
+            Nav.NavigateTo($"{RouteDefinitions.DrillsList}/{envelope.Data!.DrillId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to schedule drill: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToDrills() => Nav.NavigateTo(RouteDefinitions.DrillsList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,280 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Generic Certification record detail page, distinct from
+     CertificationDetailPage.razor (which shows the 7 read-only per-category
+     rows). Loads the real by-id read-model endpoint
+     (GET v1/compliance/certification/{id}) and exposes the module's real
+     lifecycle commands (Verify/Renew/Expire/Close/Archive) as action
+     buttons since the aggregate has no field-level Update command. Archive
+     doubles as this module's soft-delete/retire (Delete) action, confirm-
+     gated. Adds a Print button (window.print via JS interop).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/certifications/record/{CertificationId:guid}"
+
+@inject CertificationsState State
+@inject CertificationsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Certifications.ApiClients
+@using PlantSafety.UI.Modules.Certifications.Models
+@using PlantSafety.UI.Modules.Certifications.State
+
+<PageTitle>Certification Record — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The certification record could not be displayed.">
+
+        @if (State.IsLoadingRecord)
+        {
+            <LoadingIndicatorComponent Message="Loading certification…" />
+        }
+        else if (State.RecordError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.RecordError</div>
+        }
+        else if (State.SelectedRecord is { } cert)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@cert.CertificationName</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(cert.Status)" Label="@cert.Status" />
+                </div>
+
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
+                <dl class="ps-detail-fields">
+                    <dt>Certification Body</dt>   <dd>@cert.CertificationBody</dd>
+                    <dt>Certification Number</dt> <dd>@cert.CertificationNumber</dd>
+                    <dt>Holder Worker</dt>         <dd class="ps-mono">@(cert.HolderWorkerId?.ToString() ?? "—")</dd>
+                    <dt>Issued</dt>                <dd>@cert.IssuedAtUtc.ToString("u") UTC</dd>
+                    @if (cert.ExpiresAtUtc.HasValue)
+                    {
+                        <dt>Expires</dt><dd>@cert.ExpiresAtUtc?.ToString("u") UTC</dd>
+                    }
+                    <dt>Renewal Required</dt>      <dd>@(cert.RenewalRequired ? "Yes" : "No")</dd>
+                    <dt>Site</dt>                  <dd class="ps-mono">@(cert.SiteId?.ToString() ?? "All sites")</dd>
+                    <dt>Created</dt>               <dd>@cert.CreatedAtUtc.ToString("u") UTC</dd>
+                </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (string.Equals(cert.Status, "Created", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="VerifyAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-patch-check" aria-hidden="true"></span> Verify &amp; Activate
+                        </button>
+                    }
+
+                    @if (string.Equals(cert.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="new-expires-at">New Expiry Date</label>
+                            <input id="new-expires-at" type="date" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_newExpiresAt" />
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="RenewAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> Renew
+                        </button>
+
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ExpireAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-hourglass-bottom" aria-hidden="true"></span> Mark Expired
+                        </button>
+                    }
+
+                    @if (string.Equals(cert.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> Close
+                        </button>
+                    }
+
+                    @if (string.Equals(cert.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        @if (!_confirmArchive)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = true" disabled="@State.IsBusy">
+                                <span class="bi bi-archive" aria-hidden="true"></span> Archive (Retire)
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Archiving retires this certification permanently for compliance retention. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ArchiveAsync" disabled="@State.IsBusy">Confirm Archive</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (string.Equals(cert.Status, "Archived", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <p class="ps-text-muted">This certification is archived. No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.CertificationsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Certifications
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid CertificationId { get; set; }
+
+    private DateOnly _newExpiresAt = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1));
+    private bool _confirmArchive;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Certification Record",
+            activeModuleCode: "certifications",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Certifications", Href = RouteDefinitions.CertificationsList },
+                new BreadcrumbItem { Label = "Record Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginRecordLoad();
+        var envelope = await ApiClient.GetCertificationByIdAsync(CertificationId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedRecord(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetRecordError(envelope.Problem!.Detail);
+        else
+            State.SetRecordError($"Failed to load certification: {envelope.FaultType}");
+    }
+
+    private async Task VerifyAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.VerifyCertificationAsync(CertificationId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Certification verified and activated.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task RenewAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.RenewCertificationAsync(CertificationId, new RenewCertificationRequest
+        {
+            NewExpiresAtUtc = _newExpiresAt.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Certification renewed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ExpireAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ExpireCertificationAsync(CertificationId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Certification marked expired.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.CloseCertificationAsync(CertificationId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Certification closed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ArchiveCertificationAsync(CertificationId, State.SelectedRecord?.ETag);
+        _confirmArchive = false;
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Certification archived.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" or "closed" or "archived" => "Healthy",
+        "created" or "completed" => "Warning",
+        "expired" or "revoked" or "suspended" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

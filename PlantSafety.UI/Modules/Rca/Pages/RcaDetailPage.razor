@@ -15,6 +15,7 @@
 @inject RcaApiClient ApiClient
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -79,6 +80,9 @@
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.RcaList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to RCA
                     </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
                 </div>
             </div>
         }
@@ -122,6 +126,8 @@
         else
             State.SetDetailError($"Failed to load RCA: {envelope.FaultType}");
     }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

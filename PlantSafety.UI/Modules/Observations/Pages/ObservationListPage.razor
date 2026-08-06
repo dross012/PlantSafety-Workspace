@@ -7,7 +7,13 @@
      degrades gracefully to the standard error/empty state via
      ErrorBoundaryComponent until that endpoint ships (Loading/Error/Empty/
      Ready state machine per UI Agent instructions).
-   SchemaVersion: 2026.1
+   UPDATED: 2026-08-05 — Added a "New Observation" action linking to
+     CreateObservationPage.razor (POST v1/features/safety-events/observations,
+     the real CreateObservationCommand). No server-side Search/filter surface
+     is added here — the backend genuinely has no list endpoint, so there is
+     nothing to filter yet; direct-link-by-id remains the only lookup path
+     until the list endpoint ships.
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -32,6 +38,9 @@
     <ErrorBoundaryComponent Message="The Observations list could not be displayed." OnRetry="LoadPageAsync">
 
         <div class="ps-page-actions">
+            <a href="@RouteDefinitions.ObservationCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-circle" aria-hidden="true"></span> New Observation
+            </a>
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>

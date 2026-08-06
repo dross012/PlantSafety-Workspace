@@ -216,8 +216,12 @@
         }
         else
         {
-            var failure = !health.IsSuccess ? health : !history.IsSuccess ? history : size;
-            State.SetError(failure.IsProblem ? failure.Problem!.Detail : $"Failed to load dashboard: {failure.FaultType}");
+            if (!health.IsSuccess)
+                State.SetError(health.IsProblem ? health.Problem!.Detail : $"Failed to load dashboard: {health.FaultType}");
+            else if (!history.IsSuccess)
+                State.SetError(history.IsProblem ? history.Problem!.Detail : $"Failed to load dashboard: {history.FaultType}");
+            else
+                State.SetError(size.IsProblem ? size.Problem!.Detail : $"Failed to load dashboard: {size.FaultType}");
         }
     }
 

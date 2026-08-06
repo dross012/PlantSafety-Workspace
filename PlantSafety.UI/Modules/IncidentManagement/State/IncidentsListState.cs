@@ -26,6 +26,8 @@ public sealed class IncidentsListState
     private int _totalPages;
     private string? _severityFilter;
     private string? _statusFilter;
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-90));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
     /// <summary>Gets the current page of incidents.</summary>
     public IReadOnlyList<IncidentSummaryDto> Incidents => _incidents;
@@ -50,6 +52,12 @@ public sealed class IncidentsListState
 
     /// <summary>Gets the applied status filter.</summary>
     public string? StatusFilter => _statusFilter;
+
+    /// <summary>Gets the inclusive start of the applied occurred-date range filter.</summary>
+    public DateOnly StartDate => _startDate;
+
+    /// <summary>Gets the inclusive end of the applied occurred-date range filter.</summary>
+    public DateOnly EndDate => _endDate;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -76,6 +84,9 @@ public sealed class IncidentsListState
         _statusFilter = statusFilter;
         NotifyStateChanged();
     }
+
+    /// <summary>Applies a new occurred-date range filter. Callers MUST re-fetch after calling this.</summary>
+    public void SetDateRange(DateOnly start, DateOnly end) { _startDate = start; _endDate = end; NotifyStateChanged(); }
 
     /// <summary>Records a load failure with a sanitized message.</summary>
     public void SetError(string sanitizedError) { _errorMessage = sanitizedError; _isLoading = false; NotifyStateChanged(); }

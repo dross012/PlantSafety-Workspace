@@ -28,6 +28,11 @@ public sealed class DrillsState
     private int _currentPage = 1;
     private int _totalCount;
     private int _totalPages;
+    private bool _isCreating;
+    private string? _createError;
+    private Guid? _createdDrillId;
+    private string? _statusFilter;
+    private string? _drillTypeFilter;
 
     /// <summary>Gets the current page of drill list items. Never null; empty when not loaded.</summary>
     public IReadOnlyList<DrillDto> Items => _items;
@@ -56,8 +61,41 @@ public sealed class DrillsState
     /// <summary>Gets the total number of pages.</summary>
     public int TotalPages => _totalPages;
 
+    /// <summary>Gets a value indicating whether a Create Drill request is in flight.</summary>
+    public bool IsCreating => _isCreating;
+
+    /// <summary>Gets a sanitized Create Drill error, or null.</summary>
+    public string? CreateError => _createError;
+
+    /// <summary>Gets the identifier of the most recently created drill, or null.</summary>
+    public Guid? CreatedDrillId => _createdDrillId;
+
+    /// <summary>Gets the current status filter applied to the list, or null when unfiltered.</summary>
+    public string? StatusFilter => _statusFilter;
+
+    /// <summary>Gets the current drill-type filter applied to the list, or null when unfiltered.</summary>
+    public string? DrillTypeFilter => _drillTypeFilter;
+
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
+
+    /// <summary>Updates the list's status filter.</summary>
+    public void SetStatusFilter(string? status) { _statusFilter = string.IsNullOrWhiteSpace(status) ? null : status; NotifyStateChanged(); }
+
+    /// <summary>Updates the list's drill-type filter.</summary>
+    public void SetDrillTypeFilter(string? drillType) { _drillTypeFilter = string.IsNullOrWhiteSpace(drillType) ? null : drillType; NotifyStateChanged(); }
+
+    /// <summary>Marks a Create Drill request as in flight.</summary>
+    public void BeginCreate() { _isCreating = true; _createError = null; _createdDrillId = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Create Drill request.</summary>
+    public void SetCreateSuccess(Guid drillId) { _createdDrillId = drillId; _isCreating = false; _createError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a Create Drill failure.</summary>
+    public void SetCreateError(string sanitizedError) { _createError = sanitizedError; _isCreating = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Create Drill transient state (call on navigating to the Create page).</summary>
+    public void ResetCreate() { _isCreating = false; _createError = null; _createdDrillId = null; NotifyStateChanged(); }
 
     /// <summary>Marks the list as loading.</summary>
     public void BeginListLoad() { _isLoadingList = true; _listError = null; NotifyStateChanged(); }

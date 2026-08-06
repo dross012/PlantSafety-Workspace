@@ -1,6 +1,12 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
+   UPDATED: 2026-08-05 — Wired Reassign/Escalate/Add Note/Resolve to the real
+     lifecycle command endpoints (AssignTechnicianCommand/EscalateIncidentCommand/
+     AddIncidentNoteCommand/ResolveIncidentCommand via IncidentsCanonicalV1Controller).
+     Added Edit (real UpdateIncidentCommand) and confirm-gated Delete (real
+     soft-delete DeleteIncidentCommand) plus a Print button. Wrapped content in
+     .ps-detail-card so the shared print stylesheet applies.
    FILE DESCRIPTION: Incident Detail page (Volume ID1). 3-tier layout: sticky
      header (severity/status/SLA/actions) + two-column body (Incident
      Summary/Workflow/Root Cause/Resolution left, Timeline/Notes right).
@@ -17,6 +23,7 @@
 @inject IncidentManagementApiClient ApiClient
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -41,6 +48,7 @@
         }
         else if (State.Incident is { } incident)
         {
+            <div class="ps-detail-card">
             @* Tier 1 — Incident Header Bar *@
             <div class="ps-detail-header">
                 <span class="ps-mono">@IncidentId</span>
@@ -51,17 +59,94 @@
                 </span>
             </div>
 
+            @if (State.ActionMessage is not null)
+            {
+                <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+            }
+            @if (State.ActionError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+            }
+
             <div class="ps-page-actions">
-                <button class="ps-btn ps-btn-ghost ps-btn-sm" disabled>Reassign</button>
-                <button class="ps-btn ps-btn-ghost ps-btn-sm" disabled>Escalate</button>
-                <button class="ps-btn ps-btn-ghost ps-btn-sm" disabled>Add Note</button>
-                <button class="ps-btn ps-btn-primary ps-btn-sm" disabled>Resolve Incident</button>
+                <a href="/modules/incident-management/@IncidentId/edit" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-pencil" aria-hidden="true"></span> Edit</a>
                 <a href="/modules/incident-management/@IncidentId/timeline" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-clock-history" aria-hidden="true"></span> Full Timeline</a>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="PrintAsync"><span class="bi bi-printer" aria-hidden="true"></span> Print</button>
             </div>
-            <p class="ps-needs-backend">
-                <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
-                Reassign/Escalate/Add Note/Resolve need backend wiring — no incident lifecycle command endpoint exists yet.
-            </p>
+
+            <CardComponent Title="Lifecycle Actions">
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="technician-id">Technician Id</label>
+                        <input id="technician-id" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" placeholder="GUID" @bind="_technicianIdText" />
+                    </div>
+                </div>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="AssignAsync" disabled="@State.IsBusy">
+                    <span class="bi bi-person-check" aria-hidden="true"></span> Reassign
+                </button>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="escalation-reason">Escalation Reason</label>
+                        <input id="escalation-reason" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_escalationReason" />
+                    </div>
+                </div>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="EscalateAsync" disabled="@State.IsBusy">
+                    <span class="bi bi-arrow-up-circle" aria-hidden="true"></span> Escalate
+                </button>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="note-text">Note</label>
+                        <input id="note-text" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_noteText" />
+                    </div>
+                </div>
+                <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="AddNoteAsync" disabled="@State.IsBusy">
+                    <span class="bi bi-chat-left-text" aria-hidden="true"></span> Add Note
+                </button>
+
+                @if (!incident.ClosedAtUtc.HasValue)
+                {
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="resolution-notes">Resolution Notes</label>
+                            <input id="resolution-notes" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_resolutionNotes" />
+                        </div>
+                    </div>
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ResolveAsync" disabled="@State.IsBusy">
+                        <span class="bi bi-check-circle" aria-hidden="true"></span> Resolve Incident
+                    </button>
+                }
+                else
+                {
+                    <p class="ps-text-muted">This incident is closed. Resolution is not available.</p>
+                }
+            </CardComponent>
+
+            <CardComponent Title="Delete Incident">
+                @if (!_confirmDelete)
+                {
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmDelete = true" disabled="@State.IsBusy">
+                        <span class="bi bi-trash" aria-hidden="true"></span> Delete Incident
+                    </button>
+                }
+                else
+                {
+                    <div class="ps-alert ps-alert--warning" role="alertdialog">
+                        <div class="ps-form-row">
+                            <div class="ps-field">
+                                <label class="ps-label" for="deletion-reason">Deletion Reason</label>
+                                <input id="deletion-reason" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_deletionReason" />
+                            </div>
+                        </div>
+                        This soft-deletes the incident. Are you sure?
+                        <div class="ps-form-actions">
+                            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="DeleteAsync" disabled="@State.IsBusy">Confirm Delete</button>
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmDelete = false" disabled="@State.IsBusy">Cancel</button>
+                        </div>
+                    </div>
+                }
+            </CardComponent>
 
             @* Tier 2 — Two-Column Primary Content *@
             <div style="display:flex; gap:16px; flex-wrap:wrap;">
@@ -132,6 +217,7 @@
                     <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Incidents
                 </button>
             </div>
+            </div>
         }
 
     </ErrorBoundaryComponent>
@@ -142,6 +228,13 @@
     [Parameter] public Guid IncidentId { get; set; }
 
     private static readonly string[] _timelineHeaders = ["Time", "Actor", "Type", "Description"];
+
+    private string _technicianIdText = string.Empty;
+    private string _escalationReason = string.Empty;
+    private string _noteText = string.Empty;
+    private string _resolutionNotes = string.Empty;
+    private string _deletionReason = string.Empty;
+    private bool _confirmDelete;
 
     protected override void OnInitialized()
     {
@@ -194,6 +287,131 @@
         "reported" or "open" => "Offline",
         _ => "Offline",
     };
+
+    private async Task AssignAsync()
+    {
+        if (!Guid.TryParse(_technicianIdText, out var technicianId))
+        {
+            State.SetActionError("Technician Id must be a valid GUID.");
+            return;
+        }
+
+        State.BeginAction();
+        var envelope = await ApiClient.AssignTechnicianAsync(IncidentId, technicianId);
+        if (envelope.IsSuccess)
+        {
+            State.SetIncident(envelope.Data!);
+            State.CompleteAction("Technician assigned.");
+            _technicianIdText = string.Empty;
+            await LoadTimelineAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
+    }
+
+    private async Task EscalateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_escalationReason))
+        {
+            State.SetActionError("Escalation reason is required.");
+            return;
+        }
+
+        State.BeginAction();
+        var envelope = await ApiClient.EscalateAsync(IncidentId, _escalationReason);
+        if (envelope.IsSuccess)
+        {
+            State.SetIncident(envelope.Data!);
+            State.CompleteAction("Incident escalated.");
+            _escalationReason = string.Empty;
+            await LoadTimelineAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
+    }
+
+    private async Task AddNoteAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_noteText))
+        {
+            State.SetActionError("Note text is required.");
+            return;
+        }
+
+        State.BeginAction();
+        var envelope = await ApiClient.AddNoteAsync(IncidentId, _noteText);
+        if (envelope.IsSuccess)
+        {
+            State.SetIncident(envelope.Data!);
+            State.CompleteAction("Note added.");
+            _noteText = string.Empty;
+            await LoadTimelineAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
+    }
+
+    private async Task ResolveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_resolutionNotes))
+        {
+            State.SetActionError("Resolution notes are required.");
+            return;
+        }
+
+        State.BeginAction();
+        var envelope = await ApiClient.ResolveAsync(IncidentId, _resolutionNotes);
+        if (envelope.IsSuccess)
+        {
+            State.SetIncident(envelope.Data!);
+            State.CompleteAction("Incident resolved.");
+            _resolutionNotes = string.Empty;
+            await LoadTimelineAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(envelope));
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_deletionReason))
+        {
+            State.SetActionError("Deletion reason is required.");
+            return;
+        }
+
+        State.BeginAction();
+        var request = new DeleteIncidentRequest { DeletionReason = _deletionReason, ETag = State.Incident?.ETag };
+        var envelope = await ApiClient.DeleteIncidentAsync(IncidentId, request);
+        _confirmDelete = false;
+
+        if (envelope.IsSuccess)
+        {
+            State.CompleteAction("Incident deleted.");
+            Nav.NavigateTo(RouteDefinitions.IncidentManagementList);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetActionError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetActionError($"Failed to delete incident: {envelope.FaultType}");
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

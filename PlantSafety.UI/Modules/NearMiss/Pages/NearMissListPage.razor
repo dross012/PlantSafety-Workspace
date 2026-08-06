@@ -5,7 +5,15 @@
      of near miss records via NearMissApiClient, populates NearMissState, and
      renders the grid with severity badges, status indicators, search, and
      pagination — built from the canonical Shared component library.
-   SchemaVersion: 2026.1
+   UPDATED: 2026-08-05 — Added a "New Near Miss" action linking to
+     CreateNearMissPage.razor, and wired the Potential Severity / Hazard
+     Category dropdowns plus the date range picker to the real server-side
+     filter parameters ListNearMissesQuery already supports (PotentialSeverity,
+     HazardCategory, OccurredFromUtc, OccurredToUtc), following the
+     Modules/IncidentManagement/Pages/IncidentsListPage.razor exemplar. The
+     existing client-side title/description search box is retained as a
+     supplementary in-page filter over the currently loaded page.
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -30,7 +38,31 @@
     <ErrorBoundaryComponent Message="The Near Miss list could not be displayed." OnRetry="LoadPageAsync">
 
         <div class="ps-page-actions">
+            <a href="@RouteDefinitions.NearMissCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-circle" aria-hidden="true"></span> New Near Miss
+            </a>
             <SearchBoxComponent Value="_searchText" Placeholder="Search title or description" ValueChanged="OnSearchChangedAsync" />
+            <label class="ps-field-label" for="near-miss-severity-filter">Potential Severity</label>
+            <select id="near-miss-severity-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnSeverityChangedAsync">
+                <option value="">All</option>
+                <option value="Minor">Minor</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Serious">Serious</option>
+                <option value="Critical">Critical</option>
+            </select>
+            <label class="ps-field-label" for="near-miss-hazard-filter">Hazard Category</label>
+            <select id="near-miss-hazard-filter" class="ps-btn ps-btn-ghost ps-btn-sm" @onchange="OnHazardCategoryChangedAsync">
+                <option value="">All</option>
+                <option value="Chemical">Chemical</option>
+                <option value="Mechanical">Mechanical</option>
+                <option value="Electrical">Electrical</option>
+                <option value="Ergonomic">Ergonomic</option>
+                <option value="Biological">Biological</option>
+                <option value="Radiation">Radiation</option>
+                <option value="Thermal">Thermal</option>
+                <option value="Other">Other</option>
+            </select>
+            <DateRangePickerComponent StartDate="State.StartDate" EndDate="State.EndDate" RangeChanged="OnRangeChangedAsync" />
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
@@ -116,7 +148,17 @@
     private async Task GoToPageAsync(int page)
     {
         State.BeginListLoad();
-        var envelope = await ApiClient.ListNearMissesAsync(pageNumber: page, pageSize: 25);
+
+        var occurredFromUtc = new DateTimeOffset(State.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        var occurredToUtc = new DateTimeOffset(State.EndDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc));
+
+        var envelope = await ApiClient.ListNearMissesAsync(
+            pageNumber: page,
+            pageSize: 25,
+            potentialSeverity: State.PotentialSeverityFilter,
+            hazardCategory: State.HazardCategoryFilter,
+            occurredFromUtc: occurredFromUtc,
+            occurredToUtc: occurredToUtc);
 
         if (envelope.IsSuccess)
             State.SetItems(envelope.Data!);
@@ -124,6 +166,26 @@
             State.SetListError(envelope.Problem!.Detail);
         else
             State.SetListError($"Failed to load near miss records: {envelope.FaultType}");
+    }
+
+    private async Task OnSeverityChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetFilters(string.IsNullOrWhiteSpace(value) ? null : value, State.HazardCategoryFilter);
+        await GoToPageAsync(1);
+    }
+
+    private async Task OnHazardCategoryChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        State.SetFilters(State.PotentialSeverityFilter, string.IsNullOrWhiteSpace(value) ? null : value);
+        await GoToPageAsync(1);
+    }
+
+    private async Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        State.SetDateRange(range.Start, range.End);
+        await GoToPageAsync(1);
     }
 
     public void Dispose() => State.OnChange -= StateHasChanged;

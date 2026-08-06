@@ -1,0 +1,145 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: ContinuousImprovement.RCA generic records list. Loads
+     from the real GET api/v1/continuous-improvement/rca read-model endpoint
+     (SiteId/From/To filters — genuine Search surface, unlike the Incident/
+     NearMiss-linked RCA list above which has no backend list endpoint at
+     all). Distinct, generic RCA aggregate with real Create/lifecycle
+     commands.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/rca/records"
+
+@inject RcaRecordState State
+@inject RcaApiClient ApiClient
+@inject NavigationState NavState
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Rca.ApiClients
+@using PlantSafety.UI.Modules.Rca.Models
+@using PlantSafety.UI.Modules.Rca.State
+
+<PageTitle>RCA Records — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The RCA records list could not be displayed." OnRetry="LoadAsync">
+
+        <div class="ps-page-actions">
+            <a href="@RouteDefinitions.RcaRecordCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-lg" aria-hidden="true"></span> New RCA Record
+            </a>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+            </button>
+        </div>
+
+        <SearchBoxComponent Value="_searchText" Placeholder="Search by problem statement or methodology" ValueChanged="text => _searchText = text" />
+        <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
+
+        @if (State.ListError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
+        }
+
+        @if (State.IsLoadingList)
+        {
+            <LoadingIndicatorComponent Message="Loading RCA records…" />
+        }
+        else
+        {
+            <DataGridComponent TItem="RcaRecordItemDto"
+                                Items="FilteredItems"
+                                Headers="_headers"
+                                KeySelector="r => r.RcaId"
+                                EmptyMessage="No RCA records found for the selected range."
+                                AriaLabel="RCA records">
+                <RowTemplate Context="item">
+                    <td>@item.ProblemStatement</td>
+                    <td>@item.Methodology</td>
+                    <td><StatusIndicatorComponent Status="@MapStatus(item.Status)" Label="@item.Status" /></td>
+                    <td>@item.InitiatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><a href="@RouteDefinitions.RcaRecordsList/@item.RcaId" class="ps-btn ps-btn-ghost ps-btn-sm">View</a></td>
+                </RowTemplate>
+            </DataGridComponent>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private static readonly string[] _headers = ["Problem Statement", "Methodology", "Status", "Initiated", "Actions"];
+
+    private string _searchText = string.Empty;
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    private IReadOnlyList<RcaRecordItemDto> FilteredItems =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? State.Items
+            : State.Items.Where(r =>
+                    r.ProblemStatement.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    r.Methodology.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "RCA Records",
+            activeModuleCode: "rca",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "RCA", Href = RouteDefinitions.RcaList },
+                new BreadcrumbItem { Label = "Records" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginListLoad();
+
+        var siteId = TenantCtx.Tenant?.SiteId;
+        var fromUtc = _startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var toUtc = _endDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var envelope = await ApiClient.GetRcaRecordsAsync(siteId, fromUtc, toUtc);
+
+        if (envelope.IsSuccess)
+            State.SetItems(envelope.Data!.Items);
+        else if (envelope.IsProblem)
+            State.SetListError(envelope.Problem!.Detail);
+        else
+            State.SetListError($"Failed to load RCA records: {envelope.FaultType}");
+    }
+
+    private Task OnRangeChangedAsync((DateOnly Start, DateOnly End) range)
+    {
+        _startDate = range.Start;
+        _endDate = range.End;
+        return LoadAsync();
+    }
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "closed" or "archived" => "Healthy",
+        "initiated" or "inprogress" or "pendingapproval" => "Warning",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

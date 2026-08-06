@@ -27,6 +27,10 @@ public sealed class RoiState
     private bool _backendUnavailable;
     private int _selectedFiscalYear = DateTime.UtcNow.Year;
 
+    private bool _isCalculating;
+    private string? _calculateError;
+    private Guid? _calculatedRoiId;
+
     /// <summary>Gets the currently computed ROI, or null when not loaded.</summary>
     public RoiViewModel? Roi => _roi;
 
@@ -41,6 +45,15 @@ public sealed class RoiState
 
     /// <summary>Gets the currently selected fiscal year.</summary>
     public int SelectedFiscalYear => _selectedFiscalYear;
+
+    /// <summary>Gets a value indicating whether a Calculate ROI submission is in flight.</summary>
+    public bool IsCalculating => _isCalculating;
+
+    /// <summary>Gets a sanitized Calculate ROI submission error, or null.</summary>
+    public string? CalculateError => _calculateError;
+
+    /// <summary>Gets the identifier of the most recently recorded ROI calculation, or null.</summary>
+    public Guid? CalculatedRoiId => _calculatedRoiId;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -59,6 +72,18 @@ public sealed class RoiState
 
     /// <summary>Marks the ROI endpoint as unavailable (no backend wiring yet) rather than a hard error.</summary>
     public void SetBackendUnavailable() { _backendUnavailable = true; _isLoading = false; _roi = null; NotifyStateChanged(); }
+
+    /// <summary>Marks a Calculate ROI submission as in flight.</summary>
+    public void BeginCalculate() { _isCalculating = true; _calculateError = null; _calculatedRoiId = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Calculate ROI submission.</summary>
+    public void SetCalculateSuccess(Guid roiCalculationId) { _calculatedRoiId = roiCalculationId; _isCalculating = false; _calculateError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a Calculate ROI submission failure with a sanitized message.</summary>
+    public void SetCalculateError(string sanitizedError) { _calculateError = sanitizedError; _isCalculating = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Calculate ROI submission state (e.g. when navigating to the form).</summary>
+    public void ResetCalculate() { _isCalculating = false; _calculateError = null; _calculatedRoiId = null; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

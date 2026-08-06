@@ -1,0 +1,327 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create/Manage ChecklistTemplate workspace. Submits a
+     CreateChecklistTemplateRequest via POST v1/checklists/templates
+     (ChecklistApiClient.CreateChecklistTemplateAsync ->
+     CreateChecklistTemplateCommand), then exposes the template's real
+     lifecycle actions (AddItem/Publish/Retire) inline against the known
+     TemplateId. No GetById query exists for ChecklistTemplate on the real
+     backend, so this page tracks the record purely from each command's own
+     response rather than reloading — mirroring the Admin Portal's
+     TenantProvisionPage pattern. Retire doubles as this module's soft-
+     delete/retire (Delete) action, confirm-gated. This is a distinct
+     write-side aggregate from the read-only "v1/operational/checklists"
+     list-row projection shown on ChecklistListPage.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/checklists/new"
+
+@inject ChecklistState State
+@inject ChecklistApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Checklist.ApiClients
+@using PlantSafety.UI.Modules.Checklist.Models
+@using PlantSafety.UI.Modules.Checklist.State
+
+<PageTitle>New Checklist Template — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Checklist Template workspace could not be displayed.">
+
+        @if (State.WorkspaceTemplateId is { } templateId)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">Checklist Template Created</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(State.WorkspaceStatus)" Label="@State.WorkspaceStatus" />
+                </div>
+
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
+                <dl class="ps-detail-fields">
+                    <dt>Template Id</dt>   <dd class="ps-mono">@templateId</dd>
+                    <dt>Items Added</dt>   <dd>@State.WorkspaceItemCount</dd>
+                </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (!string.Equals(State.WorkspaceStatus, "Retired", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="item-description">Item Description</label>
+                            <input id="item-description" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_itemDescription" />
+                        </div>
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="item-critical">Critical (stop-work) Item</label>
+                            <input id="item-critical" type="checkbox" @bind="_itemIsCritical" />
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="AddItemAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-plus-lg" aria-hidden="true"></span> Add Item
+                        </button>
+
+                        @if (!string.Equals(State.WorkspaceStatus, "Active", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="PublishAsync" disabled="@State.IsBusy">
+                                <span class="bi bi-send-check" aria-hidden="true"></span> Publish
+                            </button>
+                        }
+
+                        @if (!_confirmRetire)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmRetire = true" disabled="@State.IsBusy">
+                                <span class="bi bi-archive" aria-hidden="true"></span> Retire
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                <div class="ps-field-row">
+                                    <label class="ps-field-label" for="retire-reason">Retirement Reason</label>
+                                    <input id="retire-reason" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_retireReason" />
+                                </div>
+                                Retiring removes this template from active circulation. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="RetireAsync" disabled="@State.IsBusy">Confirm Retire</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmRetire = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="ps-text-muted">This template is retired. No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <a href="@RouteDefinitions.ChecklistList" class="ps-btn ps-btn-ghost">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Checklists
+                    </a>
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => State.ResetWorkspace()" disabled="@State.IsBusy">
+                        <span class="bi bi-plus-lg" aria-hidden="true"></span> Create Another Template
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="ps-detail-header">
+                <h2 class="ps-detail-title">New Checklist Template</h2>
+            </div>
+
+            @if (State.CreateError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+            }
+
+            <div class="ps-form-card">
+                <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="ps-form-error" />
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="template-title">Template Title</label>
+                            <InputText id="template-title" @bind-Value="_model.TemplateTitle" />
+                            <ValidationMessage For="() => _model.TemplateTitle" class="ps-form-error" />
+                        </div>
+
+                        <div class="ps-field">
+                            <label class="ps-label" for="category">Category</label>
+                            <InputText id="category" @bind-Value="_model.Category" placeholder="e.g. HotWork, WorkingAtHeights, Loto" />
+                            <ValidationMessage For="() => _model.Category" class="ps-form-error" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="description">Description</label>
+                            <InputTextArea id="description" @bind-Value="_model.Description" rows="4" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="item-count">Item Count</label>
+                            <InputNumber id="item-count" @bind-Value="_model.ItemCount" />
+                            <ValidationMessage For="() => _model.ItemCount" class="ps-form-error" />
+                        </div>
+
+                        <div class="ps-field">
+                            <label class="ps-label" for="regulatory-reference">Regulatory Reference (optional)</label>
+                            <InputText id="regulatory-reference" @bind-Value="_model.RegulatoryReference" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="is-mandatory">Completion Mandatory</label>
+                            <InputCheckbox id="is-mandatory" @bind-Value="_model.IsMandatory" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-actions">
+                        <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                            @if (State.IsCreating)
+                            {
+                                <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                            }
+                            else
+                            {
+                                <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create Template</text>
+                            }
+                        </button>
+                        <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateChecklistTemplateRequest _model = new();
+    private string _itemDescription = string.Empty;
+    private bool _itemIsCritical;
+    private string _retireReason = string.Empty;
+    private bool _confirmRetire;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Checklist Template",
+            activeModuleCode: "checklists",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Checklist", Href = RouteDefinitions.ChecklistList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetWorkspace();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        var envelope = await ApiClient.CreateChecklistTemplateAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetWorkspaceTemplate(envelope.Data!.ChecklistTemplateId, envelope.Data!.Status, itemCount: 0);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to create checklist template: {envelope.FaultType}");
+        }
+    }
+
+    private async Task AddItemAsync()
+    {
+        if (State.WorkspaceTemplateId is not { } templateId) return;
+
+        State.BeginAction();
+        var result = await ApiClient.AddChecklistTemplateItemAsync(templateId, new AddChecklistTemplateItemRequest
+        {
+            Description = _itemDescription,
+            IsCritical = _itemIsCritical,
+        });
+
+        if (result.IsSuccess)
+        {
+            State.IncrementWorkspaceItemCount();
+            State.CompleteAction($"Item added (sequence {result.Data!.Sequence}).");
+            _itemDescription = string.Empty;
+            _itemIsCritical = false;
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PublishAsync()
+    {
+        if (State.WorkspaceTemplateId is not { } templateId) return;
+
+        State.BeginAction();
+        var result = await ApiClient.PublishChecklistTemplateAsync(templateId);
+
+        if (result.IsSuccess)
+        {
+            State.SetWorkspaceStatus(result.Data!.Status);
+            State.CompleteAction("Template published.");
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task RetireAsync()
+    {
+        if (State.WorkspaceTemplateId is not { } templateId) return;
+
+        State.BeginAction();
+        var result = await ApiClient.RetireChecklistTemplateAsync(templateId, new RetireChecklistTemplateRequest { Reason = _retireReason });
+        _confirmRetire = false;
+
+        if (result.IsSuccess)
+        {
+            State.SetWorkspaceStatus(result.Data!.Status);
+            State.CompleteAction("Template retired.");
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
+
+    private static string MapStatus(string? status) => (status ?? string.Empty).ToLowerInvariant() switch
+    {
+        "active" => "Healthy",
+        "created" or "draft" => "Warning",
+        "retired" => "Offline",
+        _ => "Offline",
+    };
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.ChecklistList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

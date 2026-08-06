@@ -1,0 +1,270 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Generic Policy record detail page, distinct from
+     PolicyDetailPage.razor/ProcedureDetailPage.razor (which show the
+     read-only Safety Policies/SOPs projections). Loads the real by-id
+     read-model endpoint (GET v1/compliance/policy/{id}) and exposes the
+     module's real lifecycle commands (Approve/RecordAcknowledgment/
+     Supersede/Close/Archive) as action buttons since the aggregate has no
+     field-level Update command. Archive doubles as this module's
+     soft-delete/retire (Delete) action, confirm-gated. Adds a Print button
+     (window.print via JS interop).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/policies/record/{PolicyId:guid}"
+
+@inject PoliciesState State
+@inject PoliciesApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Policies.ApiClients
+@using PlantSafety.UI.Modules.Policies.Models
+@using PlantSafety.UI.Modules.Policies.State
+
+<PageTitle>Policy Record — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The policy record could not be displayed.">
+
+        @if (State.IsLoadingRecord)
+        {
+            <LoadingIndicatorComponent Message="Loading policy…" />
+        }
+        else if (State.RecordError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.RecordError</div>
+        }
+        else if (State.SelectedRecord is { } policy)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@policy.PolicyTitle <span class="ps-text-muted">v@(policy.PolicyVersion)</span></h2>
+                    <StatusIndicatorComponent Status="@MapStatus(policy.Status)" Label="@policy.Status" />
+                </div>
+
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
+                <dl class="ps-detail-fields">
+                    <dt>Category</dt>                <dd>@policy.Category</dd>
+                    <dt>Acknowledgment Required</dt> <dd>@(policy.AcknowledgmentRequired ? "Yes" : "No")</dd>
+                    <dt>Acknowledgment Count</dt>     <dd>@policy.AcknowledgmentCount</dd>
+                    <dt>Owner</dt>                    <dd class="ps-mono">@(policy.OwnerId?.ToString() ?? "—")</dd>
+                    <dt>Site</dt>                     <dd class="ps-mono">@(policy.SiteId?.ToString() ?? "All sites")</dd>
+                    @if (policy.EffectiveAtUtc.HasValue)
+                    {
+                        <dt>Effective</dt><dd>@policy.EffectiveAtUtc?.ToString("u") UTC</dd>
+                    }
+                    <dt>Created</dt>                  <dd>@policy.CreatedAtUtc.ToString("u") UTC</dd>
+                </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (string.Equals(policy.Status, "Created", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ApproveAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check2-circle" aria-hidden="true"></span> Approve &amp; Activate
+                        </button>
+                    }
+
+                    @if (string.Equals(policy.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="AcknowledgeAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-person-check" aria-hidden="true"></span> Record My Acknowledgment
+                        </button>
+
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="SupersedeAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> Supersede
+                        </button>
+                    }
+
+                    @if (string.Equals(policy.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-flag" aria-hidden="true"></span> Close
+                        </button>
+                    }
+
+                    @if (string.Equals(policy.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        @if (!_confirmArchive)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = true" disabled="@State.IsBusy">
+                                <span class="bi bi-archive" aria-hidden="true"></span> Archive (Retire)
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Archiving retires this policy permanently for compliance retention. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ArchiveAsync" disabled="@State.IsBusy">Confirm Archive</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (string.Equals(policy.Status, "Archived", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <p class="ps-text-muted">This policy is archived. No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PoliciesList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Policies &amp; Procedures
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid PolicyId { get; set; }
+
+    private bool _confirmArchive;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Policy Record",
+            activeModuleCode: "policies",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Policies & Procedures", Href = RouteDefinitions.PoliciesList },
+                new BreadcrumbItem { Label = "Record Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginRecordLoad();
+        var envelope = await ApiClient.GetPolicyRecordAsync(PolicyId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedRecord(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetRecordError(envelope.Problem!.Detail);
+        else
+            State.SetRecordError($"Failed to load policy: {envelope.FaultType}");
+    }
+
+    private async Task ApproveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ApprovePolicyRecordAsync(PolicyId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Policy approved and activated.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task AcknowledgeAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.AcknowledgePolicyRecordAsync(PolicyId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Acknowledgment recorded.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task SupersedeAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.SupersedePolicyRecordAsync(PolicyId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Policy superseded.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ClosePolicyRecordAsync(PolicyId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Policy closed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ArchivePolicyRecordAsync(PolicyId, State.SelectedRecord?.ETag);
+        _confirmArchive = false;
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Policy archived.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" or "closed" or "archived" or "completed" => "Healthy",
+        "created" => "Warning",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

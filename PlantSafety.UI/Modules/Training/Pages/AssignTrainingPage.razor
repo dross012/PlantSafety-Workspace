@@ -1,0 +1,171 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Assign Training input form. Submits an
+     AssignTrainingRequest via POST v1/features/operational/training
+     (TrainingApiClient.AssignTrainingAsync) and navigates back to the
+     Training list on success. This is a real, separate, controller-wired
+     write surface (Features/Operational/Training/Controllers/V1/
+     TrainingV1Controller.cs) distinct from the read-only Operational
+     Training list-model this module's List/Detail pages render (Operational/
+     Training/Controllers/V1/TrainingV1Controller.cs) — the same pattern
+     found in Certifications/Permits/Policies/RegulatoryCalendar in prior
+     batches. There is no field-level update or cancel/delete command for a
+     training assignment; Assign is the only reachable write operation.
+     Follows the canonical Blazor UI form pattern established by
+     Modules/Financials/Pages/CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/training/new"
+
+@inject TrainingState State
+@inject TrainingApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Training.ApiClients
+@using PlantSafety.UI.Modules.Training.Models
+@using PlantSafety.UI.Modules.Training.State
+
+<PageTitle>Assign Training — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Assign Training form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Assign Training</h2>
+        </div>
+
+        @if (State.AssignError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.AssignError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="worker-id">Worker Id</label>
+                        <InputText id="worker-id" @bind-Value="_workerIdText" placeholder="Guid of the worker being assigned" />
+                        <ValidationMessage For="() => _model.WorkerId" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="delivery-method">Delivery Method</label>
+                        <InputSelect id="delivery-method" @bind-Value="_model.DeliveryMethod">
+                            <option value="InPerson">In Person</option>
+                            <option value="Online">Online</option>
+                            <option value="OJT">On-the-Job Training (OJT)</option>
+                        </InputSelect>
+                        <ValidationMessage For="() => _model.DeliveryMethod" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="course-code">Training Course Code</label>
+                        <InputText id="course-code" @bind-Value="_model.TrainingCourseCode" maxlength="50" />
+                        <ValidationMessage For="() => _model.TrainingCourseCode" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="course-name">Training Course Name</label>
+                        <InputText id="course-name" @bind-Value="_model.TrainingCourseName" />
+                        <ValidationMessage For="() => _model.TrainingCourseName" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="due-date">Due Date</label>
+                        <InputDate id="due-date" @bind-Value="_dueDate" />
+                        <ValidationMessage For="() => _model.DueDateUtc" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsAssigning">
+                        @if (State.IsAssigning)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Assigning...</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Assign Training</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToTraining" disabled="@State.IsAssigning">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly AssignTrainingRequest _model = new();
+    private string _workerIdText = string.Empty;
+    private DateTime _dueDate = DateTime.UtcNow.Date.AddDays(30);
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Assign Training",
+            activeModuleCode: "training",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Training", Href = RouteDefinitions.TrainingList },
+                new BreadcrumbItem { Label = "Assign" }
+            ]);
+
+        State.ResetAssign();
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (!Guid.TryParse(_workerIdText, out var workerId))
+        {
+            State.SetAssignError("Worker Id must be a valid Guid.");
+            return;
+        }
+
+        _model.WorkerId = workerId;
+        _model.DueDateUtc = new DateTimeOffset(DateTime.SpecifyKind(_dueDate, DateTimeKind.Utc));
+
+        State.BeginAssign();
+
+        var envelope = await ApiClient.AssignTrainingAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetAssignSuccess(envelope.Data!.TrainingRecordId);
+            Nav.NavigateTo(RouteDefinitions.TrainingList);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetAssignError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetAssignError($"Failed to assign training: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToTraining() => Nav.NavigateTo(RouteDefinitions.TrainingList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

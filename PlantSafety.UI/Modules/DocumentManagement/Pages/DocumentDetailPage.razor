@@ -1,10 +1,16 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
+   UPDATED: 2026-08-05 — Added a Print action (window.print via JS interop).
+     The Integrations.Documents read-model has no Create/Update/Delete
+     command anywhere in the Application layer — this module is a pure
+     read-only sync projection, so no Edit/Delete actions are offered.
+     Search/filter (category + free text) already exists server-side on the
+     list page via ListDocumentsQuery.
    FILE DESCRIPTION: Document detail page. Generic detail template built
      from the canonical Shared component library (StatusIndicatorComponent,
      ErrorBoundaryComponent, LoadingIndicatorComponent).
-   SchemaVersion: 2026.1
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -16,6 +22,7 @@
 @inject TenantState TenantCtx
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -61,6 +68,9 @@
                     </button>
                     <button class="ps-btn ps-btn-primary" disabled aria-label="Download document">
                         <span class="bi bi-download" aria-hidden="true"></span> Download
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
                     </button>
                 </div>
                 <p class="ps-needs-backend">
@@ -116,6 +126,8 @@
         "error" => "Critical",
         _ => "Offline",
     };
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

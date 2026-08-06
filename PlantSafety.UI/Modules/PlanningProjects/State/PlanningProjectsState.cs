@@ -41,6 +41,14 @@ public sealed class PlanningProjectsState
     private string? _detailError;
     private DateTime _lastRefreshUtc;
 
+    private bool _isCreatingProject;
+    private string? _createProjectError;
+    private Guid? _createdProjectId;
+
+    private bool _isAddingMilestone;
+    private string? _addMilestoneError;
+    private bool _milestoneAdded;
+
     /// <summary>Gets the current snapshot of project cards. Never null; empty when not loaded.</summary>
     public IReadOnlyList<ProjectCardViewModel> Projects => _projects;
 
@@ -67,6 +75,24 @@ public sealed class PlanningProjectsState
 
     /// <summary>Gets the UTC timestamp of the last successful list refresh.</summary>
     public DateTime LastRefreshUtc => _lastRefreshUtc;
+
+    /// <summary>Gets a value indicating whether a Create Project submission is in flight.</summary>
+    public bool IsCreatingProject => _isCreatingProject;
+
+    /// <summary>Gets a sanitized Create Project submission error, or null.</summary>
+    public string? CreateProjectError => _createProjectError;
+
+    /// <summary>Gets the identifier of the most recently created project, or null.</summary>
+    public Guid? CreatedProjectId => _createdProjectId;
+
+    /// <summary>Gets a value indicating whether an Add Milestone submission is in flight.</summary>
+    public bool IsAddingMilestone => _isAddingMilestone;
+
+    /// <summary>Gets a sanitized Add Milestone submission error, or null.</summary>
+    public string? AddMilestoneError => _addMilestoneError;
+
+    /// <summary>Gets a value indicating whether the most recent Add Milestone submission succeeded.</summary>
+    public bool MilestoneAdded => _milestoneAdded;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -189,6 +215,30 @@ public sealed class PlanningProjectsState
 
     /// <summary>Clears the selected project (e.g. when navigating away from the detail page).</summary>
     public void ClearSelection() { _selectedProject = null; _detailTimelineItems = []; NotifyStateChanged(); }
+
+    /// <summary>Marks a Create Project submission as in flight.</summary>
+    public void BeginCreateProject() { _isCreatingProject = true; _createProjectError = null; _createdProjectId = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Create Project submission.</summary>
+    public void SetCreateProjectSuccess(Guid projectId) { _createdProjectId = projectId; _isCreatingProject = false; _createProjectError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a Create Project submission failure with a sanitized message.</summary>
+    public void SetCreateProjectError(string sanitizedError) { _createProjectError = sanitizedError; _isCreatingProject = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Create Project submission state (e.g. when navigating to the form).</summary>
+    public void ResetCreateProject() { _isCreatingProject = false; _createProjectError = null; _createdProjectId = null; NotifyStateChanged(); }
+
+    /// <summary>Marks an Add Milestone submission as in flight.</summary>
+    public void BeginAddMilestone() { _isAddingMilestone = true; _addMilestoneError = null; _milestoneAdded = false; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Add Milestone submission.</summary>
+    public void SetAddMilestoneSuccess() { _milestoneAdded = true; _isAddingMilestone = false; _addMilestoneError = null; NotifyStateChanged(); }
+
+    /// <summary>Records an Add Milestone submission failure with a sanitized message.</summary>
+    public void SetAddMilestoneError(string sanitizedError) { _addMilestoneError = sanitizedError; _isAddingMilestone = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Add Milestone submission state (e.g. when navigating to the form).</summary>
+    public void ResetAddMilestone() { _isAddingMilestone = false; _addMilestoneError = null; _milestoneAdded = false; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

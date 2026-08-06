@@ -43,6 +43,18 @@
         <DateRangePickerComponent StartDate="_startDate" EndDate="_endDate" RangeChanged="OnRangeChangedAsync" />
         <SearchBoxComponent Value="_searchText" Placeholder="Search by name, badge, or department" ValueChanged="OnSearchChangedAsync" />
 
+        <div class="ps-field-row">
+            <label class="ps-field-label" for="site-id-filter">Site Id (optional)</label>
+            <input id="site-id-filter" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_siteIdText" @bind:event="oninput" placeholder="Leave blank for all sites" />
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ApplySiteFilterAsync" disabled="@State.IsLoadingList">
+                <span class="bi bi-funnel" aria-hidden="true"></span> Apply Site Filter
+            </button>
+        </div>
+        @if (_siteIdError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_siteIdError</div>
+        }
+
         @if (State.ListError is not null)
         {
             <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
@@ -87,6 +99,9 @@
     private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow);
     private string _searchText = string.Empty;
     private int _currentPage = 1;
+    private string _siteIdText = string.Empty;
+    private Guid? _siteIdFilter;
+    private string? _siteIdError;
 
     private IReadOnlyList<EmployeeItemDto> FilteredItems =>
         string.IsNullOrWhiteSpace(_searchText)
@@ -128,7 +143,7 @@
         State.BeginListLoad();
         var envelope = await ApiClient.GetEmployeesAsync(
             ResolveTenantId(),
-            siteId: null,
+            siteId: _siteIdFilter,
             from: _startDate.ToDateTime(TimeOnly.MinValue),
             to: _endDate.ToDateTime(TimeOnly.MaxValue));
 
@@ -161,6 +176,28 @@
     {
         _currentPage = page;
         return Task.CompletedTask;
+    }
+
+    private Task ApplySiteFilterAsync()
+    {
+        _siteIdError = null;
+
+        if (string.IsNullOrWhiteSpace(_siteIdText))
+        {
+            _siteIdFilter = null;
+        }
+        else if (Guid.TryParse(_siteIdText, out var siteId))
+        {
+            _siteIdFilter = siteId;
+        }
+        else
+        {
+            _siteIdError = "Site Id must be a valid Guid, or left blank.";
+            return Task.CompletedTask;
+        }
+
+        _currentPage = 1;
+        return LoadAsync();
     }
 
     /// <summary>Maps an employment status to the closest StatusIndicatorComponent operational state.</summary>

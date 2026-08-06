@@ -1,0 +1,219 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create Safety Program input form. Submits a
+     CreateSafetyProgramRequest via POST v1/safety-programs
+     (SafetyProgramsApiClient.CreateProgramAsync) and navigates to the new
+     program's detail page on success. There is no field-level update
+     command for a safety program -- only Create and the lifecycle status
+     transition surface (see SafetyProgramDetailPage). Follows the canonical
+     Blazor UI form pattern established by
+     Modules/Financials/Pages/CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution -- see Enterprise Architectural Rule Handbook Section XI
+   ============================================================ *@
+
+@page "/modules/safety-programs/new"
+
+@inject SafetyProgramsState State
+@inject SafetyProgramsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject UserSessionState UserSession
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.SafetyPrograms.ApiClients
+@using PlantSafety.UI.Modules.SafetyPrograms.Models
+@using PlantSafety.UI.Modules.SafetyPrograms.State
+
+<PageTitle>New Safety Program - PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Safety Program form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Safety Program</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="name">Name</label>
+                        <InputText id="name" @bind-Value="_model.Name" />
+                        <ValidationMessage For="() => _model.Name" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="category">Category</label>
+                        <InputSelect id="category" @bind-Value="_model.Category">
+                            <option value="Training">Training</option>
+                            <option value="Behavioral">Behavioral</option>
+                            <option value="Compliance">Compliance</option>
+                            <option value="Recognition">Recognition</option>
+                        </InputSelect>
+                        <ValidationMessage For="() => _model.Category" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="owner-id">Owner Id</label>
+                        <InputText id="owner-id" @bind-Value="_ownerIdText" placeholder="Guid of the accountable program owner" />
+                        <ValidationMessage For="() => _model.OwnerId" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="site-id">Site Id (optional)</label>
+                        <InputText id="site-id" @bind-Value="_siteIdText" placeholder="Leave blank for tenant-wide" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="start-date">Start Date</label>
+                        <InputDate id="start-date" @bind-Value="_startDate" />
+                        <ValidationMessage For="() => _model.StartDate" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="end-date">End Date (optional)</label>
+                        <InputDate id="end-date" @bind-Value="_endDate" />
+                        @if (_endDateError is not null)
+                        {
+                            <span class="ps-form-error">@_endDateError</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="ps-field">
+                    <label class="ps-label" for="description">Description</label>
+                    <textarea id="description" rows="3" @bind="_model.Description"></textarea>
+                </div>
+
+                <div class="ps-field">
+                    <label class="ps-label" for="goals">Goals / Objectives (one per line, optional)</label>
+                    <textarea id="goals" rows="4" @bind="_model.GoalsText"></textarea>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating...</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create Program</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToPrograms" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateSafetyProgramRequest _model = new();
+    private string _ownerIdText = string.Empty;
+    private string _siteIdText = string.Empty;
+    private string? _endDateError;
+
+    private DateTime _startDate = DateTime.UtcNow.Date;
+    private DateTime? _endDate;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Safety Program",
+            activeModuleCode: "safety-programs",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Safety Programs", Href = RouteDefinitions.SafetyProgramsList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+        if (TenantCtx.Tenant?.SiteId is { } tenantSiteId)
+            _siteIdText = tenantSiteId.ToString();
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _endDateError = null;
+
+        if (!Guid.TryParse(_ownerIdText, out var ownerId))
+        {
+            State.SetCreateError("Owner Id must be a valid Guid.");
+            return;
+        }
+
+        _model.OwnerId = ownerId;
+        _model.StartDate = DateOnly.FromDateTime(_startDate);
+        _model.EndDate = _endDate.HasValue ? DateOnly.FromDateTime(_endDate.Value) : null;
+
+        if (_model.EndDate.HasValue && _model.EndDate.Value < _model.StartDate)
+        {
+            _endDateError = "EndDate must not precede StartDate.";
+            return;
+        }
+
+        _model.Goals = string.IsNullOrWhiteSpace(_model.GoalsText)
+            ? null
+            : _model.GoalsText
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+
+        _model.SiteId = null;
+        if (!string.IsNullOrWhiteSpace(_siteIdText))
+        {
+            if (!Guid.TryParse(_siteIdText, out var siteId))
+            {
+                State.SetCreateError("Site Id must be a valid Guid, or left blank.");
+                return;
+            }
+            _model.SiteId = siteId;
+        }
+
+        State.BeginCreate();
+
+        var envelope = await ApiClient.CreateProgramAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetCreateSuccess(envelope.Data!.SafetyProgramId);
+            Nav.NavigateTo($"{RouteDefinitions.SafetyProgramsList}/{envelope.Data!.SafetyProgramId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to create safety program: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToPrograms() => Nav.NavigateTo(RouteDefinitions.SafetyProgramsList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -25,9 +25,23 @@ public sealed class ExportsState
     private string? _loadError;
     private DateOnly _rangeStart = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-90));
     private DateOnly _rangeEnd = DateOnly.FromDateTime(DateTime.UtcNow);
+    private string _searchText = string.Empty;
 
-    /// <summary>Gets the currently loaded export runs. Never null; empty when not loaded.</summary>
-    public IReadOnlyList<ExportItemDto> Runs => _runs;
+    /// <summary>Gets all currently loaded export runs, unfiltered. Never null; empty when not loaded.</summary>
+    public IReadOnlyList<ExportItemDto> AllRuns => _runs;
+
+    /// <summary>Gets the current client-side search text (matched against TargetSystem/ExportType/Status).</summary>
+    public string SearchText => _searchText;
+
+    /// <summary>Gets the currently loaded export runs matching the current search text (case-insensitive, client-side).</summary>
+    public IReadOnlyList<ExportItemDto> Runs =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? _runs
+            : _runs.Where(r =>
+                    r.TargetSystem.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    r.ExportType.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    r.Status.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
     /// <summary>Gets the currently selected export run for the detail view, or null.</summary>
     public ExportItemDto? Selected => _selected;
@@ -66,6 +80,10 @@ public sealed class ExportsState
     /// <summary>Records a load failure with a sanitized message.</summary>
     /// <param name="sanitizedError">Safe error message.</param>
     public void SetLoadError(string sanitizedError) { _loadError = sanitizedError; _isLoading = false; NotifyStateChanged(); }
+
+    /// <summary>Updates the client-side search filter (matched against TargetSystem/ExportType/Status).</summary>
+    /// <param name="text">The new search text.</param>
+    public void SetSearchText(string text) { _searchText = text ?? string.Empty; NotifyStateChanged(); }
 
     /// <summary>Selects an export run by identifier from the currently loaded set, if present.</summary>
     /// <param name="exportRunId">The export run identifier to select.</param>

@@ -1,10 +1,15 @@
 ﻿@* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
+   UPDATED: 2026-08-05 — Added a client-side search box (matched against
+     RiskLevel/Status/WorkstationId — the backend GetErgonomicsQuery has no
+     free-text filter parameter, so filtering happens client-side over the
+     already-loaded date-range window, same pattern as EquipmentSafety/
+     ContractorManagement).
    FILE DESCRIPTION: Ergonomics list page. KPI risk-level summary +
      date-range-filterable, client-paginated grid, backed by the real
      GET /v1/operational/ergonomics read-model endpoint.
-   SchemaVersion: 2026.1
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -42,6 +47,8 @@
             <CardComponent Title="Medium Risk" Subtitle="@State.MediumRiskCount.ToString()" />
             <CardComponent Title="Low Risk" Subtitle="@State.LowRiskCount.ToString()" />
         </div>
+
+        <SearchBoxComponent Value="State.SearchText" Placeholder="Search by risk level, status, or workstation" ValueChanged="OnSearchChangedAsync" />
 
         @if (State.Error is not null)
         {
@@ -119,6 +126,13 @@
         _startDate = range.Start;
         _endDate = range.End;
         return LoadAsync();
+    }
+
+    private Task OnSearchChangedAsync(string text)
+    {
+        State.SetSearchText(text);
+        _currentPage = 1;
+        return Task.CompletedTask;
     }
 
     private async Task LoadAsync()

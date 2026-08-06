@@ -92,5 +92,27 @@ public sealed class RcaState
     /// <summary>Clears the selected RCA.</summary>
     public void ClearSelection() { _selected = null; NotifyStateChanged(); }
 
+    // ============================================================
+    // Features.SafetyEvents.RootCauseAnalysis Create surface state.
+    // ============================================================
+
+    private bool _isCreating;
+    private string? _createError;
+
+    /// <summary>Gets a value indicating whether a create operation is in flight.</summary>
+    public bool IsCreating => _isCreating;
+
+    /// <summary>Gets the last create operation's error message, or null.</summary>
+    public string? CreateError => _createError;
+
+    /// <summary>Marks a create operation as in flight.</summary>
+    public void BeginCreate() { _isCreating = true; _createError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a failed create operation with a sanitized message.</summary>
+    public void SetCreateError(string sanitizedError) { _isCreating = false; _createError = sanitizedError; NotifyStateChanged(); }
+
+    /// <summary>Resets create-form state.</summary>
+    public void ResetCreate() { _isCreating = false; _createError = null; NotifyStateChanged(); }
+
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

@@ -12,6 +12,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlantSafety.UI.Modules.MOC.Models;
 
@@ -145,4 +146,50 @@ public sealed class MocRiskAssessmentsResponseDto
 
     /// <summary>Gets the matching risk assessment items. Never null; empty when no results.</summary>
     public IReadOnlyList<MocRiskAssessmentItemDto> Items { get; init; } = [];
+}
+
+/// <summary>
+/// Request body for initiating a new Management of Change request. Mirrors
+/// PlantSafety.Api.Features.Compliance.ManagementOfChange.Contracts.Requests.CreateMocRequest,
+/// with DataAnnotations mirroring CreateMocCommandValidator's rules. Backed by
+/// POST v1/features/compliance/management-of-change. Note: this Create endpoint
+/// lives in a different bounded context (Features/Compliance/ManagementOfChange)
+/// than the MOCWorkflows/Approvals/RiskAssessments read models the MOC list/detail
+/// pages display — there is no guaranteed GetById linking the two, so submission
+/// returns to the MOC list rather than a specific detail record.
+/// </summary>
+public sealed class CreateMocRequest
+{
+    /// <summary>Site where the change is proposed.</summary>
+    [Required(ErrorMessage = "Site is required.")]
+    public Guid? SiteId { get; set; }
+
+    /// <summary>Title. Max 200 characters.</summary>
+    [Required(ErrorMessage = "Title is required.")]
+    [StringLength(200, ErrorMessage = "Title must be 200 characters or fewer.")]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Description of the change. Max 4000 characters.</summary>
+    [Required(ErrorMessage = "Description is required.")]
+    [StringLength(4000, ErrorMessage = "Description must be 4000 characters or fewer.")]
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>Change type (Permanent, Temporary, Emergency).</summary>
+    [Required(ErrorMessage = "Change type is required.")]
+    public string ChangeType { get; set; } = "Permanent";
+
+    /// <summary>Risk level (Low, Medium, High, Critical).</summary>
+    [Required(ErrorMessage = "Risk level is required.")]
+    public string RiskLevel { get; set; } = "Low";
+
+    /// <summary>Initiator worker identifier.</summary>
+    [Required(ErrorMessage = "Initiator is required.")]
+    public Guid? InitiatorId { get; set; }
+
+    /// <summary>Proposed start timestamp for the change.</summary>
+    [Required(ErrorMessage = "Proposed start date is required.")]
+    public DateTimeOffset? ProposedStartUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Proposed end timestamp for the change, if known.</summary>
+    public DateTimeOffset? ProposedEndUtc { get; set; }
 }

@@ -1,12 +1,14 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
-   FILE DESCRIPTION: Audit detail page. The ComplianceAudit read-model has no
-     per-id endpoint, so this page first looks for the record already loaded
-     into AuditingState by the list page; on a deep link (list not yet
-     loaded) it falls back to a widened date-range query and locates the
-     record client-side. Built from the canonical Shared component library
-     (ErrorBoundaryComponent, LoadingIndicatorComponent, StatusIndicatorComponent).
+   UPDATED: 2026-08-05 — Now loads the real by-id read-model endpoint
+     (GET v1/compliance/auditing/{id}) rather than a client-side lookup
+     with a widened-range fallback, and exposes the module's real lifecycle
+     commands (Start/RecordFindings/Close/Archive) as action buttons since
+     the aggregate has no field-level Update command. Archive doubles as
+     this module's soft-delete/retire (Delete) action, confirm-gated. Adds
+     a Print button (window.print via JS interop).
+   FILE DESCRIPTION: Audit detail page.
    SchemaVersion: 2026.1
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
@@ -16,13 +18,13 @@
 @inject AuditingState State
 @inject AuditingApiClient ApiClient
 @inject NavigationState NavState
-@inject TenantState TenantCtx
-@inject UserSessionState UserSession
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
 @using PlantSafety.UI.Modules.Auditing.ApiClients
+@using PlantSafety.UI.Modules.Auditing.Models
 @using PlantSafety.UI.Modules.Auditing.State
 
 <PageTitle>Audit Detail — PlantSafety</PageTitle>
@@ -39,19 +41,110 @@
         {
             <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
         }
-        else if (State.SelectedItem is { } audit)
+        else if (State.SelectedRecord is { } audit)
         {
             <div class="ps-detail-card">
                 <div class="ps-detail-header">
-                    <h2 class="ps-detail-title">@audit.AuditType</h2>
+                    <h2 class="ps-detail-title">@audit.AuditTitle</h2>
                     <StatusIndicatorComponent Status="@MapStatus(audit.Status)" Label="@audit.Status" />
                 </div>
 
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
                 <dl class="ps-detail-fields">
-                    <dt>Conducted</dt>     <dd>@audit.ConductedAtUtc.ToString("u") UTC</dd>
-                    <dt>Conducted By</dt>  <dd class="ps-mono">@audit.ConductedBy</dd>
+                    <dt>Audit Type</dt>    <dd>@audit.AuditType</dd>
+                    <dt>Scope</dt>         <dd>@audit.Scope</dd>
+                    <dt>Auditor</dt>       <dd class="ps-mono">@audit.AuditorId</dd>
+                    @if (audit.ScheduledAtUtc.HasValue)
+                    {
+                        <dt>Scheduled</dt><dd>@audit.ScheduledAtUtc?.ToString("u") UTC</dd>
+                    }
+                    @if (audit.CompletedAtUtc.HasValue)
+                    {
+                        <dt>Completed</dt><dd>@audit.CompletedAtUtc?.ToString("u") UTC</dd>
+                    }
+                    <dt>Findings Count</dt><dd>@audit.FindingsCount</dd>
+                    @if (audit.Score.HasValue)
+                    {
+                        <dt>Score</dt><dd>@audit.Score</dd>
+                    }
+                    <dt>Compliance Rating</dt><dd>@audit.ComplianceRating</dd>
                     <dt>Site</dt>          <dd class="ps-mono">@(audit.SiteId?.ToString() ?? "All sites")</dd>
+                    <dt>Created</dt>       <dd>@audit.CreatedAtUtc.ToString("u") UTC</dd>
                 </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (string.Equals(audit.Status, "Created", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="StartAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-play-circle" aria-hidden="true"></span> Start Audit
+                        </button>
+                    }
+
+                    @if (string.Equals(audit.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="findings-count">Findings Count</label>
+                            <input id="findings-count" type="number" min="0" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_findingsCount" />
+                        </div>
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="score">Score (0-100, optional)</label>
+                            <input id="score" type="number" min="0" max="100" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_score" />
+                        </div>
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="compliance-rating">Compliance Rating</label>
+                            <select id="compliance-rating" class="ps-btn ps-btn-ghost ps-btn-sm" @bind="_complianceRating">
+                                <option value="NotRated">Not Rated</option>
+                                <option value="FullyCompliant">Fully Compliant</option>
+                                <option value="SubstantiallyCompliant">Substantially Compliant</option>
+                                <option value="PartiallyCompliant">Partially Compliant</option>
+                                <option value="NonCompliant">Non-Compliant</option>
+                            </select>
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="RecordFindingsAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-clipboard-check" aria-hidden="true"></span> Record Findings &amp; Complete
+                        </button>
+                    }
+
+                    @if (string.Equals(audit.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> Close Audit
+                        </button>
+                    }
+
+                    @if (string.Equals(audit.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        @if (!_confirmArchive)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = true" disabled="@State.IsBusy">
+                                <span class="bi bi-archive" aria-hidden="true"></span> Archive (Retire)
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Archiving retires this audit permanently for compliance retention. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ArchiveAsync" disabled="@State.IsBusy">Confirm Archive</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (string.Equals(audit.Status, "Archived", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <p class="ps-text-muted">This audit is archived. No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
 
                 <div class="ps-detail-actions">
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.AuditingList)">
@@ -63,6 +156,9 @@
                     <a href="@RouteDefinitions.AuditReports" class="ps-btn ps-btn-ghost">
                         <span class="bi bi-file-earmark-text" aria-hidden="true"></span> Audit Reports
                     </a>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
                 </div>
             </div>
         }
@@ -73,6 +169,11 @@
 
 @code {
     [Parameter] public Guid AuditingId { get; set; }
+
+    private int _findingsCount;
+    private decimal? _score;
+    private string _complianceRating = "NotRated";
+    private bool _confirmArchive;
 
     protected override void OnInitialized()
     {
@@ -92,46 +193,99 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+        await LoadAsync();
+    }
 
-        var existing = State.Items.FirstOrDefault(a => a.AuditingId == AuditingId);
-        if (existing is not null)
-        {
-            State.SetSelectedItem(existing);
-            return;
-        }
-
+    private async Task LoadAsync()
+    {
         State.BeginDetailLoad();
-        var envelope = await ApiClient.GetAuditsAsync(
-            ResolveTenantId(),
-            siteId: null,
-            from: DateTime.UtcNow.AddYears(-10),
-            to: DateTime.UtcNow);
+        var envelope = await ApiClient.GetAuditingByIdAsync(AuditingId);
 
-        if (envelope.IsSuccess && envelope.Data is { Success: true, Data: not null })
-        {
-            var match = envelope.Data.Data.Items.FirstOrDefault(a => a.AuditingId == AuditingId);
-            if (match is not null)
-                State.SetSelectedItem(match);
-            else
-                State.SetDetailError("Audit not found.");
-        }
+        if (envelope.IsSuccess)
+            State.SetSelectedRecord(envelope.Data!);
         else if (envelope.IsProblem)
-        {
             State.SetDetailError(envelope.Problem!.Detail);
+        else
+            State.SetDetailError($"Failed to load audit: {envelope.FaultType}");
+    }
+
+    private async Task StartAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.StartAuditingAsync(AuditingId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Audit started.");
+            await LoadAsync();
         }
         else
         {
-            State.SetDetailError($"Failed to load audit: {envelope.FaultType}");
+            State.SetActionError(DescribeFailure(result));
         }
     }
 
-    private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+    private async Task RecordFindingsAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.RecordAuditingFindingsAsync(AuditingId, new RecordAuditingFindingsRequest
+        {
+            FindingsCount = _findingsCount,
+            Score = _score,
+            ComplianceRating = _complianceRating,
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Findings recorded; audit completed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.CloseAuditingAsync(AuditingId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Audit closed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ArchiveAuditingAsync(AuditingId, State.SelectedRecord?.ETag);
+        _confirmArchive = false;
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Audit archived.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
 
     /// <summary>Maps an audit lifecycle status to the closest StatusIndicatorComponent operational state.</summary>
     private static string MapStatus(string status) => status.ToLowerInvariant() switch
     {
-        "closed" or "passed" or "complete" or "completed" => "Healthy",
-        "inprogress" or "in progress" or "scheduled" => "Warning",
+        "closed" or "archived" or "completed" => "Healthy",
+        "active" or "created" => "Warning",
         "failed" or "overdue" or "nonconformance" => "Critical",
         _ => "Offline",
     };

@@ -35,6 +35,9 @@
     <ErrorBoundaryComponent Message="The Project Budgeting dashboard could not be displayed." OnRetry="LoadAsync">
 
         <div class="ps-page-actions">
+            <a href="@RouteDefinitions.PlanningProjectsCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-circle" aria-hidden="true"></span> New Plan
+            </a>
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>

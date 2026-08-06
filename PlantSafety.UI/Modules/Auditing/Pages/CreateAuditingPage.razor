@@ -1,0 +1,165 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create Audit input form. Submits a CreateAuditingRequest
+     via POST v1/compliance/auditing (AuditingApiClient.CreateAuditingAsync
+     -> CreateAuditingCommand) and navigates to the new audit's detail page
+     on success. No field-level update endpoint exists — lifecycle
+     transitions (Start/RecordFindings/Close/Archive) are exposed as action
+     buttons on the detail page instead. Follows the canonical Blazor UI
+     form pattern established in CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/auditing/new"
+
+@inject AuditingState State
+@inject AuditingApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Auditing.ApiClients
+@using PlantSafety.UI.Modules.Auditing.Models
+@using PlantSafety.UI.Modules.Auditing.State
+
+<PageTitle>New Audit — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Audit form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Audit</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="audit-title">Audit Title</label>
+                        <InputText id="audit-title" @bind-Value="_model.AuditTitle" />
+                        <ValidationMessage For="() => _model.AuditTitle" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="audit-type">Audit Type</label>
+                        <select id="audit-type" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_model.AuditType">
+                            <option value="Internal">Internal</option>
+                            <option value="External">External</option>
+                            <option value="Regulatory">Regulatory</option>
+                            <option value="Supplier">Supplier</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="scope">Scope</label>
+                        <InputTextArea id="scope" @bind-Value="_model.Scope" rows="4" />
+                        <ValidationMessage For="() => _model.Scope" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="auditor-id">Auditor Id</label>
+                        <InputText id="auditor-id" @bind-Value="_auditorIdText" placeholder="GUID" />
+                        <ValidationMessage For="() => _model.AuditorId" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="scheduled-at">Scheduled Date (optional)</label>
+                        <InputDate id="scheduled-at" @bind-Value="_scheduledAt" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create Audit</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateAuditingRequest _model = new();
+    private string _auditorIdText = string.Empty;
+    private DateTime? _scheduledAt;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Audit",
+            activeModuleCode: "auditing",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Auditing", Href = RouteDefinitions.AuditingList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        if (!Guid.TryParse(_auditorIdText, out var auditorId))
+        {
+            State.SetCreateError("Auditor Id must be a valid GUID.");
+            return;
+        }
+
+        _model.AuditorId = auditorId;
+        _model.ScheduledAtUtc = _scheduledAt.HasValue ? DateTime.SpecifyKind(_scheduledAt.Value, DateTimeKind.Utc) : null;
+
+        var envelope = await ApiClient.CreateAuditingAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"{RouteDefinitions.AuditingList}/{envelope.Data!.AuditingId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to create audit: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.AuditingList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

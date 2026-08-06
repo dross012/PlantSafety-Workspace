@@ -1,6 +1,11 @@
 // ============================================================
 // AUTHOR: PlantSafety Platform
 // CREATED: 2026-06-17
+// UPDATED: 2026-08-05 — List now holds AlertDto rows (matching the real
+//   GET v1/alerts/history payload) instead of the fabricated
+//   AlertListItemDto shape. Added busy/message/error state for the module's
+//   real lifecycle write actions (Trigger/Dispatch/Escalate/Resolve/Close)
+//   alongside the existing Acknowledge.
 // FILE DESCRIPTION: Singleton state container for the Alerts module. Holds the
 //   current paginated alert list, the selected alert, and loading/error state.
 //   Components never call HttpClient directly — they dispatch to this state
@@ -22,7 +27,7 @@ namespace PlantSafety.UI.Modules.Alerts.State;
 /// </summary>
 public sealed class AlertsState
 {
-    private IReadOnlyList<AlertListItemDto> _alerts = [];
+    private IReadOnlyList<AlertDto> _alerts = [];
     private AlertDto? _selectedAlert;
     private bool _isLoadingList;
     private bool _isLoadingDetail;
@@ -32,8 +37,14 @@ public sealed class AlertsState
     private int _totalCount;
     private int _totalPages;
 
+    private bool _isBusy;
+    private string? _actionMessage;
+    private string? _actionError;
+    private bool _isCreating;
+    private string? _createError;
+
     /// <summary>Gets the current page of alert list items. Never null; empty when not loaded.</summary>
-    public IReadOnlyList<AlertListItemDto> Alerts => _alerts;
+    public IReadOnlyList<AlertDto> Alerts => _alerts;
 
     /// <summary>Gets the currently selected alert detail, or null when none is selected.</summary>
     public AlertDto? SelectedAlert => _selectedAlert;
@@ -59,6 +70,21 @@ public sealed class AlertsState
     /// <summary>Gets the total number of pages.</summary>
     public int TotalPages => _totalPages;
 
+    /// <summary>Gets a value indicating whether a lifecycle action is in flight.</summary>
+    public bool IsBusy => _isBusy;
+
+    /// <summary>Gets the last lifecycle action's informational message, or null.</summary>
+    public string? ActionMessage => _actionMessage;
+
+    /// <summary>Gets the last lifecycle action's error message, or null.</summary>
+    public string? ActionError => _actionError;
+
+    /// <summary>Gets a value indicating whether a create (Trigger) operation is in flight.</summary>
+    public bool IsCreating => _isCreating;
+
+    /// <summary>Gets the last create operation's error message, or null.</summary>
+    public string? CreateError => _createError;
+
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
 
@@ -67,7 +93,7 @@ public sealed class AlertsState
 
     /// <summary>Applies a freshly loaded page of alerts.</summary>
     /// <param name="page">The paginated response from the API.</param>
-    public void SetAlerts(PaginatedResponseDto<AlertListItemDto> page)
+    public void SetAlerts(PaginatedResponseDto<AlertDto> page)
     {
         _alerts = page.Items;
         _currentPage = page.PageNumber;
@@ -95,6 +121,24 @@ public sealed class AlertsState
 
     /// <summary>Clears the selected alert.</summary>
     public void ClearSelection() { _selectedAlert = null; NotifyStateChanged(); }
+
+    /// <summary>Marks a lifecycle action as in flight.</summary>
+    public void BeginAction() { _isBusy = true; _actionError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful lifecycle action's informational message.</summary>
+    public void CompleteAction(string message) { _isBusy = false; _actionMessage = message; _actionError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a failed lifecycle action with a sanitized message.</summary>
+    public void SetActionError(string sanitizedError) { _isBusy = false; _actionError = sanitizedError; NotifyStateChanged(); }
+
+    /// <summary>Marks a create (Trigger) operation as in flight.</summary>
+    public void BeginCreate() { _isCreating = true; _createError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a failed create operation with a sanitized message.</summary>
+    public void SetCreateError(string sanitizedError) { _isCreating = false; _createError = sanitizedError; NotifyStateChanged(); }
+
+    /// <summary>Resets create-form state.</summary>
+    public void ResetCreate() { _isCreating = false; _createError = null; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

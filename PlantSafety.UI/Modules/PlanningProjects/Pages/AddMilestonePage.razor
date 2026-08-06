@@ -1,0 +1,129 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Add Milestone input form — the "Milestones" scheduling
+     checkpoint data-entry surface for an existing Planning Project. Submits
+     an AddProjectMilestoneRequest via
+     POST v1/planning-projects/projects/{projectId}/milestones
+     (PlanningProjectsApiClient.AddMilestoneAsync) and navigates back to the
+     project detail page on success. Follows the canonical Blazor UI form
+     pattern established by CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/planning-projects/{ProjectId:guid}/milestones/new"
+
+@inject PlanningProjectsState State
+@inject PlanningProjectsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PlanningProjects.ApiClients
+@using PlantSafety.UI.Modules.PlanningProjects.Models
+@using PlantSafety.UI.Modules.PlanningProjects.State
+
+<PageTitle>Add Milestone — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Add Milestone form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Add Milestone</h2>
+        </div>
+
+        @if (State.AddMilestoneError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.AddMilestoneError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-field">
+                    <label class="ps-label" for="name">Name</label>
+                    <InputText id="name" @bind-Value="_model.Name" placeholder="Milestone name" />
+                    <ValidationMessage For="() => _model.Name" class="ps-form-error" />
+                </div>
+
+                <div class="ps-field">
+                    <label class="ps-label" for="target-date">Target Date (UTC)</label>
+                    <InputDate id="target-date" Type="InputDateType.DateTimeLocal" @bind-Value="_model.TargetDateUtc" />
+                    <ValidationMessage For="() => _model.TargetDateUtc" class="ps-form-error" />
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsAddingMilestone">
+                        @if (State.IsAddingMilestone)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Adding…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Add Milestone</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToDetail" disabled="@State.IsAddingMilestone">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private readonly AddProjectMilestoneRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Add Milestone",
+            activeModuleCode: "planning-projects",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Planning Projects", Href = RouteDefinitions.PlanningProjectsList },
+                new BreadcrumbItem { Label = "Detail", Href = $"{RouteDefinitions.PlanningProjectsList}/{ProjectId}" },
+                new BreadcrumbItem { Label = "New Milestone" }
+            ]);
+
+        State.ResetAddMilestone();
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginAddMilestone();
+
+        var envelope = await ApiClient.AddMilestoneAsync(ProjectId, _model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetAddMilestoneSuccess();
+            Nav.NavigateTo($"{RouteDefinitions.PlanningProjectsList}/{ProjectId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetAddMilestoneError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetAddMilestoneError($"Failed to add milestone: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToDetail() => Nav.NavigateTo($"{RouteDefinitions.PlanningProjectsList}/{ProjectId}");
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

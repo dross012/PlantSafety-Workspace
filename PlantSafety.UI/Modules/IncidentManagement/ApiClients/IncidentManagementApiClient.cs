@@ -17,6 +17,8 @@
 
 using System;
 using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -31,21 +33,108 @@ namespace PlantSafety.UI.Modules.IncidentManagement.ApiClients;
 /// <summary>Typed API client for the Incident Management module.</summary>
 public sealed class IncidentManagementApiClient : SafetyApiClientBase
 {
+    private static readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web);
+
     /// <summary>Initializes a new instance of <see cref="IncidentManagementApiClient"/>.</summary>
     public IncidentManagementApiClient(HttpClient http, ILogger<IncidentManagementApiClient> logger)
         : base(http, logger)
     {
     }
 
-    /// <summary>Retrieves a paginated page of incidents for the list view.</summary>
+    /// <summary>Retrieves a paginated, filterable page of incidents for the list view.</summary>
+    /// <remarks>
+    /// Backed by GET <c>v1/safety-events/incidents</c> (PlantSafety.Api.SafetyEvents.
+    /// IncidentManagement.Controllers.V1.IncidentsCanonicalV1Controller.ListAsync), which supports
+    /// every filter exposed on <c>ListIncidentsCanonicalRequest</c>: severity, status, site, and an
+    /// inclusive occurred-date range.
+    /// </remarks>
     public Task<ApiResponseEnvelope<PaginatedResponseDto<IncidentSummaryDto>>> GetIncidentsAsync(
         int pageNumber = 1, int pageSize = 25, string? severityFilter = null, string? statusFilter = null,
+        Guid? siteId = null, DateTimeOffset? occurredFromUtc = null, DateTimeOffset? occurredToUtc = null,
         CancellationToken cancellationToken = default)
         => GetAsync<PaginatedResponseDto<IncidentSummaryDto>>(
             $"v1/safety-events/incidents?pageNumber={pageNumber}&pageSize={pageSize}" +
             (string.IsNullOrWhiteSpace(severityFilter) ? string.Empty : $"&severity={Uri.EscapeDataString(severityFilter)}") +
-            (string.IsNullOrWhiteSpace(statusFilter) ? string.Empty : $"&status={Uri.EscapeDataString(statusFilter)}"),
+            (string.IsNullOrWhiteSpace(statusFilter) ? string.Empty : $"&status={Uri.EscapeDataString(statusFilter)}") +
+            (siteId.HasValue ? $"&siteId={siteId.Value:D}" : string.Empty) +
+            (occurredFromUtc.HasValue ? $"&occurredFromUtc={Uri.EscapeDataString(occurredFromUtc.Value.ToString("O"))}" : string.Empty) +
+            (occurredToUtc.HasValue ? $"&occurredToUtc={Uri.EscapeDataString(occurredToUtc.Value.ToString("O"))}" : string.Empty),
             cancellationToken);
+
+    /// <summary>
+    /// Creates a new Incident. Backed by POST <c>v1/features/safety-events/incidents</c>
+    /// (PlantSafety.Api.Features.SafetyEvents.IncidentManagement.Controllers.V1.
+    /// IncidentsV1Controller.CreateAsync, dispatches the real CreateIncidentCommand).
+    /// </summary>
+    public Task<ApiResponseEnvelope<Guid>> CreateIncidentAsync(
+        CreateIncidentRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreateIncidentRequest, Guid>("v1/features/safety-events/incidents", request, cancellationToken);
+
+    /// <summary>
+    /// Updates the mutable fields of an existing Incident. Backed by PUT
+    /// <c>v1/features/safety-events/incidents/{incidentId}</c> (dispatches the real
+    /// UpdateIncidentCommand). An ETag is required for optimistic concurrency.
+    /// </summary>
+    public Task<ApiResponseEnvelope<Guid>> UpdateIncidentAsync(
+        Guid incidentId, UpdateIncidentRequest request, CancellationToken cancellationToken = default)
+        => PutAsync<UpdateIncidentRequest, Guid>($"v1/features/safety-events/incidents/{incidentId}", request, cancellationToken);
+
+    /// <summary>
+    /// Soft-deletes (archives) an Incident. Backed by DELETE
+    /// <c>v1/features/safety-events/incidents/{incidentId}</c> (dispatches the real
+    /// DeleteIncidentCommand). Uses a raw <see cref="HttpRequestMessage"/> because DELETE with a
+    /// JSON body (DeletionReason/ETag) is not supported by the shared <see cref="SafetyApiClientBase"/>
+    /// helper — mirrors the precedent established in <c>TenantAdminApiClient.DeleteWithBodyAsync</c>.
+    /// </summary>
+    public async Task<ApiResponseEnvelope<Guid>> DeleteIncidentAsync(
+        Guid incidentId, DeleteIncidentRequest request, CancellationToken cancellationToken = default)
+    {
+        var httpRequest = new HttpRequestMessage(HttpMethod.Delete, $"v1/features/safety-events/incidents/{incidentId}")
+        {
+            Content = JsonContent.Create(request, options: _serializerOptions),
+        };
+
+        try
+        {
+            var response = await Http.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var wire = await response.Content
+                    .ReadFromJsonAsync<ApiEnvelopeWireDto<Guid>>(_serializerOptions, cancellationToken)
+                    .ConfigureAwait(false);
+                return ApiResponseEnvelope<Guid>.Success(wire!.Data);
+            }
+
+            ProblemDetailsDto? problem = null;
+            try
+            {
+                problem = await response.Content
+                    .ReadFromJsonAsync<ProblemDetailsDto>(_serializerOptions, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                // Non-JSON error body — fall through to the unknown-problem fallback below.
+            }
+
+            return ApiResponseEnvelope<Guid>.FromProblem(problem ?? ProblemDetailsDto.Unknown((int)response.StatusCode));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return ApiResponseEnvelope<Guid>.Fault(ex.GetType().Name, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Mirrors the server-side <c>PlantSafety.Api.Models.ApiResponse&lt;T&gt;</c> envelope shape,
+    /// used only to deserialize the "data" property of the delete response.
+    /// </summary>
+    private sealed class ApiEnvelopeWireDto<T>
+    {
+        public bool Success { get; init; }
+        public T Data { get; init; } = default!;
+    }
 
     /// <summary>Retrieves the full detail for a single incident (Volume ID1).</summary>
     public Task<ApiResponseEnvelope<IncidentDetailDto>> GetIncidentAsync(Guid incidentId, CancellationToken cancellationToken = default)

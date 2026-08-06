@@ -1,0 +1,163 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Record Cost input form — data entry for the FinancialRecord
+     aggregate (distinct from Budget). Submits a CreateFinancialRecordRequest
+     via POST v1/financial-records (FinancialRecordV1Controller,
+     FinancialsApiClient.CreateFinancialRecordAsync) and renders a minimal
+     confirmation view on success (no list/detail surface exists yet for this
+     aggregate — only GetById, which is not wired into the UI in this pass).
+     Follows the canonical Blazor UI form pattern established by
+     CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/financials/costs/new"
+
+@inject FinancialsState State
+@inject FinancialsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Financials.ApiClients
+@using PlantSafety.UI.Modules.Financials.Models
+@using PlantSafety.UI.Modules.Financials.State
+
+<PageTitle>Record Cost — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Record Cost form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Record Cost</h2>
+        </div>
+
+        @if (State.RecordCostError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.RecordCostError</div>
+        }
+
+        @if (State.RecordedFinancialRecord is { } recorded)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-alert" style="background: rgba(22,163,74,0.08); color: var(--ps-color-brand-accent); border-color: rgba(22,163,74,0.24);" role="status">
+                    <span class="bi bi-check-circle" aria-hidden="true"></span> Cost recorded successfully.
+                </div>
+
+                <dl class="ps-detail-fields">
+                    <dt>Financial Record ID</dt> <dd class="ps-mono">@recorded.FinancialRecordId</dd>
+                    <dt>Status</dt>              <dd>@recorded.Status</dd>
+                    <dt>Category</dt>            <dd>@_model.Category</dd>
+                    <dt>Amount</dt>              <dd>@_model.Amount.ToString("N2")</dd>
+                </dl>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ResetForm">
+                        <span class="bi bi-plus-circle" aria-hidden="true"></span> Record Another Cost
+                    </button>
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="NavigateToDashboard">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Financials
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="ps-form-card">
+                <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="ps-form-error" />
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="category">Category</label>
+                            <InputText id="category" @bind-Value="_model.Category" placeholder="e.g. PPE, Training, Equipment" />
+                            <ValidationMessage For="() => _model.Category" class="ps-form-error" />
+                        </div>
+
+                        <div class="ps-field">
+                            <label class="ps-label" for="amount">Amount</label>
+                            <InputNumber id="amount" @bind-Value="_model.Amount" />
+                            <ValidationMessage For="() => _model.Amount" class="ps-form-error" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-actions">
+                        <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsRecordingCost">
+                            @if (State.IsRecordingCost)
+                            {
+                                <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Recording…</text>
+                            }
+                            else
+                            {
+                                <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Record Cost</text>
+                            }
+                        </button>
+                        <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToDashboard" disabled="@State.IsRecordingCost">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private CreateFinancialRecordRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Record Cost",
+            activeModuleCode: "financials",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Financials", Href = RouteDefinitions.FinancialsDashboard },
+                new BreadcrumbItem { Label = "Record Cost" }
+            ]);
+
+        State.ResetRecordCost();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginRecordCost();
+
+        var envelope = await ApiClient.CreateFinancialRecordAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetRecordCostSuccess(envelope.Data!);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetRecordCostError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetRecordCostError($"Failed to record cost: {envelope.FaultType}");
+        }
+    }
+
+    private void ResetForm()
+    {
+        _model = new CreateFinancialRecordRequest { SiteId = TenantCtx.Tenant?.SiteId };
+        State.ResetRecordCost();
+    }
+
+    private void NavigateToDashboard() => Nav.NavigateTo(RouteDefinitions.FinancialsDashboard);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

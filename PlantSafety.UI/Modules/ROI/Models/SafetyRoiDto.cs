@@ -15,6 +15,7 @@
 // ============================================================
 
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlantSafety.UI.Modules.ROI.Models;
 
@@ -50,4 +51,41 @@ public sealed class SafetyRoiDto
 
     /// <summary>UTC timestamp when this ROI was calculated.</summary>
     public DateTimeOffset CalculatedAtUtc { get; init; }
+}
+
+/// <summary>
+/// Request body for recording a new Safety ROI calculation. Mirrors
+/// PlantSafety.Api.Features.Financials.ROI.Contracts.Requests.CalculateRoiRequest,
+/// with DataAnnotations mirroring CalculateRoiCommandValidator's rules
+/// (FiscalYear in [2000, 2100], TotalInvestment/EstimatedAvoidedCosts &gt;= 0).
+/// Backed by POST v1/features/financials/roi.
+/// </summary>
+public sealed class CalculateRoiRequest
+{
+    /// <summary>Site this calculation is for. Null means tenant-wide.</summary>
+    public Guid? SiteId { get; set; }
+
+    /// <summary>Fiscal year (e.g., 2026).</summary>
+    [Range(2000, 2100, ErrorMessage = "Fiscal year must be between 2000 and 2100.")]
+    public int FiscalYear { get; set; } = DateTime.UtcNow.Year;
+
+    /// <summary>Total safety investment (sum of budget spend). Must be zero or positive.</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "Total investment must be zero or greater.")]
+    public decimal TotalInvestment { get; set; }
+
+    /// <summary>Estimated avoided costs. Must be zero or positive.</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "Estimated avoided costs must be zero or greater.")]
+    public decimal EstimatedAvoidedCosts { get; set; }
+
+    /// <summary>Currency code (ISO 4217, e.g., USD).</summary>
+    [Required(ErrorMessage = "Currency code is required.")]
+    [StringLength(3, MinimumLength = 3, ErrorMessage = "Currency code must be a 3-letter ISO 4217 code.")]
+    public string CurrencyCode { get; set; } = "USD";
+}
+
+/// <summary>Response payload after recording a new Safety ROI calculation (POST v1/features/financials/roi).</summary>
+public sealed class CalculateRoiResponse
+{
+    /// <summary>Gets the identifier of the newly recorded ROI calculation.</summary>
+    public Guid RoiCalculationId { get; init; }
 }

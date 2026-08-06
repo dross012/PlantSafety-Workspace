@@ -222,8 +222,14 @@
         }
         else
         {
-            var failure = !targets.IsSuccess ? targets : !history.IsSuccess ? history : !retention.IsSuccess ? retention : size;
-            State.SetError(failure.IsProblem ? failure.Problem!.Detail : $"Failed to load dashboard: {failure.FaultType}");
+            if (!targets.IsSuccess)
+                State.SetError(targets.IsProblem ? targets.Problem!.Detail : $"Failed to load dashboard: {targets.FaultType}");
+            else if (!history.IsSuccess)
+                State.SetError(history.IsProblem ? history.Problem!.Detail : $"Failed to load dashboard: {history.FaultType}");
+            else if (!retention.IsSuccess)
+                State.SetError(retention.IsProblem ? retention.Problem!.Detail : $"Failed to load dashboard: {retention.FaultType}");
+            else
+                State.SetError(size.IsProblem ? size.Problem!.Detail : $"Failed to load dashboard: {size.FaultType}");
         }
     }
 

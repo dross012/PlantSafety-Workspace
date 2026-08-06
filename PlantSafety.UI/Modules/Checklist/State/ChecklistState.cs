@@ -33,6 +33,15 @@ public sealed class ChecklistState
     private string? _listError;
     private string? _detailError;
 
+    private Guid? _workspaceTemplateId;
+    private string? _workspaceStatus;
+    private int _workspaceItemCount;
+    private bool _isBusy;
+    private string? _actionMessage;
+    private string? _actionError;
+    private bool _isCreating;
+    private string? _createError;
+
     /// <summary>Gets all loaded checklists (unfiltered/unpaginated).</summary>
     public IReadOnlyList<ChecklistViewModel> Checklists => _checklists;
 
@@ -116,6 +125,78 @@ public sealed class ChecklistState
 
     /// <summary>Clears the selected detail record.</summary>
     public void ClearSelection() { SelectedChecklist = null; NotifyStateChanged(); }
+
+    /// <summary>
+    /// Gets the identifier of the ChecklistTemplate currently being worked on in the Create/
+    /// Manage workspace, or null when none has been created yet in this session. There is no
+    /// GetById query for ChecklistTemplate on the real backend, so this state is tracked purely
+    /// from each command's own response (mirrors the Admin Portal's TenantProvisionPage pattern).
+    /// </summary>
+    public Guid? WorkspaceTemplateId => _workspaceTemplateId;
+
+    /// <summary>Gets the last known lifecycle status of the workspace template, or null.</summary>
+    public string? WorkspaceStatus => _workspaceStatus;
+
+    /// <summary>Gets the running count of items added to the workspace template.</summary>
+    public int WorkspaceItemCount => _workspaceItemCount;
+
+    /// <summary>Gets a value indicating whether a lifecycle action is in flight.</summary>
+    public bool IsBusy => _isBusy;
+
+    /// <summary>Gets the last lifecycle action's informational message, or null.</summary>
+    public string? ActionMessage => _actionMessage;
+
+    /// <summary>Gets the last lifecycle action's error message, or null.</summary>
+    public string? ActionError => _actionError;
+
+    /// <summary>Gets a value indicating whether a create operation is in flight.</summary>
+    public bool IsCreating => _isCreating;
+
+    /// <summary>Gets the last create operation's error message, or null.</summary>
+    public string? CreateError => _createError;
+
+    /// <summary>Records a newly created workspace ChecklistTemplate.</summary>
+    public void SetWorkspaceTemplate(Guid templateId, string status, int itemCount)
+    {
+        _workspaceTemplateId = templateId;
+        _workspaceStatus = status;
+        _workspaceItemCount = itemCount;
+        _isCreating = false;
+        _createError = null;
+        NotifyStateChanged();
+    }
+
+    /// <summary>Updates the workspace template's known status.</summary>
+    public void SetWorkspaceStatus(string status) { _workspaceStatus = status; NotifyStateChanged(); }
+
+    /// <summary>Increments the workspace template's known item count.</summary>
+    public void IncrementWorkspaceItemCount() { _workspaceItemCount++; NotifyStateChanged(); }
+
+    /// <summary>Resets the workspace back to an empty Create form.</summary>
+    public void ResetWorkspace()
+    {
+        _workspaceTemplateId = null;
+        _workspaceStatus = null;
+        _workspaceItemCount = 0;
+        _actionMessage = null;
+        _actionError = null;
+        NotifyStateChanged();
+    }
+
+    /// <summary>Marks a lifecycle action as in flight.</summary>
+    public void BeginAction() { _isBusy = true; _actionError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful lifecycle action's informational message.</summary>
+    public void CompleteAction(string message) { _isBusy = false; _actionMessage = message; _actionError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a failed lifecycle action with a sanitized message.</summary>
+    public void SetActionError(string sanitizedError) { _isBusy = false; _actionError = sanitizedError; NotifyStateChanged(); }
+
+    /// <summary>Marks a create operation as in flight.</summary>
+    public void BeginCreate() { _isCreating = true; _createError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a failed create operation with a sanitized message.</summary>
+    public void SetCreateError(string sanitizedError) { _isCreating = false; _createError = sanitizedError; NotifyStateChanged(); }
 
     private IReadOnlyList<ChecklistViewModel> Filtered() =>
         string.IsNullOrWhiteSpace(_searchText)

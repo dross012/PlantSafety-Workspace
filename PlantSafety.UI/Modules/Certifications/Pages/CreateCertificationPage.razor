@@ -1,0 +1,180 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create (generic) Certification input form. Submits a
+     CreateCertificationRequest via POST v1/compliance/certification
+     (CertificationsApiClient.CreateCertificationAsync ->
+     CreateCertificationCommand) and navigates to the new record's generic
+     detail page on success. This is a distinct, generic personnel-
+     certification aggregate from the 7 read-only category read-models
+     (Contractor/DOT/EPA/IndustrySpecific/ISO14001/ISO45001/OSHA) shown on
+     the tabbed list page — those have no write commands; this is where
+     Create/Verify/Renew/Expire/Close/Archive actually live. No field-level
+     update endpoint exists — lifecycle transitions are exposed as action
+     buttons on CertificationRecordDetailPage instead. Follows the canonical
+     Blazor UI form pattern established in CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/certifications/new"
+
+@inject CertificationsState State
+@inject CertificationsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Certifications.ApiClients
+@using PlantSafety.UI.Modules.Certifications.Models
+@using PlantSafety.UI.Modules.Certifications.State
+
+<PageTitle>New Certification — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Certification form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Certification</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="holder-worker-id">Holder Worker Id</label>
+                        <InputText id="holder-worker-id" @bind-Value="_holderWorkerIdText" placeholder="GUID" />
+                        <ValidationMessage For="() => _model.HolderWorkerId" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="certification-name">Certification Name</label>
+                        <InputText id="certification-name" @bind-Value="_model.CertificationName" />
+                        <ValidationMessage For="() => _model.CertificationName" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="certification-body">Certification Body</label>
+                        <InputText id="certification-body" @bind-Value="_model.CertificationBody" placeholder="e.g. OSHA, ISO, ANSI" />
+                        <ValidationMessage For="() => _model.CertificationBody" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="certification-number">Certification Number</label>
+                        <InputText id="certification-number" @bind-Value="_model.CertificationNumber" />
+                        <ValidationMessage For="() => _model.CertificationNumber" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="issued-at">Issued Date (optional)</label>
+                        <InputDate id="issued-at" @bind-Value="_issuedAt" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="expires-at">Expires Date (optional)</label>
+                        <InputDate id="expires-at" @bind-Value="_expiresAt" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="renewal-required">Requires Periodic Renewal</label>
+                        <InputCheckbox id="renewal-required" @bind-Value="_model.RenewalRequired" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create Certification</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateCertificationRequest _model = new();
+    private string _holderWorkerIdText = string.Empty;
+    private DateTime? _issuedAt;
+    private DateTime? _expiresAt;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Certification",
+            activeModuleCode: "certifications",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Certifications", Href = RouteDefinitions.CertificationsList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        if (!Guid.TryParse(_holderWorkerIdText, out var holderWorkerId))
+        {
+            State.SetCreateError("Holder Worker Id must be a valid GUID.");
+            return;
+        }
+
+        _model.HolderWorkerId = holderWorkerId;
+        _model.IssuedAtUtc = _issuedAt.HasValue ? DateTime.SpecifyKind(_issuedAt.Value, DateTimeKind.Utc) : null;
+        _model.ExpiresAtUtc = _expiresAt.HasValue ? DateTime.SpecifyKind(_expiresAt.Value, DateTimeKind.Utc) : null;
+
+        var envelope = await ApiClient.CreateCertificationAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"/modules/certifications/record/{envelope.Data!.CertificationId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to create certification: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.CertificationsList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

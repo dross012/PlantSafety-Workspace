@@ -31,6 +31,8 @@
             <a href="/modules/predictive-maintenance" class="ps-btn ps-btn-ghost ps-btn-sm"><span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard</a>
         </div>
 
+        <SearchBoxComponent Value="_searchText" Placeholder="Search by prediction or equipment code" ValueChanged="text => _searchText = text" />
+
         @if (State.ErrorMessage is not null)
         {
             <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
@@ -43,7 +45,7 @@
         else
         {
             <DataGridComponent TItem="PredictionRowDto"
-                                Items="State.Predictions"
+                                Items="FilteredPredictions"
                                 Headers="_headers"
                                 KeySelector="p => p.PredictionId"
                                 EmptyMessage="No predictions found."
@@ -72,6 +74,15 @@
 
 @code {
     private static readonly string[] _headers = ["Prediction", "Equipment", "Risk", "Confidence", "Status", "Updated", "Actions"];
+    private string _searchText = string.Empty;
+
+    private IReadOnlyList<PredictionRowDto> FilteredPredictions =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? State.Predictions
+            : State.Predictions.Where(p =>
+                    p.PredictionCode.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    p.EquipmentCode.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
     protected override void OnInitialized()
     {

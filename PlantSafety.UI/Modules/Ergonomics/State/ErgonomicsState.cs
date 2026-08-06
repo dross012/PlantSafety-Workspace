@@ -24,9 +24,23 @@ public sealed class ErgonomicsState
     private bool _isLoading;
     private string? _error;
     private DateTime _generatedAtUtc;
+    private string _searchText = string.Empty;
 
-    /// <summary>Gets all ergonomics assessments currently loaded for the active date range.</summary>
-    public IReadOnlyList<ErgonomicsItemDto> Items => _items;
+    /// <summary>Gets all ergonomics assessments currently loaded for the active date range (unfiltered).</summary>
+    public IReadOnlyList<ErgonomicsItemDto> AllItems => _items;
+
+    /// <summary>Gets the current client-side search text (matched against RiskLevel/WorkstationId).</summary>
+    public string SearchText => _searchText;
+
+    /// <summary>Gets the items matching the current search text (case-insensitive, client-side).</summary>
+    public IReadOnlyList<ErgonomicsItemDto> Items =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? _items
+            : _items.Where(i =>
+                    i.RiskLevel.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    i.Status.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    i.WorkstationId.ToString().Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
     /// <summary>Gets a value indicating whether the record set is loading.</summary>
     public bool IsLoading => _isLoading;
@@ -66,6 +80,10 @@ public sealed class ErgonomicsState
     /// <summary>Records a load failure with a sanitized message.</summary>
     /// <param name="sanitizedError">Safe error message.</param>
     public void SetError(string sanitizedError) { _error = sanitizedError; _isLoading = false; NotifyStateChanged(); }
+
+    /// <summary>Updates the client-side search filter (matched against RiskLevel/Status/WorkstationId).</summary>
+    /// <param name="text">The new search text.</param>
+    public void SetSearchText(string text) { _searchText = text ?? string.Empty; NotifyStateChanged(); }
 
     /// <summary>Finds a record by its identifier within the currently loaded set, or null if not present.</summary>
     /// <param name="ergonomicsAssessmentId">The record identifier to find.</param>

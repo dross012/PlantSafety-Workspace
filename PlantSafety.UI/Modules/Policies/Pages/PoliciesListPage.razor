@@ -33,7 +33,10 @@
     <ErrorBoundaryComponent Message="The Policies & Procedures list could not be displayed." OnRetry="LoadPageAsync">
 
         <div class="ps-page-actions">
-            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
+            <a href="@RouteDefinitions.PolicyRecordCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-lg" aria-hidden="true"></span> New Policy
+            </a>
+            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="LoadPageAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
         </div>

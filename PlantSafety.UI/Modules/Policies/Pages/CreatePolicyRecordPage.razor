@@ -1,0 +1,138 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create (generic) Policy input form. Submits a
+     CreatePolicyRecordRequest via POST v1/compliance/policy
+     (PoliciesApiClient.CreatePolicyRecordAsync -> CreatePolicyCommand) and
+     navigates to the new record's generic detail page on success. This is a
+     distinct, generic Policy aggregate from the read-only Safety Policies/
+     SOPs read-models shown on PoliciesListPage — those have no write
+     commands; this is where Create/Approve/RecordAcknowledgment/Supersede/
+     Close/Archive actually live. Follows the canonical Blazor UI form
+     pattern established in CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/policies/new"
+
+@inject PoliciesState State
+@inject PoliciesApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Policies.ApiClients
+@using PlantSafety.UI.Modules.Policies.Models
+@using PlantSafety.UI.Modules.Policies.State
+
+<PageTitle>New Policy — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Policy form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Policy</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="policy-title">Policy Title</label>
+                        <InputText id="policy-title" @bind-Value="_model.PolicyTitle" />
+                        <ValidationMessage For="() => _model.PolicyTitle" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="category">Category</label>
+                        <InputText id="category" @bind-Value="_model.Category" placeholder="e.g. PPE, HotWork, EmergencyResponse, GeneralSafety" />
+                        <ValidationMessage For="() => _model.Category" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="acknowledgment-required">Requires Personnel Acknowledgment</label>
+                        <InputCheckbox id="acknowledgment-required" @bind-Value="_model.AcknowledgmentRequired" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create Policy</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreatePolicyRecordRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Policy",
+            activeModuleCode: "policies",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Policies & Procedures", Href = RouteDefinitions.PoliciesList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        var envelope = await ApiClient.CreatePolicyRecordAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"/modules/policies/record/{envelope.Data!.PolicyId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to create policy: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.PoliciesList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

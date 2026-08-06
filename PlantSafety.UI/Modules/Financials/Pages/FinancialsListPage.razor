@@ -32,6 +32,9 @@
     <ErrorBoundaryComponent Message="The Budgets list could not be displayed." OnRetry="LoadFirstPageAsync">
 
         <div class="ps-page-actions">
+            <a href="@RouteDefinitions.FinancialsCreateBudget" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-circle" aria-hidden="true"></span> New Budget
+            </a>
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadFirstPageAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>

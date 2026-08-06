@@ -26,6 +26,9 @@ public sealed class TrainingState
     private bool _isLoadingDetail;
     private string? _listError;
     private string? _detailError;
+    private bool _isAssigning;
+    private string? _assignError;
+    private Guid? _assignedTrainingRecordId;
 
     /// <summary>Gets the currently loaded training records for the active date range. Never null.</summary>
     public IReadOnlyList<TrainingRecordItemDto> Items => _items;
@@ -44,6 +47,15 @@ public sealed class TrainingState
 
     /// <summary>Gets a sanitized detail load error, or null.</summary>
     public string? DetailError => _detailError;
+
+    /// <summary>Gets a value indicating whether an Assign Training submission is in flight.</summary>
+    public bool IsAssigning => _isAssigning;
+
+    /// <summary>Gets a sanitized Assign Training submission error, or null.</summary>
+    public string? AssignError => _assignError;
+
+    /// <summary>Gets the identifier of the most recently assigned training record, or null.</summary>
+    public Guid? AssignedTrainingRecordId => _assignedTrainingRecordId;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -78,6 +90,18 @@ public sealed class TrainingState
 
     /// <summary>Clears the selected training record.</summary>
     public void ClearSelection() { _selectedItem = null; NotifyStateChanged(); }
+
+    /// <summary>Marks an Assign Training submission as in flight.</summary>
+    public void BeginAssign() { _isAssigning = true; _assignError = null; _assignedTrainingRecordId = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Assign Training submission.</summary>
+    public void SetAssignSuccess(Guid trainingRecordId) { _assignedTrainingRecordId = trainingRecordId; _isAssigning = false; _assignError = null; NotifyStateChanged(); }
+
+    /// <summary>Records an Assign Training submission failure with a sanitized message.</summary>
+    public void SetAssignError(string sanitizedError) { _assignError = sanitizedError; _isAssigning = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Assign Training submission state (e.g. when navigating to the form).</summary>
+    public void ResetAssign() { _isAssigning = false; _assignError = null; _assignedTrainingRecordId = null; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

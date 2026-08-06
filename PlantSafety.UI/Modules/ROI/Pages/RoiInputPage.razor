@@ -1,0 +1,144 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Calculate/Record ROI input form. Submits a
+     CalculateRoiRequest via POST v1/features/financials/roi
+     (FinancialsApiClient.CalculateRoiAsync) and navigates back to the ROI
+     dashboard for the submitted fiscal year on success. No update endpoint
+     exists — each calculation is a new record (Create only). Follows the
+     canonical Blazor UI form pattern established by CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/roi/calculate"
+
+@inject RoiState State
+@inject FinancialsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Financials.ApiClients
+@using PlantSafety.UI.Modules.ROI.Models
+@using PlantSafety.UI.Modules.ROI.State
+
+<PageTitle>Calculate ROI — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Calculate ROI form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Calculate ROI</h2>
+        </div>
+
+        @if (State.CalculateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CalculateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="fiscal-year">Fiscal Year</label>
+                        <InputNumber id="fiscal-year" @bind-Value="_model.FiscalYear" />
+                        <ValidationMessage For="() => _model.FiscalYear" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="currency-code">Currency Code</label>
+                        <InputText id="currency-code" @bind-Value="_model.CurrencyCode" maxlength="3" />
+                        <ValidationMessage For="() => _model.CurrencyCode" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="total-investment">Total Investment</label>
+                        <InputNumber id="total-investment" @bind-Value="_model.TotalInvestment" />
+                        <ValidationMessage For="() => _model.TotalInvestment" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="avoided-costs">Estimated Avoided Costs</label>
+                        <InputNumber id="avoided-costs" @bind-Value="_model.EstimatedAvoidedCosts" />
+                        <ValidationMessage For="() => _model.EstimatedAvoidedCosts" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCalculating">
+                        @if (State.IsCalculating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Calculating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Calculate ROI</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToDashboard" disabled="@State.IsCalculating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CalculateRoiRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Calculate ROI",
+            activeModuleCode: "roi",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "ROI", Href = RouteDefinitions.RoiDashboard },
+                new BreadcrumbItem { Label = "Calculate" }
+            ]);
+
+        State.ResetCalculate();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCalculate();
+
+        var envelope = await ApiClient.CalculateRoiAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetCalculateSuccess(envelope.Data!.RoiCalculationId);
+            State.SetSelectedFiscalYear(_model.FiscalYear);
+            Nav.NavigateTo(RouteDefinitions.RoiDashboard);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCalculateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCalculateError($"Failed to calculate ROI: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToDashboard() => Nav.NavigateTo(RouteDefinitions.RoiDashboard);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -3,7 +3,14 @@
    CREATED: 2026-07-14
    FILE DESCRIPTION: Observation detail page. Loads the full ObservationDto by
      route parameter via the working GetById endpoint and displays all fields.
-   SchemaVersion: 2026.1
+   UPDATED: 2026-08-05 — Added Edit (links to EditObservationPage.razor,
+     backed by the real UpdateObservationCommand) and Print (window.print via
+     JS interop) actions. No Delete/Close/Archive command is wired to the
+     Features/SafetyEvents/Observation controller the UI targets — a separate
+     SafetyEvents/Observation bounded context has Activate/Archive/Close/
+     Complete lifecycle commands, but they operate on a different, unwired
+     controller and are out of scope here — so no Delete action is offered.
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -13,6 +20,7 @@
 @inject ObservationApiClient ApiClient
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -59,6 +67,12 @@
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.ObservationList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Observations
                     </button>
+                    <button class="ps-btn ps-btn-primary" @onclick="() => NavigateToEdit(item.ObservationId)">
+                        <span class="bi bi-pencil" aria-hidden="true"></span> Edit
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
                 </div>
             </div>
         }
@@ -99,6 +113,10 @@
         else
             State.SetDetailError($"Failed to load observation: {envelope.FaultType}");
     }
+
+    private void NavigateToEdit(Guid observationId) => Nav.NavigateTo($"{RouteDefinitions.ObservationList}/{observationId}/edit");
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

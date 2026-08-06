@@ -17,6 +17,7 @@
 @inject RegulatoryCalendarState State
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -62,6 +63,9 @@
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.RegulatoryCalendar)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Regulatory Calendar
                     </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
                 </div>
             </div>
         }
@@ -105,6 +109,8 @@
             State.SetDetailError("This calendar entry is not currently loaded. It may be outside the active date range.");
         }
     }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

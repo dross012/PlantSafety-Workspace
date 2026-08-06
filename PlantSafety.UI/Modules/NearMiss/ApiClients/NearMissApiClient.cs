@@ -3,8 +3,8 @@
 // CREATED: 2026-07-14
 // FILE DESCRIPTION: Typed API client for the Near Miss module. Wraps HTTP
 //   communication for the Features/SafetyEvents/NearMisses CQRS endpoints
-//   (list, get-by-id). No HttpClient calls are permitted outside this class
-//   for the Near Miss module.
+//   (list, get-by-id, create, update). No HttpClient calls are permitted
+//   outside this class for the Near Miss module.
 // SchemaVersion: 2026.1
 // Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
 // ============================================================
@@ -69,4 +69,22 @@ public sealed class NearMissApiClient : SafetyApiClientBase
         Guid nearMissId,
         CancellationToken cancellationToken = default)
         => GetAsync<NearMissDto>($"v1/features/safety-events/near-misses/{nearMissId}", cancellationToken);
+
+    /// <summary>Creates a new Near Miss record. Backed by POST <c>v1/features/safety-events/near-misses</c> (CreateNearMissCommand).</summary>
+    /// <param name="request">The near miss fields to submit.</param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    public Task<ApiResponseEnvelope<Guid>> CreateNearMissAsync(
+        CreateNearMissRequest request,
+        CancellationToken cancellationToken = default)
+        => PostAsync<CreateNearMissRequest, Guid>("v1/features/safety-events/near-misses", request, cancellationToken);
+
+    /// <summary>Updates mutable fields of an existing Near Miss. Backed by PUT <c>v1/features/safety-events/near-misses/{id}</c> (UpdateNearMissCommand).</summary>
+    /// <param name="nearMissId">The near miss to update.</param>
+    /// <param name="request">The updated fields.</param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    public Task<ApiResponseEnvelope<Guid>> UpdateNearMissAsync(
+        Guid nearMissId,
+        UpdateNearMissRequest request,
+        CancellationToken cancellationToken = default)
+        => PutAsync<UpdateNearMissRequest, Guid>($"v1/features/safety-events/near-misses/{nearMissId}", request, cancellationToken);
 }

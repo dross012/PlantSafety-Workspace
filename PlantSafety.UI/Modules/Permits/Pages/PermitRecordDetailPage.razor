@@ -1,0 +1,320 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Generic Permit record detail page, distinct from
+     PermitDetailPage.razor (which shows the read-only Operational.
+     PermitsToWork tabbed workspace). Loads the real by-id read-model
+     endpoint (GET v1/compliance/permits/{id}) and exposes the module's real
+     lifecycle commands (Approve/Reject/Complete/Expire/Close/Archive) as
+     action buttons since the aggregate has no field-level Update command.
+     Archive doubles as this module's soft-delete/retire (Delete) action,
+     confirm-gated. Adds a Print button (window.print via JS interop).
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/permits/record/{PermitsId:guid}"
+
+@inject PermitsState State
+@inject PermitsApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Permits.ApiClients
+@using PlantSafety.UI.Modules.Permits.Models
+@using PlantSafety.UI.Modules.Permits.State
+
+<PageTitle>Permit Record — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The permit record could not be displayed.">
+
+        @if (State.IsLoadingRecord)
+        {
+            <LoadingIndicatorComponent Message="Loading permit…" />
+        }
+        else if (State.RecordError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.RecordError</div>
+        }
+        else if (State.SelectedRecord is { } permit)
+        {
+            <div class="ps-detail-card">
+                <div class="ps-detail-header">
+                    <h2 class="ps-detail-title">@permit.PermitType — @permit.PermitNumber</h2>
+                    <StatusIndicatorComponent Status="@MapStatus(permit.Status)" Label="@permit.Status" />
+                </div>
+
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
+
+                <dl class="ps-detail-fields">
+                    <dt>Work Description</dt>  <dd>@permit.WorkDescription</dd>
+                    <dt>Location</dt>          <dd>@permit.Location</dd>
+                    <dt>Hazards Identified</dt><dd>@permit.HazardsIdentified</dd>
+                    <dt>Site</dt>              <dd class="ps-mono">@(permit.SiteId?.ToString() ?? "All sites")</dd>
+                    @if (permit.IssuedAtUtc.HasValue)
+                    {
+                        <dt>Issued</dt><dd>@permit.IssuedAtUtc?.ToString("u") UTC</dd>
+                    }
+                    @if (permit.ExpiresAtUtc.HasValue)
+                    {
+                        <dt>Expires</dt><dd>@permit.ExpiresAtUtc?.ToString("u") UTC</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(permit.RejectedReason))
+                    {
+                        <dt>Rejected Reason</dt><dd>@permit.RejectedReason</dd>
+                    }
+                    <dt>Created</dt>           <dd>@permit.CreatedAtUtc.ToString("u") UTC</dd>
+                </dl>
+
+                <CardComponent Title="Lifecycle Actions">
+                    @if (string.Equals(permit.Status, "Created", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="validity-hours">Validity (hours, optional)</label>
+                            <input id="validity-hours" type="number" min="1" max="8760" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_validityHours" />
+                        </div>
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ApproveAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check2-circle" aria-hidden="true"></span> Approve &amp; Issue
+                        </button>
+
+                        <div class="ps-field-row">
+                            <label class="ps-field-label" for="reject-reason">Rejection Reason</label>
+                            <input id="reject-reason" type="text" class="ps-btn ps-btn-ghost ps-btn-sm" style="text-align:left;" @bind="_rejectReason" />
+                        </div>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="RejectAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-x-circle" aria-hidden="true"></span> Reject
+                        </button>
+                    }
+
+                    @if (string.Equals(permit.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CompleteAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> Mark Completed
+                        </button>
+
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ExpireAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-hourglass-bottom" aria-hidden="true"></span> Mark Expired
+                        </button>
+                    }
+
+                    @if (string.Equals(permit.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="CloseAsync" disabled="@State.IsBusy">
+                            <span class="bi bi-flag" aria-hidden="true"></span> Close
+                        </button>
+                    }
+
+                    @if (string.Equals(permit.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        @if (!_confirmArchive)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = true" disabled="@State.IsBusy">
+                                <span class="bi bi-archive" aria-hidden="true"></span> Archive (Retire)
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Archiving retires this permit permanently for compliance retention. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="ArchiveAsync" disabled="@State.IsBusy">Confirm Archive</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmArchive = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (permit.Status is "Archived" or "Rejected" or "Expired")
+                    {
+                        <p class="ps-text-muted">This permit is @permit.Status.ToLowerInvariant(). No further lifecycle actions are available.</p>
+                    }
+                </CardComponent>
+
+                <div class="ps-detail-actions">
+                    <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.PermitsList)">
+                        <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Permits to Work
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
+                </div>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid PermitsId { get; set; }
+
+    private int? _validityHours;
+    private string _rejectReason = string.Empty;
+    private bool _confirmArchive;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Permit Record",
+            activeModuleCode: "permits",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Permits to Work", Href = RouteDefinitions.PermitsList },
+                new BreadcrumbItem { Label = "Record Detail" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        State.BeginRecordLoad();
+        var envelope = await ApiClient.GetPermitByIdAsync(PermitsId);
+
+        if (envelope.IsSuccess)
+            State.SetSelectedRecord(envelope.Data!);
+        else if (envelope.IsProblem)
+            State.SetRecordError(envelope.Problem!.Detail);
+        else
+            State.SetRecordError($"Failed to load permit: {envelope.FaultType}");
+    }
+
+    private async Task ApproveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ApprovePermitAsync(PermitsId, new ApprovePermitsRequest
+        {
+            ValidityHours = _validityHours,
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Permit approved and issued.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task RejectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_rejectReason))
+        {
+            State.SetActionError("A rejection reason is required.");
+            return;
+        }
+
+        State.BeginAction();
+        var result = await ApiClient.RejectPermitAsync(PermitsId, new RejectPermitsRequest
+        {
+            Reason = _rejectReason,
+            ETag = State.SelectedRecord?.ETag,
+        });
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Permit rejected.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CompleteAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.CompletePermitAsync(PermitsId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Permitted work marked completed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ExpireAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ExpirePermitAsync(PermitsId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Permit marked expired.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ClosePermitAsync(PermitsId, State.SelectedRecord?.ETag);
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Permit closed.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        State.BeginAction();
+        var result = await ApiClient.ArchivePermitAsync(PermitsId, State.SelectedRecord?.ETag);
+        _confirmArchive = false;
+        if (result.IsSuccess)
+        {
+            State.CompleteAction("Permit archived.");
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetActionError(DescribeFailure(result));
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+
+    private static string DescribeFailure<T>(PlantSafety.UI.Models.Common.ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed: {envelope.FaultType}";
+
+    private static string MapStatus(string status) => status.ToLowerInvariant() switch
+    {
+        "active" or "closed" or "archived" or "completed" => "Healthy",
+        "created" => "Warning",
+        "rejected" or "expired" => "Critical",
+        _ => "Offline",
+    };
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlantSafety.UI.Modules.Financials.Models;
 
@@ -79,4 +80,42 @@ public sealed class BudgetListResponseDto
 
     /// <summary>Gets a value indicating whether there is a previous page.</summary>
     public bool HasPreviousPage { get; init; }
+}
+
+/// <summary>
+/// Request body for creating a new Safety Budget. Mirrors
+/// PlantSafety.Api.Features.Financials.Budgets.Contracts.Requests.CreateBudgetRequest,
+/// with DataAnnotations mirroring CreateBudgetCommandValidator's rules
+/// (AllocatedAmount &gt; 0, FiscalYear in [2000, 2100], Category required).
+/// Backed by POST v1/features/financials/budgets.
+/// </summary>
+public sealed class CreateBudgetRequest
+{
+    /// <summary>Site this budget is for. Null means enterprise-level.</summary>
+    public Guid? SiteId { get; set; }
+
+    /// <summary>Fiscal year (e.g., 2026).</summary>
+    [Range(2000, 2100, ErrorMessage = "Fiscal year must be between 2000 and 2100.")]
+    public int FiscalYear { get; set; } = DateTime.UtcNow.Year;
+
+    /// <summary>Budget category.</summary>
+    [Required(ErrorMessage = "Category is required.")]
+    [StringLength(200, ErrorMessage = "Category must be 200 characters or fewer.")]
+    public string Category { get; set; } = string.Empty;
+
+    /// <summary>Allocated amount. Must be positive.</summary>
+    [Range(0.01, double.MaxValue, ErrorMessage = "Allocated amount must be greater than zero.")]
+    public decimal AllocatedAmount { get; set; }
+
+    /// <summary>Currency code (ISO 4217, e.g., USD).</summary>
+    [Required(ErrorMessage = "Currency code is required.")]
+    [StringLength(3, MinimumLength = 3, ErrorMessage = "Currency code must be a 3-letter ISO 4217 code.")]
+    public string CurrencyCode { get; set; } = "USD";
+}
+
+/// <summary>Response payload after creating a new Safety Budget (POST v1/features/financials/budgets).</summary>
+public sealed class CreateBudgetResponse
+{
+    /// <summary>Gets the identifier of the newly created budget.</summary>
+    public Guid BudgetId { get; init; }
 }

@@ -44,6 +44,8 @@
             </button>
         </div>
 
+        <SearchBoxComponent Value="_searchText" Placeholder="Search by title or owner" ValueChanged="text => _searchText = text" />
+
         @if (State.ListError is not null)
         {
             <div class="ps-alert ps-alert--danger" role="alert">@State.ListError</div>
@@ -56,7 +58,7 @@
         else
         {
             <DataGridComponent TItem="ReportListItemDto"
-                                Items="State.Reports"
+                                Items="FilteredReports"
                                 Headers="_headers"
                                 KeySelector="r => r.ReportId"
                                 EmptyMessage="No reports found."
@@ -83,6 +85,15 @@
 
 @code {
     private static readonly string[] _headers = ["Title", "Type", "Status", "Generated", "Owner", "Actions"];
+    private string _searchText = string.Empty;
+
+    private IReadOnlyList<ReportListItemDto> FilteredReports =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? State.Reports
+            : State.Reports.Where(r =>
+                    r.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    r.OwnerName.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
     protected override void OnInitialized()
     {

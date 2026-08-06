@@ -21,6 +21,7 @@
 @inject TenantState TenantCtx
 @inject UserSessionState UserSession
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -62,6 +63,9 @@
                 <div class="ps-detail-actions">
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.CertificationsList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Certifications
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
                     </button>
                 </div>
             </div>
@@ -134,6 +138,8 @@
     }
 
     private Guid ResolveTenantId() => TenantCtx.Tenant?.TenantId ?? UserSession.User.TenantId;
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     /// <summary>Maps a certification status to the closest StatusIndicatorComponent operational state.</summary>
     private static string MapStatus(string status) => status.ToLowerInvariant() switch

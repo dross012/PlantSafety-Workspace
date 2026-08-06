@@ -1,0 +1,145 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create Budget input form. Submits a CreateBudgetRequest
+     via POST v1/features/financials/budgets (FinancialsApiClient.CreateBudgetAsync)
+     and navigates to the new budget's detail page on success. No update/edit
+     endpoint exists for budgets — Create only. Follows the canonical Blazor
+     UI form pattern (EditForm/DataAnnotationsValidator/ValidationSummary)
+     established here for the platform's first data-entry surface. Built from
+     the canonical Shared component library plus the new ps-form-* CSS block.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/financials/budgets/new"
+
+@inject FinancialsState State
+@inject FinancialsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Financials.ApiClients
+@using PlantSafety.UI.Modules.Financials.Models
+@using PlantSafety.UI.Modules.Financials.State
+
+<PageTitle>New Budget — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Budget form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Budget</h2>
+        </div>
+
+        @if (State.CreateBudgetError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateBudgetError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="fiscal-year">Fiscal Year</label>
+                        <InputNumber id="fiscal-year" @bind-Value="_model.FiscalYear" />
+                        <ValidationMessage For="() => _model.FiscalYear" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="category">Category</label>
+                        <InputText id="category" @bind-Value="_model.Category" placeholder="e.g. PPE, Training, Equipment" />
+                        <ValidationMessage For="() => _model.Category" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="allocated-amount">Allocated Amount</label>
+                        <InputNumber id="allocated-amount" @bind-Value="_model.AllocatedAmount" />
+                        <ValidationMessage For="() => _model.AllocatedAmount" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="currency-code">Currency Code</label>
+                        <InputText id="currency-code" @bind-Value="_model.CurrencyCode" maxlength="3" />
+                        <ValidationMessage For="() => _model.CurrencyCode" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreatingBudget">
+                        @if (State.IsCreatingBudget)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create Budget</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToBudgets" disabled="@State.IsCreatingBudget">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateBudgetRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Budget",
+            activeModuleCode: "financials",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Financials", Href = RouteDefinitions.FinancialsDashboard },
+                new BreadcrumbItem { Label = "Budgets", Href = $"{RouteDefinitions.FinancialsDashboard}/budgets" },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreateBudget();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreateBudget();
+
+        var envelope = await ApiClient.CreateBudgetAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetCreateBudgetSuccess(envelope.Data!.BudgetId);
+            Nav.NavigateTo($"{RouteDefinitions.FinancialsDashboard}/budgets/{envelope.Data!.BudgetId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateBudgetError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateBudgetError($"Failed to create budget: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToBudgets() => Nav.NavigateTo($"{RouteDefinitions.FinancialsDashboard}/budgets");
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

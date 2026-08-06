@@ -1,0 +1,207 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Edit Near Miss form. Loads the current near miss (for its
+     ETag/optimistic-concurrency token and current field values), then submits
+     an UpdateNearMissRequest via PUT v1/features/safety-events/near-misses/{id}
+     (NearMissApiClient.UpdateNearMissAsync, backed by the real
+     UpdateNearMissCommand). Only the fields the real command accepts are
+     surfaced: Title, Description, PotentialSeverity, HazardCategory.
+     Follows the canonical pattern established in
+     Modules/IncidentManagement/Pages/EditIncidentPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/near-miss/{NearMissId:guid}/edit"
+
+@inject NearMissState State
+@inject NearMissApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.NearMiss.ApiClients
+@using PlantSafety.UI.Modules.NearMiss.Models
+@using PlantSafety.UI.Modules.NearMiss.State
+
+<PageTitle>Edit Near Miss — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Edit Near Miss form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">Edit Near Miss</h2>
+        </div>
+
+        @if (_isLoading)
+        {
+            <LoadingIndicatorComponent Message="Loading near miss…" />
+        }
+        else if (_loadError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@_loadError</div>
+        }
+        else
+        {
+            @if (State.SaveError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.SaveError</div>
+            }
+
+            <div class="ps-form-card">
+                <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="ps-form-error" />
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="title">Title</label>
+                            <InputText id="title" @bind-Value="_model.Title" maxlength="200" />
+                            <ValidationMessage For="() => _model.Title" class="ps-form-error" />
+                        </div>
+
+                        <div class="ps-field">
+                            <label class="ps-label" for="potential-severity">Potential Severity</label>
+                            <InputSelect id="potential-severity" @bind-Value="_model.PotentialSeverity">
+                                <option value="Minor">Minor</option>
+                                <option value="Moderate">Moderate</option>
+                                <option value="Serious">Serious</option>
+                                <option value="Critical">Critical</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="description">Description</label>
+                            <InputTextArea id="description" @bind-Value="_model.Description" maxlength="4000" />
+                            <ValidationMessage For="() => _model.Description" class="ps-form-error" />
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="hazard-category">Hazard Category</label>
+                            <InputSelect id="hazard-category" @bind-Value="_model.HazardCategory">
+                                <option value="Chemical">Chemical</option>
+                                <option value="Mechanical">Mechanical</option>
+                                <option value="Electrical">Electrical</option>
+                                <option value="Ergonomic">Ergonomic</option>
+                                <option value="Biological">Biological</option>
+                                <option value="Radiation">Radiation</option>
+                                <option value="Thermal">Thermal</option>
+                                <option value="Other">Other</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-actions">
+                        <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsSaving">
+                            @if (State.IsSaving)
+                            {
+                                <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Saving…</text>
+                            }
+                            else
+                            {
+                                <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Save Changes</text>
+                            }
+                        </button>
+                        <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToDetail" disabled="@State.IsSaving">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    [Parameter] public Guid NearMissId { get; set; }
+
+    private readonly UpdateNearMissRequest _model = new();
+    private bool _isLoading = true;
+    private string? _loadError;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "Edit Near Miss",
+            activeModuleCode: "near-miss",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Near Miss", Href = RouteDefinitions.NearMissList },
+                new BreadcrumbItem { Label = "Edit" }
+            ]);
+
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        var envelope = await ApiClient.GetNearMissAsync(NearMissId);
+
+        if (envelope.IsSuccess)
+        {
+            var nearMiss = envelope.Data!;
+            _model.Title = nearMiss.Title;
+            _model.Description = nearMiss.Description;
+            _model.PotentialSeverity = nearMiss.PotentialSeverity;
+            _model.HazardCategory = nearMiss.HazardCategory;
+            _model.ETag = nearMiss.ETag;
+            _isLoading = false;
+        }
+        else if (envelope.IsProblem)
+        {
+            _loadError = envelope.Problem!.Detail;
+            _isLoading = false;
+        }
+        else
+        {
+            _loadError = $"Failed to load near miss: {envelope.FaultType}";
+            _isLoading = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginSave();
+
+        var envelope = await ApiClient.UpdateNearMissAsync(NearMissId, _model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetSaveSuccess();
+            Nav.NavigateTo($"{RouteDefinitions.NearMissList}/{NearMissId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetSaveError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetSaveError($"Failed to save near miss: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToDetail() => Nav.NavigateTo($"{RouteDefinitions.NearMissList}/{NearMissId}");
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

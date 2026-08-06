@@ -37,6 +37,9 @@
 
         <div class="ps-page-actions">
             <SearchBoxComponent Value="_searchText" ValueChanged="OnSearchChangedAsync" Placeholder="Search projects" />
+            <a href="@RouteDefinitions.PlanningProjectsCreate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-circle" aria-hidden="true"></span> New Project
+            </a>
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadAsync" disabled="@State.IsLoadingList">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>

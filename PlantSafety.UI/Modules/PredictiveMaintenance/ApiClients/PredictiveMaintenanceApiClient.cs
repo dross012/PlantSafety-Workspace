@@ -114,4 +114,55 @@ public sealed class PredictiveMaintenanceApiClient : SafetyApiClientBase
 
         return parts.Count == 0 ? string.Empty : "?" + string.Join("&", parts);
     }
+
+    // ============================================================
+    // Operational.PredictiveMaintenance Alert write/lifecycle surface
+    // (api/v1/operational/predictive-maintenance/alerts) — Raise -> Review ->
+    // ScheduleAction -> Resolve/Dismiss -> Close, plus a real by-id GET. Distinct
+    // generic maintenance-alert aggregate from the read-only ML-generated
+    // Predictions/Recommendations/Sensor data above — those have no write commands;
+    // this is where RaisePredictiveMaintenanceAlertCommand and its lifecycle
+    // actions actually live.
+    // ============================================================
+
+    /// <summary>Retrieves a single PredictiveMaintenanceAlert record by identity, including its ETag. Backed by GET <c>v1/operational/predictive-maintenance/alerts/{id}</c>.</summary>
+    public Task<ApiResponseEnvelope<PredictiveMaintenanceAlertItemDto>> GetAlertByIdAsync(
+        Guid alertId, CancellationToken cancellationToken = default)
+        => GetAsync<PredictiveMaintenanceAlertItemDto>($"v1/operational/predictive-maintenance/alerts/{alertId}", cancellationToken);
+
+    /// <summary>Raises a new PredictiveMaintenanceAlert via the real RaisePredictiveMaintenanceAlertCommand.</summary>
+    public Task<ApiResponseEnvelope<PredictiveMaintenanceAlertStatusResultDto>> RaiseAlertAsync(
+        RaisePredictiveMaintenanceAlertRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<RaisePredictiveMaintenanceAlertRequest, PredictiveMaintenanceAlertStatusResultDto>(
+            "v1/operational/predictive-maintenance/alerts", request, cancellationToken);
+
+    /// <summary>Records a reviewer's triage of the alert (Raised -&gt; UnderReview) via ReviewPredictiveMaintenanceAlertCommand.</summary>
+    public Task<ApiResponseEnvelope<PredictiveMaintenanceAlertStatusResultDto>> ReviewAlertAsync(
+        Guid alertId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PredictiveMaintenanceAlertStatusResultDto>(
+            $"v1/operational/predictive-maintenance/alerts/{alertId}/review", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Schedules corrective maintenance action against the alert (UnderReview -&gt; ActionScheduled) via SchedulePredictiveMaintenanceAlertActionCommand.</summary>
+    public Task<ApiResponseEnvelope<PredictiveMaintenanceAlertStatusResultDto>> ScheduleAlertActionAsync(
+        Guid alertId, ScheduleAlertActionRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<ScheduleAlertActionRequest, PredictiveMaintenanceAlertStatusResultDto>(
+            $"v1/operational/predictive-maintenance/alerts/{alertId}/schedule-action", request, cancellationToken);
+
+    /// <summary>Records that the predicted failure has been addressed (ActionScheduled -&gt; Resolved) via ResolvePredictiveMaintenanceAlertCommand.</summary>
+    public Task<ApiResponseEnvelope<PredictiveMaintenanceAlertStatusResultDto>> ResolveAlertAsync(
+        Guid alertId, ResolveAlertRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<ResolveAlertRequest, PredictiveMaintenanceAlertStatusResultDto>(
+            $"v1/operational/predictive-maintenance/alerts/{alertId}/resolve", request, cancellationToken);
+
+    /// <summary>Dismisses the alert without corrective action (Raised/UnderReview -&gt; Dismissed) via DismissPredictiveMaintenanceAlertCommand.</summary>
+    public Task<ApiResponseEnvelope<PredictiveMaintenanceAlertStatusResultDto>> DismissAlertAsync(
+        Guid alertId, DismissAlertRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<DismissAlertRequest, PredictiveMaintenanceAlertStatusResultDto>(
+            $"v1/operational/predictive-maintenance/alerts/{alertId}/dismiss", request, cancellationToken);
+
+    /// <summary>Formally closes a resolved or dismissed alert (Resolved/Dismissed -&gt; Closed) via ClosePredictiveMaintenanceAlertCommand. Used as this module's soft-delete/retire action.</summary>
+    public Task<ApiResponseEnvelope<PredictiveMaintenanceAlertStatusResultDto>> CloseAlertAsync(
+        Guid alertId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, PredictiveMaintenanceAlertStatusResultDto>(
+            $"v1/operational/predictive-maintenance/alerts/{alertId}/close", new EtagRequest { ETag = eTag }, cancellationToken);
 }

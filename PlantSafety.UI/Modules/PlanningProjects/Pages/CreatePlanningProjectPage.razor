@@ -1,0 +1,130 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create Planning Project input form — covers Plans,
+     Projects, and Scheduling data entry (a Project's TargetCompletionUtc IS
+     the schedule input; ProjectScheduling/ProjectBudgeting are read-only
+     projections over this same data, so no separate scheduling-create
+     endpoint exists). Submits a CreateProjectRequest via
+     POST v1/planning-projects/projects (PlanningProjectsApiClient
+     .CreateProjectAsync) and navigates to the new project's detail page on
+     success. Follows the canonical Blazor UI form pattern established by
+     CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/planning-projects/new"
+
+@inject PlanningProjectsState State
+@inject PlanningProjectsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.PlanningProjects.ApiClients
+@using PlantSafety.UI.Modules.PlanningProjects.Models
+@using PlantSafety.UI.Modules.PlanningProjects.State
+
+<PageTitle>New Planning Project — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create Planning Project form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Planning Project</h2>
+        </div>
+
+        @if (State.CreateProjectError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateProjectError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-field">
+                    <label class="ps-label" for="name">Name</label>
+                    <InputText id="name" @bind-Value="_model.Name" placeholder="Project name" />
+                    <ValidationMessage For="() => _model.Name" class="ps-form-error" />
+                </div>
+
+                <div class="ps-field">
+                    <label class="ps-label" for="target-completion">Target Completion (UTC)</label>
+                    <InputDate id="target-completion" Type="InputDateType.DateTimeLocal" @bind-Value="_model.TargetCompletionUtc" />
+                    <ValidationMessage For="() => _model.TargetCompletionUtc" class="ps-form-error" />
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreatingProject">
+                        @if (State.IsCreatingProject)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create Project</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreatingProject">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateProjectRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Planning Project",
+            activeModuleCode: "planning-projects",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Planning Projects", Href = RouteDefinitions.PlanningProjectsList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreateProject();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreateProject();
+
+        var envelope = await ApiClient.CreateProjectAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            State.SetCreateProjectSuccess(envelope.Data!.ProjectId);
+            Nav.NavigateTo($"{RouteDefinitions.PlanningProjectsList}/{envelope.Data!.ProjectId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateProjectError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateProjectError($"Failed to create project: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.PlanningProjectsList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

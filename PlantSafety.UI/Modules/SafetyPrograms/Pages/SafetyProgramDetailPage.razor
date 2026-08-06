@@ -1,6 +1,13 @@
 @* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
+   UPDATED: 2026-08-05 — Adds the module's real lifecycle command
+     (ChangeSafetyProgramStatusCommand, POST v1/safety-programs/{id}/status)
+     as Activate/Put On Hold/Reopen action buttons — the aggregate has no
+     field-level Update command, only Create and this lifecycle transition
+     surface. Transitioning to Completed is this module's terminal/closing
+     (soft-delete-equivalent) action, confirm-gated. Adds a Print button
+     (window.print via JS interop).
    FILE DESCRIPTION: Safety program detail page. Generic detail template
      built from the canonical Shared component library (CardComponent,
      StatusIndicatorComponent, ErrorBoundaryComponent, LoadingIndicatorComponent).
@@ -14,10 +21,12 @@
 @inject SafetyProgramsApiClient ApiClient
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
 @using PlantSafety.UI.Modules.SafetyPrograms.ApiClients
+@using PlantSafety.UI.Modules.SafetyPrograms.Models
 @using PlantSafety.UI.Modules.SafetyPrograms.State
 
 <PageTitle>Safety Program Detail — PlantSafety</PageTitle>
@@ -41,6 +50,15 @@
                     <h2 class="ps-detail-title">@program.Name</h2>
                     <StatusIndicatorComponent Status="@MapStatus(program.Status)" Label="@program.Status" />
                 </div>
+
+                @if (State.ActionMessage is not null)
+                {
+                    <div class="ps-alert ps-alert--info" role="status">@State.ActionMessage</div>
+                }
+                @if (State.ActionError is not null)
+                {
+                    <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+                }
 
                 <dl class="ps-detail-fields">
                     <dt>Description</dt>   <dd>@program.Description</dd>
@@ -88,9 +106,51 @@
                     </dl>
                 }
 
+                <CardComponent Title="Lifecycle Actions">
+                    @if (program.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <p class="ps-text-muted">This program is completed. No further lifecycle actions are available.</p>
+                    }
+                    else
+                    {
+                        @if (CanTransitionTo(program.Status, "Active"))
+                        {
+                            <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick='() => ChangeStatusAsync("Active")' disabled="@State.IsBusy">
+                                <span class="bi bi-play-circle" aria-hidden="true"></span> Activate
+                            </button>
+                        }
+                        @if (CanTransitionTo(program.Status, "OnHold"))
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick='() => ChangeStatusAsync("OnHold")' disabled="@State.IsBusy">
+                                <span class="bi bi-pause-circle" aria-hidden="true"></span> Put On Hold
+                            </button>
+                        }
+
+                        @if (!_confirmComplete)
+                        {
+                            <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmComplete = true" disabled="@State.IsBusy">
+                                <span class="bi bi-x-circle" aria-hidden="true"></span> Complete Program
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="ps-alert ps-alert--warning" role="alertdialog">
+                                Completing this program is final and cannot be undone. Are you sure?
+                                <div class="ps-form-actions">
+                                    <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick='() => ChangeStatusAsync("Completed")' disabled="@State.IsBusy">Confirm Complete</button>
+                                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => _confirmComplete = false" disabled="@State.IsBusy">Cancel</button>
+                                </div>
+                            </div>
+                        }
+                    }
+                </CardComponent>
+
                 <div class="ps-detail-actions">
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.SafetyProgramsList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Safety Programs
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
                     </button>
                 </div>
             </div>
@@ -102,6 +162,8 @@
 
 @code {
     [Parameter] public Guid ProgramId { get; set; }
+
+    private bool _confirmComplete;
 
     protected override void OnInitialized()
     {
@@ -141,6 +203,45 @@
         "completed" => "Offline",
         _ => "Offline",
     };
+
+    /// <summary>
+    /// Mirrors the allowed-transition matrix enforced server-side by
+    /// SafetyProgram.ChangeStatus (Planned to Active/Completed; Active to OnHold/Completed;
+    /// OnHold to Active/Completed; Completed is terminal) so the UI only offers buttons for
+    /// transitions the backend will actually accept.
+    /// </summary>
+    private static bool CanTransitionTo(string currentStatus, string targetStatus) => currentStatus.ToLowerInvariant() switch
+    {
+        "planned" => targetStatus is "Active",
+        "active" => targetStatus is "OnHold",
+        "onhold" or "on hold" => targetStatus is "Active",
+        _ => false,
+    };
+
+    private async Task ChangeStatusAsync(string newStatus)
+    {
+        State.BeginAction();
+        var envelope = await ApiClient.ChangeProgramStatusAsync(ProgramId, new ChangeSafetyProgramStatusRequest { NewStatus = newStatus });
+        _confirmComplete = false;
+
+        if (envelope.IsSuccess)
+        {
+            State.CompleteAction($"Program status changed to {envelope.Data!.Status}.");
+            var refreshed = await ApiClient.GetProgramAsync(ProgramId);
+            if (refreshed.IsSuccess)
+                State.SetSelectedProgram(refreshed.Data!);
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetActionError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetActionError($"Failed to change program status: {envelope.FaultType}");
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

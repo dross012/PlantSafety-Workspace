@@ -1,0 +1,163 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Trigger a new Alert. Submits a TriggerAlertRequest via
+     POST v1/alerts (AlertsApiClient.TriggerAsync -> TriggerAlertCommand) and
+     navigates to the new alert's detail page on success. No field-level
+     update endpoint exists — lifecycle transitions (Acknowledge/Dispatch/
+     Escalate/Resolve/Close) are exposed as action buttons on the detail
+     page instead. Follows the canonical Blazor UI form pattern established
+     in CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/alerts/new"
+
+@inject AlertsState State
+@inject AlertsApiClient ApiClient
+@inject TenantState TenantCtx
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Alerts.ApiClients
+@using PlantSafety.UI.Modules.Alerts.Models
+
+<PageTitle>New Alert — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Trigger Alert form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Alert</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="title">Title</label>
+                        <InputText id="title" @bind-Value="_model.Title" />
+                        <ValidationMessage For="() => _model.Title" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="category-code">Category Code</label>
+                        <InputText id="category-code" @bind-Value="_model.CategoryCode" placeholder="e.g. LifeSafetyEmergency" />
+                        <ValidationMessage For="() => _model.CategoryCode" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="source-type-code">Source Type</label>
+                        <InputText id="source-type-code" @bind-Value="_model.SourceTypeCode" placeholder="Sensor/ComputerVision/Wearable/PanicButton/Human/System" />
+                        <ValidationMessage For="() => _model.SourceTypeCode" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="severity-code">Severity Override (optional)</label>
+                        <InputText id="severity-code" @bind-Value="_model.SeverityCode" placeholder="Critical/High/Medium/Low" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="location-zone">Location Zone</label>
+                        <InputText id="location-zone" @bind-Value="_model.LocationZoneName" />
+                        <ValidationMessage For="() => _model.LocationZoneName" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="latitude">Latitude (optional)</label>
+                        <InputNumber id="latitude" @bind-Value="_model.Latitude" />
+                        <ValidationMessage For="() => _model.Latitude" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="longitude">Longitude (optional)</label>
+                        <InputNumber id="longitude" @bind-Value="_model.Longitude" />
+                        <ValidationMessage For="() => _model.Longitude" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Triggering…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Trigger Alert</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly TriggerAlertRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New Alert",
+            activeModuleCode: "alerts",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "Alerts", Href = RouteDefinitions.AlertsList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+        _model.SiteId = TenantCtx.Tenant?.SiteId;
+
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        var envelope = await ApiClient.TriggerAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"{RouteDefinitions.AlertsList}/{envelope.Data!.AlertId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to trigger alert: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.AlertsList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

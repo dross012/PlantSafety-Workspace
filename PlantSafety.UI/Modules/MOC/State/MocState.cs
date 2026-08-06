@@ -40,6 +40,10 @@ public sealed class MocState
     private string? _listError;
     private string? _detailError;
 
+    private bool _isCreatingMoc;
+    private string? _createMocError;
+    private Guid? _createdMocId;
+
     /// <summary>Gets the current page of workflow rows, filtered by <see cref="SearchText"/>.</summary>
     public IReadOnlyList<MocRowViewModel> PageItems => Filtered().Skip((_page - 1) * PageSize).Take(PageSize).ToList();
 
@@ -78,6 +82,15 @@ public sealed class MocState
 
     /// <summary>Gets a sanitized detail load error, or null.</summary>
     public string? DetailError => _detailError;
+
+    /// <summary>Gets a value indicating whether a Create MOC submission is in flight.</summary>
+    public bool IsCreatingMoc => _isCreatingMoc;
+
+    /// <summary>Gets a sanitized Create MOC submission error, or null.</summary>
+    public string? CreateMocError => _createMocError;
+
+    /// <summary>Gets the identifier of the most recently created MOC request, or null.</summary>
+    public Guid? CreatedMocId => _createdMocId;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -135,6 +148,18 @@ public sealed class MocState
 
     /// <summary>Clears the selected detail record.</summary>
     public void ClearSelection() { SelectedWorkflow = null; NotifyStateChanged(); }
+
+    /// <summary>Marks a Create MOC submission as in flight.</summary>
+    public void BeginCreateMoc() { _isCreatingMoc = true; _createMocError = null; _createdMocId = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Create MOC submission.</summary>
+    public void SetCreateMocSuccess(Guid mocId) { _createdMocId = mocId; _isCreatingMoc = false; _createMocError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a Create MOC submission failure with a sanitized message.</summary>
+    public void SetCreateMocError(string sanitizedError) { _createMocError = sanitizedError; _isCreatingMoc = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Create MOC submission state (e.g. when navigating to the form).</summary>
+    public void ResetCreateMoc() { _isCreatingMoc = false; _createMocError = null; _createdMocId = null; NotifyStateChanged(); }
 
     private IReadOnlyList<MocRowViewModel> Filtered() =>
         string.IsNullOrWhiteSpace(_searchText)

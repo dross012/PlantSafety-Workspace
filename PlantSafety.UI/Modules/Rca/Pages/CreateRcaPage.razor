@@ -1,0 +1,174 @@
+@* ============================================================
+   AUTHOR: PlantSafety Platform
+   CREATED: 2026-08-05
+   FILE DESCRIPTION: Create (initiate) an Incident/NearMiss-linked Root
+     Cause Analysis. Submits a CreateRcaRequest via POST
+     v1/features/safety-events/root-cause-analysis
+     (RcaApiClient.CreateRcaAsync -> CreateRootCauseAnalysisCommand) and
+     navigates to the new RCA's detail page on success. This is the real
+     Save action backing RcaListPage/RcaDetailPage's Overview/Root Cause/
+     Corrective Actions fields. Follows the canonical Blazor UI form
+     pattern established in CreateBudgetPage.razor.
+   SchemaVersion: 2026.1
+   Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
+   ============================================================ *@
+
+@page "/modules/rca/new"
+
+@inject RcaState State
+@inject RcaApiClient ApiClient
+@inject NavigationState NavState
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+@using PlantSafety.UI.Modules.Rca.ApiClients
+@using PlantSafety.UI.Modules.Rca.Models
+@using PlantSafety.UI.Modules.Rca.State
+
+<PageTitle>New RCA — PlantSafety</PageTitle>
+
+<div class="ps-page-container">
+
+    <ErrorBoundaryComponent Message="The Create RCA form could not be displayed.">
+
+        <div class="ps-detail-header">
+            <h2 class="ps-detail-title">New Root Cause Analysis</h2>
+        </div>
+
+        @if (State.CreateError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.CreateError</div>
+        }
+
+        <div class="ps-form-card">
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync" class="ps-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="ps-form-error" />
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="linked-event-id">Linked Event Id</label>
+                        <InputText id="linked-event-id" @bind-Value="_linkedEventIdText" placeholder="GUID" />
+                        <ValidationMessage For="() => _model.LinkedEventId" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="linked-event-type">Linked Event Type</label>
+                        <InputText id="linked-event-type" @bind-Value="_model.LinkedEventType" placeholder="Incident or NearMiss" />
+                        <ValidationMessage For="() => _model.LinkedEventType" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="methodology">Methodology</label>
+                        <InputText id="methodology" @bind-Value="_model.Methodology" placeholder="e.g. 5Why, FishboneDiagram, FaultTree" />
+                        <ValidationMessage For="() => _model.Methodology" class="ps-form-error" />
+                    </div>
+
+                    <div class="ps-field">
+                        <label class="ps-label" for="lead-investigator-id">Lead Investigator Id</label>
+                        <InputText id="lead-investigator-id" @bind-Value="_leadInvestigatorIdText" placeholder="GUID" />
+                        <ValidationMessage For="() => _model.LeadInvestigatorId" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="root-causes">Root Causes</label>
+                        <InputTextArea id="root-causes" @bind-Value="_model.RootCauses" rows="4" />
+                        <ValidationMessage For="() => _model.RootCauses" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-row">
+                    <div class="ps-field">
+                        <label class="ps-label" for="corrective-actions">Corrective Actions</label>
+                        <InputTextArea id="corrective-actions" @bind-Value="_model.CorrectiveActions" rows="4" />
+                        <ValidationMessage For="() => _model.CorrectiveActions" class="ps-form-error" />
+                    </div>
+                </div>
+
+                <div class="ps-form-actions">
+                    <button type="submit" class="ps-btn ps-btn-primary" disabled="@State.IsCreating">
+                        @if (State.IsCreating)
+                        {
+                            <span class="bi bi-arrow-repeat" aria-hidden="true"></span> <text>Creating…</text>
+                        }
+                        else
+                        {
+                            <span class="bi bi-check-circle" aria-hidden="true"></span> <text>Create RCA</text>
+                        }
+                    </button>
+                    <button type="button" class="ps-btn ps-btn-ghost" @onclick="NavigateToList" disabled="@State.IsCreating">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+
+    </ErrorBoundaryComponent>
+
+</div>
+
+@code {
+    private readonly CreateRcaRequest _model = new();
+    private string _linkedEventIdText = string.Empty;
+    private string _leadInvestigatorIdText = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        NavState.SetContext(
+            pageTitle: "New RCA",
+            activeModuleCode: "rca",
+            breadcrumbs:
+            [
+                new BreadcrumbItem { Label = "Home", Href = RouteDefinitions.Home },
+                new BreadcrumbItem { Label = "RCA", Href = RouteDefinitions.RcaList },
+                new BreadcrumbItem { Label = "New" }
+            ]);
+
+        State.ResetCreate();
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        State.BeginCreate();
+
+        if (!Guid.TryParse(_linkedEventIdText, out var linkedEventId))
+        {
+            State.SetCreateError("Linked Event Id must be a valid GUID.");
+            return;
+        }
+
+        if (!Guid.TryParse(_leadInvestigatorIdText, out var leadInvestigatorId))
+        {
+            State.SetCreateError("Lead Investigator Id must be a valid GUID.");
+            return;
+        }
+
+        _model.LinkedEventId = linkedEventId;
+        _model.LeadInvestigatorId = leadInvestigatorId;
+
+        var envelope = await ApiClient.CreateRcaAsync(_model);
+
+        if (envelope.IsSuccess)
+        {
+            Nav.NavigateTo($"{RouteDefinitions.RcaList}/{envelope.Data!.RcaId}");
+        }
+        else if (envelope.IsProblem)
+        {
+            State.SetCreateError(envelope.Problem!.Detail);
+        }
+        else
+        {
+            State.SetCreateError($"Failed to create RCA: {envelope.FaultType}");
+        }
+    }
+
+    private void NavigateToList() => Nav.NavigateTo(RouteDefinitions.RcaList);
+
+    public void Dispose() => State.OnChange -= StateHasChanged;
+}

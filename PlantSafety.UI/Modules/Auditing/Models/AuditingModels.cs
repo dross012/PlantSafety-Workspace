@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlantSafety.UI.Modules.Auditing.Models;
 
@@ -232,4 +233,136 @@ public sealed record GenerateAuditReportRequest
 
     /// <summary>Pre-serialized JSON for the Signatures/Attestations section.</summary>
     public string SignaturesJson { get; init; } = "{}";
+}
+
+// ============================================================
+// Compliance.Auditing write/lifecycle surface (api/v1/compliance/auditing) —
+// Create -> Start -> RecordFindings -> Close -> Archive.
+// ============================================================
+
+/// <summary>Full read-model record for a single Auditing entry (mirrors <c>AuditingItemDto</c>), backing GET v1/compliance/auditing/{id}.</summary>
+public sealed record AuditingItemDto
+{
+    /// <summary>Record identifier.</summary>
+    public Guid AuditingId { get; init; }
+
+    /// <summary>Tenant identifier.</summary>
+    public Guid TenantId { get; init; }
+
+    /// <summary>Site identifier, or null when not site-scoped.</summary>
+    public Guid? SiteId { get; init; }
+
+    /// <summary>Current lifecycle status (Created/Active/Completed/Closed/Archived).</summary>
+    public string Status { get; init; } = string.Empty;
+
+    /// <summary>Human-readable audit program/execution title.</summary>
+    public string AuditTitle { get; init; } = string.Empty;
+
+    /// <summary>Audit classification: Internal, External, Regulatory, Supplier.</summary>
+    public string AuditType { get; init; } = string.Empty;
+
+    /// <summary>Narrative scope of the audit.</summary>
+    public string Scope { get; init; } = string.Empty;
+
+    /// <summary>Identity of the lead auditor assigned to this audit.</summary>
+    public Guid? AuditorId { get; init; }
+
+    /// <summary>Scheduled execution date/time for the audit, if planned.</summary>
+    public DateTime? ScheduledAtUtc { get; init; }
+
+    /// <summary>UTC timestamp the audit was completed, if finished.</summary>
+    public DateTime? CompletedAtUtc { get; init; }
+
+    /// <summary>Count of findings raised during this audit.</summary>
+    public int FindingsCount { get; init; }
+
+    /// <summary>Computed compliance score (0-100) for this audit, when available.</summary>
+    public decimal? Score { get; init; }
+
+    /// <summary>Overall compliance rating classification.</summary>
+    public string ComplianceRating { get; init; } = string.Empty;
+
+    /// <summary>UTC timestamp when the record was created.</summary>
+    public DateTime CreatedAtUtc { get; init; }
+
+    /// <summary>Identity of the user who created this record.</summary>
+    public Guid CreatedBy { get; init; }
+
+    /// <summary>Optimistic-concurrency token. Must be echoed back on subsequent mutating commands.</summary>
+    public string? ETag { get; init; }
+}
+
+/// <summary>Request body for submitting a new Auditing record (POST v1/compliance/auditing). Mirrors <c>CreateAuditingRequest</c>.</summary>
+public sealed class CreateAuditingRequest
+{
+    /// <summary>Gets or sets the optional site scope. Null applies tenant-wide.</summary>
+    public Guid? SiteId { get; set; }
+
+    /// <summary>Gets or sets the human-readable audit program/execution title.</summary>
+    [Required]
+    [StringLength(400)]
+    public string AuditTitle { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the audit classification (Internal/External/Regulatory/Supplier).</summary>
+    [Required]
+    [StringLength(100)]
+    public string AuditType { get; set; } = "Internal";
+
+    /// <summary>Gets or sets the narrative scope of the audit.</summary>
+    [Required]
+    [StringLength(2000)]
+    public string Scope { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the identity of the lead auditor assigned to this audit.</summary>
+    [Required]
+    public Guid AuditorId { get; set; }
+
+    /// <summary>Gets or sets the optional scheduled execution timestamp.</summary>
+    public DateTime? ScheduledAtUtc { get; set; }
+}
+
+/// <summary>Result of submitting a new Auditing record. Mirrors <c>CreateAuditingResult</c>.</summary>
+public sealed class CreateAuditingResultDto
+{
+    /// <summary>Gets the identifier of the newly created Auditing record.</summary>
+    public Guid AuditingId { get; init; }
+
+    /// <summary>Gets the lifecycle status immediately after creation.</summary>
+    public string Status { get; init; } = string.Empty;
+}
+
+/// <summary>Result payload shared by the Auditing lifecycle-transition commands (Start/RecordFindings/Close/Archive). Mirrors <c>AuditingStatusResult</c>.</summary>
+public sealed class AuditingStatusResultDto
+{
+    /// <summary>Gets the identifier of the affected Auditing record.</summary>
+    public Guid AuditingId { get; init; }
+
+    /// <summary>Gets the lifecycle status after the transition.</summary>
+    public string Status { get; init; } = string.Empty;
+}
+
+/// <summary>Request body carrying only an optimistic-concurrency ETag (start/close/archive).</summary>
+public sealed class EtagRequest
+{
+    /// <summary>Gets or sets the optimistic-concurrency token from the last read of this record. Null skips the check.</summary>
+    public string? ETag { get; set; }
+}
+
+/// <summary>Request body for recording an audit's findings and compliance score (POST .../record-findings). Mirrors <c>RecordAuditingFindingsRequest</c>.</summary>
+public sealed class RecordAuditingFindingsRequest
+{
+    /// <summary>Gets or sets the count of findings raised during this audit.</summary>
+    [Required]
+    [Range(0, int.MaxValue)]
+    public int FindingsCount { get; set; }
+
+    /// <summary>Gets or sets the optional computed compliance score (0-100).</summary>
+    [Range(0, 100)]
+    public decimal? Score { get; set; }
+
+    /// <summary>Gets or sets the overall compliance rating classification.</summary>
+    public string ComplianceRating { get; set; } = "NotRated";
+
+    /// <summary>Gets or sets the optimistic-concurrency token from the last read of this record. Null skips the check.</summary>
+    public string? ETag { get; set; }
 }

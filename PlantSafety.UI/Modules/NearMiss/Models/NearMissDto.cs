@@ -10,6 +10,7 @@
 // ============================================================
 
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlantSafety.UI.Modules.NearMiss.Models;
 
@@ -51,4 +52,68 @@ public sealed class NearMissDto
 
     /// <summary>Gets the row version for concurrency.</summary>
     public string ETag { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for creating a new Near Miss record. Mirrors
+/// PlantSafety.Api.Features.SafetyEvents.NearMisses.Contracts.Requests.CreateNearMissRequest,
+/// with DataAnnotations mirroring CreateNearMissCommandValidator's rules.
+/// Backed by POST v1/features/safety-events/near-misses.
+/// </summary>
+public sealed class CreateNearMissRequest
+{
+    /// <summary>Site where the near miss occurred.</summary>
+    [Required(ErrorMessage = "Site is required.")]
+    public Guid? SiteId { get; set; }
+
+    /// <summary>Short title. Max 200 characters.</summary>
+    [Required(ErrorMessage = "Title is required.")]
+    [StringLength(200, ErrorMessage = "Title must be 200 characters or fewer.")]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Narrative description. Max 4000 characters.</summary>
+    [Required(ErrorMessage = "Description is required.")]
+    [StringLength(4000, ErrorMessage = "Description must be 4000 characters or fewer.")]
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>UTC timestamp when the near miss occurred. Cannot be in the future.</summary>
+    [Required(ErrorMessage = "Occurred date is required.")]
+    public DateTimeOffset? OccurredAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Potential severity if the event had escalated (Minor, Moderate, Serious, Critical).</summary>
+    [Required(ErrorMessage = "Potential severity is required.")]
+    public string PotentialSeverity { get; set; } = "Minor";
+
+    /// <summary>Hazard category.</summary>
+    [Required(ErrorMessage = "Hazard category is required.")]
+    public string HazardCategory { get; set; } = "Other";
+
+    /// <summary>Worker who is reporting the near miss.</summary>
+    [Required(ErrorMessage = "Reporting worker is required.")]
+    public Guid? ReportedByWorkerId { get; set; }
+}
+
+/// <summary>
+/// Request body for updating an existing Near Miss. Mirrors
+/// PlantSafety.Api.Features.SafetyEvents.NearMisses.Contracts.Requests.UpdateNearMissRequest.
+/// Null fields mean "no change". Backed by PUT v1/features/safety-events/near-misses/{id}.
+/// </summary>
+public sealed class UpdateNearMissRequest
+{
+    /// <summary>Updated title. Null means no change.</summary>
+    [StringLength(200, ErrorMessage = "Title must be 200 characters or fewer.")]
+    public string? Title { get; set; }
+
+    /// <summary>Updated description. Null means no change.</summary>
+    [StringLength(4000, ErrorMessage = "Description must be 4000 characters or fewer.")]
+    public string? Description { get; set; }
+
+    /// <summary>Updated potential severity. Null means no change.</summary>
+    public string? PotentialSeverity { get; set; }
+
+    /// <summary>Updated hazard category. Null means no change.</summary>
+    public string? HazardCategory { get; set; }
+
+    /// <summary>Optimistic concurrency token from the last read of this Near Miss.</summary>
+    public string? ETag { get; set; }
 }

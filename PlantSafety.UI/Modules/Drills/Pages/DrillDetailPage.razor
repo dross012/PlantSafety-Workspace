@@ -1,11 +1,16 @@
 ﻿@* ============================================================
    AUTHOR: PlantSafety Platform
    CREATED: 2026-07-14
+   UPDATED: 2026-08-05 — Added a Print action (window.print via JS interop);
+     removed the stale "needs backend wiring" notice now that GetById is
+     live. No field-level Update/Delete command exists for this aggregate —
+     Drills supports Create (schedule) only, so no Edit/Delete actions are
+     offered here.
    FILE DESCRIPTION: Drill detail/drilldown page. Calls the real GetById
      endpoint at /v1/features/safety-events/drills/{id}; falls back to the
      standard error state via ErrorBoundaryComponent on Problem/Fault
      responses.
-   SchemaVersion: 2026.1
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -15,6 +20,7 @@
 @inject DrillsApiClient ApiClient
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -34,13 +40,7 @@
         }
         else if (State.DetailError is not null)
         {
-            <div class="ps-alert ps-alert--danger" role="alert">
-                @State.DetailError
-                <p class="ps-needs-backend">
-                    <span class="bi bi-exclamation-circle" aria-hidden="true"></span>
-                    Drill drilldown needs backend wiring — no GetById endpoint exists yet.
-                </p>
-            </div>
+            <div class="ps-alert ps-alert--danger" role="alert">@State.DetailError</div>
         }
         else if (State.Selected is { } item)
         {
@@ -70,6 +70,9 @@
                 <div class="ps-detail-actions">
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.DrillsList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Drills &amp; Exercises
+                    </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
                     </button>
                 </div>
             </div>
@@ -111,6 +114,8 @@
         else
             State.SetDetailError($"Failed to load drill: {envelope.FaultType}");
     }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

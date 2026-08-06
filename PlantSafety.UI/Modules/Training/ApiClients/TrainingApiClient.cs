@@ -69,4 +69,17 @@ public sealed class TrainingApiClient : SafetyApiClientBase
         var query = $"TenantId={tenantId:D}&From={Uri.EscapeDataString(from.ToString("o"))}&To={Uri.EscapeDataString(to.ToString("o"))}";
         return siteId.HasValue ? $"{query}&SiteId={siteId.Value:D}" : query;
     }
+
+    /// <summary>
+    /// Assigns a safety training course to a worker. Backed by
+    /// POST <c>v1/features/operational/training</c> (requires the SafetyTier Approve policy) —
+    /// a real, controller-wired write surface distinct from the read-only Operational Training
+    /// list-model this client's <see cref="GetTrainingRecordsAsync"/> reads from. There is no
+    /// field-level update or cancel/delete command for a training assignment; Assign is the
+    /// only reachable write operation for this module.
+    /// </summary>
+    public Task<ApiResponseEnvelope<AssignTrainingResponse>> AssignTrainingAsync(
+        AssignTrainingRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<AssignTrainingRequest, AssignTrainingResponse>(
+            "v1/features/operational/training", request, cancellationToken);
 }

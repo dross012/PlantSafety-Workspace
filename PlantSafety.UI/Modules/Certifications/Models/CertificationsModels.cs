@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace PlantSafety.UI.Modules.Certifications.Models;
 
@@ -173,4 +174,115 @@ public sealed record ReadModelEnvelopeDto<TItem>
     public bool Success { get; init; }
     public ReadModelPayloadDto<TItem>? Data { get; init; }
     public IReadOnlyList<string> Errors { get; init; } = [];
+}
+
+// ============================================================
+// Compliance.Certification write/lifecycle surface (api/v1/compliance/certification) —
+// Create -> Verify -> Renew/Expire -> Close -> Archive. Distinct generic
+// personnel-certification aggregate from the 7 read-only category verticals above.
+// ============================================================
+
+/// <summary>Full read-model record for a single generic Certification (mirrors <c>CertificationItemDto</c>), backing GET v1/compliance/certification/{id}.</summary>
+public sealed record CertificationItemDto
+{
+    /// <summary>Record identifier.</summary>
+    public Guid CertificationId { get; init; }
+
+    /// <summary>Tenant identifier.</summary>
+    public Guid TenantId { get; init; }
+
+    /// <summary>Site identifier, or null when not site-scoped.</summary>
+    public Guid? SiteId { get; init; }
+
+    /// <summary>Current lifecycle status (Created/Active/Completed/Closed/Archived).</summary>
+    public string Status { get; init; } = string.Empty;
+
+    /// <summary>Worker who holds this certification.</summary>
+    public Guid? HolderWorkerId { get; init; }
+
+    /// <summary>Name of the certification.</summary>
+    public string CertificationName { get; init; } = string.Empty;
+
+    /// <summary>Issuing/certifying body.</summary>
+    public string CertificationBody { get; init; } = string.Empty;
+
+    /// <summary>Certificate/credential number as issued by the certifying body.</summary>
+    public string CertificationNumber { get; init; } = string.Empty;
+
+    /// <summary>UTC timestamp the certification was issued.</summary>
+    public DateTime IssuedAtUtc { get; init; }
+
+    /// <summary>UTC timestamp the certification expires, if it has a validity window.</summary>
+    public DateTime? ExpiresAtUtc { get; init; }
+
+    /// <summary>Indicates whether this certification requires periodic renewal.</summary>
+    public bool RenewalRequired { get; init; }
+
+    /// <summary>UTC timestamp when the record was created.</summary>
+    public DateTime CreatedAtUtc { get; init; }
+
+    /// <summary>Identity of the user who created this record.</summary>
+    public Guid CreatedBy { get; init; }
+
+    /// <summary>Optimistic-concurrency token. Must be echoed back on subsequent mutating commands.</summary>
+    public string? ETag { get; init; }
+}
+
+/// <summary>Request body for submitting a new Certification record (POST v1/compliance/certification). Mirrors <c>CreateCertificationRequest</c>.</summary>
+public sealed class CreateCertificationRequest
+{
+    /// <summary>Gets or sets the optional site scope. Null applies tenant-wide.</summary>
+    public Guid? SiteId { get; set; }
+
+    /// <summary>Gets or sets the worker who holds this certification.</summary>
+    [Required]
+    public Guid HolderWorkerId { get; set; }
+
+    /// <summary>Gets or sets the name of the certification.</summary>
+    [Required]
+    [StringLength(400)]
+    public string CertificationName { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the issuing/certifying body.</summary>
+    [Required]
+    [StringLength(400)]
+    public string CertificationBody { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the certificate/credential number as issued by the certifying body.</summary>
+    [Required]
+    [StringLength(200)]
+    public string CertificationNumber { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the UTC timestamp the certification was issued. Defaults to the request time when omitted.</summary>
+    public DateTime? IssuedAtUtc { get; set; }
+
+    /// <summary>Gets or sets the UTC timestamp the certification expires, if it has a validity window.</summary>
+    public DateTime? ExpiresAtUtc { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether this certification requires periodic renewal.</summary>
+    public bool RenewalRequired { get; set; } = true;
+}
+
+/// <summary>Result of submitting a new Certification record. Mirrors <c>CreateCertificationResult</c>.</summary>
+public sealed record CreateCertificationResultDto(Guid CertificationId, string Status);
+
+/// <summary>Result payload shared by the Certification lifecycle-transition commands (Verify/Renew/Expire/Close/Archive). Mirrors <c>CertificationStatusResult</c>.</summary>
+public sealed record CertificationStatusResultDto(Guid CertificationId, string Status);
+
+/// <summary>Request body carrying only an optimistic-concurrency ETag (verify/expire/close/archive).</summary>
+public sealed class EtagRequest
+{
+    /// <summary>Gets or sets the optimistic-concurrency token from the last read of this record. Null skips the check.</summary>
+    public string? ETag { get; set; }
+}
+
+/// <summary>Request body for renewing an active certification (POST .../renew). Mirrors <c>RenewCertificationRequest</c>.</summary>
+public sealed class RenewCertificationRequest
+{
+    /// <summary>Gets or sets the new UTC expiration timestamp for the certification.</summary>
+    [Required]
+    public DateTime NewExpiresAtUtc { get; set; }
+
+    /// <summary>Gets or sets the optimistic-concurrency token from the last read of this record. Null skips the check.</summary>
+    public string? ETag { get; set; }
 }

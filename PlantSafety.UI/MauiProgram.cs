@@ -43,6 +43,7 @@ using PlantSafety.UI.Modules.CyberPhysicalSecurity.ApiClients;
 using PlantSafety.UI.Modules.AutonomousVehicleSafety.ApiClients;
 using PlantSafety.UI.Modules.MachineSafety.CraneHoistSystems.ApiClients;
 
+
 namespace PlantSafety.UI;
 
 /// <summary>
@@ -182,6 +183,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.Policies.State.PoliciesState>();
         builder.Services.AddSingleton<Modules.PredictiveAnalytics.State.PredictiveAnalyticsState>();
         builder.Services.AddSingleton<Modules.PredictiveMaintenance.State.EquipmentPredictiveViewState>();
+        builder.Services.AddSingleton<Modules.PredictiveMaintenance.State.PredictiveMaintenanceAlertState>();
         builder.Services.AddSingleton<Modules.PredictiveMaintenance.State.PredictionDetailState>();
         builder.Services.AddSingleton<Modules.PredictiveMaintenance.State.PredictionsListState>();
         builder.Services.AddSingleton<Modules.PredictiveMaintenance.State.PredictiveDashboardState>();
@@ -199,6 +201,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.ProjectScheduling.State.ProjectSchedulingState>();
         builder.Services.AddSingleton<Modules.ROI.State.RoiState>();
         builder.Services.AddSingleton<Modules.Rca.State.RcaState>();
+        builder.Services.AddSingleton<Modules.Rca.State.RcaRecordState>();
         builder.Services.AddSingleton<Modules.RegulatoryCalendar.State.RegulatoryCalendarState>();
         builder.Services.AddSingleton<Modules.Reporting.State.ReportingState>();
         builder.Services.AddSingleton<Modules.ReportingAnalytics.State.ReportingAnalyticsState>();

@@ -35,6 +35,14 @@ public sealed class FinancialsState
     private int _totalCount;
     private int _totalPages;
 
+    private bool _isCreatingBudget;
+    private string? _createBudgetError;
+    private Guid? _createdBudgetId;
+
+    private bool _isRecordingCost;
+    private string? _recordCostError;
+    private Models.CreateFinancialRecordResult? _recordedFinancialRecord;
+
     /// <summary>Gets the current page of budget view models. Never null; empty when not loaded.</summary>
     public IReadOnlyList<BudgetViewModel> Budgets => _budgets;
 
@@ -61,6 +69,24 @@ public sealed class FinancialsState
 
     /// <summary>Gets the total number of pages.</summary>
     public int TotalPages => _totalPages;
+
+    /// <summary>Gets a value indicating whether a Create Budget submission is in flight.</summary>
+    public bool IsCreatingBudget => _isCreatingBudget;
+
+    /// <summary>Gets a sanitized Create Budget submission error, or null.</summary>
+    public string? CreateBudgetError => _createBudgetError;
+
+    /// <summary>Gets the identifier of the most recently created budget, or null.</summary>
+    public Guid? CreatedBudgetId => _createdBudgetId;
+
+    /// <summary>Gets a value indicating whether a Record Cost (FinancialRecord create) submission is in flight.</summary>
+    public bool IsRecordingCost => _isRecordingCost;
+
+    /// <summary>Gets a sanitized Record Cost submission error, or null.</summary>
+    public string? RecordCostError => _recordCostError;
+
+    /// <summary>Gets the most recently recorded FinancialRecord result, or null.</summary>
+    public Models.CreateFinancialRecordResult? RecordedFinancialRecord => _recordedFinancialRecord;
 
     /// <summary>Gets the sum of AllocatedAmount across the currently loaded page.</summary>
     public decimal TotalAllocated => _budgets.Sum(b => b.AllocatedAmount);
@@ -106,6 +132,30 @@ public sealed class FinancialsState
 
     /// <summary>Clears the selected budget.</summary>
     public void ClearSelection() { _selectedBudget = null; NotifyStateChanged(); }
+
+    /// <summary>Marks a Create Budget submission as in flight.</summary>
+    public void BeginCreateBudget() { _isCreatingBudget = true; _createBudgetError = null; _createdBudgetId = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Create Budget submission.</summary>
+    public void SetCreateBudgetSuccess(Guid budgetId) { _createdBudgetId = budgetId; _isCreatingBudget = false; _createBudgetError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a Create Budget submission failure with a sanitized message.</summary>
+    public void SetCreateBudgetError(string sanitizedError) { _createBudgetError = sanitizedError; _isCreatingBudget = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Create Budget submission state (e.g. when navigating to the form).</summary>
+    public void ResetCreateBudget() { _isCreatingBudget = false; _createBudgetError = null; _createdBudgetId = null; NotifyStateChanged(); }
+
+    /// <summary>Marks a Record Cost (FinancialRecord create) submission as in flight.</summary>
+    public void BeginRecordCost() { _isRecordingCost = true; _recordCostError = null; _recordedFinancialRecord = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Record Cost submission.</summary>
+    public void SetRecordCostSuccess(Models.CreateFinancialRecordResult result) { _recordedFinancialRecord = result; _isRecordingCost = false; _recordCostError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a Record Cost submission failure with a sanitized message.</summary>
+    public void SetRecordCostError(string sanitizedError) { _recordCostError = sanitizedError; _isRecordingCost = false; NotifyStateChanged(); }
+
+    /// <summary>Resets Record Cost submission state (e.g. when navigating to the form).</summary>
+    public void ResetRecordCost() { _isRecordingCost = false; _recordCostError = null; _recordedFinancialRecord = null; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

@@ -9,6 +9,8 @@
 //   is defined against the conventional collection route so the list page degrades
 //   gracefully (via ApiResponseEnvelope.IsProblem/IsFault) until that endpoint ships,
 //   and starts working automatically once it does — no UI change required.
+//   CreateObservationAsync/UpdateObservationAsync wrap the real, wired
+//   CreateObservationCommand/UpdateObservationCommand.
 // SchemaVersion: 2026.1
 // Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
 // ============================================================
@@ -60,4 +62,22 @@ public sealed class ObservationApiClient : SafetyApiClientBase
         Guid observationId,
         CancellationToken cancellationToken = default)
         => GetAsync<ObservationDto>($"v1/features/safety-events/observations/{observationId}", cancellationToken);
+
+    /// <summary>Creates a new Safety Observation. Backed by POST <c>v1/features/safety-events/observations</c> (CreateObservationCommand).</summary>
+    /// <param name="request">The observation fields to submit.</param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    public Task<ApiResponseEnvelope<Guid>> CreateObservationAsync(
+        CreateObservationRequest request,
+        CancellationToken cancellationToken = default)
+        => PostAsync<CreateObservationRequest, Guid>("v1/features/safety-events/observations", request, cancellationToken);
+
+    /// <summary>Updates mutable fields of an existing Safety Observation. Backed by PUT <c>v1/features/safety-events/observations/{id}</c> (UpdateObservationCommand).</summary>
+    /// <param name="observationId">The observation to update.</param>
+    /// <param name="request">The updated fields.</param>
+    /// <param name="cancellationToken">Propagated cancellation token.</param>
+    public Task<ApiResponseEnvelope<Guid>> UpdateObservationAsync(
+        Guid observationId,
+        UpdateObservationRequest request,
+        CancellationToken cancellationToken = default)
+        => PutAsync<UpdateObservationRequest, Guid>($"v1/features/safety-events/observations/{observationId}", request, cancellationToken);
 }

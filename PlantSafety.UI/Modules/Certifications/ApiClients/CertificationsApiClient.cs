@@ -92,4 +92,53 @@ public sealed class CertificationsApiClient : SafetyApiClientBase
         var query = $"TenantId={tenantId:D}&From={Uri.EscapeDataString(from.ToString("o"))}&To={Uri.EscapeDataString(to.ToString("o"))}";
         return siteId.HasValue ? $"{query}&SiteId={siteId.Value:D}" : query;
     }
+
+    // ============================================================
+    // Compliance.Certification write/lifecycle surface (api/v1/compliance/certification) —
+    // Create -> Verify -> Renew/Expire -> Close -> Archive, plus a real by-id GET. This is a
+    // distinct, generic personnel-certification aggregate from the 7 read-only category
+    // verticals above (Contractor/DOT/EPA/IndustrySpecific/ISO14001/ISO45001/OSHA) — those
+    // have no write commands; this is where CreateCertificationCommand and its lifecycle
+    // actions actually live.
+    // ============================================================
+
+    /// <summary>Retrieves a single Certification read-model record by identity, including its ETag.</summary>
+    public Task<ApiResponseEnvelope<CertificationItemDto>> GetCertificationByIdAsync(
+        Guid certificationId, CancellationToken cancellationToken = default)
+        => GetAsync<CertificationItemDto>($"v1/compliance/certification/{certificationId}", cancellationToken);
+
+    /// <summary>Submits a new Certification record via the real CreateCertificationCommand.</summary>
+    public Task<ApiResponseEnvelope<CreateCertificationResultDto>> CreateCertificationAsync(
+        CreateCertificationRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreateCertificationRequest, CreateCertificationResultDto>("v1/compliance/certification", request, cancellationToken);
+
+    /// <summary>Verifies and activates a Certification record (Created -&gt; Active) via VerifyCertificationCommand.</summary>
+    public Task<ApiResponseEnvelope<CertificationStatusResultDto>> VerifyCertificationAsync(
+        Guid certificationId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, CertificationStatusResultDto>(
+            $"v1/compliance/certification/{certificationId}/verify", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Renews an active Certification record, extending its expiry, via RenewCertificationCommand.</summary>
+    public Task<ApiResponseEnvelope<CertificationStatusResultDto>> RenewCertificationAsync(
+        Guid certificationId, RenewCertificationRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<RenewCertificationRequest, CertificationStatusResultDto>(
+            $"v1/compliance/certification/{certificationId}/renew", request, cancellationToken);
+
+    /// <summary>Expires an active Certification record past its validity window (Active -&gt; Completed) via ExpireCertificationCommand.</summary>
+    public Task<ApiResponseEnvelope<CertificationStatusResultDto>> ExpireCertificationAsync(
+        Guid certificationId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, CertificationStatusResultDto>(
+            $"v1/compliance/certification/{certificationId}/expire", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Formally closes a completed/expired Certification record (Completed -&gt; Closed) via CloseCertificationCommand.</summary>
+    public Task<ApiResponseEnvelope<CertificationStatusResultDto>> CloseCertificationAsync(
+        Guid certificationId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, CertificationStatusResultDto>(
+            $"v1/compliance/certification/{certificationId}/close", new EtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Archives a closed Certification record for compliance retention (Closed -&gt; Archived) via ArchiveCertificationCommand. Used as this module's soft-delete/retire action.</summary>
+    public Task<ApiResponseEnvelope<CertificationStatusResultDto>> ArchiveCertificationAsync(
+        Guid certificationId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<EtagRequest, CertificationStatusResultDto>(
+            $"v1/compliance/certification/{certificationId}/archive", new EtagRequest { ETag = eTag }, cancellationToken);
 }

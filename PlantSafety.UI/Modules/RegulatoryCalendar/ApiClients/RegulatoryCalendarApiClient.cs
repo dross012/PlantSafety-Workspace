@@ -106,4 +106,47 @@ public sealed class RegulatoryCalendarApiClient : SafetyApiClientBase
 
         return $"{path}?{query}";
     }
+
+    // ============================================================
+    // Compliance.RegulatoryCalendar write/lifecycle surface (api/v1/compliance/regulatorycalendar) —
+    // Create -> Activate -> RecordCompliance -> Close -> Archive, plus a real by-id GET. Distinct
+    // generic RegulatoryCalendar aggregate from the 9 read-only Deadlines/Inspections/Renewals
+    // source verticals above — those have no write commands; this is where
+    // CreateRegulatoryCalendarCommand and its lifecycle actions actually live.
+    // ============================================================
+
+    /// <summary>Retrieves a single generic RegulatoryCalendar record by identity, including its ETag. Backed by GET <c>v1/compliance/regulatorycalendar/{id}</c>.</summary>
+    public Task<ApiResponseEnvelope<RegulatoryCalendarItemDto>> GetRegulatoryCalendarRecordAsync(
+        Guid regulatoryCalendarId, CancellationToken cancellationToken = default)
+        => GetAsync<RegulatoryCalendarItemDto>($"v1/compliance/regulatorycalendar/{regulatoryCalendarId}", cancellationToken);
+
+    /// <summary>Submits a new generic RegulatoryCalendar obligation via the real CreateRegulatoryCalendarCommand.</summary>
+    public Task<ApiResponseEnvelope<CreateRegulatoryCalendarResultDto>> CreateRegulatoryCalendarRecordAsync(
+        CreateRegulatoryCalendarRecordRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreateRegulatoryCalendarRecordRequest, CreateRegulatoryCalendarResultDto>(
+            "v1/compliance/regulatorycalendar", request, cancellationToken);
+
+    /// <summary>Activates a RegulatoryCalendar obligation (Created -&gt; Active) via ActivateRegulatoryCalendarCommand.</summary>
+    public Task<ApiResponseEnvelope<RegulatoryCalendarStatusResultDto>> ActivateRegulatoryCalendarRecordAsync(
+        Guid regulatoryCalendarId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<RegulatoryCalendarEtagRequest, RegulatoryCalendarStatusResultDto>(
+            $"v1/compliance/regulatorycalendar/{regulatoryCalendarId}/activate", new RegulatoryCalendarEtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Records compliance with an obligation (Active -&gt; Completed) via RecordRegulatoryCalendarComplianceCommand.</summary>
+    public Task<ApiResponseEnvelope<RegulatoryCalendarStatusResultDto>> RecordRegulatoryCalendarComplianceAsync(
+        Guid regulatoryCalendarId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<RegulatoryCalendarEtagRequest, RegulatoryCalendarStatusResultDto>(
+            $"v1/compliance/regulatorycalendar/{regulatoryCalendarId}/record-compliance", new RegulatoryCalendarEtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Formally closes a completed obligation (Completed -&gt; Closed) via CloseRegulatoryCalendarCommand.</summary>
+    public Task<ApiResponseEnvelope<RegulatoryCalendarStatusResultDto>> CloseRegulatoryCalendarRecordAsync(
+        Guid regulatoryCalendarId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<RegulatoryCalendarEtagRequest, RegulatoryCalendarStatusResultDto>(
+            $"v1/compliance/regulatorycalendar/{regulatoryCalendarId}/close", new RegulatoryCalendarEtagRequest { ETag = eTag }, cancellationToken);
+
+    /// <summary>Archives a closed obligation for compliance retention (Closed -&gt; Archived) via ArchiveRegulatoryCalendarCommand. Used as this module's soft-delete/retire action.</summary>
+    public Task<ApiResponseEnvelope<RegulatoryCalendarStatusResultDto>> ArchiveRegulatoryCalendarRecordAsync(
+        Guid regulatoryCalendarId, string? eTag, CancellationToken cancellationToken = default)
+        => PostAsync<RegulatoryCalendarEtagRequest, RegulatoryCalendarStatusResultDto>(
+            $"v1/compliance/regulatorycalendar/{regulatoryCalendarId}/archive", new RegulatoryCalendarEtagRequest { ETag = eTag }, cancellationToken);
 }

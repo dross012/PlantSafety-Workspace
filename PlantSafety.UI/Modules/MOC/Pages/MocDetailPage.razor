@@ -6,7 +6,10 @@
      Status, plus a TabControlComponent switching between the correlated
      Approvals and Risk Assessments records for the same change request.
      Built from the canonical Shared component library.
-   SchemaVersion: 2026.1
+   UPDATED: 2026-08-05 — Added a Print action (window.print via JS interop).
+     No Update/Delete command exists anywhere in the Application layer for
+     MOC workflows/requests — no Edit/Delete actions are offered.
+   SchemaVersion: 2026.2
    Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
    ============================================================ *@
 
@@ -18,6 +21,7 @@
 @inject UserSessionState UserSession
 @inject NavigationState NavState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -93,6 +97,9 @@
                     <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.MocList)">
                         <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to MOC
                     </button>
+                    <button class="ps-btn ps-btn-ghost" @onclick="PrintAsync">
+                        <span class="bi bi-printer" aria-hidden="true"></span> Print
+                    </button>
                 </div>
             </div>
         }
@@ -162,6 +169,8 @@
             State.SetDetailError("Unable to load MOC data at this time.");
         }
     }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

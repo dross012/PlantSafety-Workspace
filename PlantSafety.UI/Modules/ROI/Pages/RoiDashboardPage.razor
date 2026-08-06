@@ -46,6 +46,9 @@
             <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="LoadRoiAsync" disabled="@State.IsLoading">
                 <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
             </button>
+            <a href="@RouteDefinitions.RoiCalculate" class="ps-btn ps-btn-primary ps-btn-sm">
+                <span class="bi bi-plus-circle" aria-hidden="true"></span> Calculate ROI
+            </a>
         </div>
 
         @if (State.IsLoading)

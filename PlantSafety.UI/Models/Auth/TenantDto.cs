@@ -21,6 +21,9 @@ public sealed class TenantDto
     /// <summary>Gets the unique tenant identifier.</summary>
     public Guid TenantId { get; init; }
 
+    /// <summary>Gets the identifier of the tenant's currently selected site, or null when the tenant has no site scoped.</summary>
+    public Guid? SiteId { get; init; }
+
     /// <summary>Gets the tenant's display name shown in the UI shell.</summary>
     public string TenantName { get; init; } = string.Empty;
 

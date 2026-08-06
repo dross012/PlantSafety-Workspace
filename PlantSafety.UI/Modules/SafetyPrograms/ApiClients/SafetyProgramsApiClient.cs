@@ -41,4 +41,22 @@ public sealed class SafetyProgramsApiClient : SafetyApiClientBase
     /// <summary>Retrieves the full detail for a single safety program.</summary>
     public Task<ApiResponseEnvelope<SafetyProgramDetailDto>> GetProgramAsync(Guid programId, CancellationToken cancellationToken = default)
         => GetAsync<SafetyProgramDetailDto>($"v1/safety-programs/{programId}", cancellationToken);
+
+    /// <summary>
+    /// Creates a new safety program. Backed by
+    /// POST <c>v1/safety-programs</c> (requires the SafetyPrograms Write policy).
+    /// </summary>
+    public Task<ApiResponseEnvelope<CreateSafetyProgramResponse>> CreateProgramAsync(
+        CreateSafetyProgramRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreateSafetyProgramRequest, CreateSafetyProgramResponse>("v1/safety-programs", request, cancellationToken);
+
+    /// <summary>
+    /// Transitions a safety program to a new lifecycle status (Planned/Active/OnHold/Completed).
+    /// Backed by POST <c>v1/safety-programs/{programId}/status</c>. There is no field-level
+    /// update command for a safety program — only this lifecycle transition surface.
+    /// </summary>
+    public Task<ApiResponseEnvelope<ChangeSafetyProgramStatusResponse>> ChangeProgramStatusAsync(
+        Guid programId, ChangeSafetyProgramStatusRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<ChangeSafetyProgramStatusRequest, ChangeSafetyProgramStatusResponse>(
+            $"v1/safety-programs/{programId}/status", request, cancellationToken);
 }

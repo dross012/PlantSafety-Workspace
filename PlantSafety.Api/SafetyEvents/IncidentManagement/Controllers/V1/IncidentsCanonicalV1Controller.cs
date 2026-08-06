@@ -7,10 +7,13 @@
 //              Incident Management reads at api/v1/safety-events/incidents. Delegates
 //              to the same Application-layer Features/SafetyEvents/IncidentManagement
 //              queries used by PlantSafety.Api.Features.SafetyEvents.IncidentManagement
-//              (see IncidentsV1Controller under Features/), but returns the raw payload
-//              shape (PaginatedResult<T> / T) expected by PlantSafety.UI's
-//              SafetyApiClientBase, instead of the ApiResponse<T> envelope used by the
-//              legacy stub controllers historically generated under this folder.
+//              (see IncidentsV1Controller under Features/). Returns the canonical
+//              ApiResponse<T> envelope like every other controller — PlantSafety.UI's
+//              SafetyApiClientBase.ReadEnvelopeAsync unconditionally unwraps the
+//              {success,data,errors,metadata} shape, so a raw payload here would
+//              deserialize with Data always null. Corrected 2026-08-05 (was previously
+//              returning raw Ok(payload), silently breaking every UI page that reads
+//              from this controller).
 // ============================================================================
 //
 // Onboarding Notes:
@@ -109,7 +112,7 @@ public sealed class IncidentsCanonicalV1Controller : ControllerBase
 
         var result = await _sender.Send(query, cancellationToken);
 
-        return Ok(result);
+        return Ok(ApiResponse<PaginatedResult<IncidentSummaryDto>>.Ok(result, env.CorrelationId.ToString()));
     }
 
     /// <summary>Returns the full Incident projection for a given identifier.</summary>
@@ -151,7 +154,7 @@ public sealed class IncidentsCanonicalV1Controller : ControllerBase
         if (incident is null)
             return NotFound();
 
-        return Ok(incident);
+        return Ok(ApiResponse<IncidentDto>.Ok(incident, env.CorrelationId.ToString()));
     }
 
     // ========================================================================
@@ -195,7 +198,7 @@ public sealed class IncidentsCanonicalV1Controller : ControllerBase
 
         var result = await _sender.Send(query, cancellationToken);
 
-        return Ok(result);
+        return Ok(ApiResponse<PaginatedResult<IncidentTimelineEntryDto>>.Ok(result, env.CorrelationId.ToString()));
     }
 
     /// <summary>Assigns (or reassigns) a technician/investigator to an incident.</summary>
@@ -352,7 +355,9 @@ public sealed class IncidentsCanonicalV1Controller : ControllerBase
 
         var incident = await _sender.Send(query, cancellationToken);
 
-        return incident is null ? NotFound() : Ok(incident);
+        return incident is null
+            ? NotFound()
+            : Ok(ApiResponse<IncidentDto>.Ok(incident, env.CorrelationId.ToString()));
     }
 
     // ========================================================================
@@ -393,7 +398,7 @@ public sealed class IncidentsCanonicalV1Controller : ControllerBase
 
         var result = await _sender.Send(query, cancellationToken);
 
-        return Ok(result);
+        return Ok(ApiResponse<PaginatedResult<SlaIncidentDto>>.Ok(result, env.CorrelationId.ToString()));
     }
 
     /// <summary>Returns the SLA risk panel rows (incidents classified AtRisk or Breached).</summary>
@@ -428,7 +433,7 @@ public sealed class IncidentsCanonicalV1Controller : ControllerBase
 
         var result = await _sender.Send(query, cancellationToken);
 
-        return Ok(result);
+        return Ok(ApiResponse<PaginatedResult<SlaRiskDto>>.Ok(result, env.CorrelationId.ToString()));
     }
 
     /// <summary>Returns the SLA compliance trend summary for the trend chart.</summary>
@@ -460,6 +465,6 @@ public sealed class IncidentsCanonicalV1Controller : ControllerBase
 
         var result = await _sender.Send(query, cancellationToken);
 
-        return Ok(result);
+        return Ok(ApiResponse<SlaTrendDto>.Ok(result, env.CorrelationId.ToString()));
     }
 }
