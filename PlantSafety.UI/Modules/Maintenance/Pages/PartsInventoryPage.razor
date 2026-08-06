@@ -40,6 +40,11 @@
             <div class="ps-alert ps-alert--danger" role="alert">@State.ErrorMessage</div>
         }
 
+        @if (State.AdjustStockError is not null)
+        {
+            <div class="ps-alert ps-alert--danger" role="alert">@State.AdjustStockError</div>
+        }
+
         @if (State.IsLoading)
         {
             <LoadingIndicatorComponent Message="Loading parts inventory…" />
@@ -59,8 +64,34 @@
                     <td>@part.ReorderThreshold</td>
                     <td>@part.Location</td>
                     <td><StatusIndicatorComponent Status="@(part.NeedsReorder ? "Critical" : "Healthy")" Label="@(part.NeedsReorder ? "Reorder Needed" : "In Stock")" /></td>
+                    <td>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => ToggleAdjustForm(part.PartId)" disabled="@State.IsAdjustingStock">
+                            <span class="bi bi-box-arrow-in-down" aria-hidden="true"></span> Adjust Stock
+                        </button>
+                    </td>
                 </RowTemplate>
             </DataGridComponent>
+
+            @if (_adjustingPartId is { } partId)
+            {
+                <div class="ps-form-card" style="margin-top:12px;">
+                    <h3 class="ps-detail-title" style="font-size:1rem;">Adjust Stock</h3>
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="delta-quantity">Delta Quantity (positive = restock, negative = consumption)</label>
+                            <input id="delta-quantity" type="number" @bind="_deltaQuantity" />
+                        </div>
+                        <div class="ps-field">
+                            <label class="ps-label" for="adjust-reason">Reason (optional)</label>
+                            <input id="adjust-reason" maxlength="500" @bind="_adjustReason" />
+                        </div>
+                    </div>
+                    <div class="ps-form-actions">
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="() => SubmitAdjustStockAsync(partId)" disabled="@State.IsAdjustingStock">Confirm Adjustment</button>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="() => ToggleAdjustForm(partId)" disabled="@State.IsAdjustingStock">Cancel</button>
+                    </div>
+                </div>
+            }
         }
 
     </ErrorBoundaryComponent>
@@ -68,7 +99,11 @@
 </div>
 
 @code {
-    private static readonly string[] _headers = ["Part #", "Name", "On Hand", "Reorder At", "Location", "Status"];
+    private static readonly string[] _headers = ["Part #", "Name", "On Hand", "Reorder At", "Location", "Status", "Actions"];
+
+    private Guid? _adjustingPartId;
+    private int _deltaQuantity;
+    private string _adjustReason = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -101,6 +136,47 @@
             State.SetError(envelope.Problem!.Detail);
         else
             State.SetError($"Failed to load parts inventory: {envelope.FaultType}");
+    }
+
+    private void ToggleAdjustForm(Guid partId)
+    {
+        if (_adjustingPartId == partId)
+        {
+            _adjustingPartId = null;
+        }
+        else
+        {
+            _adjustingPartId = partId;
+            _deltaQuantity = 0;
+            _adjustReason = string.Empty;
+        }
+    }
+
+    private async Task SubmitAdjustStockAsync(Guid partId)
+    {
+        if (_deltaQuantity == 0)
+        {
+            State.SetAdjustStockError("Delta quantity must be non-zero.");
+            return;
+        }
+
+        State.BeginAdjustStock();
+        var envelope = await ApiClient.AdjustPartStockAsync(partId, new AdjustPartStockRequest
+        {
+            DeltaQuantity = _deltaQuantity,
+            Reason = string.IsNullOrWhiteSpace(_adjustReason) ? null : _adjustReason
+        });
+
+        if (envelope.IsSuccess)
+        {
+            State.SetAdjustStockSuccess();
+            _adjustingPartId = null;
+            await LoadAsync();
+        }
+        else
+        {
+            State.SetAdjustStockError(envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to adjust stock: {envelope.FaultType}");
+        }
     }
 
     public void Dispose() => State.OnChange -= StateHasChanged;

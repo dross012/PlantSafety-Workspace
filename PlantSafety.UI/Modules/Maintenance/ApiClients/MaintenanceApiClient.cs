@@ -103,4 +103,31 @@ public sealed class MaintenanceApiClient : SafetyApiClientBase
         DateOnly rangeStart, DateOnly rangeEnd, CancellationToken cancellationToken = default)
         => GetAsync<PaginatedResponseDto<MaintenanceCalendarEventDto>>(
             $"v1/maintenance/calendar?start={rangeStart:yyyy-MM-dd}&end={rangeEnd:yyyy-MM-dd}", cancellationToken);
+
+    // ==== Writes ================================================================================
+
+    /// <summary>Creates a new work order (CreateWorkOrderCommand).</summary>
+    public Task<ApiResponseEnvelope<CreateWorkOrderResult>> CreateWorkOrderAsync(
+        CreateWorkOrderRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CreateWorkOrderRequest, CreateWorkOrderResult>("v1/maintenance/work-orders", request, cancellationToken);
+
+    /// <summary>(Re)assigns a technician to an existing work order (AssignWorkOrderCommand).</summary>
+    public Task<ApiResponseEnvelope<WorkOrderStatusResult>> AssignWorkOrderAsync(
+        Guid workOrderId, AssignWorkOrderRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<AssignWorkOrderRequest, WorkOrderStatusResult>($"v1/maintenance/work-orders/{workOrderId}/assign", request, cancellationToken);
+
+    /// <summary>Applies a Start/PutOnHold/Resume/Cancel lifecycle transition (UpdateWorkOrderStatusCommand).</summary>
+    public Task<ApiResponseEnvelope<WorkOrderStatusResult>> UpdateWorkOrderStatusAsync(
+        Guid workOrderId, UpdateWorkOrderStatusRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<UpdateWorkOrderStatusRequest, WorkOrderStatusResult>($"v1/maintenance/work-orders/{workOrderId}/status", request, cancellationToken);
+
+    /// <summary>Completes an in-progress work order (CompleteWorkOrderCommand).</summary>
+    public Task<ApiResponseEnvelope<WorkOrderStatusResult>> CompleteWorkOrderAsync(
+        Guid workOrderId, CompleteWorkOrderRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<CompleteWorkOrderRequest, WorkOrderStatusResult>($"v1/maintenance/work-orders/{workOrderId}/complete", request, cancellationToken);
+
+    /// <summary>Adjusts a part's on-hand stock quantity (AdjustPartStockCommand).</summary>
+    public Task<ApiResponseEnvelope<PartStockResult>> AdjustPartStockAsync(
+        Guid partId, AdjustPartStockRequest request, CancellationToken cancellationToken = default)
+        => PostAsync<AdjustPartStockRequest, PartStockResult>($"v1/maintenance/parts/{partId}/adjust-stock", request, cancellationToken);
 }

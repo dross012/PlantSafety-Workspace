@@ -96,6 +96,8 @@ public sealed class PartsInventoryState
     private IReadOnlyList<PartInventoryDto> _parts = [];
     private bool _isLoading;
     private string? _errorMessage;
+    private bool _isAdjustingStock;
+    private string? _adjustStockError;
 
     /// <summary>Gets the parts inventory rows currently loaded.</summary>
     public IReadOnlyList<PartInventoryDto> Parts => _parts;
@@ -105,6 +107,12 @@ public sealed class PartsInventoryState
 
     /// <summary>Gets a sanitized load error, or null.</summary>
     public string? ErrorMessage => _errorMessage;
+
+    /// <summary>Gets a value indicating whether a stock adjustment submission is in flight.</summary>
+    public bool IsAdjustingStock => _isAdjustingStock;
+
+    /// <summary>Gets a sanitized stock adjustment submission error, or null.</summary>
+    public string? AdjustStockError => _adjustStockError;
 
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
@@ -123,6 +131,15 @@ public sealed class PartsInventoryState
 
     /// <summary>Records a load failure with a sanitized message.</summary>
     public void SetError(string sanitizedError) { _errorMessage = sanitizedError; _isLoading = false; NotifyStateChanged(); }
+
+    /// <summary>Marks a stock adjustment submission as in flight.</summary>
+    public void BeginAdjustStock() { _isAdjustingStock = true; _adjustStockError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful stock adjustment submission.</summary>
+    public void SetAdjustStockSuccess() { _isAdjustingStock = false; _adjustStockError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a stock adjustment submission failure with a sanitized message.</summary>
+    public void SetAdjustStockError(string sanitizedError) { _adjustStockError = sanitizedError; _isAdjustingStock = false; NotifyStateChanged(); }
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

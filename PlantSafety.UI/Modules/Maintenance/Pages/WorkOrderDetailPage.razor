@@ -166,11 +166,111 @@
 
             </div>
 
-            <div class="ps-detail-actions">
+            @if (State.ActionError is not null)
+            {
+                <div class="ps-alert ps-alert--danger" role="alert">@State.ActionError</div>
+            }
+
+            <div class="ps-detail-actions" style="flex-wrap:wrap; gap:8px;">
+                @if (CanAssign(wo.Status))
+                {
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ToggleAssignForm" disabled="@State.IsSubmittingAction">
+                        <span class="bi bi-person-check" aria-hidden="true"></span> @(wo.TechnicianName is { Length: > 0 } ? "Reassign" : "Assign") Technician
+                    </button>
+                }
+                @if (CanStart(wo.Status))
+                {
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="StartAsync" disabled="@State.IsSubmittingAction">
+                        <span class="bi bi-play-circle" aria-hidden="true"></span> Start
+                    </button>
+                }
+                @if (CanHold(wo.Status))
+                {
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="PutOnHoldAsync" disabled="@State.IsSubmittingAction">
+                        <span class="bi bi-pause-circle" aria-hidden="true"></span> Put On Hold
+                    </button>
+                }
+                @if (CanResume(wo.Status))
+                {
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ResumeAsync" disabled="@State.IsSubmittingAction">
+                        <span class="bi bi-play-circle" aria-hidden="true"></span> Resume
+                    </button>
+                }
+                @if (CanComplete(wo.Status))
+                {
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ToggleCompleteForm" disabled="@State.IsSubmittingAction">
+                        <span class="bi bi-check2-circle" aria-hidden="true"></span> Complete
+                    </button>
+                }
+                @if (CanCancel(wo.Status))
+                {
+                    <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ToggleCancelForm" disabled="@State.IsSubmittingAction">
+                        <span class="bi bi-x-circle" aria-hidden="true"></span> Cancel
+                    </button>
+                }
                 <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.MaintenanceList)">
                     <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
                 </button>
             </div>
+
+            @if (_showAssignForm)
+            {
+                <div class="ps-form-card" style="margin-top:12px;">
+                    <h3 class="ps-detail-title" style="font-size:1rem;">Assign Technician</h3>
+                    <div class="ps-form-row">
+                        <div class="ps-field">
+                            <label class="ps-label" for="assign-technician-id">Technician ID (GUID)</label>
+                            <input id="assign-technician-id"  @bind="_assignTechnicianId" />
+                        </div>
+                        <div class="ps-field">
+                            <label class="ps-label" for="assign-technician-name">Technician Name</label>
+                            <input id="assign-technician-name"  @bind="_assignTechnicianName" maxlength="200" />
+                        </div>
+                    </div>
+                    <div class="ps-form-actions">
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SubmitAssignAsync" disabled="@State.IsSubmittingAction">Confirm Assignment</button>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ToggleAssignForm" disabled="@State.IsSubmittingAction">Cancel</button>
+                    </div>
+                </div>
+            }
+
+            @if (_showCompleteForm)
+            {
+                <div class="ps-form-card" style="margin-top:12px;">
+                    <h3 class="ps-detail-title" style="font-size:1rem;">Complete Work Order</h3>
+                    <div class="ps-form-row">
+                        <div class="ps-field" style="flex:1 1 100%;">
+                            <label class="ps-label" for="complete-notes">Completion Notes (optional)</label>
+                            <textarea id="complete-notes"  rows="3" maxlength="2000" @bind="_completionNotes"></textarea>
+                        </div>
+                    </div>
+                    <div class="ps-form-actions">
+                        <button class="ps-btn ps-btn-primary ps-btn-sm" @onclick="SubmitCompleteAsync" disabled="@State.IsSubmittingAction">Confirm Completion</button>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ToggleCompleteForm" disabled="@State.IsSubmittingAction">Cancel</button>
+                    </div>
+                </div>
+            }
+
+            @if (_showCancelForm)
+            {
+                <div class="ps-form-card" style="margin-top:12px;">
+                    <h3 class="ps-detail-title" style="font-size:1rem;">Cancel Work Order</h3>
+                    <div class="ps-form-row">
+                        <div class="ps-field" style="flex:1 1 100%;">
+                            <label class="ps-label" for="cancel-reason">Reason (required)</label>
+                            <textarea id="cancel-reason"  rows="3" maxlength="2000" @bind="_cancelReason"></textarea>
+                        </div>
+                    </div>
+                    @if (_cancelValidationError is not null)
+                    {
+                        <div class="ps-alert ps-alert--danger" role="alert">@_cancelValidationError</div>
+                    }
+                    <div class="ps-form-actions">
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="SubmitCancelAsync" disabled="@State.IsSubmittingAction">Confirm Cancellation</button>
+                        <button class="ps-btn ps-btn-ghost ps-btn-sm" @onclick="ToggleCancelForm" disabled="@State.IsSubmittingAction">Back</button>
+                    </div>
+                </div>
+            }
         }
 
     </ErrorBoundaryComponent>
@@ -287,6 +387,162 @@
         "open" => "Offline",
         _ => "Offline",
     };
+
+    // ==== Lifecycle actions ====================================================================
+
+    private bool _showAssignForm;
+    private bool _showCompleteForm;
+    private bool _showCancelForm;
+    private string _assignTechnicianId = string.Empty;
+    private string _assignTechnicianName = string.Empty;
+    private string _completionNotes = string.Empty;
+    private string _cancelReason = string.Empty;
+    private string? _cancelValidationError;
+
+    /// <summary>A work order can be assigned/reassigned any time it is not completed or cancelled.</summary>
+    private static bool CanAssign(string status) => !IsTerminal(status);
+
+    /// <summary>Only an open work order can be started.</summary>
+    private static bool CanStart(string status) => status.Equals("Open", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Only an in-progress work order can be put on hold.</summary>
+    private static bool CanHold(string status) => status.Replace(" ", string.Empty).Equals("InProgress", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Only an on-hold work order can be resumed.</summary>
+    private static bool CanResume(string status) => status.Replace(" ", string.Empty).Equals("OnHold", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Only an in-progress work order can be completed.</summary>
+    private static bool CanComplete(string status) => status.Replace(" ", string.Empty).Equals("InProgress", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Any non-terminal work order can be cancelled.</summary>
+    private static bool CanCancel(string status) => !IsTerminal(status);
+
+    private static bool IsTerminal(string status) =>
+        status.Equals("Completed", StringComparison.OrdinalIgnoreCase) ||
+        status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase) ||
+        status.Equals("Canceled", StringComparison.OrdinalIgnoreCase);
+
+    private void ToggleAssignForm()
+    {
+        _showAssignForm = !_showAssignForm;
+        _showCompleteForm = false;
+        _showCancelForm = false;
+    }
+
+    private void ToggleCompleteForm()
+    {
+        _showCompleteForm = !_showCompleteForm;
+        _showAssignForm = false;
+        _showCancelForm = false;
+    }
+
+    private void ToggleCancelForm()
+    {
+        _showCancelForm = !_showCancelForm;
+        _cancelValidationError = null;
+        _showAssignForm = false;
+        _showCompleteForm = false;
+    }
+
+    private async Task SubmitAssignAsync()
+    {
+        if (!Guid.TryParse(_assignTechnicianId, out var technicianId) || string.IsNullOrWhiteSpace(_assignTechnicianName))
+        {
+            State.SetActionError("A valid Technician ID (GUID) and Technician Name are required.");
+            return;
+        }
+
+        State.BeginAction();
+        var envelope = await ApiClient.AssignWorkOrderAsync(WorkOrderId, new AssignWorkOrderRequest
+        {
+            TechnicianId = technicianId,
+            TechnicianName = _assignTechnicianName
+        });
+
+        if (envelope.IsSuccess)
+        {
+            State.SetActionSuccess();
+            _showAssignForm = false;
+            _assignTechnicianId = string.Empty;
+            _assignTechnicianName = string.Empty;
+            await ReloadWorkOrderAsync();
+        }
+        else
+        {
+            State.SetActionError(envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to assign technician: {envelope.FaultType}");
+        }
+    }
+
+    private Task StartAsync() => SubmitStatusTransitionAsync("Start", null);
+
+    private Task PutOnHoldAsync() => SubmitStatusTransitionAsync("PutOnHold", null);
+
+    private Task ResumeAsync() => SubmitStatusTransitionAsync("Resume", null);
+
+    private async Task SubmitCancelAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_cancelReason))
+        {
+            _cancelValidationError = "A reason is required to cancel a work order.";
+            return;
+        }
+
+        _cancelValidationError = null;
+        await SubmitStatusTransitionAsync("Cancel", _cancelReason);
+        if (State.ActionError is null)
+        {
+            _showCancelForm = false;
+            _cancelReason = string.Empty;
+        }
+    }
+
+    private async Task SubmitStatusTransitionAsync(string targetStatus, string? reason)
+    {
+        State.BeginAction();
+        var envelope = await ApiClient.UpdateWorkOrderStatusAsync(WorkOrderId, new UpdateWorkOrderStatusRequest
+        {
+            TargetStatus = targetStatus,
+            Reason = reason
+        });
+
+        if (envelope.IsSuccess)
+        {
+            State.SetActionSuccess();
+            await ReloadWorkOrderAsync();
+        }
+        else
+        {
+            State.SetActionError(envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to update work order status: {envelope.FaultType}");
+        }
+    }
+
+    private async Task SubmitCompleteAsync()
+    {
+        State.BeginAction();
+        var envelope = await ApiClient.CompleteWorkOrderAsync(WorkOrderId, new CompleteWorkOrderRequest
+        {
+            CompletionNotes = string.IsNullOrWhiteSpace(_completionNotes) ? null : _completionNotes
+        });
+
+        if (envelope.IsSuccess)
+        {
+            State.SetActionSuccess();
+            _showCompleteForm = false;
+            _completionNotes = string.Empty;
+            await ReloadWorkOrderAsync();
+        }
+        else
+        {
+            State.SetActionError(envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to complete work order: {envelope.FaultType}");
+        }
+    }
+
+    private async Task ReloadWorkOrderAsync()
+    {
+        var envelope = await ApiClient.GetWorkOrderAsync(WorkOrderId);
+        if (envelope.IsSuccess)
+            State.SetWorkOrder(envelope.Data!);
+    }
 
     public void Dispose() => State.OnChange -= StateHasChanged;
 }

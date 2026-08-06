@@ -154,6 +154,12 @@
             </div>
 
             <div class="ps-detail-actions">
+                @if (!job.JobCode.StartsWith("PM-", StringComparison.Ordinal))
+                {
+                    <a href="/modules/maintenance/work-orders/@job.JobId" class="ps-btn ps-btn-primary ps-btn-sm">
+                        <span class="bi bi-tools" aria-hidden="true"></span> Manage in Maintenance
+                    </a>
+                }
                 <button class="ps-btn ps-btn-ghost" @onclick="() => Nav.NavigateTo(RouteDefinitions.SchedulingList)">
                     <span class="bi bi-arrow-left" aria-hidden="true"></span> Back to Dashboard
                 </button>

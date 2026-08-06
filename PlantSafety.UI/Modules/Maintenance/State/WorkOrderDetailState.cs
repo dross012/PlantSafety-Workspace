@@ -46,6 +46,8 @@ public sealed class WorkOrderDetailState
     private bool _isLoading;
     private bool _isLoadingTab;
     private string? _errorMessage;
+    private bool _isSubmittingAction;
+    private string? _actionError;
 
     /// <summary>Gets the loaded work order, or null when not yet loaded.</summary>
     public WorkOrderDetailDto? WorkOrder => _workOrder;
@@ -74,8 +76,23 @@ public sealed class WorkOrderDetailState
     /// <summary>Gets a sanitized load error, or null.</summary>
     public string? ErrorMessage => _errorMessage;
 
+    /// <summary>Gets a value indicating whether an Assign/Status/Complete action submission is in flight.</summary>
+    public bool IsSubmittingAction => _isSubmittingAction;
+
+    /// <summary>Gets a sanitized action submission error, or null.</summary>
+    public string? ActionError => _actionError;
+
     /// <summary>Raised whenever the state changes.</summary>
     public event Action? OnChange;
+
+    /// <summary>Marks an Assign/Status/Complete action submission as in flight.</summary>
+    public void BeginAction() { _isSubmittingAction = true; _actionError = null; NotifyStateChanged(); }
+
+    /// <summary>Records a successful Assign/Status/Complete action submission.</summary>
+    public void SetActionSuccess() { _isSubmittingAction = false; _actionError = null; NotifyStateChanged(); }
+
+    /// <summary>Records an Assign/Status/Complete action submission failure with a sanitized message.</summary>
+    public void SetActionError(string sanitizedError) { _actionError = sanitizedError; _isSubmittingAction = false; NotifyStateChanged(); }
 
     /// <summary>Marks the header as loading.</summary>
     public void BeginLoad() { _isLoading = true; _errorMessage = null; NotifyStateChanged(); }

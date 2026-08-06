@@ -168,6 +168,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<Modules.Loto.State.LotoState>();
         builder.Services.AddSingleton<Modules.MOC.State.MocState>();
         builder.Services.AddSingleton<Modules.MachineManagement.State.MachineManagementState>();
+        builder.Services.AddSingleton<Modules.Maintenance.State.CreateWorkOrderState>();
         builder.Services.AddSingleton<Modules.Maintenance.State.MachineHistoryState>();
         builder.Services.AddSingleton<Modules.Maintenance.State.MaintenanceCalendarState>();
         builder.Services.AddSingleton<Modules.Maintenance.State.MaintenanceDashboardState>();

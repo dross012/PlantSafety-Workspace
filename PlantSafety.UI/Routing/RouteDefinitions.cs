@@ -139,6 +139,12 @@ public static class RouteDefinitions
     /// <summary>Maintenance list.</summary>
     public const string MaintenanceList = "/modules/maintenance";
 
+    /// <summary>Create Work Order input form (Operational.WorkOrders write surface — CreateWorkOrderCommand).</summary>
+    public const string MaintenanceCreateWorkOrder = "/modules/maintenance/work-orders/new";
+
+    /// <summary>Work Order detail page. Requires {WorkOrderId} route parameter.</summary>
+    public const string MaintenanceWorkOrderDetail = "/modules/maintenance/work-orders/{WorkOrderId}";
+
     /// <summary>Predictive maintenance dashboard.</summary>
     public const string PredictiveMaintenanceDashboard = "/modules/predictive-maintenance";
 
