@@ -12,8 +12,15 @@
 //                  RiskDapperRepository's precedent) because ComplianceEvaluation exposes only a
 //                  private rehydration constructor and private-setter properties. ListAsync
 //                  evaluates the supplied ComplianceEvaluationSpecification in-memory over the
-//                  full tenant candidate set, matching the same precedent. Additive-only
-//                  evolution.
+//                  full tenant candidate set, matching the same precedent.
+//
+//                  AddAsync also relays ComplianceViolationDetectedEvent/
+//                  ComplianceEvaluationCompletedEvent onto Shared.EventBus via
+//                  ICrossModuleEventRelay (Publish-After-Commit, same discipline as
+//                  UnitOfWork.CommitAsync), in addition to the existing IOutboxWriter enqueue --
+//                  this repository does not go through TransactionBehavior/UnitOfWork (it owns
+//                  its own connection/transaction), so it must drive the relay itself. Additive-
+//                  only evolution.
 // ============================================================================
 using System.Data;
 using System.Text.Json;
@@ -26,6 +33,7 @@ using PlantSafety.Domain.Compliance.RulesEngine.Interfaces;
 using PlantSafety.Domain.Compliance.RulesEngine.Specifications;
 using PlantSafety.Domain.Compliance.RulesEngine.ValueObjects;
 using PlantSafety.Domain.Compliance.RulesEngine.ValueObjects.Ids;
+using PlantSafety.Infrastructure.Messaging.CrossModule;
 using PlantSafety.Infrastructure.Persistence.Reflection;
 
 namespace PlantSafety.Infrastructure.Compliance.RulesEngine.Persistence;
@@ -36,7 +44,8 @@ public sealed class ComplianceEvaluationDapperRepository(
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
     IOutboxWriter outboxWriter,
-    ILogger<ComplianceEvaluationDapperRepository> logger)
+    ILogger<ComplianceEvaluationDapperRepository> logger,
+    ICrossModuleEventRelay? crossModuleEventRelay = null)
     : IComplianceEvaluationRepository
 {
     private const string RuleResultTableType = "[ComplianceRulesEngine].[ComplianceRuleResultTableType]";
@@ -135,8 +144,16 @@ public sealed class ComplianceEvaluationDapperRepository(
         tx.Commit();
 
         foreach (var domainEvent in aggregate.DomainEvents)
+        {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+            crossModuleEventRelay?.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+        }
         aggregate.ClearDomainEvents();
+
+        // Publish-After-Commit: the SQL transaction above has already committed, so it is safe to
+        // relay onto Shared.EventBus now (mirrors UnitOfWork.CommitAsync's discipline).
+        if (crossModuleEventRelay is { HasPendingEvents: true })
+            await crossModuleEventRelay.FlushAsync(cancellationToken);
     }
 
     /// <inheritdoc/>

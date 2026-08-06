@@ -9,7 +9,8 @@
 //                  deliberately limited to the events named in the cross-module eventing
 //                  checklist (IncidentManagement Created/Updated/Archived; CAPA
 //                  CorrectiveAction Created/Started/Completed/Closed/MarkedOverdue;
-//                  AccidentManagement Created/Archived; RiskManagement Created/Archived) --
+//                  AccidentManagement Created/Archived; RiskManagement Created/Archived;
+//                  Compliance RulesEngine ViolationDetected/EvaluationCompleted) --
 //                  PlantSafety.Domain contains ~200 domain events across ~80 aggregates in
 //                  total (see docs/architecture/eventbus-architecture.md §"Domain Event
 //                  Inventory" for the full list); only this curated subset has a published,
@@ -19,12 +20,14 @@
 // ============================================================================
 using PlantSafety.Domain.Common.Abstractions;
 using PlantSafety.Domain.AccidentManagement.Events;
+using PlantSafety.Domain.Compliance.RulesEngine.Events;
 using PlantSafety.Domain.ContinuousImprovement.CAPA.Events;
 using PlantSafety.Domain.RiskManagement.Events;
 using PlantSafety.Domain.SafetyEvents.IncidentManagement.Events;
 
 using Shared.DomainEvents.Abstractions.PlantSafety.AccidentManagement;
 using Shared.DomainEvents.Abstractions.PlantSafety.CAPA;
+using Shared.DomainEvents.Abstractions.PlantSafety.Compliance;
 using Shared.DomainEvents.Abstractions.PlantSafety.IncidentManagement;
 using Shared.DomainEvents.Abstractions.PlantSafety.RiskManagement;
 using Shared.EventBus.Abstractions.Contracts;
@@ -141,6 +144,25 @@ public static class CrossModuleDomainEventMapper
                 tenantId, e.CorrelationId.Value, e.CausationId.Value, e.OccurredAtUtc.Value, SourceModule,
                 RiskArchivedIntegrationEvent.EventType, RiskArchivedIntegrationEvent.SchemaVersion,
                 e.EventId.Value),
+
+            ComplianceViolationDetectedEvent e => EventEnvelope.Create(
+                new ComplianceViolationDetectedIntegrationEvent(
+                    e.ComplianceEvaluationId.Value, e.RuleId.Value, e.RuleCode, e.Category.ToString(),
+                    e.ViolationCode, e.Description, e.Severity.ToString(), e.TargetEntityType, e.TargetEntityId,
+                    tenantId, e.DetectedAtUtc.Value,
+                    e.Actor.UserId?.Value, e.Actor.Kind.ToString(), e.CorrelationId.Value, e.CausationId.Value),
+                tenantId, e.CorrelationId.Value, e.CausationId.Value, e.OccurredAtUtc.Value, SourceModule,
+                ComplianceViolationDetectedIntegrationEvent.EventType, ComplianceViolationDetectedIntegrationEvent.SchemaVersion,
+                e.EventId),
+
+            ComplianceEvaluationCompletedEvent e => EventEnvelope.Create(
+                new ComplianceEvaluationCompletedIntegrationEvent(
+                    e.ComplianceEvaluationId.Value, e.Outcome.ToString(), e.RulesEvaluated, e.RulesFailed,
+                    tenantId, e.CompletedAtUtc.Value,
+                    e.Actor.UserId?.Value, e.Actor.Kind.ToString(), e.CorrelationId.Value, e.CausationId.Value),
+                tenantId, e.CorrelationId.Value, e.CausationId.Value, e.OccurredAtUtc.Value, SourceModule,
+                ComplianceEvaluationCompletedIntegrationEvent.EventType, ComplianceEvaluationCompletedIntegrationEvent.SchemaVersion,
+                e.EventId),
 
             _ => null,
         };
