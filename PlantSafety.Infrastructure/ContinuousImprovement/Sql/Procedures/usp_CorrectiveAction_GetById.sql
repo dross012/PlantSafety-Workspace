@@ -44,6 +44,8 @@ BEGIN
             Status,
             CompletedAtUtc,
             LastModifiedAtUtc,
+            CreatedAtUtc,
+            CreatedBy,
             CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
         FROM [ContinuousImprovement].[CorrectiveAction]
         WHERE CaId = @CaId

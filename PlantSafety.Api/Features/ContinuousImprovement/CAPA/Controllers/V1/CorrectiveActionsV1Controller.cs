@@ -19,7 +19,11 @@
 using PlantSafety.Api.Context;
 using PlantSafety.Api.Features.ContinuousImprovement.CAPA.Contracts.Requests;
 using PlantSafety.Api.Features.ContinuousImprovement.CAPA.Contracts.Responses;
+using PlantSafety.Application.Features.ContinuousImprovement.Commands.CAPA.Close;
+using PlantSafety.Application.Features.ContinuousImprovement.Commands.CAPA.Complete;
 using PlantSafety.Application.Features.ContinuousImprovement.Commands.CAPA.Create;
+using PlantSafety.Application.Features.ContinuousImprovement.Commands.CAPA.MarkOverdue;
+using PlantSafety.Application.Features.ContinuousImprovement.Commands.CAPA.Start;
 
 namespace PlantSafety.Api.Features.ContinuousImprovement.CAPA.Controllers.V1;
 
@@ -88,5 +92,159 @@ public sealed class CorrectiveActionsV1Controller : ControllerBase
         var response = new CreateCorrectiveActionResponse(correctiveActionId);
 
         return Ok(ApiResponse<CreateCorrectiveActionResponse>.Ok(response, env.CorrelationId.ToString()));
+    }
+
+    /// <summary>Transitions a CorrectiveAction from Open to InProgress.</summary>
+    /// <param name="caId">Identifier of the CorrectiveAction to start.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <response code="200">Corrective action started successfully.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">CorrectiveAction not found.</response>
+    /// <response code="409">CorrectiveAction is not in a state that can be started.</response>
+    [HttpPost("{caId:guid}/start")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CreateCorrectiveActionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> StartAsync(Guid caId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new StartCorrectiveActionCommand
+        {
+            CommandId = env.CommandId,
+            CorrelationId = env.CorrelationId,
+            CausationId = env.CausationId,
+            RequestedAtUtc = env.RequestedAtUtc,
+            ApiVersionToken = env.ApiVersionToken,
+            TenantId = env.TenantId,
+            ActorId = env.ActorId,
+            CaId = caId,
+        };
+
+        var correctiveActionId = await _sender.Send(command, cancellationToken);
+
+        return Ok(ApiResponse<CreateCorrectiveActionResponse>.Ok(
+            new CreateCorrectiveActionResponse(correctiveActionId), env.CorrelationId.ToString()));
+    }
+
+    /// <summary>Marks a CorrectiveAction's work Completed (moves it to AwaitingVerification).</summary>
+    /// <param name="caId">Identifier of the CorrectiveAction to complete.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <response code="200">Corrective action completed successfully.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">CorrectiveAction not found.</response>
+    /// <response code="409">CorrectiveAction is not in a state that can be completed.</response>
+    [HttpPost("{caId:guid}/complete")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CreateCorrectiveActionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CompleteAsync(Guid caId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CompleteCorrectiveActionCommand
+        {
+            CommandId = env.CommandId,
+            CorrelationId = env.CorrelationId,
+            CausationId = env.CausationId,
+            RequestedAtUtc = env.RequestedAtUtc,
+            ApiVersionToken = env.ApiVersionToken,
+            TenantId = env.TenantId,
+            ActorId = env.ActorId,
+            CaId = caId,
+        };
+
+        var correctiveActionId = await _sender.Send(command, cancellationToken);
+
+        return Ok(ApiResponse<CreateCorrectiveActionResponse>.Ok(
+            new CreateCorrectiveActionResponse(correctiveActionId), env.CorrelationId.ToString()));
+    }
+
+    /// <summary>Verifies and formally closes a CorrectiveAction (terminal state).</summary>
+    /// <param name="caId">Identifier of the CorrectiveAction to close.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <response code="200">Corrective action closed successfully.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">CorrectiveAction not found.</response>
+    /// <response code="409">CorrectiveAction is not in a state that can be closed.</response>
+    [HttpPost("{caId:guid}/close")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CreateCorrectiveActionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CloseAsync(Guid caId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new CloseCorrectiveActionCommand
+        {
+            CommandId = env.CommandId,
+            CorrelationId = env.CorrelationId,
+            CausationId = env.CausationId,
+            RequestedAtUtc = env.RequestedAtUtc,
+            ApiVersionToken = env.ApiVersionToken,
+            TenantId = env.TenantId,
+            ActorId = env.ActorId,
+            CaId = caId,
+        };
+
+        var correctiveActionId = await _sender.Send(command, cancellationToken);
+
+        return Ok(ApiResponse<CreateCorrectiveActionResponse>.Ok(
+            new CreateCorrectiveActionResponse(correctiveActionId), env.CorrelationId.ToString()));
+    }
+
+    /// <summary>Marks a CorrectiveAction Overdue when its due date has passed without completion (idempotent no-op otherwise).</summary>
+    /// <param name="caId">Identifier of the CorrectiveAction to mark overdue.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <response code="200">Request processed (may be a no-op if not eligible).</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    /// <response code="404">CorrectiveAction not found.</response>
+    [HttpPost("{caId:guid}/mark-overdue")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<CreateCorrectiveActionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarkOverdueAsync(Guid caId, CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new MarkCorrectiveActionOverdueCommand
+        {
+            CommandId = env.CommandId,
+            CorrelationId = env.CorrelationId,
+            CausationId = env.CausationId,
+            RequestedAtUtc = env.RequestedAtUtc,
+            ApiVersionToken = env.ApiVersionToken,
+            TenantId = env.TenantId,
+            ActorId = env.ActorId,
+            CaId = caId,
+        };
+
+        var correctiveActionId = await _sender.Send(command, cancellationToken);
+
+        return Ok(ApiResponse<CreateCorrectiveActionResponse>.Ok(
+            new CreateCorrectiveActionResponse(correctiveActionId), env.CorrelationId.ToString()));
     }
 }

@@ -4,7 +4,10 @@
 // so the real Domain.ContinuousImprovement.CAPA.Aggregates.CorrectiveAction aggregate (and its
 // CorrectiveActionCreatedEvent) is actually constructed and persisted, instead of the handler
 // pushing raw primitives straight to SQL with no aggregate/domain event in the loop at all.
-// SchemaVersion: 2
+// UPDATED: 2026-08-06 -- added GetAggregateByIdAsync/UpdateAsync so the Start/Complete/Close/
+// MarkOverdue lifecycle commands can load, transition, and persist the real aggregate (mirrors
+// IIncidentRepository's read-then-lifecycle-method-then-persist pattern).
+// SchemaVersion: 3
 
 using PlantSafety.Domain.ContinuousImprovement.CAPA.Aggregates;
 
@@ -15,6 +18,12 @@ public interface ICorrectiveActionRepository
 {
     /// <summary>Persists a newly-created <see cref="CorrectiveAction"/> aggregate and relays its pending domain events.</summary>
     Task AddAsync(CorrectiveAction aggregate, Guid actorId, Guid correlationId, CancellationToken cancellationToken);
+
+    /// <summary>Persists a lifecycle transition on an existing <see cref="CorrectiveAction"/> aggregate and relays its pending domain events.</summary>
+    Task UpdateAsync(CorrectiveAction aggregate, Guid actorId, Guid correlationId, CancellationToken cancellationToken);
+
+    /// <summary>Loads and rehydrates the <see cref="CorrectiveAction"/> aggregate, or null if not found.</summary>
+    Task<CorrectiveAction?> GetAggregateByIdAsync(Guid tenantId, Guid caId, CancellationToken cancellationToken);
 
     /// <summary>Returns the read model, or null if not found.</summary>
     Task<CorrectiveActionReadModel?> GetByIdAsync(Guid tenantId, Guid caId, CancellationToken cancellationToken);

@@ -7933,6 +7933,184 @@ ORDER BY [ScheduledAtUtc] DESC;
                 END CATCH
             END");
 
+        // Procedure: usp_CorrectiveAction_Start.sql (lifecycle transition, no ETag check)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CorrectiveAction_Start]
+                @TenantId      UNIQUEIDENTIFIER,
+                @CorrelationId UNIQUEIDENTIFIER,
+                @ActorId       UNIQUEIDENTIFIER,
+                @NowUtc        DATETIME2(3),
+                @CaId          UNIQUEIDENTIFIER,
+                @Status        NVARCHAR(50)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    UPDATE [ContinuousImprovement].[CorrectiveAction]
+                    SET
+                        Status = @Status,
+                        LastModifiedByActorId = @ActorId,
+                        LastModifiedAtUtc = @NowUtc
+                    WHERE CaId = @CaId
+                      AND TenantId = @TenantId
+                      AND IsDeleted = 0;
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'CorrectiveAction', DB_NAME(), N'START', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    BEGIN TRY
+                        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Procedure: usp_CorrectiveAction_Complete.sql (lifecycle transition, no ETag check)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CorrectiveAction_Complete]
+                @TenantId       UNIQUEIDENTIFIER,
+                @CorrelationId  UNIQUEIDENTIFIER,
+                @ActorId        UNIQUEIDENTIFIER,
+                @NowUtc         DATETIME2(3),
+                @CaId           UNIQUEIDENTIFIER,
+                @Status         NVARCHAR(50),
+                @CompletedAtUtc DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    UPDATE [ContinuousImprovement].[CorrectiveAction]
+                    SET
+                        Status = @Status,
+                        CompletedAtUtc = @CompletedAtUtc,
+                        LastModifiedByActorId = @ActorId,
+                        LastModifiedAtUtc = @NowUtc
+                    WHERE CaId = @CaId
+                      AND TenantId = @TenantId
+                      AND IsDeleted = 0;
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'CorrectiveAction', DB_NAME(), N'COMPLETE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    BEGIN TRY
+                        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Procedure: usp_CorrectiveAction_Close.sql (lifecycle transition, no ETag check)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CorrectiveAction_Close]
+                @TenantId      UNIQUEIDENTIFIER,
+                @CorrelationId UNIQUEIDENTIFIER,
+                @ActorId       UNIQUEIDENTIFIER,
+                @NowUtc        DATETIME2(3),
+                @CaId          UNIQUEIDENTIFIER,
+                @Status        NVARCHAR(50)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    UPDATE [ContinuousImprovement].[CorrectiveAction]
+                    SET
+                        Status = @Status,
+                        LastModifiedByActorId = @ActorId,
+                        LastModifiedAtUtc = @NowUtc
+                    WHERE CaId = @CaId
+                      AND TenantId = @TenantId
+                      AND IsDeleted = 0;
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'CorrectiveAction', DB_NAME(), N'CLOSE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    BEGIN TRY
+                        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    THROW;
+                END CATCH
+            END");
+
+        // Procedure: usp_CorrectiveAction_MarkOverdue.sql (lifecycle transition, no ETag check)
+        await conn.ExecuteAsync(@"
+            CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CorrectiveAction_MarkOverdue]
+                @TenantId      UNIQUEIDENTIFIER,
+                @CorrelationId UNIQUEIDENTIFIER,
+                @ActorId       UNIQUEIDENTIFIER,
+                @NowUtc        DATETIME2(3),
+                @CaId          UNIQUEIDENTIFIER,
+                @Status        NVARCHAR(50)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                BEGIN TRY
+                    UPDATE [ContinuousImprovement].[CorrectiveAction]
+                    SET
+                        Status = @Status,
+                        LastModifiedByActorId = @ActorId,
+                        LastModifiedAtUtc = @NowUtc
+                    WHERE CaId = @CaId
+                      AND TenantId = @TenantId
+                      AND IsDeleted = 0;
+
+                    BEGIN TRY
+                        INSERT INTO dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+                        VALUES (N'CorrectiveAction', DB_NAME(), N'MARK_OVERDUE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId), 0, OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+                END TRY
+                BEGIN CATCH
+                    DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'CaId=', @CaId, N'; CorrelationId=', @CorrelationId, N'; User=', SYSTEM_USER);
+                    DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+                    BEGIN TRY
+                        INSERT INTO dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+                        VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+                    END TRY
+                    BEGIN CATCH
+                    END CATCH;
+
+                    THROW;
+                END CATCH
+            END");
+
         // Procedure: usp_CorrectiveAction_GetById.sql (ETag projected from ROWVERSION)
         await conn.ExecuteAsync(@"
             CREATE OR ALTER PROCEDURE [ContinuousImprovement].[usp_CorrectiveAction_GetById]
@@ -7959,6 +8137,8 @@ ORDER BY [ScheduledAtUtc] DESC;
                         Status,
                         CompletedAtUtc,
                         LastModifiedAtUtc,
+                        CreatedAtUtc,
+                        CreatedBy,
                         CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) AS ETag
                     FROM [ContinuousImprovement].[CorrectiveAction]
                     WHERE CaId = @CaId
