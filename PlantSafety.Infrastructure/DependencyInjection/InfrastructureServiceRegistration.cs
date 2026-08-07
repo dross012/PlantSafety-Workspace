@@ -168,6 +168,11 @@ using PlantSafety.Infrastructure.Analytics.Engagement.DependencyInjection;
 using PlantSafety.Infrastructure.Analytics.PredictiveAnalytics.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Permits.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.PHMSA.Classification.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.PHMSA.Packaging.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.PHMSA.Placarding.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.PHMSA.ShippingPapers.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.PHMSA.Incidents.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.ManagementOfChange.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Policies.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Procedures.DependencyInjection;
@@ -810,6 +815,11 @@ public static class InfrastructureServiceRegistration
             .AddPPEInfrastructure()
             .AddPermitToWorkInfrastructure()
             .AddPermitsInfrastructure()
+            .AddPHMSAClassificationInfrastructure()
+            .AddPHMSAPackagingInfrastructure()
+            .AddPHMSAPlacardingInfrastructure()
+            .AddPHMSAShippingPapersInfrastructure()
+            .AddPHMSAIncidentsInfrastructure()
             .AddManagementOfChangeAggregateInfrastructure()
             .AddPolicyAggregateInfrastructure()
             .AddProceduresAggregateInfrastructure()
