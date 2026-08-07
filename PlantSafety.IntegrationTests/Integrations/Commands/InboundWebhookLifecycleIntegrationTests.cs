@@ -52,7 +52,12 @@ public sealed class InboundWebhookLifecycleIntegrationTests(IntegrationTestWebAp
     [Fact]
     public async Task RecordEvent_NewEvent_ShouldBeAccepted_HaveETag_AndWriteInsertAuditLogRow()
     {
-        var tenantId = Guid.NewGuid();
+        // Uses the fixed test-context TenantId, not a random Guid: TenantIsolationBehavior
+        // rejects any request whose bound TenantId doesn't match the authenticated test context
+        // (see GetScopedService), and the unique (TenantId, EventId) index plus this test's
+        // freshly-generated eventId already provide isolation from other tests' rows without
+        // needing a distinct tenant.
+        var tenantId = TenantId;
         var siteId = Guid.NewGuid();
         var eventId = Guid.NewGuid().ToString("N");
 
@@ -98,7 +103,12 @@ public sealed class InboundWebhookLifecycleIntegrationTests(IntegrationTestWebAp
     [Fact]
     public async Task RecordEvent_ReplayedSameEvent_ShouldBeIdempotent_WithStableETag_AndWriteIdempotentAcceptAuditLogRow()
     {
-        var tenantId = Guid.NewGuid();
+        // Uses the fixed test-context TenantId, not a random Guid: TenantIsolationBehavior
+        // rejects any request whose bound TenantId doesn't match the authenticated test context
+        // (see GetScopedService), and the unique (TenantId, EventId) index plus this test's
+        // freshly-generated eventId already provide isolation from other tests' rows without
+        // needing a distinct tenant.
+        var tenantId = TenantId;
         var siteId = Guid.NewGuid();
         var eventId = Guid.NewGuid().ToString("N");
 

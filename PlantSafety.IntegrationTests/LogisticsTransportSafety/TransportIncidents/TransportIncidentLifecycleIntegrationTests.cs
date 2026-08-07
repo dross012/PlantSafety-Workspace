@@ -38,7 +38,13 @@ public sealed class TransportIncidentLifecycleIntegrationTests(IntegrationTestWe
 
             var recordResult = await sender.Send(new RecordTransportIncidentCommand(
                 Guid.NewGuid(), CorrelationId, Guid.NewGuid(), TenantId, null, null,
-                vehicleId, driverUserId, "Collision", "Major", "Loading dock 4", ActorId), CancellationToken.None);
+                vehicleId, driverUserId, "Collision", "Major", "Loading dock 4", ActorId)
+            {
+                // RequestedAtUtc defaults to the real wall clock; pin it to the fixed test clock
+                // so the recorded incident's timestamp falls inside the +/-1 day history window
+                // asserted below regardless of what day this test actually runs.
+                RequestedAtUtc = FixedUtcNow,
+            }, CancellationToken.None);
 
             recordResult.IsSuccess.Should().BeTrue();
             recordResult.Value.Status.Should().Be("Reported");

@@ -69,7 +69,13 @@ public sealed class PublicSafetyCommunicationLifecycleIntegrationTests(Integrati
             var dispatchResult = await sender.Send(new DispatchIncidentNotificationCommand(
                 Guid.NewGuid(), CorrelationId, Guid.NewGuid(), TenantId, null,
                 incidentId, Guid.NewGuid(), "Phone", "Ammonia release -- HazMat requested.")
-            { ActorId = ActorId }, CancellationToken.None);
+            {
+                ActorId = ActorId,
+                // RequestedAtUtc defaults to the real wall clock; pin it to the fixed test clock
+                // so the notification's timestamp falls inside the +/-1 day status window queried
+                // below regardless of what day this test actually runs.
+                RequestedAtUtc = FixedUtcNow,
+            }, CancellationToken.None);
 
             dispatchResult.IsSuccess.Should().BeTrue();
             dispatchResult.Value.Status.Should().Be("Dispatched");

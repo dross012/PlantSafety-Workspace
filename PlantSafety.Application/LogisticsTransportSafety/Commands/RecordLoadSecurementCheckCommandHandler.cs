@@ -36,7 +36,7 @@ public sealed class RecordLoadSecurementCheckCommandHandler : IRequestHandler<Re
 
             var aggregate = Agg.Create(
                 createdBy: performedBy,
-                createdAtUtc: UtcTimestamp.Now(),
+                createdAtUtc: UtcTimestamp.From(request.RequestedAtUtc),
                 correlationId: new CorrelationId(request.CorrelationId),
                 causationId: new CausationId(request.CausationId),
                 actor: PerformedByActor.User(performedBy),

@@ -26,6 +26,7 @@ using PlantSafety.Application.HumanFactors.CognitiveLoadAnalytics.Commands;
 using PlantSafety.Domain.HumanFactors.CognitiveLoadAnalytics.Aggregates;
 using PlantSafety.Domain.HumanFactors.CognitiveLoadAnalytics.Enums;
 using PlantSafety.Domain.HumanFactors.CognitiveLoadAnalytics.Interfaces;
+using PlantSafety.IntegrationTests.Common.TestExtensions;
 using PlantSafety.IntegrationTests.Common.TestFixtures;
 using PlantSafety.SharedKernel.Identifiers;
 using PlantSafety.SharedKernel.Primitives.ValueTypes;
@@ -44,8 +45,14 @@ public sealed class CognitiveLoadAnalyticsPerformanceCompatibilityTests(Integrat
         // 50 sequential command round-trips through the real MediatR pipeline + Testcontainers
         // SQL Server is a representative stress volume for this sub-module, not an arbitrary
         // fixed count.
-        using var scope = Factory.Services.CreateScope();
-        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        // GetScopedService (not a plain CreateScope) is required here: it populates a fake
+        // authenticated HttpContext with the fixed TestIds tenant so TenantIsolationBehavior
+        // resolves a tenant context to compare the command's TenantId against -- without it,
+        // every command sent through this sender is rejected with
+        // ApplicationAuthorizationException("The request's TenantId does not match the
+        // authenticated tenant context.").
+        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        using var _ = scope;
 
         var shiftDateUtc = DateTime.UtcNow.Date.AddDays(-1);
         var workerId = Guid.NewGuid();

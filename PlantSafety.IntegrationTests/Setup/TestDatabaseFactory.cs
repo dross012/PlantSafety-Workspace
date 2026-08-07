@@ -824,7 +824,8 @@ public static partial class TestDatabaseFactory
 
         await conn.ExecuteAsync(@"
             CREATE OR ALTER PROCEDURE [RiskMgmt].[usp_Risk_GetById]
-                @RiskId UNIQUEIDENTIFIER
+                @RiskId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER
             AS
             SET NOCOUNT ON;
             BEGIN
@@ -834,7 +835,7 @@ public static partial class TestDatabaseFactory
                     LastValidatedAtUtc, ReviewCadence, LastReviewedAtUtc, NextReviewDueUtc, ReviewRequired, ReviewCount,
                     RiskVersion, CreatedAtUtc, CreatedBy
                 FROM [RiskMgmt].[Risk]
-                WHERE RiskId = @RiskId AND IsDeleted = 0;
+                WHERE RiskId = @RiskId AND TenantId = @TenantId AND IsDeleted = 0;
             END;");
 
         await conn.ExecuteAsync(@"
@@ -12578,6 +12579,87 @@ ORDER BY [ScheduledAtUtc] DESC;
                 IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
                 THROW;
             END CATCH;
+            """);
+
+        // ---- GetItems (list) read-model procedures -----------------------------------------
+        // Missing entirely from this method until 2026-08-06: Create/GetById/Update existed for
+        // every entity in this module, but none of the "_GetItems" list procedures did, so any
+        // test calling a List*/Get*ByPeriod query against these entities failed with
+        // "Could not find stored procedure" even though the real source scripts
+        // (PlantSafety.Infrastructure\EnvironmentalHealth\WaterDischargeCompliance\*\Sql\
+        // Procedures\usp_*_GetItems.sql) have always existed and are correct. Added verbatim.
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargePoint_GetItems]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT [DischargePointId], [TenantId], [SiteId], [DischargePermitId], [PointCode], [PointName],
+                       [ReceivingWaterBody], [Outfall], [Status], [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[DischargePoint]
+                WHERE [TenantId] = @TenantId
+                  AND (@SiteId IS NULL OR [SiteId] = @SiteId)
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [CreatedAtUtc] DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargeLimit_GetItems]
+                @TenantId         UNIQUEIDENTIFIER,
+                @DischargePointId UNIQUEIDENTIFIER
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT [DischargeLimitId], [TenantId], [SiteId], [DischargePointId], [Parameter], [LimitBasis], [LimitValue],
+                       [UnitOfMeasure], [PermitConditionReference], [Status], [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[DischargeLimit]
+                WHERE [TenantId] = @TenantId
+                  AND [DischargePointId] = @DischargePointId
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [CreatedAtUtc] DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_DischargeMonitoringReport_GetItems]
+                @TenantId       UNIQUEIDENTIFIER,
+                @SiteId         UNIQUEIDENTIFIER = NULL,
+                @PeriodStartUtc DATETIME2(3),
+                @PeriodEndUtc   DATETIME2(3)
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT [DischargeMonitoringReportId], [TenantId], [SiteId], [DischargePermitId], [ReportingPeriodStartUtc],
+                       [ReportingPeriodEndUtc], [DueAtUtc], [SubmittedAtUtc], [SamplesWithinLimitCount], [TotalSamplesCount],
+                       [Status], [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[DischargeMonitoringReport]
+                WHERE [TenantId] = @TenantId
+                  AND (@SiteId IS NULL OR [SiteId] = @SiteId)
+                  AND [ReportingPeriodStartUtc] <= @PeriodEndUtc
+                  AND [ReportingPeriodEndUtc] >= @PeriodStartUtc
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [ReportingPeriodStartUtc] DESC;
+            END
+            """);
+
+        await conn.ExecuteAsync("""
+            CREATE OR ALTER PROCEDURE [EnvironmentalHealth].[usp_LimitExceedance_GetItems]
+                @TenantId UNIQUEIDENTIFIER,
+                @SiteId   UNIQUEIDENTIFIER = NULL
+            AS
+            SET NOCOUNT ON;
+            BEGIN
+                SELECT [LimitExceedanceId], [TenantId], [SiteId], [DischargePointId], [ParameterName], [MeasuredValue],
+                       [LimitValue], [ExceedancePercentage], [Severity], [DetectedAtUtc], [Status], [CreatedAtUtc], [CreatedBy]
+                FROM [EnvironmentalHealth].[LimitExceedance]
+                WHERE [TenantId] = @TenantId
+                  AND (@SiteId IS NULL OR [SiteId] = @SiteId)
+                  AND [Status] <> N'Closed'
+                  AND ISNULL([IsDeleted], 0) = 0
+                ORDER BY [DetectedAtUtc] DESC;
+            END
             """);
     }
 

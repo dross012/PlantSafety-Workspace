@@ -45,7 +45,7 @@ public sealed class SendCommunityNotificationCommandHandler : IRequestHandler<Se
 
             var aggregate = Agg.Send(
                 createdBy: performedBy,
-                createdAtUtc: UtcTimestamp.Now(),
+                createdAtUtc: UtcTimestamp.From(request.RequestedAtUtc),
                 correlationId: new CorrelationId(request.CorrelationId),
                 causationId: new CausationId(request.CausationId),
                 actor: PerformedByActor.User(performedBy),

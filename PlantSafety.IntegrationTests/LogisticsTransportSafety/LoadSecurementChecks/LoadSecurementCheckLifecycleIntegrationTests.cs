@@ -37,7 +37,13 @@ public sealed class LoadSecurementCheckLifecycleIntegrationTests(IntegrationTest
 
             var recordResult = await sender.Send(new RecordLoadSecurementCheckCommand(
                 Guid.NewGuid(), CorrelationId, Guid.NewGuid(), TenantId, null, null,
-                vehicleId, Guid.NewGuid(), false, 3, 55m, ActorId), CancellationToken.None);
+                vehicleId, Guid.NewGuid(), false, 3, 55m, ActorId)
+            {
+                // RequestedAtUtc defaults to the real wall clock; pin it to the fixed test clock
+                // so the recorded check's timestamp falls inside the +/-1 day failures window
+                // asserted below regardless of what day this test actually runs.
+                RequestedAtUtc = FixedUtcNow,
+            }, CancellationToken.None);
 
             recordResult.IsSuccess.Should().BeTrue();
             recordResult.Value.Status.Should().Be("Failed");

@@ -72,7 +72,13 @@ public sealed class CarrierLifecycleIntegrationTests(IntegrationTestWebAppFactor
         {
             var registerResult = await sender.Send(new RegisterCarrierCommand(
                 Guid.NewGuid(), CorrelationId, Guid.NewGuid(), TenantId, null,
-                "Beta Transport Co", "InHouseFleet", null, ActorId), CancellationToken.None);
+                "Beta Transport Co", "InHouseFleet", null, ActorId)
+            {
+                // RequestedAtUtc defaults to the real wall clock; pin it to the fixed test clock
+                // so the registered carrier's timestamp falls inside the +/-1 day window asserted
+                // below regardless of what day this test actually runs.
+                RequestedAtUtc = FixedUtcNow,
+            }, CancellationToken.None);
             var carrierId = registerResult.Value.CarrierId;
 
             var listResult = await sender.Send(new GetCarriersQuery(

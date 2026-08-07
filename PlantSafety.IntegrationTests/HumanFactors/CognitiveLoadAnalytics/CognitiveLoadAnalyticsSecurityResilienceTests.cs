@@ -24,6 +24,7 @@ using PlantSafety.Domain.HumanFactors.CognitiveLoadAnalytics.Aggregates;
 using PlantSafety.Domain.HumanFactors.CognitiveLoadAnalytics.Enums;
 using PlantSafety.Domain.HumanFactors.CognitiveLoadAnalytics.Interfaces;
 using PlantSafety.Domain.HumanFactors.CognitiveLoadAnalytics.ValueObjects.Ids;
+using PlantSafety.IntegrationTests.Common.TestExtensions;
 using PlantSafety.IntegrationTests.Common.TestFixtures;
 using PlantSafety.SharedKernel.Identifiers;
 using PlantSafety.SharedKernel.Primitives.ValueTypes;
@@ -83,8 +84,11 @@ public sealed class CognitiveLoadAnalyticsSecurityResilienceTests(IntegrationTes
     [Fact]
     public async Task RecordCognitiveLoadReadingCommandHandler_WithUnrecognizedShiftType_ReturnsValidationFailureWithoutThrowing()
     {
-        using var scope = Factory.Services.CreateScope();
-        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        // GetScopedService (not a plain CreateScope) is required here: it populates a fake
+        // authenticated HttpContext with the fixed TestIds tenant so TenantIsolationBehavior
+        // resolves a tenant context to compare the command's TenantId against.
+        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        using var _ = scope;
 
         var command = RecordCognitiveLoadReadingCommand.FromDto(
             tenantId: TenantId, siteId: null, shiftType: "NotAShift", shiftDateUtc: DateTime.UtcNow,
@@ -133,8 +137,11 @@ public sealed class CognitiveLoadAnalyticsSecurityResilienceTests(IntegrationTes
     {
         // Chaos: a caller referencing a ledger id that was never persisted (e.g. a stale client
         // cache or a replayed command against a torn-down tenant) must fail gracefully.
-        using var scope = Factory.Services.CreateScope();
-        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        // GetScopedService (not a plain CreateScope) is required here: it populates a fake
+        // authenticated HttpContext with the fixed TestIds tenant so TenantIsolationBehavior
+        // resolves a tenant context to compare the command's TenantId against.
+        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        using var _ = scope;
 
         var command = RecalculateWorkloadTrendCommand.FromDto(
             tenantId: TenantId, cognitiveLoadLedgerId: Guid.NewGuid(),

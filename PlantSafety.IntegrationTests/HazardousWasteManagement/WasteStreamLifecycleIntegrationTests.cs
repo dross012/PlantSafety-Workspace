@@ -94,11 +94,23 @@ public sealed class WasteStreamLifecycleIntegrationTests(IntegrationTestWebAppFa
                 "Tenant-Scoped Stream", "D002", "Corrosive", "EPA000000001", ActorId), CancellationToken.None);
             var wasteStreamId = characterizeResult.Value.WasteStreamId;
 
-            var otherTenantId = Guid.NewGuid();
-            var crossTenantResult = await sender.Send(new GetWasteStreamByIdQuery(otherTenantId, wasteStreamId), CancellationToken.None);
+            // A real cross-tenant read can no longer be exercised through ISender: with the
+            // zero-trust tenant isolation now enforced by TenantIsolationBehavior, any request
+            // whose bound TenantId doesn't equal the authenticated context's tenant is rejected
+            // with ApplicationAuthorizationException before the handler ever runs -- that IS the
+            // "must not leak across tenants" guarantee at the pipeline level. What this test can
+            // still verify directly is the repository/stored-procedure's own defense-in-depth
+            // TenantId filter, by resolving IWasteStreamRepository straight from the DI container
+            // (bypassing MediatR, matching the precedent in
+            // CognitiveLoadAnalyticsSecurityResilienceTests.GetByIdAsync_WhenLedgerBelongsTo
+            // DifferentTenant_ReturnsNullRatherThanLeakingSensitiveData).
+            var repository = scope.ServiceProvider.GetRequiredService<
+                PlantSafety.Application.HazardousWasteManagement.WasteStreams.Repositories.IWasteStreamRepository>();
 
-            crossTenantResult.IsSuccess.Should().BeTrue();
-            crossTenantResult.Value.Item.Should().BeNull("a WasteStream record must not be visible to a different tenant");
+            var otherTenantId = Guid.NewGuid();
+            var crossTenantItem = await repository.GetWasteStreamByIdAsync(otherTenantId, wasteStreamId, CancellationToken.None);
+
+            crossTenantItem.Should().BeNull("a WasteStream record must not be visible to a different tenant");
         }
         finally
         {

@@ -18,6 +18,7 @@
 using MediatR;
 using PlantSafety.Application.HumanFactors.CognitiveLoadAnalytics.Commands;
 using PlantSafety.Application.HumanFactors.CognitiveLoadAnalytics.Queries;
+using PlantSafety.IntegrationTests.Common.TestExtensions;
 using PlantSafety.IntegrationTests.Common.TestFixtures;
 using PlantSafety.SharedKernel.Identifiers;
 
@@ -30,8 +31,14 @@ public sealed class CognitiveLoadAnalyticsFunctionalEndToEndTests(IntegrationTes
     [Fact]
     public async Task FullShiftScenario_RecordReadingsDefineProfileRecalculateTrendGeneratePredictionAcknowledge_RoundTripsThroughRealStoredProcedures()
     {
-        using var scope = Factory.Services.CreateScope();
-        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        // GetScopedService (not a plain CreateScope) is required here: it populates a fake
+        // authenticated HttpContext with the fixed TestIds tenant so TenantIsolationBehavior
+        // resolves a tenant context to compare the command's TenantId against -- without it,
+        // every command sent through this sender is rejected with
+        // ApplicationAuthorizationException("The request's TenantId does not match the
+        // authenticated tenant context.").
+        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        using var _ = scope;
 
         var workerId = Guid.NewGuid();
         var shiftDateUtc = DateTime.UtcNow.Date;

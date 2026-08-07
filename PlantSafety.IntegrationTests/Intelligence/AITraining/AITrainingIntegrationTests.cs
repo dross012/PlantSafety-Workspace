@@ -150,7 +150,12 @@ public sealed class AITrainingIntegrationTests(IntegrationTestWebAppFactory fact
     [Fact]
     public async Task GetAITraining_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var noDataTenantId = Guid.NewGuid();
+        // A null SiteId matches every site under TenantId, so with a shared database this would
+        // also pick up the other test's real 2028-06-15 seeded row (GetAITraining_ShouldReturn
+        // Seeded... above) whenever both tests query the same [2028-01-01, 2028-12-31] window.
+        // Scoping to a fresh, never-seeded SiteId keeps this test's "no rows" premise true
+        // regardless of what other tests in this class have inserted for TenantId.
+        var siteId = Guid.NewGuid();
         var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
@@ -158,7 +163,7 @@ public sealed class AITrainingIntegrationTests(IntegrationTestWebAppFactory fact
         try
         {
             var result = await sender.Send(
-                new GetAITrainingQuery(noDataTenantId, null, fromUtc, toUtc),
+                new GetAITrainingQuery(TenantId, siteId, fromUtc, toUtc),
                 CancellationToken.None);
 
             result.IsSuccess.Should().BeTrue("a query with no matching rows must still succeed, not throw");

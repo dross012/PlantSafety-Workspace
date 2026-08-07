@@ -126,14 +126,19 @@ public sealed class ExportIntegrationTests(IntegrationTestWebAppFactory factory)
     [Fact]
     public async Task GetExport_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var noDataTenantId = Guid.NewGuid();
+        // A null SiteId matches every site under TenantId, so with a shared database this would
+        // also pick up another test's real 2028-06-15 seeded row whenever both tests query the
+        // same [2028-01-01, 2028-12-31] window. Scoping to a fresh, never-seeded SiteId keeps
+        // this test's "no rows" premise true regardless of what other tests in this class have
+        // inserted for TenantId.
+        var siteId = Guid.NewGuid();
         var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
         var (scope, sender) = Factory.Services.GetScopedService<ISender>();
         try
         {
-            var result = await sender.Send(new GetExportQuery(noDataTenantId, null, fromUtc, toUtc), CancellationToken.None);
+            var result = await sender.Send(new GetExportQuery(TenantId, siteId, fromUtc, toUtc), CancellationToken.None);
 
             result.IsSuccess.Should().BeTrue("a query with no matching rows must still succeed, not throw");
             result.Value!.Items.Should().NotBeNull();

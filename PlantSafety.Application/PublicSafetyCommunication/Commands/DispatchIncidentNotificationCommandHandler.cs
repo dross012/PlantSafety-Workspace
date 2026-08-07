@@ -46,7 +46,7 @@ public sealed class DispatchIncidentNotificationCommandHandler : IRequestHandler
 
             var aggregate = IncidentNotification.Create(
                 createdBy: actorId,
-                createdAtUtc: UtcTimestamp.Now(),
+                createdAtUtc: UtcTimestamp.From(request.RequestedAtUtc),
                 correlationId: new CorrelationId(request.CorrelationId),
                 causationId: new CausationId(request.CausationId),
                 actor: PerformedByActor.User(actorId),

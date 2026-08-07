@@ -229,7 +229,14 @@ public sealed class AutonomousVehicleSafetySqlTests(IntegrationTestWebAppFactory
             var recordResult = await sender.Send(
                 new RecordHumanRobotInteractionEventCommand(
                     Guid.NewGuid(), CorrelationId, Guid.NewGuid(), TenantId, null,
-                    assetId, "NearMiss", "High", 0.4m, "Loading dock 3", ActorId),
+                    assetId, "NearMiss", "High", 0.4m, "Loading dock 3", ActorId)
+                {
+                    // RequestedAtUtc defaults to the real wall clock, but this test asserts the
+                    // recorded event surfaces within a +/-1 day window of the fixed test clock --
+                    // without pinning it here the event's DetectedAtUtc drifts outside that window
+                    // on any day other than the one FixedUtcNow was authored on.
+                    RequestedAtUtc = FixedUtcNow,
+                },
                 CancellationToken.None);
 
             recordResult.IsSuccess.Should().BeTrue();

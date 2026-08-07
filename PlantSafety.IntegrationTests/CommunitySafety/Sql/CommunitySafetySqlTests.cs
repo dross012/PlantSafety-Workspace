@@ -67,7 +67,13 @@ public sealed class CommunitySafetySqlTests(IntegrationTestWebAppFactory factory
                 new RegisterCommunityContactCommand(
                     Guid.NewGuid(), CorrelationId, Guid.NewGuid(), TenantId, null,
                     "Fire Chief - Station 4", "EmergencyServices", "North Ridge", "chief@example.org",
-                    "City Fire Dept", "555-0100", true, ActorId),
+                    "City Fire Dept", "555-0100", true, ActorId)
+                {
+                    // RequestedAtUtc defaults to the real wall clock; pin it to the fixed test
+                    // clock so the contact's CreatedAtUtc falls inside the +/-1 day window queried
+                    // below regardless of what day this test actually runs.
+                    RequestedAtUtc = FixedUtcNow,
+                },
                 CancellationToken.None);
 
             registerResult.IsSuccess.Should().BeTrue("RegisterCommunityContactCommand must succeed against the real stored procedure");
@@ -183,7 +189,13 @@ public sealed class CommunitySafetySqlTests(IntegrationTestWebAppFactory factory
                 new SendCommunityNotificationCommand(
                     Guid.NewGuid(), CorrelationId, Guid.NewGuid(), TenantId, null, "Email",
                     Guid.NewGuid(), "Planned maintenance notice", "Elevated flare activity expected Tuesday 2-4am.",
-                    null, null, ActorId),
+                    null, null, ActorId)
+                {
+                    // RequestedAtUtc defaults to the real wall clock; pin it to the fixed test
+                    // clock so the notification's SentAtUtc falls inside the +/-1 day window
+                    // queried below regardless of what day this test actually runs.
+                    RequestedAtUtc = FixedUtcNow,
+                },
                 CancellationToken.None);
 
             sendResult.IsSuccess.Should().BeTrue();

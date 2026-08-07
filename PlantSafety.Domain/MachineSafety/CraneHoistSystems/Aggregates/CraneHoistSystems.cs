@@ -140,6 +140,12 @@ public sealed partial class CraneHoistSystems
             AssetTitle          = (assetTitle ?? string.Empty).Trim(),
             AssetType           = assetType,
             RatedLoadCapacityKg = ratedLoadCapacityKg,
+            // OperatorUserId is NOT NULL in storage and has no distinct value at registration
+            // time (QualifyOperator assigns the real operator later) -- default to the creator,
+            // matching this codebase's placeholder convention rather than leaving UserId's
+            // struct default (Guid.Empty), which bypasses UserId's constructor guard in memory
+            // but fails UserId.FromGuid on rehydration from the database.
+            OperatorUserId      = createdBy,
             CreatedAtUtc        = createdAtUtc,
             CreatedBy           = createdBy,
         };
