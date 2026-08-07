@@ -49,6 +49,13 @@ public static class ComplianceRulesEngineApplicationServiceRegistration
         services.AddTransient<OshaStandardsFactProvider>();
         services.AddTransient<IComplianceRule, SchedulingTouchesHighSeverityOshaRule>();
 
+        // FMCSA regulatory reference data (Compliance.FMCSAStandard/FMCSARequirement/
+        // FMCSAStandardChangeLog), the 49 CFR counterpart to OSHA's 29 CFR -- legally binding
+        // federal regulation, same legal character as OSHA above (unlike the voluntary NFPA
+        // guidance below).
+        services.AddTransient<FmcsaStandardsFactProvider>();
+        services.AddTransient<IComplianceRule, SchedulingTouchesHighSeverityFmcsaRule>();
+
         // NFPA hazard profile reference data (Compliance.NFPA_HazardProfile/NFPA_ControlMatrix/
         // NFPA_HazardModuleMapping/NFPA_HazardChangeLog), imported by
         // tools/NfpaReferenceImport. NFPA is not a government agency and its codes are voluntary

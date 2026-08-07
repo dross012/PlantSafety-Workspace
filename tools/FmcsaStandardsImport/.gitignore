@@ -1,0 +1,5 @@
+bin/
+obj/
+data/
+publish/
+schedule/logs/

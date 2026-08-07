@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hand-built local test fixture ONLY. Not the primary data source and not shipped or consumed by
+  the tool's real Phase 1 download path. It mimics the shape of the real govinfo.gov CFR bulk XML
+  (DLPSTEXTCLASS, DIV5 PART, DIV6 SUBPART, SECTION, HEAD, P, CITA, AUTH) closely enough to
+  exercise Phase 2's ParseFmcsaStandards walker end to end against a couple of the 8 target FMCSA
+  parts without a live network call. Use with:
+    dotnet run [double dash] skip-download [double dash] connection-string "..."
+  after copying this file to tools/FmcsaStandardsImport/data/ECFR-title49.xml (data/ is gitignored
+  and is where Phase 1 saves the real download too).
+-->
+<DLPSTEXTCLASS>
+  <IDNO TYPE="title">49</IDNO>
+  <DIV5 TYPE="PART" N="391">
+    <HEAD>PART 391 - QUALIFICATIONS OF DRIVERS AND LONGER COMBINATION VEHICLE (LCV) DRIVER INSTRUCTORS</HEAD>
+    <AUTH>49 U.S.C. 504, 508, 31133, 31136, 31502; sec. 4007(a), Pub. L. 102-240.</AUTH>
+    <DIV6 TYPE="SUBPART" N="B">
+      <HEAD>Subpart B - Qualifications and Disqualifications</HEAD>
+      <DIV8 TYPE="SECTION" N="391.11">
+        <HEAD>391.11 General qualifications of drivers.</HEAD>
+        <P>A person shall not drive a commercial motor vehicle unless he/she is qualified to drive a commercial motor vehicle.</P>
+        <P>A motor carrier shall not require or permit a person to drive a commercial motor vehicle unless that person is qualified to drive a commercial motor vehicle.</P>
+        <P>Except as provided in subpart G of this part, a person is qualified to drive a motor vehicle if he/she is in possession of a valid commercial motor vehicle operator's license issued by only one State or jurisdiction.</P>
+        <CITA>[35 FR 6458, Apr. 22, 1970, as amended at 55 FR 12271, April 2, 1990]</CITA>
+      </DIV8>
+      <DIV8 TYPE="SECTION" N="391.15">
+        <HEAD>391.15 Disqualification of drivers.</HEAD>
+        <P>A driver who is disqualified must not drive a commercial motor vehicle.</P>
+        <P>A motor carrier must not permit a disqualified driver to drive a commercial motor vehicle.</P>
+        <CITA>[35 FR 6458, Apr. 22, 1970, as amended at 70 FR 3339, Jan. 24, 2005]</CITA>
+      </DIV8>
+    </DIV6>
+  </DIV5>
+  <DIV5 TYPE="PART" N="393">
+    <HEAD>PART 393 - PARTS AND ACCESSORIES NECESSARY FOR SAFE OPERATION</HEAD>
+    <AUTH>49 U.S.C. 31136, 31151, 31502; sec. 1041(b), Pub. L. 102-240.</AUTH>
+    <DIV6 TYPE="SUBPART" N="C">
+      <HEAD>Subpart C - Lighting Devices, Reflectors, and Electrical Equipment</HEAD>
+      <DIV8 TYPE="SECTION" N="393.9">
+        <HEAD>393.9 Lamps operable.</HEAD>
+        <P>Every lamp and reflective device required by this subpart must be maintained in good operating condition.</P>
+        <P>A motor carrier shall inspect all required lamps before each trip to ensure they are operable.</P>
+        <CITA>[45 FR 65029, Oct. 1, 1980]</CITA>
+      </DIV8>
+      <DIV8 TYPE="SECTION" N="393.11">
+        <HEAD>393.11 [Reserved]</HEAD>
+      </DIV8>
+    </DIV6>
+  </DIV5>
+</DLPSTEXTCLASS>

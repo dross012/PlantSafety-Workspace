@@ -19,6 +19,7 @@ using PlantSafety.Api.Context;
 using PlantSafety.Application.Auditing.Commands;
 using PlantSafety.Application.Auditing.AuditFinding.OshaCoverage.Commands;
 using PlantSafety.Application.Auditing.AuditFinding.NfpaCoverage.Commands;
+using PlantSafety.Application.Auditing.AuditFinding.FmcsaCoverage.Commands;
 
 using PlantSafety.Api.Common;
 
@@ -300,6 +301,41 @@ public sealed class AuditFindingsV1Controller : ControllerBase
             AuditFindingId: auditFindingId,
             HazardIds: request.HazardIds,
             CreatedBy: env.ActorId.ToString());
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>
+    /// Links an Audit Finding to the specific FMCSA requirements its evidence covers -- the one
+    /// real link between Auditing and FMCSA data, mirroring
+    /// <see cref="LinkOshaRequirementsAsync"/>'s role for OSHA. FMCSA regulations (49 CFR) are
+    /// legally binding federal regulation, the same legal character as OSHA's 29 CFR. Idempotent:
+    /// re-linking an already-linked requirement is a no-op, not an error.
+    /// </summary>
+    /// <response code="200">Requirements linked successfully.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpPost("{auditFindingId:guid}/fmcsa-requirements")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> LinkFmcsaRequirementsAsync(
+        Guid auditFindingId,
+        [FromBody] LinkAuditFindingFmcsaRequirementsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new LinkAuditFindingToFmcsaRequirementsCommand(
+            TenantId: env.TenantId,
+            AuditFindingId: auditFindingId,
+            RequirementIds: request.RequirementIds,
+            ActorId: env.ActorId);
 
         var result = await _sender.Send(command, cancellationToken);
 
