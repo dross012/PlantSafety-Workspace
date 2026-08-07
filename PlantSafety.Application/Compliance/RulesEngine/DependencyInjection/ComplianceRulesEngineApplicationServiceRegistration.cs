@@ -49,6 +49,12 @@ public static class ComplianceRulesEngineApplicationServiceRegistration
         services.AddTransient<OshaStandardsFactProvider>();
         services.AddTransient<IComplianceRule, SchedulingTouchesHighSeverityOshaRule>();
 
+        // NIOSH reference data (Compliance.NIOSHHazardProfile/NIOSHRespiratorMatrix/
+        // NIOSHPPEGuidance/NIOSHHazardModuleMapping/NIOSHHazardChangeLog). Reference data, not a
+        // regulatory requirement -- fact provider only, no dedicated IComplianceRule (no obvious
+        // direct parallel to SchedulingTouchesHighSeverityOshaRule exists yet).
+        services.AddTransient<NioshReferenceFactProvider>();
+
         services.AddScoped<IComplianceEvaluationFactory, ComplianceEvaluationFactory>();
         services.AddScoped<ComplianceEvaluator>();
 

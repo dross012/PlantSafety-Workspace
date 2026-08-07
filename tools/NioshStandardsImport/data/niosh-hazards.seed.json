@@ -1,0 +1,213 @@
+[
+  {
+    "chemicalName": "Crystalline Silica (Respirable)",
+    "casNumber": "14808-60-7",
+    "hazardCategory": "Respiratory",
+    "relTwa": "0.05 mg/m3 (respirable dust, TWA)",
+    "relStel": null,
+    "healthEffects": "Silicosis, chronic bronchitis, lung cancer (Group 1 carcinogen), and increased susceptibility to tuberculosis from chronic inhalation of respirable crystalline silica dust.",
+    "recommendedControls": "Substitute lower-silica-content materials where feasible; use wet cutting/wet sawing methods; apply local exhaust ventilation at the point of generation; enclose dust-generating processes.",
+    "ppeRecommendations": "NIOSH-approved respiratory protection selected per the assigned protection factor for the measured or anticipated exposure concentration; safety glasses; disposable coveralls when dust loading is heavy.",
+    "atmosphericMonitoring": "Personal breathing-zone air sampling for respirable dust per NIOSH Method 7500 (X-ray diffraction) or equivalent; periodic area monitoring near cutting/grinding operations.",
+    "ergonomicFactors": null,
+    "sourceUrl": "https://www.cdc.gov/niosh/npg/npgd0553.html",
+    "respiratorMatrix": [
+      {
+        "hazardType": "Respirable particulate",
+        "concentrationRange": "Up to 0.5 mg/m3 (10x REL)",
+        "recommendedRespirator": "Any N95 or better disposable filtering facepiece respirator",
+        "notes": "Fit testing required; disposable respirators not adequate above 10x REL."
+      },
+      {
+        "hazardType": "Respirable particulate",
+        "concentrationRange": "0.5-1.25 mg/m3 (25x REL)",
+        "recommendedRespirator": "Half-mask elastomeric respirator with P100 filters, or PAPR with HE filter",
+        "notes": "Consider PAPR for extended-duration tasks to reduce heat/breathing resistance burden."
+      },
+      {
+        "hazardType": "Respirable particulate",
+        "concentrationRange": "Above 1.25 mg/m3 or IDLH/unknown",
+        "recommendedRespirator": "Full-facepiece PAPR with HE filter, or SCBA",
+        "notes": "Confirm concentration is not IDLH before selecting air-purifying respirator."
+      }
+    ],
+    "ppeGuidance": [
+      {
+        "ppeType": "Disposable protective coveralls (Type 5/6 equivalent)",
+        "performanceCriteria": "Resistance to particulate penetration; low-linting fabric",
+        "limitations": "Not effective against liquid chemical splash; single-use, discard after heavy dust loading."
+      },
+      {
+        "ppeType": "Safety glasses / goggles",
+        "performanceCriteria": "ANSI Z87.1 impact and dust rating",
+        "limitations": "Goggles preferred over glasses in high-dust environments to prevent gap infiltration."
+      }
+    ]
+  },
+  {
+    "chemicalName": "Toluene",
+    "casNumber": "108-88-3",
+    "hazardCategory": "Chemical",
+    "relTwa": "100 ppm (375 mg/m3)",
+    "relStel": "150 ppm (560 mg/m3)",
+    "healthEffects": "Central nervous system depression (headache, dizziness, fatigue, narcosis), eye and mucous membrane irritation, and potential developmental effects from chronic solvent vapor inhalation exposure.",
+    "recommendedControls": "Substitute with lower-toxicity solvents where feasible; use closed-transfer systems; provide local exhaust ventilation at open containers and mixing/coating operations; store in flammable-rated cabinets.",
+    "ppeRecommendations": "Chemical splash goggles; nitrile or other solvent-resistant gloves selected per breakthrough-time data; respiratory protection when engineering controls cannot keep vapor concentrations below the REL.",
+    "atmosphericMonitoring": "Personal breathing-zone sampling per NIOSH Method 1501 (charcoal tube, GC); direct-reading photoionization detector for real-time screening near open transfer points.",
+    "ergonomicFactors": null,
+    "sourceUrl": "https://www.cdc.gov/niosh/npg/npgd0619.html",
+    "respiratorMatrix": [
+      {
+        "hazardType": "Organic vapor",
+        "concentrationRange": "Up to 1000 ppm (10x REL)",
+        "recommendedRespirator": "Half-mask air-purifying respirator with organic vapor cartridges",
+        "notes": "Cartridge change-out schedule must account for toluene's poor odor-threshold warning properties."
+      },
+      {
+        "hazardType": "Organic vapor",
+        "concentrationRange": "1000-2000 ppm (20x REL)",
+        "recommendedRespirator": "Full-facepiece air-purifying respirator with organic vapor cartridges, or PAPR with organic vapor cartridges",
+        "notes": "Full facepiece needed for eye irritation protection at this range."
+      },
+      {
+        "hazardType": "Organic vapor",
+        "concentrationRange": "Above IDLH (500 ppm) or unknown concentration",
+        "recommendedRespirator": "Supplied-air respirator in pressure-demand mode, or SCBA",
+        "notes": "Toluene IDLH is 500 ppm; do not rely on air-purifying respirators above this level."
+      }
+    ],
+    "ppeGuidance": [
+      {
+        "ppeType": "Solvent-resistant gloves (nitrile, 8+ mil)",
+        "performanceCriteria": "Breakthrough time greater than task duration per manufacturer permeation data",
+        "limitations": "Natural rubber and PVC gloves offer poor toluene resistance; replace gloves per breakthrough schedule, not visible degradation alone."
+      },
+      {
+        "ppeType": "Chemical splash goggles",
+        "performanceCriteria": "ANSI Z87.1 splash/chemical rating",
+        "limitations": "Does not protect against vapor inhalation; must be paired with respiratory protection or ventilation controls."
+      }
+    ]
+  },
+  {
+    "chemicalName": "Repetitive Motion / Manual Material Handling",
+    "casNumber": null,
+    "hazardCategory": "Ergonomic",
+    "relTwa": null,
+    "relStel": null,
+    "healthEffects": "Musculoskeletal disorders including tendinitis, carpal tunnel syndrome, and low-back injury associated with repetitive motion, sustained awkward postures, and manual lifting beyond recommended limits.",
+    "recommendedControls": "Apply the NIOSH Lifting Equation to evaluate and redesign manual lifting tasks; provide mechanical lift-assist devices; rotate workers among tasks to limit repetitive-motion exposure duration; adjust workstation height to neutral posture.",
+    "ppeRecommendations": "Anti-fatigue matting for prolonged standing tasks; back-support use is not a NIOSH-recommended substitute for engineering controls.",
+    "atmosphericMonitoring": null,
+    "ergonomicFactors": "Repetition rate, force/load magnitude, awkward posture duration, vibration exposure, and insufficient recovery time between exertions, evaluated per the NIOSH Revised Lifting Equation and applicable checklist tools.",
+    "sourceUrl": "https://www.cdc.gov/niosh/topics/ergonomics/",
+    "respiratorMatrix": [],
+    "ppeGuidance": [
+      {
+        "ppeType": "Anti-fatigue matting / supportive footwear",
+        "performanceCriteria": "Reduces static loading during prolonged standing tasks",
+        "limitations": "Administrative/comfort measure only; does not substitute for task redesign or lift-assist engineering controls."
+      }
+    ]
+  },
+  {
+    "chemicalName": "Hydrogen Sulfide",
+    "casNumber": "7783-06-4",
+    "hazardCategory": "ConfinedSpaceAtmospheric",
+    "relTwa": null,
+    "relStel": "10 ppm (10-minute ceiling)",
+    "healthEffects": "Respiratory irritation, olfactory fatigue masking the hazard at higher concentrations, rapid unconsciousness, and death from respiratory paralysis at high airborne concentrations; classified as an immediately dangerous to life or health (IDLH) atmospheric hazard.",
+    "recommendedControls": "Test and continuously monitor the atmosphere before and during confined-space entry; provide continuous mechanical ventilation of the space; implement a permit-required confined space program with attendant and rescue provisions.",
+    "ppeRecommendations": "Supplied-air respiratory protection or SCBA for any entry where hydrogen sulfide concentration is unknown or may exceed the ceiling limit; flame-resistant clothing where co-located ignition hazards exist.",
+    "atmosphericMonitoring": "Continuous direct-reading electrochemical or infrared gas detection for hydrogen sulfide, oxygen, and combustible gas prior to and throughout confined-space entry, per NIOSH confined-space entry guidance.",
+    "ergonomicFactors": null,
+    "sourceUrl": "https://www.cdc.gov/niosh/npg/npgd0337.html",
+    "respiratorMatrix": [
+      {
+        "hazardType": "Toxic gas (confined space)",
+        "concentrationRange": "Below 100 ppm",
+        "recommendedRespirator": "Full-facepiece SCBA or supplied-air respirator with escape SCBA",
+        "notes": "Hydrogen sulfide's IDLH is 100 ppm; air-purifying respirators are not recommended for confined-space entry given rapid onset of unconsciousness."
+      },
+      {
+        "hazardType": "Toxic gas (confined space)",
+        "concentrationRange": "100 ppm and above, or unknown",
+        "recommendedRespirator": "Positive-pressure full-facepiece SCBA",
+        "notes": "Entry above IDLH requires standby rescue team and retrieval system per confined-space entry procedures."
+      }
+    ],
+    "ppeGuidance": [
+      {
+        "ppeType": "Personal hydrogen sulfide gas monitor (worn)",
+        "performanceCriteria": "Audible/visual alarm at or below the 10 ppm ceiling",
+        "limitations": "Point-of-detection device only; does not replace pre-entry atmospheric testing of the space."
+      }
+    ]
+  },
+  {
+    "chemicalName": "Bloodborne Pathogens",
+    "casNumber": null,
+    "hazardCategory": "Biological",
+    "relTwa": null,
+    "relStel": null,
+    "healthEffects": "Transmission of hepatitis B, hepatitis C, HIV, and other bloodborne pathogens through exposure to blood or other potentially infectious materials via needlestick, sharps injury, or mucous membrane/non-intact skin contact.",
+    "recommendedControls": "Use engineering controls such as sharps-injury-prevention devices and sharps disposal containers; implement standard/universal precautions; provide hepatitis B vaccination to workers with occupational exposure.",
+    "ppeRecommendations": "Disposable gloves for all tasks with potential blood/OPIM contact; fluid-resistant gown and face shield or mask/goggles combination where splash or spray is reasonably anticipated.",
+    "atmosphericMonitoring": null,
+    "ergonomicFactors": null,
+    "sourceUrl": "https://www.cdc.gov/niosh/topics/bbp/",
+    "respiratorMatrix": [],
+    "ppeGuidance": [
+      {
+        "ppeType": "Disposable examination gloves (nitrile or latex)",
+        "performanceCriteria": "Meets ASTM D6319 (nitrile) or equivalent barrier standard for bloodborne pathogen protection",
+        "limitations": "Single-use; must be changed between patients/tasks and upon visible damage or contamination."
+      },
+      {
+        "ppeType": "Fluid-resistant gown and face/eye protection",
+        "performanceCriteria": "AAMI barrier level appropriate to anticipated splash/spray exposure",
+        "limitations": "Selection depends on anticipated fluid volume and pressure; standard gowns are not rated for high-splash procedures."
+      }
+    ]
+  },
+  {
+    "chemicalName": "Lead, Inorganic",
+    "casNumber": "7439-92-1",
+    "hazardCategory": "Chemical",
+    "relTwa": "0.05 mg/m3 (TWA)",
+    "relStel": null,
+    "healthEffects": "Neurological effects, anemia, kidney damage, and reproductive/developmental toxicity from chronic inhalation or ingestion exposure to inorganic lead dust or fume; bioaccumulates with a long biological half-life.",
+    "recommendedControls": "Use wet methods or HEPA-filtered vacuum for cleanup instead of dry sweeping or compressed air; provide local exhaust ventilation at lead-generating processes; require handwashing and prohibit eating/smoking in lead work areas; implement a medical surveillance and blood-lead monitoring program.",
+    "ppeRecommendations": "NIOSH-approved respiratory protection selected per exposure assessment; disposable or laundered protective clothing; separate storage of street clothes from work clothes to prevent take-home contamination.",
+    "atmosphericMonitoring": "Personal breathing-zone air sampling for lead per NIOSH Method 7300 (ICP) or 7082 (AAS); periodic surface wipe sampling in work and break areas.",
+    "ergonomicFactors": null,
+    "sourceUrl": "https://www.cdc.gov/niosh/npg/npgd0368.html",
+    "respiratorMatrix": [
+      {
+        "hazardType": "Lead dust/fume",
+        "concentrationRange": "Up to 0.5 mg/m3 (10x REL)",
+        "recommendedRespirator": "Half-mask air-purifying respirator with P100 filters",
+        "notes": "Fit testing and medical clearance required before respirator assignment."
+      },
+      {
+        "hazardType": "Lead dust/fume",
+        "concentrationRange": "0.5-2.5 mg/m3 (50x REL)",
+        "recommendedRespirator": "Full-facepiece air-purifying respirator with P100 filters, or PAPR with HE filter",
+        "notes": "Fume-generating operations (e.g., torch cutting of leaded coatings) favor PAPR for comfort during extended tasks."
+      },
+      {
+        "hazardType": "Lead dust/fume",
+        "concentrationRange": "Above 2.5 mg/m3 or unknown",
+        "recommendedRespirator": "Supplied-air respirator in pressure-demand mode, or SCBA",
+        "notes": "Abrasive blasting of leaded coatings in enclosures typically requires supplied-air respiratory protection."
+      }
+    ],
+    "ppeGuidance": [
+      {
+        "ppeType": "Disposable or dedicated laundered coveralls",
+        "performanceCriteria": "Particulate-resistant fabric; laundered on-site or by a service that handles contaminated garments",
+        "limitations": "Workers must not launder lead-contaminated clothing at home due to take-home contamination risk."
+      }
+    ]
+  }
+]
