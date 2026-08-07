@@ -17,6 +17,7 @@
 using PlantSafety.Api.Auditing.Contracts.Requests;
 using PlantSafety.Api.Context;
 using PlantSafety.Application.Auditing.Commands;
+using PlantSafety.Application.Auditing.AuditFinding.OshaCoverage.Commands;
 
 using PlantSafety.Api.Common;
 
@@ -228,6 +229,40 @@ public sealed class AuditFindingsV1Controller : ControllerBase
         {
             TenantId = env.TenantId
         };
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>
+    /// Links an Audit Finding to the specific OSHA requirements its evidence covers -- the one
+    /// action that makes real, per-requirement OSHA gap detection possible (see
+    /// Auditing.AuditFindingOshaCoverage.sql's header). Idempotent: re-linking an already-linked
+    /// requirement is a no-op, not an error.
+    /// </summary>
+    /// <response code="200">Requirements linked successfully.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpPost("{auditFindingId:guid}/osha-requirements")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> LinkOshaRequirementsAsync(
+        Guid auditFindingId,
+        [FromBody] LinkAuditFindingOshaRequirementsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new LinkAuditFindingToOshaRequirementsCommand(
+            TenantId: env.TenantId,
+            AuditFindingId: auditFindingId,
+            OSHARequirementIds: request.OSHARequirementIds,
+            ActorId: env.ActorId);
 
         var result = await _sender.Send(command, cancellationToken);
 

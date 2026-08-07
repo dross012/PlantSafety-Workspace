@@ -44,6 +44,11 @@ public static class ComplianceRulesEngineApplicationServiceRegistration
         services.AddTransient<WorkerTrainingFactsProvider>();
         services.AddTransient<PermitComplianceFactProvider>();
 
+        // OSHA regulatory reference data (Compliance.OSHAStandard/OSHARequirement/
+        // OSHAStandardChangeLog), imported by tools/OshaStandardsImport.
+        services.AddTransient<OshaStandardsFactProvider>();
+        services.AddTransient<IComplianceRule, SchedulingTouchesHighSeverityOshaRule>();
+
         services.AddScoped<IComplianceEvaluationFactory, ComplianceEvaluationFactory>();
         services.AddScoped<ComplianceEvaluator>();
 
