@@ -49,6 +49,15 @@ public static class ComplianceRulesEngineApplicationServiceRegistration
         services.AddTransient<OshaStandardsFactProvider>();
         services.AddTransient<IComplianceRule, SchedulingTouchesHighSeverityOshaRule>();
 
+        // NFPA hazard profile reference data (Compliance.NFPA_HazardProfile/NFPA_ControlMatrix/
+        // NFPA_HazardModuleMapping/NFPA_HazardChangeLog), imported by
+        // tools/NfpaReferenceImport. NFPA is not a government agency and its codes are voluntary
+        // consensus guidance, not legally binding regulations -- mirrors OSHA's fact
+        // provider/cross-domain-rule pair above, framed as recommended controls rather than
+        // regulatory obligations.
+        services.AddTransient<NfpaReferenceFactProvider>();
+        services.AddTransient<IComplianceRule, SchedulingTouchesHighSeverityNfpaRule>();
+
         // NIOSH reference data (Compliance.NIOSHHazardProfile/NIOSHRespiratorMatrix/
         // NIOSHPPEGuidance/NIOSHHazardModuleMapping/NIOSHHazardChangeLog). Reference data, not a
         // regulatory requirement -- fact provider only, no dedicated IComplianceRule (no obvious

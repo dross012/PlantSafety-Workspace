@@ -18,6 +18,7 @@ using PlantSafety.Api.Auditing.Contracts.Requests;
 using PlantSafety.Api.Context;
 using PlantSafety.Application.Auditing.Commands;
 using PlantSafety.Application.Auditing.AuditFinding.OshaCoverage.Commands;
+using PlantSafety.Application.Auditing.AuditFinding.NfpaCoverage.Commands;
 
 using PlantSafety.Api.Common;
 
@@ -263,6 +264,42 @@ public sealed class AuditFindingsV1Controller : ControllerBase
             AuditFindingId: auditFindingId,
             OSHARequirementIds: request.OSHARequirementIds,
             ActorId: env.ActorId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return this.ToActionResult(result, env.CorrelationId);
+    }
+
+    /// <summary>
+    /// Links an Audit Finding to the specific NFPA hazard profiles its evidence covers -- the
+    /// one real link between Auditing and NFPA reference data (see
+    /// Auditing.AuditFindingNfpaCoverage.sql's header). NFPA hazard guidance is voluntary
+    /// reference data, not a regulatory requirement (unlike OSHA), but is linked the same way so
+    /// gap-detection dashboards can show which recommended controls a site's evidence already
+    /// addresses. Idempotent: re-linking an already-linked hazard is a no-op, not an error.
+    /// </summary>
+    /// <response code="200">Hazards linked successfully.</response>
+    /// <response code="400">Request validation failed.</response>
+    /// <response code="401">Missing or invalid JWT Bearer token.</response>
+    /// <response code="403">Caller does not hold the required policy.</response>
+    [HttpPost("{auditFindingId:guid}/nfpa-hazards")]
+    [Authorize(Policy = SafetyTierPolicies.Write)]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> LinkNfpaHazardsAsync(
+        Guid auditFindingId,
+        [FromBody] LinkAuditFindingNfpaHazardsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var env = _envelopeFactory.NewCommandEnvelope();
+
+        var command = new LinkAuditFindingToNfpaHazardsCommand(
+            TenantId: env.TenantId,
+            AuditFindingId: auditFindingId,
+            HazardIds: request.HazardIds,
+            CreatedBy: env.ActorId.ToString());
 
         var result = await _sender.Send(command, cancellationToken);
 

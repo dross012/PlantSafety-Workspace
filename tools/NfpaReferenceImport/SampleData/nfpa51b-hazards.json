@@ -1,0 +1,53 @@
+[
+  {
+    "CodeNumber": "51B",
+    "SectionNumber": "4.1",
+    "HazardName": "Hot Work Permit Program",
+    "HazardDescription": "PLACEHOLDER: Hot work performed without an authorized permit program per NFPA 51B guidance increases the risk of uncontrolled ignition of nearby combustibles from welding, cutting, or brazing sparks.",
+    "RecommendedControls": "PLACEHOLDER: Require a written hot work permit, issued by an authorized individual, before any cutting, welding, or brazing operation begins.",
+    "PPERecommendations": "PLACEHOLDER: Welding helmet, flame-resistant clothing, and welding gloves required for all hot work permit holders.",
+    "ElectricalSafetyGuidance": "",
+    "HotWorkGuidance": "PLACEHOLDER: Follow NFPA 51B hot work permit guidance before beginning any cutting, welding, or brazing operation.",
+    "FlammableMaterialsGuidance": "",
+    "SourceUrl": "https://example-placeholder.invalid/nfpa51b/4-1",
+    "Controls": [
+      { "ControlType": "Permit", "ControlDescription": "PLACEHOLDER: Hot work permit required before work begins, valid for the shift only.", "Severity": "High", "Rationale": "Permit-controlled work gates ignition-source activity behind an authorization step." },
+      { "ControlType": "Training", "ControlDescription": "PLACEHOLDER: Hot work permit issuer and operator training on NFPA 51B guidance.", "Severity": "Medium", "Rationale": "Awareness control supporting correct permit issuance and hazard recognition." },
+      { "ControlType": "PPE", "ControlDescription": "PLACEHOLDER: Flame-resistant clothing and welding PPE required for the duration of hot work.", "Severity": "High", "Rationale": "Direct personal protection against sparks, spatter, and radiant heat." }
+    ]
+  },
+  {
+    "CodeNumber": "51B",
+    "SectionNumber": "5.3",
+    "HazardName": "Fire Watch During and After Hot Work",
+    "HazardDescription": "PLACEHOLDER: Hot work conducted without a dedicated fire watch per NFPA 51B guidance risks an undetected smoldering ignition developing into a fire protection incident after the work crew has left the area.",
+    "RecommendedControls": "PLACEHOLDER: Assign a trained fire watch for the duration of hot work and for at least 30 minutes after completion, with a fire extinguisher immediately available.",
+    "PPERecommendations": "PLACEHOLDER: Fire watch personnel equipped with a portable fire extinguisher and means to sound an alarm.",
+    "ElectricalSafetyGuidance": "",
+    "HotWorkGuidance": "PLACEHOLDER: Follow NFPA 51B fire watch guidance for hot work operations conducted outside a designated hot work area.",
+    "FlammableMaterialsGuidance": "",
+    "SourceUrl": "https://example-placeholder.invalid/nfpa51b/5-3",
+    "Controls": [
+      { "ControlType": "Inspection", "ControlDescription": "PLACEHOLDER: Fire watch performs periodic area checks for smoldering material during and after hot work.", "Severity": "High", "Rationale": "Direct fire-protection detection control during the highest-risk window after ignition sources are active." },
+      { "ControlType": "Training", "ControlDescription": "PLACEHOLDER: Fire watch personnel trained on extinguisher use and evacuation notification per NFPA 51B guidance.", "Severity": "Medium", "Rationale": "Awareness control ensuring the fire watch can respond effectively." },
+      { "ControlType": "Permit", "ControlDescription": "PLACEHOLDER: Fire watch assignment recorded on the hot work permit.", "Severity": "High", "Rationale": "Permit-controlled work; fire watch assignment is a condition of permit issuance." }
+    ]
+  },
+  {
+    "CodeNumber": "51B",
+    "SectionNumber": "6.2",
+    "HazardName": "Removal of Flammable and Combustible Materials from the Hot Work Area",
+    "HazardDescription": "PLACEHOLDER: Flammable liquids, combustible dust, and other combustible materials left within the hot work area per NFPA 51B guidance can ignite from sparks or slag, creating both a fire protection incident and an environmental release risk if flammable materials are involved.",
+    "RecommendedControls": "PLACEHOLDER: Relocate or shield flammable and combustible materials at least 35 feet from the hot work operation, or protect them with fire-resistant covers.",
+    "PPERecommendations": "PLACEHOLDER: Standard flame-resistant clothing plus spill-control PPE when flammable liquid containers are relocated.",
+    "ElectricalSafetyGuidance": "",
+    "HotWorkGuidance": "PLACEHOLDER: Follow NFPA 51B combustible-material clearance guidance before hot work begins.",
+    "FlammableMaterialsGuidance": "PLACEHOLDER: Flammable liquids and combustible dust within the hot work radius require removal, shielding, or vapor control per NFPA 51B guidance before work is authorized.",
+    "SourceUrl": "https://example-placeholder.invalid/nfpa51b/6-2",
+    "Controls": [
+      { "ControlType": "Inspection", "ControlDescription": "PLACEHOLDER: Pre-work area inspection confirming a 35-foot combustible-free radius.", "Severity": "High", "Rationale": "Verification control performed before ignition sources become active." },
+      { "ControlType": "Permit", "ControlDescription": "PLACEHOLDER: Area clearance sign-off required as a precondition of hot work permit issuance.", "Severity": "High", "Rationale": "Permit-controlled work; clearance verification gates authorization." },
+      { "ControlType": "PPE", "ControlDescription": "PLACEHOLDER: Spill-control PPE for personnel relocating flammable liquid containers.", "Severity": "Medium", "Rationale": "Direct protection during handling of flammable materials." }
+    ]
+  }
+]

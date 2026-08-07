@@ -1,0 +1,68 @@
+[
+  {
+    "CodeNumber": "70",
+    "SectionNumber": "110.26",
+    "HazardName": "Electrical Panel Working Space Clearance",
+    "HazardDescription": "PLACEHOLDER: Ensure adequate clearance around electrical panels per NFPA 70 guidance. Obstructed working space around energized equipment increases the risk of arc-flash injury and delays emergency de-energization.",
+    "RecommendedControls": "PLACEHOLDER: Maintain minimum clear working space in front of electrical panels; do not use panel approach areas for storage.",
+    "PPERecommendations": "PLACEHOLDER: Arc-rated face shield and insulated gloves recommended when panel covers are removed for inspection.",
+    "ElectricalSafetyGuidance": "PLACEHOLDER: Follow NFPA 70 working-space clearance guidance for all panelboards, switchboards, and motor control centers rated 600V or less.",
+    "HotWorkGuidance": "",
+    "FlammableMaterialsGuidance": "",
+    "SourceUrl": "https://example-placeholder.invalid/nfpa70/110-26",
+    "Controls": [
+      { "ControlType": "Inspection", "ControlDescription": "PLACEHOLDER: Quarterly inspection of panel clearance zones.", "Severity": "Medium", "Rationale": "Recurring housekeeping/inspection control reduces likelihood of encroachment over time." },
+      { "ControlType": "PPE", "ControlDescription": "PLACEHOLDER: Arc-rated PPE required within the flash-protection boundary.", "Severity": "High", "Rationale": "Direct personal protection against arc-flash energy during panel work." },
+      { "ControlType": "Training", "ControlDescription": "PLACEHOLDER: Annual electrical safe-work-practices training for personnel working near panels.", "Severity": "Medium", "Rationale": "Awareness control; failure is a leading indicator, not itself an injury event." }
+    ]
+  },
+  {
+    "CodeNumber": "70",
+    "SectionNumber": "250.4",
+    "HazardName": "Grounding and Bonding of Electrical Systems",
+    "HazardDescription": "PLACEHOLDER: Improperly grounded or bonded electrical systems per NFPA 70 guidance can allow dangerous voltage to persist on equipment enclosures during a fault, creating shock and fire ignition risk.",
+    "RecommendedControls": "PLACEHOLDER: Verify continuous, low-impedance grounding and bonding paths for all electrical equipment enclosures.",
+    "PPERecommendations": "PLACEHOLDER: Insulated tools and voltage-rated gloves when testing grounding continuity on energized systems.",
+    "ElectricalSafetyGuidance": "PLACEHOLDER: Follow NFPA 70 grounding and bonding guidance to ensure effective ground-fault current paths.",
+    "HotWorkGuidance": "",
+    "FlammableMaterialsGuidance": "",
+    "SourceUrl": "https://example-placeholder.invalid/nfpa70/250-4",
+    "Controls": [
+      { "ControlType": "Inspection", "ControlDescription": "PLACEHOLDER: Annual ground-path continuity testing.", "Severity": "Medium", "Rationale": "Periodic verification control catches degraded bonding before a fault event." },
+      { "ControlType": "Training", "ControlDescription": "PLACEHOLDER: Electrician training on bonding jumper installation per NFPA 70 guidance.", "Severity": "Medium", "Rationale": "Awareness control supporting correct installation practice." }
+    ]
+  },
+  {
+    "CodeNumber": "70",
+    "SectionNumber": "430.32",
+    "HazardName": "Motor Overload Protection",
+    "HazardDescription": "PLACEHOLDER: Motors operated without proper overload protection per NFPA 70 guidance can overheat, degrading insulation and creating an ignition source for nearby combustibles.",
+    "RecommendedControls": "PLACEHOLDER: Install and periodically test motor overload protective devices sized to nameplate full-load current.",
+    "PPERecommendations": "PLACEHOLDER: Standard PPE for motor control center access; arc-rated clothing when covers are opened while energized.",
+    "ElectricalSafetyGuidance": "PLACEHOLDER: Follow NFPA 70 motor overload protection guidance for continuous-duty motors.",
+    "HotWorkGuidance": "",
+    "FlammableMaterialsGuidance": "",
+    "SourceUrl": "https://example-placeholder.invalid/nfpa70/430-32",
+    "Controls": [
+      { "ControlType": "Inspection", "ControlDescription": "PLACEHOLDER: Semi-annual functional test of overload relays.", "Severity": "Medium", "Rationale": "Periodic verification that protective devices will trip correctly." },
+      { "ControlType": "PPE", "ControlDescription": "PLACEHOLDER: Arc-rated clothing when servicing energized motor control centers.", "Severity": "High", "Rationale": "Direct personal protection against thermal energy release." }
+    ]
+  },
+  {
+    "CodeNumber": "70",
+    "SectionNumber": "500.5",
+    "HazardName": "Hazardous (Classified) Locations - Flammable Atmospheres",
+    "HazardDescription": "PLACEHOLDER: Electrical equipment installed in areas with flammable gases, vapors, or combustible dust per NFPA 70 guidance can serve as an ignition source if not rated for the classified location, creating fire protection and explosion risk.",
+    "RecommendedControls": "PLACEHOLDER: Use only equipment listed for the applicable Class/Division or Zone; maintain area classification documentation.",
+    "PPERecommendations": "PLACEHOLDER: Intrinsically safe test equipment and non-sparking tools required in classified areas.",
+    "ElectricalSafetyGuidance": "PLACEHOLDER: Follow NFPA 70 Article 500 guidance for equipment rated for hazardous (classified) locations.",
+    "HotWorkGuidance": "",
+    "FlammableMaterialsGuidance": "PLACEHOLDER: Flammable vapors and combustible dust in classified areas require area classification review and vapor/dust control measures per NFPA 70 guidance.",
+    "SourceUrl": "https://example-placeholder.invalid/nfpa70/500-5",
+    "Controls": [
+      { "ControlType": "Permit", "ControlDescription": "PLACEHOLDER: Work permit required before opening electrical enclosures in a classified area.", "Severity": "Critical", "Rationale": "Ignition-source control in a flammable-atmosphere area carries explosion risk; permit gates the work." },
+      { "ControlType": "Inspection", "ControlDescription": "PLACEHOLDER: Periodic area-classification and equipment-listing verification.", "Severity": "High", "Rationale": "Confirms equipment remains appropriately rated for the classified area over time." },
+      { "ControlType": "PPE", "ControlDescription": "PLACEHOLDER: Non-sparking tools and intrinsically safe instruments required.", "Severity": "High", "Rationale": "Direct ignition-source control during work in the classified area." }
+    ]
+  }
+]

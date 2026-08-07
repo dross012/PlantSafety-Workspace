@@ -38,6 +38,8 @@ using PlantSafety.Infrastructure.Auditing.AuditEngagement.Systems.Persistence;
 using PlantSafety.Infrastructure.Auditing.AuditFinding.Persistence;
 using PlantSafety.Application.Auditing.AuditFinding.OshaCoverage.Repositories;
 using PlantSafety.Infrastructure.Auditing.AuditFinding.OshaCoverage.Persistence;
+using PlantSafety.Application.Auditing.AuditFinding.NfpaCoverage.Repositories;
+using PlantSafety.Infrastructure.Auditing.AuditFinding.NfpaCoverage.Persistence;
 using PlantSafety.Application.Auditing.ComplianceMonitoring.PermissionUsage.Repositories;
 using PlantSafety.Infrastructure.Auditing.ComplianceMonitoring.PermissionUsage.Persistence;
 using PlantSafety.Application.Auditing.ComplianceMonitoring.DataLineage.Repositories;
@@ -55,6 +57,7 @@ public static class AuditingInfrastructureServiceRegistration
         services.AddScoped<IAuditEngagementRepository, AuditEngagementDapperRepository>();
         services.AddScoped<Domain.Auditing.AuditFinding.Interfaces.IAuditFindingRepository, AuditFindingDapperRepository>();
         services.AddScoped<IAuditFindingOshaCoverageRepository, AuditFindingOshaCoverageDapperRepository>();
+        services.AddScoped<IAuditFindingNfpaCoverageRepository, AuditFindingNfpaCoverageDapperRepository>();
 
         // Phase 6 §5.4 Compliance Monitoring (2026-08-03): access-log/permission-usage capture
         // (fed by AuthorizationBehavior) and cross-module data-lineage reconstruction (composed

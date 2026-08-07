@@ -153,6 +153,7 @@ using PlantSafety.Infrastructure.Auditing.AuditTimeline.DependencyInjection;
 using PlantSafety.Infrastructure.Auditing.AuditReport.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.RulesEngine.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.OSHAStandards.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.NFPAStandards.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.NIOSHStandards.DependencyInjection;
 using PlantSafety.Infrastructure.Tenancy.Tenant.DependencyInjection;
 using PlantSafety.Infrastructure.Scheduling.PredictiveScheduling.DependencyInjection;
@@ -834,6 +835,7 @@ public static class InfrastructureServiceRegistration
             .AddDashboardsInfrastructure()
             .AddComplianceRulesEngineInfrastructure()
             .AddOSHAStandardsInfrastructure()
+            .AddNFPAStandardsInfrastructure()
             .AddNioshReferenceInfrastructure()
             .AddAuditTimelineInfrastructure()
             .AddAuditReportInfrastructure();
