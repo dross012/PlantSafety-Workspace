@@ -77,6 +77,12 @@ public sealed class EventOrchestrationService(
             $"{sourceModule} raised '{eventType}' for facility '{registration.Name}' ({registration.IndustryName}) at {occurredAtUtc:O}. " +
             $"Compliance {complianceScore.PercentComplete:F1}% ({complianceScore.ComplianceTier}); risk {riskScore.OverallRiskLevel}.";
 
+        OrchestrationEventCategory category = OrchestrationEventCategoryCatalog.ForEventType(eventType);
+
+        bool requiresImmediateAttention =
+            riskScore.OverallRiskLevel is RiskLevel.High or RiskLevel.Critical
+            || complianceScore.ComplianceTier == ComplianceTier.NonCompliant;
+
         return new FacilityEventOrchestrationResult(
             TenantId: tenantId,
             FacilityId: registration.FacilityId,
@@ -88,6 +94,8 @@ public sealed class EventOrchestrationService(
             ComplianceReadiness: complianceReadiness,
             RiskReadiness: riskReadiness,
             DashboardAlerts: dashboardAlerts,
-            Notification: notification);
+            Notification: notification,
+            Category: category,
+            RequiresImmediateAttention: requiresImmediateAttention);
     }
 }
