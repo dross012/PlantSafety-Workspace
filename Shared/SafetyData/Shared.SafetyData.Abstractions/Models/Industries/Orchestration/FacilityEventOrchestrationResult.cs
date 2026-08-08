@@ -42,6 +42,8 @@ namespace Shared.SafetyData.Abstractions.Models.Industries.Orchestration;
 /// <param name="RiskReadiness">The facility's recomputed risk readiness.</param>
 /// <param name="DashboardAlerts">The union of the facility's compliance- and risk-dashboard alerts at this moment.</param>
 /// <param name="Notification">A deterministic, human-readable summary suitable for a notification message.</param>
+/// <param name="Category">The event's lifecycle phase, derived from <paramref name="EventType"/>'s suffix (<see cref="OrchestrationEventCategoryCatalog.ForEventType"/>).</param>
+/// <param name="RequiresImmediateAttention">True if <paramref name="RiskScore"/>.OverallRiskLevel is High or Critical, or <paramref name="ComplianceScore"/>.ComplianceTier is NonCompliant.</param>
 public sealed record FacilityEventOrchestrationResult(
     string TenantId,
     Guid FacilityId,
@@ -53,4 +55,6 @@ public sealed record FacilityEventOrchestrationResult(
     ComplianceReadiness ComplianceReadiness,
     RiskReadiness RiskReadiness,
     IReadOnlyList<string> DashboardAlerts,
-    string Notification);
+    string Notification,
+    OrchestrationEventCategory Category,
+    bool RequiresImmediateAttention);
