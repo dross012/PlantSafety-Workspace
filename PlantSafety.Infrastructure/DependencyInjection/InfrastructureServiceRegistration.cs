@@ -174,6 +174,7 @@ using PlantSafety.Infrastructure.Compliance.PHMSA.Placarding.DependencyInjection
 using PlantSafety.Infrastructure.Compliance.PHMSA.ShippingPapers.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.PHMSA.Incidents.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.EPA.DependencyInjection;
+using PlantSafety.Infrastructure.Compliance.Standards.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.ManagementOfChange.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Policies.DependencyInjection;
 using PlantSafety.Infrastructure.Compliance.Procedures.DependencyInjection;
@@ -822,6 +823,7 @@ public static class InfrastructureServiceRegistration
             .AddPHMSAShippingPapersInfrastructure()
             .AddPHMSAIncidentsInfrastructure()
             .AddEpaReferenceInfrastructure()
+            .AddStandardsReferenceInfrastructure()
             .AddManagementOfChangeAggregateInfrastructure()
             .AddPolicyAggregateInfrastructure()
             .AddProceduresAggregateInfrastructure()

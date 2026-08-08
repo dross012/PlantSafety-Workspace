@@ -1,0 +1,45 @@
+// AUTHOR: PlantSafety Platform Team
+// CREATED: 2026-08-07
+// FILE DESCRIPTION: Handler for GetStandardsBySeriesQuery.
+// SchemaVersion: 1
+
+using MediatR;
+using Microsoft.Extensions.Logging;
+using PlantSafety.Application.Common.Errors;
+using PlantSafety.Application.Common.Results;
+using PlantSafety.Application.Compliance.Standards.Models;
+using PlantSafety.Application.Compliance.Standards.Repositories;
+
+namespace PlantSafety.Application.Compliance.Standards.Queries;
+
+/// <summary>Handles <see cref="GetStandardsBySeriesQuery"/>.</summary>
+public sealed class GetStandardsBySeriesQueryHandler(
+    IStandardsReferenceRepository repository,
+    ILogger<GetStandardsBySeriesQueryHandler> logger)
+    : IRequestHandler<GetStandardsBySeriesQuery, Result<IReadOnlyList<StandardsRequirementDto>>>
+{
+    private const int MaxTake = 500;
+
+    /// <inheritdoc/>
+    public async Task<Result<IReadOnlyList<StandardsRequirementDto>>> Handle(GetStandardsBySeriesQuery request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var take = request.Take is <= 0 or > MaxTake ? MaxTake : request.Take;
+            var skip = request.Skip < 0 ? 0 : request.Skip;
+
+            var results = await repository.GetRequirementsBySeriesAsync(request.FamilyCode, request.SeriesCode, skip, take, cancellationToken);
+            return Result<IReadOnlyList<StandardsRequirementDto>>.Success(results);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to retrieve standards requirements for family {FamilyCode} series {SeriesCode}",
+                request.FamilyCode, request.SeriesCode);
+
+            return Result<IReadOnlyList<StandardsRequirementDto>>.Failure(new ApplicationError(
+                "Compliance.Standards.RequirementsBySeriesFailed",
+                "Unable to retrieve consensus-standards requirements at this time.",
+                Guid.NewGuid()));
+        }
+    }
+}
