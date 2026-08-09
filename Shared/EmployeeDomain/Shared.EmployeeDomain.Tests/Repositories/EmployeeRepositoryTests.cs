@@ -7,12 +7,16 @@
 // ============================================================================
 using FluentAssertions;
 
+using Shared.Deterministic.Abstractions.Clock;
 using Shared.EmployeeDomain.Abstractions.Aggregates;
 using Shared.EmployeeDomain.Abstractions.Enums;
 using Shared.EmployeeDomain.Abstractions.Repositories;
 using Shared.EmployeeDomain.Abstractions.ValueObjects;
 using Shared.EmployeeDomain.Infrastructure.Persistence;
 using Shared.EmployeeDomain.Infrastructure.Services;
+using Shared.ModuleContracts.Abstractions.Events;
+using Shared.Telemetry.Abstractions.Correlation;
+using Shared.Telemetry.Abstractions.Events;
 
 using Xunit;
 
@@ -20,6 +24,21 @@ namespace Shared.EmployeeDomain.Tests.Repositories;
 
 public sealed class EmployeeRepositoryTests
 {
+    private sealed class NoOpLogEventWriter : ILogEventWriter
+    {
+        public void Write(ILogEvent logEvent)
+        {
+        }
+    }
+
+    private sealed class FixedCorrelationContext : ICorrelationContext
+    {
+        public string CorrelationId => "test-correlation";
+    }
+
+    private static EmployeeService CreateService(IEmployeeRepository repository) =>
+        new(repository, new SystemClock(), new ModuleEventGateway(), new NoOpLogEventWriter(), new FixedCorrelationContext());
+
     [Fact]
     public async Task FindAsync_UnknownEmployeeId_ReturnsNull()
     {
@@ -76,7 +95,7 @@ public sealed class EmployeeRepositoryTests
     [Fact]
     public async Task EmployeeService_CreateThenRecordInjury_PersistsChange()
     {
-        IEmployeeService service = new EmployeeService(new EmployeeRepository(new EmployeeStore()));
+        IEmployeeService service = CreateService(new EmployeeRepository(new EmployeeStore()));
 
         EmployeeState created = await service.CreateEmployeeAsync("Jane Doe", EmployeeRole.Operator);
         EmployeeState? updated = await service.RecordInjuryAsync(created.EmployeeId, "Twisted ankle");
@@ -88,7 +107,7 @@ public sealed class EmployeeRepositoryTests
     [Fact]
     public async Task EmployeeService_UpdateUnknownEmployee_ReturnsNull()
     {
-        IEmployeeService service = new EmployeeService(new EmployeeRepository(new EmployeeStore()));
+        IEmployeeService service = CreateService(new EmployeeRepository(new EmployeeStore()));
 
         EmployeeState? result = await service.UpdateTrainingProfileAsync(EmployeeId.New(), ["HAZWOPER"]);
 
@@ -98,7 +117,7 @@ public sealed class EmployeeRepositoryTests
     [Fact]
     public async Task EmployeeService_GetAllEmployeesAsync_ReflectsCreatedEmployees()
     {
-        IEmployeeService service = new EmployeeService(new EmployeeRepository(new EmployeeStore()));
+        IEmployeeService service = CreateService(new EmployeeRepository(new EmployeeStore()));
         await service.CreateEmployeeAsync("Jane Doe", EmployeeRole.Operator);
         await service.CreateEmployeeAsync("John Roe", EmployeeRole.Technician);
 
