@@ -9,6 +9,7 @@
 //                  read it, they don't build it directly.
 // ============================================================================
 using Shared.FacilityDomain.Abstractions.Hierarchy;
+using Shared.FacilityDomain.Abstractions.Lifecycle;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
 
 namespace Shared.FacilityDomain.Abstractions.Aggregates;
@@ -23,5 +24,6 @@ public sealed record FacilityState(
     FacilityRegulatoryProfile RegulatoryProfile,
     FacilityProgramProfile ProgramProfile,
     FacilityHierarchy Hierarchy,
+    FacilityLifecycleStatus LifecycleStatus,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc);

@@ -15,6 +15,7 @@
 using Shared.FacilityDomain.Abstractions.Events;
 using Shared.FacilityDomain.Abstractions.Hazards;
 using Shared.FacilityDomain.Abstractions.Hierarchy;
+using Shared.FacilityDomain.Abstractions.Lifecycle;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
 
 namespace Shared.FacilityDomain.Abstractions.Aggregates;
@@ -50,6 +51,7 @@ public sealed class FacilityAggregate
             RegulatoryProfile: new FacilityRegulatoryProfile([], nowUtc),
             ProgramProfile: new FacilityProgramProfile([], nowUtc),
             Hierarchy: FacilityHierarchy.Empty(nowUtc),
+            LifecycleStatus: FacilityLifecycleStatus.PendingActivation,
             CreatedAtUtc: nowUtc,
             UpdatedAtUtc: nowUtc);
 
@@ -175,6 +177,68 @@ public sealed class FacilityAggregate
     {
         State = State with { Hierarchy = hierarchy with { UpdatedAtUtc = nowUtc }, UpdatedAtUtc = nowUtc };
         _domainEvents.Add(new FacilityHierarchyUpdatedEvent(State.FacilityId, FacilityHierarchyChangeKind.Replaced, nowUtc));
+    }
+
+    /// <summary>Activates a pending facility for operation.</summary>
+    /// <exception cref="InvalidOperationException">The facility is not in <see cref="FacilityLifecycleStatus.PendingActivation"/>.</exception>
+    public void ActivateFacility(DateTime nowUtc)
+    {
+        if (State.LifecycleStatus != FacilityLifecycleStatus.PendingActivation)
+        {
+            throw new InvalidOperationException($"Cannot activate a facility in {State.LifecycleStatus} status.");
+        }
+
+        State = State with { LifecycleStatus = FacilityLifecycleStatus.Active, UpdatedAtUtc = nowUtc };
+        _domainEvents.Add(new FacilityActivatedEvent(State.FacilityId, nowUtc));
+    }
+
+    /// <summary>Temporarily shuts down an active facility.</summary>
+    /// <exception cref="ArgumentException"><paramref name="reason"/> is null or whitespace.</exception>
+    /// <exception cref="InvalidOperationException">The facility is not <see cref="FacilityLifecycleStatus.Active"/>.</exception>
+    public void ShutdownFacility(string reason, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException("Shutdown reason is required.", nameof(reason));
+        }
+        if (State.LifecycleStatus != FacilityLifecycleStatus.Active)
+        {
+            throw new InvalidOperationException($"Cannot shut down a facility in {State.LifecycleStatus} status.");
+        }
+
+        State = State with { LifecycleStatus = FacilityLifecycleStatus.ShutDown, UpdatedAtUtc = nowUtc };
+        _domainEvents.Add(new FacilityShutdownEvent(State.FacilityId, reason, nowUtc));
+    }
+
+    /// <summary>Reopens a shut-down facility.</summary>
+    /// <exception cref="InvalidOperationException">The facility is not <see cref="FacilityLifecycleStatus.ShutDown"/>.</exception>
+    public void ReopenFacility(DateTime nowUtc)
+    {
+        if (State.LifecycleStatus != FacilityLifecycleStatus.ShutDown)
+        {
+            throw new InvalidOperationException($"Cannot reopen a facility in {State.LifecycleStatus} status.");
+        }
+
+        State = State with { LifecycleStatus = FacilityLifecycleStatus.Active, UpdatedAtUtc = nowUtc };
+        _domainEvents.Add(new FacilityReopenedEvent(State.FacilityId, nowUtc));
+    }
+
+    /// <summary>Permanently decommissions a facility. Terminal -- no further lifecycle transitions are valid afterward.</summary>
+    /// <exception cref="ArgumentException"><paramref name="reason"/> is null or whitespace.</exception>
+    /// <exception cref="InvalidOperationException">The facility is already <see cref="FacilityLifecycleStatus.Decommissioned"/>.</exception>
+    public void DecommissionFacility(string reason, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException("Decommission reason is required.", nameof(reason));
+        }
+        if (State.LifecycleStatus == FacilityLifecycleStatus.Decommissioned)
+        {
+            throw new InvalidOperationException("Facility is already decommissioned.");
+        }
+
+        State = State with { LifecycleStatus = FacilityLifecycleStatus.Decommissioned, UpdatedAtUtc = nowUtc };
+        _domainEvents.Add(new FacilityDecommissionedEvent(State.FacilityId, reason, nowUtc));
     }
 
     /// <summary>Clears every pending domain event, e.g. after a caller has persisted/published them.</summary>

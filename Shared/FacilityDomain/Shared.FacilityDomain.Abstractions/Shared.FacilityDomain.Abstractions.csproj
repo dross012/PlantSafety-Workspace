@@ -16,6 +16,7 @@
     <Folder Include="Events\" />
     <Folder Include="Hazards\" />
     <Folder Include="Hierarchy\" />
+    <Folder Include="Lifecycle\" />
     <Folder Include="Propagation\" />
     <Folder Include="Regulatory\" />
     <Folder Include="Repositories\" />

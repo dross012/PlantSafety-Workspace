@@ -48,6 +48,22 @@ public interface IFacilityService
     /// <summary>Replaces an existing facility's entire hierarchy wholesale. Returns null if no facility with that id exists.</summary>
     Task<FacilityState?> UpdateHierarchyAsync(FacilityId facilityId, FacilityHierarchy hierarchy, CancellationToken cancellationToken = default);
 
+    /// <summary>Activates a pending facility. Returns null if no facility with that id exists.</summary>
+    /// <exception cref="InvalidOperationException">The facility is not in PendingActivation status.</exception>
+    Task<FacilityState?> ActivateFacilityAsync(FacilityId facilityId, CancellationToken cancellationToken = default);
+
+    /// <summary>Temporarily shuts down an active facility. Returns null if no facility with that id exists.</summary>
+    /// <exception cref="InvalidOperationException">The facility is not Active.</exception>
+    Task<FacilityState?> ShutdownFacilityAsync(FacilityId facilityId, string reason, CancellationToken cancellationToken = default);
+
+    /// <summary>Reopens a shut-down facility. Returns null if no facility with that id exists.</summary>
+    /// <exception cref="InvalidOperationException">The facility is not ShutDown.</exception>
+    Task<FacilityState?> ReopenFacilityAsync(FacilityId facilityId, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently decommissions a facility. Returns null if no facility with that id exists.</summary>
+    /// <exception cref="InvalidOperationException">The facility is already Decommissioned.</exception>
+    Task<FacilityState?> DecommissionFacilityAsync(FacilityId facilityId, string reason, CancellationToken cancellationToken = default);
+
     /// <summary>Returns the facility with the given id, or null if none exists.</summary>
     Task<FacilityState?> GetFacilityAsync(FacilityId facilityId, CancellationToken cancellationToken = default);
 

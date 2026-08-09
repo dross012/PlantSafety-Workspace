@@ -65,6 +65,22 @@ public sealed class FacilityService(IFacilityRepository repository) : IFacilityS
         await ApplyUpdateAsync(facilityId, aggregate => aggregate.UpdateHierarchy(hierarchy, DateTime.UtcNow), cancellationToken);
 
     /// <inheritdoc />
+    public async Task<FacilityState?> ActivateFacilityAsync(FacilityId facilityId, CancellationToken cancellationToken = default) =>
+        await ApplyUpdateAsync(facilityId, aggregate => aggregate.ActivateFacility(DateTime.UtcNow), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<FacilityState?> ShutdownFacilityAsync(FacilityId facilityId, string reason, CancellationToken cancellationToken = default) =>
+        await ApplyUpdateAsync(facilityId, aggregate => aggregate.ShutdownFacility(reason, DateTime.UtcNow), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<FacilityState?> ReopenFacilityAsync(FacilityId facilityId, CancellationToken cancellationToken = default) =>
+        await ApplyUpdateAsync(facilityId, aggregate => aggregate.ReopenFacility(DateTime.UtcNow), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<FacilityState?> DecommissionFacilityAsync(FacilityId facilityId, string reason, CancellationToken cancellationToken = default) =>
+        await ApplyUpdateAsync(facilityId, aggregate => aggregate.DecommissionFacility(reason, DateTime.UtcNow), cancellationToken);
+
+    /// <inheritdoc />
     public async Task<FacilityState?> GetFacilityAsync(FacilityId facilityId, CancellationToken cancellationToken = default)
     {
         FacilityAggregate? aggregate = await repository.FindAsync(facilityId, cancellationToken);
