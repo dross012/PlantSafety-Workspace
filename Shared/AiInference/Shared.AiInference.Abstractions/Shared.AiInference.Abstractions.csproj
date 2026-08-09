@@ -8,6 +8,7 @@
     <LangVersion>12</LangVersion>
     <RootNamespace>Shared.AiInference.Abstractions</RootNamespace>
     <AssemblyName>Shared.AiInference.Abstractions</AssemblyName>
+      <PlantSafetyStrictBuild>true</PlantSafetyStrictBuild>
   </PropertyGroup>
 
   <ItemGroup>

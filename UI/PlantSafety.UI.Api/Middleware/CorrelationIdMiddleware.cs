@@ -16,6 +16,7 @@
 //                  same correlation id automatically.
 // ============================================================================
 using Shared.Telemetry.Abstractions.Correlation;
+using Shared.Telemetry.Abstractions.Metrics;
 
 namespace PlantSafety.UI.Api.Middleware;
 
@@ -33,6 +34,9 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next)
 
         correlationContext.Set(correlationId);
         context.Response.Headers[CorrelationIdHeader] = correlationId;
+
+        string module = RequestModuleResolver.Resolve(context.Request.Path.Value ?? string.Empty);
+        PlantSafetyMetrics.RequestsHandled.Add(1, new KeyValuePair<string, object?>("module", module));
 
         ILogger logger = loggerFactory.CreateLogger("PlantSafety.UI.Api.CorrelationIdMiddleware");
         using (logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId }))

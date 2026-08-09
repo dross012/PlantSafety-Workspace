@@ -8,6 +8,7 @@
     <LangVersion>12</LangVersion>
     <RootNamespace>Shared.SqlGateway.Infrastructure</RootNamespace>
     <AssemblyName>Shared.SqlGateway.Infrastructure</AssemblyName>
+      <PlantSafetyStrictBuild>true</PlantSafetyStrictBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +23,7 @@
     <ProjectReference Include="..\Shared.SqlGateway.Abstractions\Shared.SqlGateway.Abstractions.csproj" />
     <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
     <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+    <ProjectReference Include="..\..\ErrorHandling\Shared.ErrorHandling.Abstractions\Shared.ErrorHandling.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

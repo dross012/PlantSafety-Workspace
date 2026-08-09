@@ -27,6 +27,7 @@ using Shared.ErrorHandling.Abstractions.Policy;
 using Shared.Telemetry.Abstractions.Correlation;
 using Shared.Telemetry.Abstractions.Events;
 using Shared.Configuration.Abstractions.Manifest;
+using Shared.Configuration.Abstractions.Secrets;
 using Shared.Configuration.Abstractions.Validation;
 using Shared.ModuleContracts.Abstractions.Events;
 
@@ -136,6 +137,23 @@ builder.Services.AddSingleton(environmentManifest);
 builder.Services.AddRequestTimeouts(options => options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy { Timeout = environmentManifest.RuntimeLimits.RequestTimeout });
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = environmentManifest.RuntimeLimits.MaxRequestBodySizeBytes);
 
+// ---- Phase 3.5: enforce RuntimeLimits.MaxConcurrentRequests, defined since Phase 2.5 but
+//      never actually applied anywhere until now. A global concurrency limiter (not a
+//      per-client rate limiter -- there's no auth/client identity yet, see Phase 3.9's
+//      flag) that rejects with 429 once MaxConcurrentRequests in-flight requests are
+//      already being handled, rather than letting unbounded concurrency exhaust the host. ----
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(_ =>
+        System.Threading.RateLimiting.RateLimitPartition.GetConcurrencyLimiter("global", _ =>
+            new System.Threading.RateLimiting.ConcurrencyLimiterOptions
+            {
+                PermitLimit = environmentManifest.RuntimeLimits.MaxConcurrentRequests,
+                QueueLimit = 0,
+            }));
+});
+
 // ---- Phase 2.7: module boundary event gateway. Singleton -- subscriptions live for the
 //      process lifetime. FacilitiesController publishes FacilityCreatedEvent; the
 //      subscriber below (a different "module" from the publisher's point of view) reacts
@@ -143,6 +161,28 @@ builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = 
 builder.Services.AddSingleton<IModuleEventGateway, ModuleEventGateway>();
 
 var app = builder.Build();
+
+// ---- Phase 3.2: log that configuration loaded successfully, without ever touching
+//      manifest.Secrets/ConnectionStrings values directly -- RedactedEnvironmentManifest
+//      carries key names and enabled-flag names only. ----
+{
+    RedactedEnvironmentManifest redacted = SecretRedactor.Redact(environmentManifest);
+    IClock startupClock = app.Services.GetRequiredService<IClock>();
+    app.Services.GetRequiredService<ILogEventWriter>().Write(new LogEvent(
+        EventId: "ENVIRONMENT_MANIFEST_LOADED",
+        Category: LogCategory.Infrastructure,
+        Severity: LogSeverity.Info,
+        Message: $"Environment manifest loaded for \"{redacted.EnvironmentName}\": {redacted.EnabledFeatureFlags.Count} feature flag(s) enabled, {redacted.ConnectionStringKeys.Count} connection string(s), {redacted.SecretKeys.Count} secret(s) configured.",
+        Payload: new Dictionary<string, object?>
+        {
+            ["EnabledFeatureFlags"] = redacted.EnabledFeatureFlags,
+            ["ConnectionStringKeys"] = redacted.ConnectionStringKeys,
+            ["SecretKeys"] = redacted.SecretKeys,
+        },
+        CorrelationId: "startup",
+        Module: "Configuration",
+        OccurredAtUtc: startupClock.UtcNow));
+}
 
 if (environmentManifest.IsFeatureEnabled("EnableOpenApi"))
 {
@@ -166,6 +206,14 @@ app.Services.GetRequiredService<IModuleEventGateway>().Subscribe<FacilityCreated
     return Task.CompletedTask;
 });
 
+// ---- Phase 3.9: HSTS outside Development, environment-manifest-driven (Phase 2.5
+//      convention) rather than the default app.Environment.IsDevelopment() branch. ----
+if (environmentManifest.EnvironmentName != "Development")
+{
+    app.UseHsts();
+}
+
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRequestTimeouts();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(context =>
@@ -177,6 +225,7 @@ app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(context =
         context.RequestServices.GetRequiredService<ILogEventWriter>())));
 app.UseCors(uiCorsPolicy);
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 

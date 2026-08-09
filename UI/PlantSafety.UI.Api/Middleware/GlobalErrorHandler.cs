@@ -22,6 +22,7 @@ using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Envelope;
 using Shared.ErrorHandling.Abstractions.Policy;
 using Shared.Telemetry.Abstractions.Events;
+using Shared.Telemetry.Abstractions.Metrics;
 
 namespace PlantSafety.UI.Api.Middleware;
 
@@ -35,7 +36,7 @@ public static class GlobalErrorHandler
     {
         IExceptionHandlerPathFeature? feature = context.Features.Get<IExceptionHandlerPathFeature>();
         Exception exception = feature?.Error ?? new Exception("Unknown error.");
-        string module = ModuleFromPath(feature?.Path ?? context.Request.Path.Value ?? string.Empty);
+        string module = RequestModuleResolver.Resolve(feature?.Path ?? context.Request.Path.Value ?? string.Empty);
         string correlationId = context.Request.Headers.TryGetValue(CorrelationIdHeader, out var headerValue) && !string.IsNullOrWhiteSpace(headerValue)
             ? headerValue.ToString()
             : Guid.NewGuid().ToString();
@@ -45,8 +46,17 @@ public static class GlobalErrorHandler
 
         if (decision.ShouldEscalate)
         {
+            CircuitState stateBeforeFailure = circuitBreaker.State;
             circuitBreaker.RecordFailure();
+            if (stateBeforeFailure != CircuitState.Open && circuitBreaker.State == CircuitState.Open)
+            {
+                PlantSafetyMetrics.CircuitBreakerTrips.Add(1, new KeyValuePair<string, object?>("module", module));
+            }
         }
+
+        PlantSafetyMetrics.ErrorsHandled.Add(1,
+            new KeyValuePair<string, object?>("module", module),
+            new KeyValuePair<string, object?>("category", envelope.Category.ToString()));
 
         logEventWriter.Write(new LogEvent(
             EventId: envelope.ErrorCode,
@@ -72,21 +82,5 @@ public static class GlobalErrorHandler
         }
 
         await context.Response.WriteAsJsonAsync(envelope);
-    }
-
-    private static string ModuleFromPath(string path)
-    {
-        string[] segments = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-        int uiIndex = Array.IndexOf(segments, "ui");
-        if (uiIndex < 0 || uiIndex + 1 >= segments.Length)
-        {
-            return segments.Length > 0 ? segments[^1] : "PlantSafety.UI.Api";
-        }
-
-        // "api/v1/ui/engines/<engine-name>/..." -- the meaningful module is the engine
-        // name, not the generic "engines" grouping segment.
-        return segments[uiIndex + 1] == "engines" && uiIndex + 2 < segments.Length
-            ? segments[uiIndex + 2]
-            : segments[uiIndex + 1];
     }
 }

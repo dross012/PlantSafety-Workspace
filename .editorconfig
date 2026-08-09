@@ -1,0 +1,50 @@
+# ============================================================================
+# PlantSafety .editorconfig (Phase 3.10: Cross-Cutting Standards)
+#
+# Codifies the formatting conventions already used consistently across
+# this program's Path A-E and Phase 2/3 work (file-scoped namespaces,
+# 4-space indentation, _camelCase private fields) as an .editorconfig,
+# so `dotnet format` and every IDE agree without hand-checking each new
+# file. Deliberately "suggestion" severity throughout, not "error" --
+# this repo has 472 .csproj files never audited against a style ruleset
+# before now; flipping straight to build-breaking severities without
+# first running `dotnet format` across the whole tree and reviewing the
+# diff would risk unrelated churn or breakage. That full-tree pass is
+# its own separate task, flagged, not attempted here.
+# ============================================================================
+root = true
+
+[*]
+indent_style = space
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+indent_size = 4
+end_of_line = crlf
+
+# File-scoped namespaces (already the convention throughout Path A-E/Phase 2/3)
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+# _camelCase private/internal fields (already the convention: see ModuleEventGateway's
+# _subscribers/_sync, SqlServerGateway's _options, etc.)
+dotnet_naming_rule.private_fields_underscore_camel_case.severity = suggestion
+dotnet_naming_rule.private_fields_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore_camel_case.style = underscore_camel_case
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+# Nullable/ImplicitUsings enforcement lives in Directory.Build.props, not here --
+# .editorconfig governs formatting/style, not compiler feature defaults.
+csharp_using_directive_placement = outside_namespace:suggestion
+dotnet_sort_system_directives_first = true:suggestion
+
+[*.{json,yml,yaml}]
+indent_size = 2
+end_of_line = lf
+
+[*.md]
+trim_trailing_whitespace = false

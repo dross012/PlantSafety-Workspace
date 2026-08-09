@@ -1,0 +1,41 @@
+<Project>
+  <!-- ============================================================================
+       Phase 3.1 (Hosting & Runtime Standardization): the unified runtime
+       baseline every project in this repo inherits by default.
+
+       Deliberately does NOT force a single TargetFramework across the
+       repo. Shared.* bounded contexts target net8.0 (LTS, portable, the
+       established convention throughout Paths A through E and Phase 2),
+       while host/UI projects (PlantSafety.UI.Api, PlantSafety.UI, the E2E
+       host) target net10.0/net10.0-windows10.0.19041.0 (PlantSafety.UI's
+       MAUI head requires the Windows-specific TFM; the ASP.NET Core hosts
+       track the latest SDK). Forcing one TFM repo-wide would either break
+       the MAUI app (which cannot target net8.0) or regress the hosts off
+       net10.0, confirmed by checking actual TargetFramework values across
+       the tree before writing this file, not assumed.
+
+       Deliberately does NOT force TreatWarningsAsErrors repo-wide either.
+       This repo has 472 .csproj files and no Directory.Build.props or
+       .sln file before this one; enabling warnings-as-errors globally
+       without first building and verifying every one of them would risk
+       breaking projects this session has never touched. Nullable is safe
+       to default on (471 of 472 projects already opt in individually), so
+       that becomes the enforced baseline; TreatWarningsAsErrors is left
+       as an explicit per-project opt-in (see PlantSafetyStrictBuild
+       below), adopted by every project this program's Path C through E
+       and Phase 2 work created or actively maintains. Full repo-wide
+       enforcement is flagged, not attempted, in project memory.
+  ==============================================================================-->
+  <PropertyGroup>
+    <Nullable Condition="'$(Nullable)' == ''">enable</Nullable>
+    <ImplicitUsings Condition="'$(ImplicitUsings)' == ''">enable</ImplicitUsings>
+    <LangVersion Condition="'$(LangVersion)' == '' AND '$(TargetFramework)' == 'net8.0'">12</LangVersion>
+  </PropertyGroup>
+
+  <!-- Opt-in strict build: set PlantSafetyStrictBuild=true in a project to enable
+       warnings-as-errors for that project specifically. -->
+  <PropertyGroup Condition="'$(PlantSafetyStrictBuild)' == 'true'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>NU1902;NU1903</WarningsNotAsErrors>
+  </PropertyGroup>
+</Project>

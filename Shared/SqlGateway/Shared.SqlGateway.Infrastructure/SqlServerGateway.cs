@@ -26,9 +26,11 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 
 using Shared.Deterministic.Abstractions.Clock;
+using Shared.ErrorHandling.Abstractions.Policy;
 using Shared.SqlGateway.Abstractions.Diagnostics;
 using Shared.SqlGateway.Abstractions.Gateway;
 using Shared.SqlGateway.Infrastructure.Options;
+using Shared.SqlGateway.Infrastructure.Resilience;
 using Shared.Telemetry.Abstractions.Correlation;
 using Shared.Telemetry.Abstractions.Events;
 
@@ -39,9 +41,11 @@ public sealed class SqlServerGateway(
     IOptions<SqlGatewayOptions> options,
     IClock clock,
     ILogEventWriter logEventWriter,
-    ICorrelationContext correlationContext) : ISqlGateway
+    ICorrelationContext correlationContext,
+    SqlCircuitBreaker sqlCircuitBreaker) : ISqlGateway
 {
     private readonly SqlGatewayOptions _options = options.Value;
+    private readonly ErrorRetryPolicy _retryPolicy = ErrorRetryPolicy.Standard;
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<TResult>> QueryAsync<TResult>(string storedProcedureName, object parameters, CancellationToken cancellationToken = default)
@@ -49,28 +53,43 @@ public sealed class SqlServerGateway(
         SqlIdentifierValidator.EnsureValid(storedProcedureName);
         ArgumentNullException.ThrowIfNull(parameters);
 
-        var stopwatch = Stopwatch.StartNew();
-        try
+        for (int attempt = 1; ; attempt++)
         {
-            await using var connection = new SqlConnection(_options.ConnectionString);
-            await connection.OpenAsync(cancellationToken);
+            if (sqlCircuitBreaker.Breaker.State == CircuitState.Open)
+            {
+                throw new InvalidOperationException($"SQL Server circuit breaker is open; failing fast without attempting \"{storedProcedureName}\".");
+            }
 
-            IEnumerable<TResult> rows = await connection.QueryAsync<TResult>(
-                new CommandDefinition(
-                    storedProcedureName,
-                    parameters,
-                    commandType: System.Data.CommandType.StoredProcedure,
-                    commandTimeout: _options.CommandTimeoutSeconds,
-                    cancellationToken: cancellationToken));
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                await using var connection = new SqlConnection(_options.ConnectionString);
+                await connection.OpenAsync(cancellationToken);
 
-            IReadOnlyList<TResult> results = rows.ToList();
-            LogDiagnostics(storedProcedureName, parameters, stopwatch.Elapsed, results.Count, succeeded: true, sqlErrorCode: null, errorMessage: null);
-            return results;
-        }
-        catch (SqlException ex)
-        {
-            LogDiagnostics(storedProcedureName, parameters, stopwatch.Elapsed, rowCount: null, succeeded: false, sqlErrorCode: ex.Number, errorMessage: ex.Message);
-            throw;
+                IEnumerable<TResult> rows = await connection.QueryAsync<TResult>(
+                    new CommandDefinition(
+                        storedProcedureName,
+                        parameters,
+                        commandType: System.Data.CommandType.StoredProcedure,
+                        commandTimeout: _options.CommandTimeoutSeconds,
+                        cancellationToken: cancellationToken));
+
+                IReadOnlyList<TResult> results = rows.ToList();
+                LogDiagnostics(storedProcedureName, parameters, stopwatch.Elapsed, results.Count, succeeded: true, sqlErrorCode: null, errorMessage: null);
+                sqlCircuitBreaker.Breaker.RecordSuccess();
+                return results;
+            }
+            catch (SqlException ex)
+            {
+                LogDiagnostics(storedProcedureName, parameters, stopwatch.Elapsed, rowCount: null, succeeded: false, sqlErrorCode: ex.Number, errorMessage: ex.Message);
+                sqlCircuitBreaker.Breaker.RecordFailure();
+                if (attempt >= _retryPolicy.MaxAttempts)
+                {
+                    throw;
+                }
+
+                await Task.Delay(_retryPolicy.DelayForAttempt(attempt), cancellationToken);
+            }
         }
     }
 
@@ -79,6 +98,15 @@ public sealed class SqlServerGateway(
     {
         SqlIdentifierValidator.EnsureValid(storedProcedureName);
         ArgumentNullException.ThrowIfNull(parameters);
+
+        // No retry loop here (unlike QueryAsync): the returned ISqlMultiResultReader owns an
+        // open connection the caller reads lazily, set by set, after this method returns --
+        // retrying inside this method would mean discarding a connection the caller never
+        // got a chance to use. Circuit breaker fail-fast and failure recording still apply.
+        if (sqlCircuitBreaker.Breaker.State == CircuitState.Open)
+        {
+            throw new InvalidOperationException($"SQL Server circuit breaker is open; failing fast without attempting \"{storedProcedureName}\".");
+        }
 
         var stopwatch = Stopwatch.StartNew();
         var connection = new SqlConnection(_options.ConnectionString);
@@ -98,12 +126,14 @@ public sealed class SqlServerGateway(
             // lazily, set by set, by the caller) -- diagnostics for this path report the
             // call as succeeded once the procedure itself has started returning data.
             LogDiagnostics(storedProcedureName, parameters, stopwatch.Elapsed, rowCount: null, succeeded: true, sqlErrorCode: null, errorMessage: null);
+            sqlCircuitBreaker.Breaker.RecordSuccess();
             return new DapperSqlMultiResultReader(connection, gridReader);
         }
         catch (SqlException ex)
         {
             await connection.DisposeAsync();
             LogDiagnostics(storedProcedureName, parameters, stopwatch.Elapsed, rowCount: null, succeeded: false, sqlErrorCode: ex.Number, errorMessage: ex.Message);
+            sqlCircuitBreaker.Breaker.RecordFailure();
             throw;
         }
     }
