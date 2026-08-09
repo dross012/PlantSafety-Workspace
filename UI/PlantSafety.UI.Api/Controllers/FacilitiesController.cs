@@ -18,12 +18,6 @@ using Shared.FacilityDomain.Abstractions.Hazards;
 using Shared.FacilityDomain.Abstractions.Hierarchy;
 using Shared.FacilityDomain.Abstractions.Repositories;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
-using Shared.Deterministic.Abstractions.Clock;
-using Shared.ModuleContracts.Abstractions.Events;
-using Shared.Telemetry.Abstractions.Correlation;
-using Shared.Telemetry.Abstractions.Events;
-
-using PlantSafety.UI.Api.Events;
 
 namespace PlantSafety.UI.Api.Controllers;
 
@@ -39,12 +33,7 @@ public sealed record FacilityHierarchyNodeRequest(Guid? ParentId, string Name);
 /// <summary>Exposes Shared.FacilityDomain's real Facility aggregate to PlantSafety.UI.</summary>
 [ApiController]
 [Route("api/v1/ui/facilities")]
-public sealed class FacilitiesController(
-    IFacilityService facilityService,
-    IModuleEventGateway eventGateway,
-    IClock clock,
-    ILogEventWriter logEventWriter,
-    ICorrelationContext correlationContext) : ControllerBase
+public sealed class FacilitiesController(IFacilityService facilityService) : ControllerBase
 {
     /// <summary>GET api/v1/ui/facilities -- every facility.</summary>
     [HttpGet]
@@ -65,11 +54,6 @@ public sealed class FacilitiesController(
     {
         FacilityState created = await facilityService.CreateFacilityAsync(
             request.Name, new FacilityIndustry(request.IndustryName, request.NaicsCode), request.Location, cancellationToken);
-        await eventGateway.PublishIsolatedAsync(
-            new FacilityCreatedEvent("Facility", clock.UtcNow, created.FacilityId.Value, created.Name),
-            logEventWriter,
-            correlationContext.CorrelationId,
-            cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = created.FacilityId.Value }, created);
     }
 

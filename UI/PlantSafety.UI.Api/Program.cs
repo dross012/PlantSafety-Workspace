@@ -31,7 +31,7 @@ using Shared.Configuration.Abstractions.Secrets;
 using Shared.Configuration.Abstractions.Validation;
 using Shared.ModuleContracts.Abstractions.Events;
 
-using PlantSafety.UI.Api.Events;
+using Shared.FacilityDomain.Infrastructure.Events;
 
 using Shared.EmployeeDomain.Abstractions.ValueObjects;
 using Shared.EmployeeDomain.Infrastructure.DependencyInjection;
@@ -155,9 +155,11 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // ---- Phase 2.7: module boundary event gateway. Singleton -- subscriptions live for the
-//      process lifetime. FacilitiesController publishes FacilityCreatedEvent; the
-//      subscriber below (a different "module" from the publisher's point of view) reacts
-//      by logging a structured event, without FacilitiesController referencing it at all. ----
+//      process lifetime. FacilityService (Phase 4: moved out of FacilitiesController, since
+//      publishing a domain event is handler-level orchestration, not controller logic)
+//      publishes FacilityCreatedEvent; the subscriber below (a different "module" from the
+//      publisher's point of view) reacts by logging a structured event, without
+//      FacilityService referencing it at all. ----
 builder.Services.AddSingleton<IModuleEventGateway, ModuleEventGateway>();
 
 var app = builder.Build();
