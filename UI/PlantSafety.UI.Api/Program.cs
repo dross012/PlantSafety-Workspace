@@ -137,6 +137,23 @@ builder.Services.AddSingleton(environmentManifest);
 builder.Services.AddRequestTimeouts(options => options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy { Timeout = environmentManifest.RuntimeLimits.RequestTimeout });
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = environmentManifest.RuntimeLimits.MaxRequestBodySizeBytes);
 
+// ---- Phase 3.5: enforce RuntimeLimits.MaxConcurrentRequests, defined since Phase 2.5 but
+//      never actually applied anywhere until now. A global concurrency limiter (not a
+//      per-client rate limiter -- there's no auth/client identity yet, see Phase 3.9's
+//      flag) that rejects with 429 once MaxConcurrentRequests in-flight requests are
+//      already being handled, rather than letting unbounded concurrency exhaust the host. ----
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(_ =>
+        System.Threading.RateLimiting.RateLimitPartition.GetConcurrencyLimiter("global", _ =>
+            new System.Threading.RateLimiting.ConcurrencyLimiterOptions
+            {
+                PermitLimit = environmentManifest.RuntimeLimits.MaxConcurrentRequests,
+                QueueLimit = 0,
+            }));
+});
+
 // ---- Phase 2.7: module boundary event gateway. Singleton -- subscriptions live for the
 //      process lifetime. FacilitiesController publishes FacilityCreatedEvent; the
 //      subscriber below (a different "module" from the publisher's point of view) reacts
@@ -200,6 +217,7 @@ app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(context =
         context.RequestServices.GetRequiredService<ILogEventWriter>())));
 app.UseCors(uiCorsPolicy);
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 
