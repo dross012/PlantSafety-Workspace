@@ -22,6 +22,8 @@ using Enterprise.Integration.Events;
 using Enterprise.Integration.Mapping;
 
 using Shared.Deterministic.Abstractions;
+using Shared.Deterministic.Abstractions.Clock;
+using Shared.ErrorHandling.Abstractions.Policy;
 
 using Shared.EmployeeDomain.Abstractions.ValueObjects;
 using Shared.EmployeeDomain.Infrastructure.DependencyInjection;
@@ -39,6 +41,7 @@ using Enterprise.WorkflowOrchestration.Abstractions.Ids;
 using Enterprise.Graph.Abstractions.Ids;
 
 using PlantSafety.UI.Api.Json;
+using PlantSafety.UI.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,6 +102,11 @@ const string uiCorsPolicy = "PlantSafetyUiLocalDev";
 builder.Services.AddCors(options => options.AddPolicy(uiCorsPolicy, policy =>
     policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
+// ---- Phase 2.3: deterministic error envelope + error policy engine, singleton so the
+//      circuit breaker's state is shared across requests, not reset per-request. ----
+builder.Services.AddSingleton(new CircuitBreaker(CircuitBreakerPolicy.Standard, new SystemClock()));
+builder.Services.AddSingleton<IErrorPolicy>(sp => new StandardErrorPolicy(ErrorRetryPolicy.Standard, sp.GetRequiredService<CircuitBreaker>()));
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -106,6 +114,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(context =>
+    GlobalErrorHandler.HandleAsync(
+        context,
+        context.RequestServices.GetRequiredService<IClock>(),
+        context.RequestServices.GetRequiredService<IErrorPolicy>(),
+        context.RequestServices.GetRequiredService<CircuitBreaker>(),
+        context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("PlantSafety.UI.Api.GlobalErrorHandler"))));
 app.UseCors(uiCorsPolicy);
 app.UseHttpsRedirection();
 app.UseAuthorization();
