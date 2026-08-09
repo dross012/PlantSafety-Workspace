@@ -9,6 +9,13 @@
 //                  process-local store); IMachineRepository/IMachineService
 //                  are scoped, matching Shared.FacilityDomain/Shared.
 //                  EmployeeDomain's convention.
+//
+//                  Phase 4 (Machine domain pass): MachineService now
+//                  depends on Shared.Deterministic's IClock and
+//                  Shared.ModuleContracts'/Shared.Telemetry's
+//                  IModuleEventGateway/ILogEventWriter/ICorrelationContext.
+//                  The caller's host must already have those registered
+//                  before calling AddMachineDomain.
 // ============================================================================
 using Microsoft.Extensions.DependencyInjection;
 
