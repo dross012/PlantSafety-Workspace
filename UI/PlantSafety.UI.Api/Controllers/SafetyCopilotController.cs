@@ -70,7 +70,7 @@ public sealed class SafetyCopilotController : ControllerBase
         var workflowContext = new WorkflowContext(request.HazardType, request.SeverityLevel, request.AffectedScope, request.EmployeeExposureCount, request.MachineFailureCount, request.EventChainLength);
         WorkflowAutomationOutput workflow = WorkflowAutomationEngine.Automate(
             new WorkflowAutomationInput(workflowContext, RequiresShutdown: false, RequiresRestart: false),
-            Array.Empty<AI.WorkflowAutomation.Abstractions.Rules.WorkflowAutomationRule>(),
+            AI.WorkflowAutomation.Abstractions.Rules.WorkflowAutomationRuleSet.Standard,
             now);
 
         RegulatoryInterpretationOutput regulatory = RegulatoryInterpretationEngine.Interpret(
@@ -78,7 +78,7 @@ public sealed class SafetyCopilotController : ControllerBase
 
         SeverityAssessmentOutput severity = SeverityAssessmentEngine.Assess(
             new SeverityAssessmentInput(request.HazardType, request.EmployeeInjuryCount, request.MachineFailureCount, request.EventChainLength, request.DigitalTwinSimulatedSeverity),
-            Array.Empty<SeverityAssessmentRule>(),
+            SeverityAssessmentRuleSet.Standard,
             now);
 
         var copilotInput = new AI.SafetyCopilot.Abstractions.Copilot.SafetyCopilotInput(request.Audience, hazard, workflow, regulatory, severity);

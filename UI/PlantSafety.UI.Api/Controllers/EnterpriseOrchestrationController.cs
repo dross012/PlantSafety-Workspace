@@ -27,8 +27,8 @@ namespace PlantSafety.UI.Api.Controllers;
 [Route("api/v1/ui/engines/enterprise-orchestration")]
 public sealed class EnterpriseOrchestrationController : ControllerBase
 {
-    /// <summary>POST api/v1/ui/engines/enterprise-orchestration/orchestrate -- aggregates across facilities (no custom alert rule set yet).</summary>
+    /// <summary>POST api/v1/ui/engines/enterprise-orchestration/orchestrate -- aggregates across facilities against the standard alert rule set.</summary>
     [HttpPost("orchestrate")]
     public ActionResult<EnterpriseOrchestrationOutput> Orchestrate([FromBody] EnterpriseOrchestrationInput input) =>
-        Ok(EnterpriseOrchestrationEngine.Orchestrate(input, Array.Empty<EnterpriseOrchestrationRule>()));
+        Ok(EnterpriseOrchestrationEngine.Orchestrate(input, EnterpriseOrchestrationRuleSet.Standard));
 }

@@ -27,7 +27,11 @@ public static class RegulatoryInterpretationEngine
         IReadOnlyList<RegulatoryInterpretationRule> interpretations = applicableJurisdictions
             .Select(RegulatoryInterpretationCatalog.InterpretationFor)
             .ToArray();
+        IReadOnlyList<string> escalationNotes = RegulatoryInterpretationRuleSet.Standard
+            .Where(rule => rule.Condition(input.SeverityLevel, applicableJurisdictions))
+            .Select(rule => rule.Note)
+            .ToArray();
 
-        return new RegulatoryInterpretationOutput(interpretations, nowUtc ?? DateTime.UtcNow);
+        return new RegulatoryInterpretationOutput(interpretations, escalationNotes, nowUtc ?? DateTime.UtcNow);
     }
 }
