@@ -15,6 +15,7 @@
     <Folder Include="Events\" />
     <Folder Include="Hazards\" />
     <Folder Include="Hierarchy\" />
+    <Folder Include="Propagation\" />
     <Folder Include="Regulatory\" />
     <Folder Include="Repositories\" />
     <Folder Include="Severity\" />
