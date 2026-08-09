@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>AI.WorkflowAutomation.Abstractions</RootNamespace>
+    <AssemblyName>AI.WorkflowAutomation.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\WorkflowEngine\Shared.WorkflowEngine.Abstractions\Shared.WorkflowEngine.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Enterprise\WorkflowOrchestration\Enterprise.WorkflowOrchestration.Abstractions\Enterprise.WorkflowOrchestration.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Automation\" />
+    <Folder Include="Engine\" />
+    <Folder Include="Rules\" />
+  </ItemGroup>
+
+</Project>
