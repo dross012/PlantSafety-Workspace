@@ -1,0 +1,22 @@
+.ps-loading {
+    display: flex;
+    align-items: center;
+    gap: var(--ps-spacing-sm, 0.5rem);
+    padding: var(--ps-spacing-md, 1rem);
+    color: var(--ps-color-muted, gray);
+}
+
+.ps-loading__spinner {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    border: 0.15rem solid var(--ps-color-border, lightgray);
+    border-top-color: var(--ps-color-primary, blue);
+    animation: ps-spin 0.8s linear infinite;
+}
+
+@keyframes ps-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

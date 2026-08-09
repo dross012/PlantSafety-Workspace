@@ -1,0 +1,41 @@
+@* ============================================================================
+   Purpose:        Runs AI.DigitalTwinLearning's deterministic pattern
+                    learning (moving average/trend/anomaly) across five
+                    occurrence-count histories (Phase E.7).
+   Module:         AiDigitalTwinLearning
+   StateContainer: AiDigitalTwinLearningConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by AiDigitalTwinLearningUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-digital-twin-learning/console"
+@inject AiDigitalTwinLearningConsoleState State
+
+<PageTitle>AI Digital Twin Learning</PageTitle>
+
+<h1>AI Digital Twin Learning</h1>
+
+<EngineConsoleComponent
+    Title="Learn Patterns"
+    Description="Learns hazard propagation/severity escalation/workflow bottleneck/employee exposure/machine failure patterns from historical occurrence counts."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.LearnAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "hazardPropagationOccurrences": [1, 2, 1, 3, 4],
+      "severityEscalationOccurrences": [0, 1, 1, 2, 2],
+      "workflowBottleneckOccurrences": [0, 0, 1, 1, 2],
+      "employeeExposureOccurrences": [1, 1, 2, 2, 3],
+      "machineFailureOccurrences": [0, 1, 0, 1, 2],
+      "windowSize": 3
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

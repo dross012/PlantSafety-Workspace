@@ -1,0 +1,93 @@
+@* ============================================================================
+   Purpose:        Creates a new machine.
+   Module:         Machine
+   StateContainer: none required (single create form; navigates on success).
+   LoadingStates:  Ready / Error (create is a single-shot action).
+   Observability:  API calls logged by MachineUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/machine/create"
+@inject MachineUiService MachineUiService
+@inject NavigationManager Navigation
+
+<PageTitle>New Machine</PageTitle>
+
+<h1>New Machine</h1>
+
+<EditForm Model="@_model" OnValidSubmit="SubmitAsync">
+    <div>
+        <label for="name">Name</label>
+        <InputText id="name" @bind-Value="_model.Name" />
+    </div>
+    <div>
+        <label for="type">Machine Type</label>
+        <InputSelect id="type" @bind-Value="_model.MachineType">
+            <option value="ConveyorSystem">ConveyorSystem</option>
+            <option value="PressureVessel">PressureVessel</option>
+            <option value="Boiler">Boiler</option>
+            <option value="Forklift">Forklift</option>
+            <option value="Crane">Crane</option>
+            <option value="Robotics">Robotics</option>
+            <option value="HVAC">HVAC</option>
+            <option value="ElectricalPanel">ElectricalPanel</option>
+            <option value="Other">Other</option>
+        </InputSelect>
+    </div>
+    <div>
+        <label for="facility-id">Facility Id</label>
+        <InputText id="facility-id" @bind-Value="_model.FacilityId" />
+    </div>
+    <div>
+        <label for="area">Area Description</label>
+        <InputText id="area" @bind-Value="_model.AreaDescription" />
+    </div>
+    <button type="submit" disabled="@_isSubmitting">Create</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <ErrorComponent Error="@_errorMessage" />
+}
+
+@code {
+    private readonly CreateMachineFormModel _model = new();
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private async Task SubmitAsync()
+    {
+        _isSubmitting = true;
+        _errorMessage = null;
+        try
+        {
+            if (!Guid.TryParse(_model.FacilityId, out Guid facilityId))
+            {
+                _errorMessage = "Facility Id must be a valid GUID (create a facility first).";
+                return;
+            }
+
+            var request = new PlantSafety.UI.Modules.Machine.Services.MachineMetadataRequest(_model.Name, _model.MachineType, facilityId, _model.AreaDescription);
+            var created = await MachineUiService.CreateAsync(request);
+            if (created is not null)
+            {
+                Navigation.NavigateTo(MachineRoutes.Detail.Replace("{Id}", created.MachineId.ToString()));
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class CreateMachineFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string MachineType { get; set; } = "Other";
+        public string FacilityId { get; set; } = string.Empty;
+        public string AreaDescription { get; set; } = string.Empty;
+    }
+}

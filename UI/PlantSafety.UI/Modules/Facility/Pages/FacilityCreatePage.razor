@@ -1,0 +1,100 @@
+@* ============================================================================
+   Purpose:        Creates a new facility.
+   Module:         Facility
+   StateContainer: none required (single create form; navigates on success).
+   LoadingStates:  Ready / Error (create is a single-shot action).
+   Observability:  API calls logged by FacilityUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/facility/create"
+@inject FacilityUiService FacilityUiService
+@inject NavigationManager Navigation
+
+<PageTitle>New Facility</PageTitle>
+
+<h1>New Facility</h1>
+
+<EditForm Model="@_model" OnValidSubmit="SubmitAsync">
+    <div>
+        <label for="name">Name</label>
+        <InputText id="name" @bind-Value="_model.Name" />
+    </div>
+    <div>
+        <label for="industry">Industry</label>
+        <InputText id="industry" @bind-Value="_model.IndustryName" />
+    </div>
+    <div>
+        <label for="naics">NAICS Code</label>
+        <InputText id="naics" @bind-Value="_model.NaicsCode" />
+    </div>
+    <div>
+        <label for="address">Address</label>
+        <InputText id="address" @bind-Value="_model.AddressLine1" />
+    </div>
+    <div>
+        <label for="city">City</label>
+        <InputText id="city" @bind-Value="_model.City" />
+    </div>
+    <div>
+        <label for="state">State/Province</label>
+        <InputText id="state" @bind-Value="_model.StateOrProvince" />
+    </div>
+    <div>
+        <label for="postal">Postal Code</label>
+        <InputText id="postal" @bind-Value="_model.PostalCode" />
+    </div>
+    <div>
+        <label for="country">Country Code</label>
+        <InputText id="country" @bind-Value="_model.CountryCode" />
+    </div>
+    <button type="submit" disabled="@_isSubmitting">Create</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <ErrorComponent Error="@_errorMessage" />
+}
+
+@code {
+    private readonly CreateFacilityFormModel _model = new();
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private async Task SubmitAsync()
+    {
+        _isSubmitting = true;
+        _errorMessage = null;
+        try
+        {
+            var request = new PlantSafety.UI.Modules.Facility.Services.FacilityMetadataRequest(
+                _model.Name, _model.IndustryName, string.IsNullOrWhiteSpace(_model.NaicsCode) ? null : _model.NaicsCode,
+                new PlantSafety.UI.Modules.Facility.Services.FacilityLocationRequest(_model.AddressLine1, _model.City, _model.StateOrProvince, _model.PostalCode, _model.CountryCode));
+
+            var created = await FacilityUiService.CreateAsync(request);
+            if (created is not null)
+            {
+                Navigation.NavigateTo(FacilityRoutes.Detail.Replace("{Id}", created.FacilityId.ToString()));
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class CreateFacilityFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string IndustryName { get; set; } = string.Empty;
+        public string? NaicsCode { get; set; }
+        public string AddressLine1 { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string StateOrProvince { get; set; } = string.Empty;
+        public string PostalCode { get; set; } = string.Empty;
+        public string CountryCode { get; set; } = "US";
+    }
+}

@@ -1,0 +1,38 @@
+@* ============================================================================
+   Purpose:        Shows Enterprise.Dashboard's aggregated enterprise
+                    dashboard (hazard/severity distributions, compliance/risk
+                    summaries, workflow status, predictive alerts).
+   Module:         EnterpriseDashboard
+   StateContainer: EnterpriseDashboardState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  API calls logged by EnterpriseDashboardUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/enterprise-dashboard/dashboard"
+@inject EnterpriseDashboardState State
+
+<PageTitle>Enterprise Dashboard</PageTitle>
+
+<h1>Enterprise Dashboard</h1>
+<button type="button" @onclick="State.RefreshAsync">Refresh</button>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading enterprise dashboard..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" OnRetry="State.RefreshAsync" />
+}
+else if (string.IsNullOrWhiteSpace(State.DashboardJson))
+{
+    <EmptyComponent Message="No dashboard data yet." />
+}
+else
+{
+    <pre class="ps-dashboard-json">@State.DashboardJson</pre>
+}
+
+@code {
+    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+}

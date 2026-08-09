@@ -1,0 +1,43 @@
+@* ============================================================================
+   Purpose:        Runs AI.PredictiveOptimization's deterministic weighted
+                    multi-target optimizer (Phase E.6).
+   Module:         AiPredictiveOptimization
+   StateContainer: AiPredictiveOptimizationConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by AiPredictiveOptimizationUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-predictive-optimization/console"
+@inject AiPredictiveOptimizationConsoleState State
+
+<PageTitle>AI Predictive Optimization</PageTitle>
+
+<h1>AI Predictive Optimization</h1>
+
+<EngineConsoleComponent
+    Title="Optimize Targets"
+    Description="Forecasts and weighted-scores every target dimension (Hazard/Severity/Exposure/MachineFailure likelihood, Workflow efficiency, Compliance/risk) and recommends the highest-weighted-score target."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.OptimizeAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "historyByTarget": {
+        "HazardLikelihood": [2, 3, 1, 4, 5],
+        "MachineFailureLikelihood": [0, 1, 0, 2, 1]
+      },
+      "weightByTarget": {
+        "HazardLikelihood": 1.5,
+        "MachineFailureLikelihood": 1.0
+      },
+      "windowSize": 3
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

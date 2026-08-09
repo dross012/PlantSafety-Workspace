@@ -1,0 +1,54 @@
+@* ============================================================================
+   Purpose:        Lists every employee (Shared.EmployeeDomain, real
+                    repository-backed aggregate).
+   Module:         Employee
+   StateContainer: EmployeeListState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  navigation/API calls logged by EmployeeUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/employee/list"
+@inject EmployeeListState State
+@inject NavigationManager Navigation
+
+<PageTitle>Employees</PageTitle>
+
+<h1>Employees</h1>
+<button type="button" @onclick="() => Navigation.NavigateTo(EmployeeRoutes.Create)">New Employee</button>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading employees..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" OnRetry="State.RefreshAsync" />
+}
+else if (State.Employees.Count == 0)
+{
+    <EmptyComponent Message="No employees yet." />
+}
+else
+{
+    <table class="ps-table">
+        <thead><tr><th>Name</th><th>Role</th><th>Safety Score</th><th>Injuries</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var employee in State.Employees)
+            {
+                <tr @key="employee.EmployeeId">
+                    <td>@employee.Name</td>
+                    <td>@employee.Role</td>
+                    <td>@employee.SafetyScore</td>
+                    <td>@employee.InjuryCount</td>
+                    <td><button type="button" @onclick="() => GoToDetail(employee.EmployeeId)">View</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+
+    private void GoToDetail(Guid employeeId) => Navigation.NavigateTo(EmployeeRoutes.Detail.Replace("{Id}", employeeId.ToString()));
+}

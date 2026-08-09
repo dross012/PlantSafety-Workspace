@@ -1,0 +1,42 @@
+@* ============================================================================
+   Purpose:        Builds and publishes the current Enterprise.Graph snapshot
+                    (unified safety graph across Facility/Employee/Machine/
+                    Hazard/Workflow/Event nodes).
+   Module:         EnterpriseGraph
+   StateContainer: EnterpriseGraphConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by EnterpriseGraphUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/enterprise-graph/console"
+@inject EnterpriseGraphConsoleState State
+
+<PageTitle>Enterprise Graph</PageTitle>
+
+<h1>Enterprise Graph</h1>
+
+<EngineConsoleComponent
+    Title="Build Enterprise Graph"
+    Description="Deterministically (re)builds and publishes the current unified enterprise safety graph from an explicit node/edge list. The resulting graph is also readable via Enterprise.ApiGateway's GET /api/v1/enterprise/graph."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.BuildAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "nodes": [
+        { "nodeId": "11111111-1111-1111-1111-111111111111", "nodeType": "Facility", "sourceId": "11111111-1111-1111-1111-111111111111", "label": "Plant A" },
+        { "nodeId": "22222222-2222-2222-2222-222222222222", "nodeType": "Employee", "sourceId": "22222222-2222-2222-2222-222222222222", "label": "Operator 1" }
+      ],
+      "edges": [
+        { "fromNodeId": "22222222-2222-2222-2222-222222222222", "toNodeId": "11111111-1111-1111-1111-111111111111", "edgeType": "LocatedIn" }
+      ]
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

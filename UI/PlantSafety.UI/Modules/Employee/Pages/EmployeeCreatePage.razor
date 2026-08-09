@@ -1,0 +1,76 @@
+@* ============================================================================
+   Purpose:        Creates a new employee.
+   Module:         Employee
+   StateContainer: none required (single create form; navigates on success).
+   LoadingStates:  Ready / Error (create is a single-shot action).
+   Observability:  API calls logged by EmployeeUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/employee/create"
+@inject EmployeeUiService EmployeeUiService
+@inject NavigationManager Navigation
+
+<PageTitle>New Employee</PageTitle>
+
+<h1>New Employee</h1>
+
+<EditForm Model="@_model" OnValidSubmit="SubmitAsync">
+    <div>
+        <label for="name">Name</label>
+        <InputText id="name" @bind-Value="_model.Name" />
+    </div>
+    <div>
+        <label for="role">Role</label>
+        <InputSelect id="role" @bind-Value="_model.Role">
+            <option value="Operator">Operator</option>
+            <option value="Supervisor">Supervisor</option>
+            <option value="Technician">Technician</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Safety">Safety</option>
+            <option value="Contractor">Contractor</option>
+            <option value="Administrator">Administrator</option>
+            <option value="Other">Other</option>
+        </InputSelect>
+    </div>
+    <button type="submit" disabled="@_isSubmitting">Create</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <ErrorComponent Error="@_errorMessage" />
+}
+
+@code {
+    private readonly CreateEmployeeFormModel _model = new();
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private async Task SubmitAsync()
+    {
+        _isSubmitting = true;
+        _errorMessage = null;
+        try
+        {
+            var request = new PlantSafety.UI.Modules.Employee.Services.EmployeeMetadataRequest(_model.Name, _model.Role);
+            var created = await EmployeeUiService.CreateAsync(request);
+            if (created is not null)
+            {
+                Navigation.NavigateTo(EmployeeRoutes.Detail.Replace("{Id}", created.EmployeeId.ToString()));
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class CreateEmployeeFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Role { get; set; } = "Operator";
+    }
+}

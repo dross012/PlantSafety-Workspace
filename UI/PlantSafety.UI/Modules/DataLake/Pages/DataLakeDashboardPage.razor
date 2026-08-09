@@ -1,0 +1,79 @@
+@* ============================================================================
+   Purpose:        Shows Enterprise.DataLake's per-record-type counts and
+                    lets an operator write a new record.
+   Module:         DataLake
+   StateContainer: DataLakeDashboardState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  API calls logged by DataLakeUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/datalake/dashboard"
+@inject DataLakeDashboardState State
+
+<PageTitle>Data Lake</PageTitle>
+
+<h1>Enterprise Data Lake</h1>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading data lake counts..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" OnRetry="State.RefreshAsync" />
+}
+else if (State.Counts.Count == 0)
+{
+    <EmptyComponent Message="No record-type counts available." />
+}
+else
+{
+    <table class="ps-table">
+        <thead><tr><th>Record Type</th><th>Count</th></tr></thead>
+        <tbody>
+            @foreach (var pair in State.Counts)
+            {
+                <tr @key="pair.Key"><td>@pair.Key</td><td>@pair.Value</td></tr>
+            }
+        </tbody>
+    </table>
+}
+
+<EditForm Model="@_model" OnValidSubmit="SubmitAsync">
+    <label for="record-type">Record Type</label>
+    <InputSelect id="record-type" @bind-Value="_model.RecordType">
+        <option value="Facility">Facility</option>
+        <option value="Employee">Employee</option>
+        <option value="Machine">Machine</option>
+        <option value="Hazard">Hazard</option>
+        <option value="Event">Event</option>
+        <option value="Workflow">Workflow</option>
+        <option value="Prediction">Prediction</option>
+    </InputSelect>
+    <label for="source-id">Source Id</label>
+    <InputText id="source-id" @bind-Value="_model.SourceId" />
+    <label for="payload">Payload</label>
+    <InputTextArea id="payload" @bind-Value="_model.Payload" />
+    <button type="submit">Write Record</button>
+</EditForm>
+
+@code {
+    private readonly WriteRecordFormModel _model = new();
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+
+    private async Task SubmitAsync()
+    {
+        if (Guid.TryParse(_model.SourceId, out Guid sourceId))
+        {
+            await State.WriteAsync(_model.RecordType, sourceId, _model.Payload);
+        }
+    }
+
+    private sealed class WriteRecordFormModel
+    {
+        public string RecordType { get; set; } = "Facility";
+        public string SourceId { get; set; } = Guid.NewGuid().ToString();
+        public string Payload { get; set; } = "{}";
+    }
+}

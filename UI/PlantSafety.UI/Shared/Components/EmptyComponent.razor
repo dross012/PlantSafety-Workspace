@@ -1,0 +1,16 @@
+@* ============================================================================
+   Purpose:        Deterministic "Empty" state view, shared across every
+                    module page.
+   Inputs:         Message (optional override text).
+   Outputs:        none.
+   Accessibility:  plain static text, no interactive elements to announce.
+   ============================================================================ *@
+<div class="ps-empty">
+    <p>@Message</p>
+</div>
+
+@code {
+    /// <summary>The empty-state message to display.</summary>
+    [Parameter]
+    public string Message { get; set; } = "No data yet.";
+}

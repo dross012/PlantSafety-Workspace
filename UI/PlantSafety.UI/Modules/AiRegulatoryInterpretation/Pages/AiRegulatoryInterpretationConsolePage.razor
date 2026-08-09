@@ -1,0 +1,36 @@
+@* ============================================================================
+   Purpose:        Runs AI.RegulatoryInterpretation's deterministic
+                    jurisdiction interpretation (Phase E.4).
+   Module:         AiRegulatoryInterpretation
+   StateContainer: AiRegulatoryInterpretationConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by AiRegulatoryInterpretationUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-regulatory-interpretation/console"
+@inject AiRegulatoryInterpretationConsoleState State
+
+<PageTitle>AI Regulatory Interpretation</PageTitle>
+
+<h1>AI Regulatory Interpretation</h1>
+
+<EngineConsoleComponent
+    Title="Interpret Regulatory Impact"
+    Description="Infers applicable jurisdictions from hazard type/severity and returns deterministic per-jurisdiction guidance."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.InterpretAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "hazardType": "ChemicalSpill",
+      "severityLevel": "Severe"
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

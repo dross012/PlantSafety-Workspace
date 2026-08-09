@@ -1,0 +1,25 @@
+.ps-engine-console {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-spacing-sm, 0.5rem);
+    padding: var(--ps-spacing-md, 1rem);
+}
+
+.ps-engine-console__input {
+    font-family: monospace;
+    width: 100%;
+    min-height: 10rem;
+}
+
+.ps-engine-console__run {
+    align-self: flex-start;
+    padding: var(--ps-spacing-sm, 0.5rem) var(--ps-spacing-md, 1rem);
+}
+
+.ps-engine-console__result pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--ps-color-surface, whitesmoke);
+    padding: var(--ps-spacing-sm, 0.5rem);
+    border-radius: var(--ps-radius-sm, 0.25rem);
+}

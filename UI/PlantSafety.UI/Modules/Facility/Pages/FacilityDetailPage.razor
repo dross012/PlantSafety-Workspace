@@ -1,0 +1,56 @@
+@* ============================================================================
+   Purpose:        Shows a single facility's detail and lifecycle actions.
+   Module:         Facility
+   StateContainer: FacilityDetailState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  navigation/API calls logged by FacilityUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/facility/detail/{Id:guid}"
+@inject FacilityDetailState State
+
+<PageTitle>Facility Detail</PageTitle>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading facility..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" />
+}
+else if (State.Facility is null)
+{
+    <EmptyComponent Message="Facility not found." />
+}
+else
+{
+    <h1>@State.Facility.Name</h1>
+    <dl>
+        <dt>Industry</dt><dd>@State.Facility.IndustryName (@State.Facility.NaicsCode)</dd>
+        <dt>Address</dt><dd>@State.Facility.AddressLine1, @State.Facility.City, @State.Facility.StateOrProvince @State.Facility.PostalCode, @State.Facility.CountryCode</dd>
+        <dt>Status</dt><dd>@State.Facility.LifecycleStatus</dd>
+        <dt>Active Hazards</dt><dd>@string.Join(", ", State.Facility.ActiveHazardTypes)</dd>
+        <dt>Buildings</dt><dd>@State.Facility.BuildingCount</dd>
+        <dt>Created</dt><dd>@State.Facility.CreatedAtUtc.ToString("u")</dd>
+    </dl>
+
+    <div class="ps-actions">
+        <button type="button" @onclick="State.ActivateAsync">Activate</button>
+        <button type="button" @onclick="ShutdownAsync">Shutdown</button>
+        <button type="button" @onclick="State.ReopenAsync">Reopen</button>
+        <button type="button" @onclick="DecommissionAsync">Decommission</button>
+    </div>
+}
+
+@code {
+    /// <summary>The facility id from the route.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(Id);
+
+    private Task ShutdownAsync() => State.ShutdownAsync("Manual shutdown from UI");
+
+    private Task DecommissionAsync() => State.DecommissionAsync("Manual decommission from UI");
+}

@@ -1,0 +1,40 @@
+@* ============================================================================
+   Purpose:        Runs AI.SeverityAssessment's deterministic severity
+                    assessment (Phase E.5), folding in digital-twin
+                    simulated severity via worst-case comparison.
+   Module:         AiSeverityAssessment
+   StateContainer: AiSeverityAssessmentConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by AiSeverityAssessmentUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-severity-assessment/console"
+@inject AiSeverityAssessmentConsoleState State
+
+<PageTitle>AI Severity Assessment</PageTitle>
+
+<h1>AI Severity Assessment</h1>
+
+<EngineConsoleComponent
+    Title="Assess Severity"
+    Description="Infers base severity from hazard/injury/failure/chain context and compares against a simulated digital-twin severity for the final worst-case assessment."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.AssessAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "hazardType": "Fire",
+      "employeeInjuryCount": 1,
+      "machineFailureCount": 0,
+      "eventChainLength": 2,
+      "digitalTwinSimulatedSeverity": "Severe"
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

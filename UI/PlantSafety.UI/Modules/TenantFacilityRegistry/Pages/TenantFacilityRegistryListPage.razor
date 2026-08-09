@@ -1,0 +1,75 @@
+@* ============================================================================
+   Purpose:        Lists and manages Shared.SafetyData's real multi-facility
+                    tenant registry (Phase C.8).
+   Module:         TenantFacilityRegistry
+   StateContainer: TenantFacilityRegistryListState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  API calls logged by TenantFacilityRegistryUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/tenant-facility-registry/list"
+@inject TenantFacilityRegistryListState State
+
+<PageTitle>Tenant Facility Registry</PageTitle>
+
+<h1>Tenant Facility Registry</h1>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading tenant facility bindings..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" OnRetry="State.RefreshAsync" />
+}
+else if (State.Bindings.Count == 0)
+{
+    <EmptyComponent Message="No tenant/facility bindings yet." />
+}
+else
+{
+    <table class="ps-table">
+        <thead><tr><th>Tenant</th><th>Facilities</th><th>Primary</th></tr></thead>
+        <tbody>
+            @foreach (var binding in State.Bindings)
+            {
+                <tr @key="binding.TenantId">
+                    <td>@binding.TenantId</td>
+                    <td>@string.Join(", ", binding.FacilityIds)</td>
+                    <td>@binding.PrimaryFacilityId</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<EditForm Model="@_model" OnValidSubmit="SubmitAsync">
+    <label for="tenant-id">Tenant Id</label>
+    <InputText id="tenant-id" @bind-Value="_model.TenantId" />
+    <label for="facility-id">Facility Id</label>
+    <InputText id="facility-id" @bind-Value="_model.FacilityId" />
+    <label for="is-primary">Primary</label>
+    <InputCheckbox id="is-primary" @bind-Value="_model.IsPrimary" />
+    <button type="submit">Register</button>
+</EditForm>
+
+@code {
+    private readonly RegisterFormModel _model = new();
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+
+    private async Task SubmitAsync()
+    {
+        if (Guid.TryParse(_model.FacilityId, out Guid facilityId))
+        {
+            await State.RegisterAsync(_model.TenantId, facilityId, _model.IsPrimary);
+        }
+    }
+
+    private sealed class RegisterFormModel
+    {
+        public string TenantId { get; set; } = string.Empty;
+        public string FacilityId { get; set; } = string.Empty;
+        public bool IsPrimary { get; set; }
+    }
+}

@@ -1,0 +1,57 @@
+@* ============================================================================
+   Purpose:        Lists every facility (Shared.FacilityDomain, real
+                    repository-backed aggregate).
+   Module:         Facility
+   StateContainer: FacilityListState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  navigation/API calls logged by FacilityUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/facility/list"
+@inject FacilityListState State
+@inject NavigationManager Navigation
+
+<PageTitle>Facilities</PageTitle>
+
+<h1>Facilities</h1>
+<button type="button" @onclick="() => Navigation.NavigateTo(FacilityRoutes.Create)">New Facility</button>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading facilities..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" OnRetry="State.RefreshAsync" />
+}
+else if (State.Facilities.Count == 0)
+{
+    <EmptyComponent Message="No facilities yet." />
+}
+else
+{
+    <table class="ps-table">
+        <thead>
+            <tr><th>Name</th><th>Industry</th><th>City</th><th>Status</th><th>Buildings</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var facility in State.Facilities)
+            {
+                <tr @key="facility.FacilityId">
+                    <td>@facility.Name</td>
+                    <td>@facility.IndustryName</td>
+                    <td>@facility.City</td>
+                    <td>@facility.LifecycleStatus</td>
+                    <td>@facility.BuildingCount</td>
+                    <td><button type="button" @onclick="() => GoToDetail(facility.FacilityId)">View</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+
+    private void GoToDetail(Guid facilityId) => Navigation.NavigateTo(FacilityRoutes.Detail.Replace("{Id}", facilityId.ToString()));
+}

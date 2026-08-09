@@ -1,0 +1,45 @@
+@* ============================================================================
+   Purpose:        Runs Shared.PredictiveModels' five deterministic
+                    (moving-average/OLS-trend/z-score) prediction models.
+   Module:         PredictiveModels
+   StateContainer: PredictiveModelsConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by PredictiveModelsUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/predictive-models/console"
+@inject PredictiveModelsConsoleState State
+
+<PageTitle>Predictive Models</PageTitle>
+
+<h1>Predictive Models</h1>
+
+<label for="model-select">Model</label>
+<select id="model-select" @bind="State.SelectedEndpoint">
+    <option value="hazard-likelihood">Hazard Likelihood</option>
+    <option value="severity-likelihood">Severity Likelihood</option>
+    <option value="exposure-likelihood">Exposure Likelihood</option>
+    <option value="machine-failure">Machine Failure</option>
+    <option value="employee-injury">Employee Injury</option>
+</select>
+
+<EngineConsoleComponent
+    Title="Run Predictive Model"
+    Description="Deterministic moving-average/OLS-trend/z-score prediction -- no ML. Adjust the JSON to match the selected model's request shape."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.RunSelectedAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "periodCounts": [2, 3, 1, 4, 5],
+      "windowSize": 3
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

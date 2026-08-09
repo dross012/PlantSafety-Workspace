@@ -1,0 +1,47 @@
+@* ============================================================================
+   Purpose:        Runs Enterprise.DigitalTwin's five deterministic
+                    "what if" simulations.
+   Module:         DigitalTwin
+   StateContainer: DigitalTwinConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by DigitalTwinUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/digital-twin/console"
+@inject DigitalTwinConsoleState State
+
+<PageTitle>Digital Twin</PageTitle>
+
+<h1>Enterprise Digital Twin</h1>
+
+<label for="sim-select">Simulation</label>
+<select id="sim-select" @bind="State.SelectedEndpoint">
+    <option value="hazard-propagation">Hazard Propagation</option>
+    <option value="severity-progression">Severity Progression</option>
+    <option value="workflow">Workflow</option>
+    <option value="multi-hazard-chain">Multi-Hazard Chain</option>
+    <option value="facility-lifecycle">Facility Lifecycle</option>
+</select>
+
+<EngineConsoleComponent
+    Title="Run Simulation"
+    Description="Answers 'what would happen if' questions by composing Path B/C's real deterministic engines. Adjust the JSON to match the selected simulation's request shape."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.RunSelectedAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "hazardType": "Fire",
+      "employeeInjuryCount": 1,
+      "machineFailureCount": 0,
+      "eventChainLength": 2
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

@@ -1,0 +1,5 @@
+.ps-empty {
+    padding: var(--ps-spacing-md, 1rem);
+    color: var(--ps-color-muted, gray);
+    font-style: italic;
+}

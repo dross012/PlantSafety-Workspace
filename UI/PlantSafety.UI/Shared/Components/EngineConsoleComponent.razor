@@ -1,0 +1,76 @@
+@* ============================================================================
+   Purpose:        Reusable "run this deterministic engine" console: an
+                    editable JSON input seeded with a sample payload, a Run
+                    button, and a read-only formatted JSON result panel.
+                    Used by every pure-engine module page (Enterprise.*/AI.*)
+                    whose input shape is too deeply nested for a per-field
+                    form to be worth hand-authoring in this pass (documented
+                    scoping decision -- see the final delivery report).
+                    Facility/Employee/Machine/WorkflowEngine/SafetyCopilot
+                    use dedicated typed forms instead of this component.
+   Inputs:         Title, Description, InputJson (two-way), ResultJson,
+                    IsBusy, ErrorMessage.
+   Outputs:        OnRun EventCallback&lt;string&gt; (the current InputJson).
+   Accessibility:  labelled textareas, aria-busy on the Run button while
+                    IsBusy, result panel uses role="status".
+   ============================================================================ *@
+<section class="ps-engine-console">
+    <h2>@Title</h2>
+    <p class="ps-engine-console__description">@Description</p>
+
+    <label for="@_inputId">Request JSON</label>
+    <textarea id="@_inputId" class="ps-engine-console__input" rows="10" @bind="InputJson" @bind:event="oninput"></textarea>
+
+    <button type="button" class="ps-engine-console__run" aria-busy="@IsBusy" disabled="@IsBusy" @onclick="() => OnRun.InvokeAsync(InputJson)">
+        @(IsBusy ? "Running..." : "Run")
+    </button>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <ErrorComponent Error="@ErrorMessage" />
+    }
+
+    @if (!string.IsNullOrWhiteSpace(ResultJson))
+    {
+        <div class="ps-engine-console__result" role="status">
+            <h3>Result</h3>
+            <pre>@ResultJson</pre>
+        </div>
+    }
+</section>
+
+@code {
+    private readonly string _inputId = $"engine-console-input-{Guid.NewGuid():N}";
+
+    /// <summary>The console's title, e.g. the engine's display name.</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>A short description of what the engine does.</summary>
+    [Parameter]
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>The editable request JSON (two-way bound by the caller).</summary>
+    [Parameter]
+    public string InputJson { get; set; } = string.Empty;
+
+    /// <summary>Raised whenever the user edits the request JSON.</summary>
+    [Parameter]
+    public EventCallback<string> InputJsonChanged { get; set; }
+
+    /// <summary>The formatted response JSON to display, or null/empty before the first run.</summary>
+    [Parameter]
+    public string? ResultJson { get; set; }
+
+    /// <summary>True while a run is in flight.</summary>
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    /// <summary>A backend/system error message to display, or null if none.</summary>
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    /// <summary>Raised when the user activates Run, carrying the current request JSON.</summary>
+    [Parameter, EditorRequired]
+    public EventCallback<string> OnRun { get; set; }
+}

@@ -1,0 +1,44 @@
+@* ============================================================================
+   Purpose:        Runs Enterprise.PredictiveModeling's four deterministic
+                    enterprise-wide forecasts.
+   Module:         PredictiveModeling
+   StateContainer: PredictiveModelingConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by PredictiveModelingUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/predictive-modeling/console"
+@inject PredictiveModelingConsoleState State
+
+<PageTitle>Predictive Modeling</PageTitle>
+
+<h1>Enterprise Predictive Modeling</h1>
+
+<label for="forecast-select">Forecast</label>
+<select id="forecast-select" @bind="State.SelectedEndpoint">
+    <option value="risk">Risk</option>
+    <option value="compliance">Compliance</option>
+    <option value="hazard">Hazard</option>
+    <option value="severity">Severity</option>
+</select>
+
+<EngineConsoleComponent
+    Title="Run Enterprise Forecast"
+    Description="Deterministic enterprise-wide forecasts, wired around Shared.PredictiveModels' moving-average/OLS-trend/z-score math."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.RunSelectedAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "history": [0.2, 0.3, 0.25, 0.4, 0.5],
+      "windowSize": 3
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}
