@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- A plain ASP.NET Core Blazor Server host, not a MAUI head. It exists only so
+         Playwright (a real browser automation driver) has an actual DOM/HTTP surface
+         to drive: a MAUI BlazorWebView is a native WebView, not something Playwright
+         can attach to. This project links, rather than project references, the real
+         Razor components/services/state containers from ..\PlantSafety.UI, so the
+         E2E suite exercises the same component code the MAUI app ships, without
+         pulling in any MAUI-specific host wiring (App.xaml, MainPage.xaml,
+         MauiProgram.cs, Platforms). -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Matches PlantSafety.UI's own RootNamespace so linked .razor files (which have
+         no explicit @namespace directive) infer the exact same namespace here as they
+         do in the MAUI project, keeping this host's _Imports.razor identical in spirit. -->
+    <RootNamespace>PlantSafety.UI</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Link the real UI source from PlantSafety.UI. Excludes: App.xaml*, MainPage.xaml*,
+       MauiProgram.cs, Platforms\**, and Components\Routes.razor (that file's
+       AppAssembly="typeof(MauiProgram).Assembly" only resolves inside the MAUI head;
+       this project supplies its own Routes.razor targeting its own assembly). -->
+  <ItemGroup>
+    <Compile Include="..\PlantSafety.UI\Modules\**\*.cs" LinkBase="Modules" />
+    <Compile Include="..\PlantSafety.UI\Services\**\*.cs" LinkBase="Services" />
+    <Compile Include="..\PlantSafety.UI\State\**\*.cs" LinkBase="State" />
+    <Compile Include="..\PlantSafety.UI\Routes\**\*.cs" LinkBase="Routes" />
+
+    <!-- LinkBase alone doesn't compute namespace-affecting "Link" metadata for
+         RazorComponent items (only Compile/Content/None get that for free), so it's
+         set explicitly here; otherwise the namespace inferred from these files'
+         real on-disk path (which starts with "..\") breaks compilation. -->
+    <RazorComponent Include="..\PlantSafety.UI\Modules\**\*.razor" Link="Modules\%(RecursiveDir)%(Filename)%(Extension)" />
+    <RazorComponent Include="..\PlantSafety.UI\Shared\**\*.razor" Link="Shared\%(RecursiveDir)%(Filename)%(Extension)" />
+    <RazorComponent Include="..\PlantSafety.UI\Layouts\**\*.razor" Link="Layouts\%(RecursiveDir)%(Filename)%(Extension)" />
+    <RazorComponent Include="..\PlantSafety.UI\Components\ModuleNavComponent.razor" Link="Components\ModuleNavComponent.razor" />
+
+    <None Include="..\PlantSafety.UI\Shared\**\*.razor.css" Link="Shared\%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="..\PlantSafety.UI\Layouts\**\*.razor.css" Link="Layouts\%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="..\PlantSafety.UI\Components\ModuleNavComponent.razor.css" Link="Components\ModuleNavComponent.razor.css" />
+
+    <Content Include="..\PlantSafety.UI\wwwroot\app.css" Link="wwwroot\app.css" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

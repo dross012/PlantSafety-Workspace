@@ -1,0 +1,18 @@
+@* ============================================================================
+   Purpose:        E2EHost's router root. Mirrors PlantSafety.UI's own
+                    Components/Routes.razor exactly, except AppAssembly
+                    points at this host's own assembly (the MAUI version's
+                    typeof(MauiProgram) doesn't exist here).
+   ============================================================================ *@
+<Router AppAssembly="typeof(HostRoutes).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(PlantSafety.UI.Layouts.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <PlantSafety.UI.Layouts.MainLayout>
+            <p role="alert">Sorry, there's nothing at this address.</p>
+        </PlantSafety.UI.Layouts.MainLayout>
+    </NotFound>
+</Router>
