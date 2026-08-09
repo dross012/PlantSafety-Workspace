@@ -1,0 +1,26 @@
+@page "/{*path:nonfile}"
+@using Microsoft.AspNetCore.Components.Web
+@using PlantSafety.UI.Components
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PlantSafety.UI (E2E Host)</title>
+    <base href="/" />
+    <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+    <div id="app">
+        <component type="typeof(HostRoutes)" render-mode="Server" />
+    </div>
+
+    <div id="blazor-error-ui" data-nosnippet>
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">&#128169;</span>
+    </div>
+
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>

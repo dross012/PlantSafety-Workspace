@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- Matches PlantSafety.UI's own TargetFramework: bUnit renders the real .razor
+         components in process (no MAUI shell or WebView needed), so this test project
+         must target the same TFM to project-reference PlantSafety.UI directly. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PlantSafety.UI.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- bunit 1.38.5 pulls Microsoft.AspNetCore.Components 9.0.0 transitively, but
+         PlantSafety.UI compiles against 10.0.0 (its own TargetFramework's runtime version).
+         Pin the Components family explicitly to 10.0.0 so both assemblies agree. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
+    <PackageReference Include="bunit" Version="1.38.5" />
+    <PackageReference Include="AwesomeAssertions" Version="9.1.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.v3.runner.console" Version="3.2.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Referencing PlantSafety.UI's compiled assembly directly, not via ProjectReference: a plain
+       ProjectReference to a UseMaui=true head project propagates Microsoft.Maui.Resizetizer's
+       buildTransitive targets into this project's build, which then fails with a known MAUI
+       tooling bug ("duplicate file names" for the app's own icon/splash assets) when the head
+       project and a referencing project share the exact same TargetFramework. Referencing the
+       built PlantSafety.UI.dll directly (built via `dotnet build` in ..\PlantSafety.UI first)
+       gets the same compiled .razor component types without pulling in those MSBuild targets. -->
+  <ItemGroup>
+    <Reference Include="PlantSafety.UI">
+      <HintPath>..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\PlantSafety.UI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- PlantSafety.UI's module type initializer touches WinRT-hosted APIs and eagerly
+       bootstraps the Windows App Runtime (UndockedRegFreeWinRT-AutoInitializer). That
+       bootstrap needs Microsoft.WindowsAppRuntime.Bootstrap.dll and its native runtime
+       DLLs next to the test executable; the raw <Reference> above only copies the
+       managed PlantSafety.UI.dll, not these deployment assets. Mirror them from the
+       already-built PlantSafety.UI win-x64 output. -->
+  <ItemGroup>
+    <None Include="..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Bootstrap.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Bootstrap.Net.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Insights.Resource.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.Windows.ApplicationModel.WindowsAppRuntime.Projection.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.Windows.ApplicationModel.WindowsAppRuntime.winmd;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\WindowsAppRuntime.DeploymentExtensions.OneCore.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>
