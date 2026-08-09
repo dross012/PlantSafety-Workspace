@@ -19,6 +19,8 @@ using Enterprise.Graph.Abstractions.Enums;
 using Enterprise.Graph.Abstractions.Graph;
 using Enterprise.Graph.Abstractions.Ids;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>One node to add when building a new enterprise graph snapshot.</summary>
@@ -33,13 +35,13 @@ public sealed record BuildGraphRequest(IReadOnlyList<GraphNodeRequest> Nodes, IR
 /// <summary>Exposes Enterprise.Graph's builder to PlantSafety.UI, publishing the result via IEnterpriseGraphProvider.</summary>
 [ApiController]
 [Route("api/v1/ui/graph")]
-public sealed class GraphController(InMemoryEnterpriseGraphProvider graphProvider) : ControllerBase
+public sealed class GraphController(InMemoryEnterpriseGraphProvider graphProvider, IClock clock) : ControllerBase
 {
     /// <summary>POST api/v1/ui/graph -- deterministically (re)builds and publishes the current enterprise graph snapshot.</summary>
     [HttpPost]
     public ActionResult<EnterpriseGraph> Build([FromBody] BuildGraphRequest request)
     {
-        DateTime now = DateTime.UtcNow;
+        DateTime now = clock.UtcNow;
         var builder = new EnterpriseGraphBuilder();
 
         foreach (GraphNodeRequest node in request.Nodes)

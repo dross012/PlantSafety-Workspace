@@ -21,6 +21,8 @@ using Enterprise.Integration.Adapters;
 using Enterprise.Integration.Events;
 using Enterprise.Integration.Mapping;
 
+using Shared.Deterministic.Abstractions;
+
 using Shared.EmployeeDomain.Abstractions.ValueObjects;
 using Shared.EmployeeDomain.Infrastructure.DependencyInjection;
 using Shared.FacilityDomain.Abstractions.Hierarchy;
@@ -39,6 +41,11 @@ using Enterprise.Graph.Abstractions.Ids;
 using PlantSafety.UI.Api.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ---- Deterministic runtime (Phase 2.1): IClock/IRandomProvider, real by default; set
+//      "DeterministicMode:IsEnabled=true" (config/env) to pin a fixed clock + seeded
+//      randomness for integration test runs. ----
+builder.Services.AddDeterministicRuntime(options => builder.Configuration.GetSection("DeterministicMode").Bind(options));
 
 // ---- Real Shared.*Domain services (Path B/C) ----
 builder.Services.AddFacilityDomain();
@@ -105,3 +112,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+/// <summary>Marker partial for WebApplicationFactory-based integration test hosting.</summary>
+public partial class Program;

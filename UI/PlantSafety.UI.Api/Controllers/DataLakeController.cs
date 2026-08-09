@@ -18,6 +18,8 @@ using Enterprise.DataLake.Abstractions.Records;
 using Enterprise.DataLake.Infrastructure.Query;
 using Enterprise.DataLake.Infrastructure.Writing;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Request body for writing a new data lake record.</summary>
@@ -26,7 +28,7 @@ public sealed record DataLakeWriteRequest(Guid SourceId, string Payload);
 /// <summary>Exposes Enterprise.DataLake's write API and per-type counts to PlantSafety.UI.</summary>
 [ApiController]
 [Route("api/v1/ui/datalake")]
-public sealed class DataLakeController(IDataLakeWriter writer, IDataLakeQueryEngine queryEngine) : ControllerBase
+public sealed class DataLakeController(IDataLakeWriter writer, IDataLakeQueryEngine queryEngine, IClock clock) : ControllerBase
 {
     /// <summary>GET api/v1/ui/datalake/counts -- record count per DataLakeRecordType.</summary>
     [HttpGet("counts")]
@@ -36,7 +38,7 @@ public sealed class DataLakeController(IDataLakeWriter writer, IDataLakeQueryEng
     [HttpPost("{recordType}")]
     public ActionResult<DataLakeRecord> Write(DataLakeRecordType recordType, [FromBody] DataLakeWriteRequest request)
     {
-        DateTime now = DateTime.UtcNow;
+        DateTime now = clock.UtcNow;
         DataLakeRecord record = recordType switch
         {
             DataLakeRecordType.Facility => writer.WriteFacilityRecord(request.SourceId, request.Payload, now),

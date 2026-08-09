@@ -18,6 +18,8 @@ using Shared.WorkflowEngine.Abstractions.Engine;
 
 using Enterprise.DigitalTwin.Abstractions.Simulation;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Request body for the severity-progression simulation.</summary>
@@ -35,7 +37,7 @@ public sealed record FacilityLifecycleSimulationRequest(FacilityLifecycleStatus 
 /// <summary>Runs Enterprise.DigitalTwin's five deterministic "what if" simulations.</summary>
 [ApiController]
 [Route("api/v1/ui/engines/digital-twin")]
-public sealed class DigitalTwinController : ControllerBase
+public sealed class DigitalTwinController(IClock clock) : ControllerBase
 {
     /// <summary>POST .../hazard-propagation.</summary>
     [HttpPost("hazard-propagation")]
@@ -56,7 +58,7 @@ public sealed class DigitalTwinController : ControllerBase
     [HttpPost("multi-hazard-chain")]
     public ActionResult<HazardChain> MultiHazardChain([FromBody] MultiHazardChainRequest request) =>
         Ok(DigitalTwinSimulationEngine.SimulateMultiHazardChain(
-            request.Stages.Select(s => (s.Stage, s.Severity)).ToArray(), DateTime.UtcNow));
+            request.Stages.Select(s => (s.Stage, s.Severity)).ToArray(), clock.UtcNow));
 
     /// <summary>POST .../facility-lifecycle -- returns 400 if the transition is invalid.</summary>
     [HttpPost("facility-lifecycle")]

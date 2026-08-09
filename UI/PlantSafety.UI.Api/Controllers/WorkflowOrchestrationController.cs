@@ -16,6 +16,8 @@ using Enterprise.WorkflowOrchestration.Abstractions.States;
 using Enterprise.WorkflowOrchestration.Abstractions.Steps;
 using Enterprise.WorkflowOrchestration.Abstractions.Transitions;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Request body for a guarded workflow state transition.</summary>
@@ -24,7 +26,7 @@ public sealed record WorkflowTransitionRequest(Guid WorkflowId, EnterpriseWorkfl
 /// <summary>Runs Enterprise.WorkflowOrchestration's deterministic plan-building and transition-guarding.</summary>
 [ApiController]
 [Route("api/v1/ui/engines/workflow-orchestration")]
-public sealed class WorkflowOrchestrationController : ControllerBase
+public sealed class WorkflowOrchestrationController(IClock clock) : ControllerBase
 {
     /// <summary>POST .../build-plan -- orders the given steps into a deterministic execution plan.</summary>
     [HttpPost("build-plan")]
@@ -38,7 +40,7 @@ public sealed class WorkflowOrchestrationController : ControllerBase
         try
         {
             return Ok(EnterpriseWorkflowOrchestrator.Transition(
-                EnterpriseWorkflowId.From(request.WorkflowId), request.FromState, request.ToState, DateTime.UtcNow));
+                EnterpriseWorkflowId.From(request.WorkflowId), request.FromState, request.ToState, clock.UtcNow));
         }
         catch (InvalidOperationException ex)
         {
