@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Contracts\" />
     <Folder Include="Events\" />
   </ItemGroup>
