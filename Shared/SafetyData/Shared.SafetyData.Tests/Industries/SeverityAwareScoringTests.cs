@@ -9,6 +9,8 @@
 //                  and SeverityAwareComplianceScoreBuilder.
 // ============================================================================
 using Shared.SafetyData.Abstractions.Models.Industries.ComplianceRisk;
+using Shared.SafetyData.Abstractions.Models.Industries.Facilities;
+using Shared.SafetyData.Infrastructure.Industries;
 
 using Xunit;
 
@@ -98,5 +100,62 @@ public sealed class SeverityAwareScoringTests
         Assert.Equal(facilityId, result.FacilityId);
         Assert.Equal(ComplianceTier.PartiallyCompliant, result.AdjustedComplianceTier);
         Assert.Same(baseScore, result.BaseComplianceScore);
+    }
+
+    [Fact]
+    public void ComplianceRiskEngine_ComputeSeverityAwareComplianceScore_BuildsBaseScoreThenAdjusts()
+    {
+        // A freshly built facility (nothing completed) is NonCompliant, which the Catastrophic cap
+        // (which only ever caps -down- to PartiallyCompliant) leaves unaffected -- confirms this
+        // wiring calls through to the real base-score builder rather than hand-waving a fixed tier.
+        FacilityProfile facility = FacilityProfileBuilder.Build(Guid.NewGuid(), "Plant 1", "Chemical Manufacturing", "Houston, TX");
+        ComplianceScore baseScore = ComplianceRiskEngine.ComputeComplianceScore(facility);
+        Assert.Equal(ComplianceTier.NonCompliant, baseScore.ComplianceTier);
+
+        SeverityAwareComplianceScore result = ComplianceRiskEngine.ComputeSeverityAwareComplianceScore(facility, SeverityLevel.Catastrophic);
+
+        Assert.Equal(facility.FacilityId, result.FacilityId);
+        Assert.Equal(baseScore, result.BaseComplianceScore);
+        Assert.Equal(ComplianceTier.NonCompliant, result.AdjustedComplianceTier);
+    }
+
+    [Fact]
+    public void ComplianceRiskEngine_ComputeSeverityAwareComplianceScore_FullyCompliantFacility_CatastrophicCapsToPartiallyCompliant()
+    {
+        FacilityProfile draft = FacilityProfileBuilder.Build(Guid.NewGuid(), "Plant 1", "Chemical Manufacturing", "Houston, TX");
+        var allCodes = draft.ComplianceProfile.RequiredElements.Select(e => e.Code).ToHashSet(StringComparer.Ordinal);
+        FacilityProfile fullyCompliant = FacilityProfileBuilder.Build(draft.FacilityId, "Plant 1", "Chemical Manufacturing", "Houston, TX", allCodes);
+        Assert.Equal(ComplianceTier.FullyCompliant, ComplianceRiskEngine.ComputeComplianceScore(fullyCompliant).ComplianceTier);
+
+        SeverityAwareComplianceScore result = ComplianceRiskEngine.ComputeSeverityAwareComplianceScore(fullyCompliant, SeverityLevel.Catastrophic);
+
+        Assert.Equal(ComplianceTier.PartiallyCompliant, result.AdjustedComplianceTier);
+    }
+
+    [Fact]
+    public void ComplianceRiskEngine_ComputeSeverityAwareRiskScore_BuildsBaseScoreThenAdjusts()
+    {
+        FacilityProfile facility = FacilityProfileBuilder.Build(Guid.NewGuid(), "Plant 1", "Chemical Manufacturing", "Houston, TX");
+        RiskScore baseScore = ComplianceRiskEngine.ComputeRiskScore(facility);
+
+        SeverityAwareRiskScore result = ComplianceRiskEngine.ComputeSeverityAwareRiskScore(facility, SeverityLevel.Severe, employeeInjuryCount: 0, machineFailureCount: 0, eventChainLength: 1);
+
+        Assert.Equal(facility.FacilityId, result.FacilityId);
+        Assert.Equal(baseScore, result.BaseRiskScore);
+        bool expectHigh = baseScore.OverallRiskLevel < RiskLevel.High;
+        Assert.Equal(expectHigh ? RiskLevel.High : baseScore.OverallRiskLevel, result.AdjustedOverallRiskLevel);
+    }
+
+    [Fact]
+    public void IComplianceRiskService_ComputeSeverityAwareScores_DelegatesToEngine()
+    {
+        FacilityProfile facility = FacilityProfileBuilder.Build(Guid.NewGuid(), "Plant 1", "Chemical Manufacturing", "Houston, TX");
+        IComplianceRiskService service = new ComplianceRiskService();
+
+        SeverityAwareComplianceScore complianceResult = service.ComputeSeverityAwareComplianceScore(facility, SeverityLevel.Moderate);
+        SeverityAwareRiskScore riskResult = service.ComputeSeverityAwareRiskScore(facility, SeverityLevel.Moderate, 0, 0, 1);
+
+        Assert.Equal(ComplianceRiskEngine.ComputeSeverityAwareComplianceScore(facility, SeverityLevel.Moderate), complianceResult);
+        Assert.Equal(ComplianceRiskEngine.ComputeSeverityAwareRiskScore(facility, SeverityLevel.Moderate, 0, 0, 1), riskResult);
     }
 }

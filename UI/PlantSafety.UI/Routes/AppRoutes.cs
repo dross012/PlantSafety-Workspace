@@ -104,6 +104,12 @@ public static class TenantFacilityRegistryRoutes
     public const string List = "/tenant-facility-registry/list";
 }
 
+/// <summary>Route constants for the Compliance &amp; Risk module.</summary>
+public static class ComplianceRiskRoutes
+{
+    public const string Assess = "/compliance-risk/assess";
+}
+
 /// <summary>Route constants for the AI Reasoning module.</summary>
 public static class AiReasoningRoutes
 {
