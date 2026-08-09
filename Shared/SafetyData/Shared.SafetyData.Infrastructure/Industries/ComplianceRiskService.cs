@@ -48,4 +48,12 @@ public sealed class ComplianceRiskService : IComplianceRiskService
     /// <inheritdoc />
     public (ComplianceReadiness ComplianceReadiness, RiskReadiness RiskReadiness) ComputeReadiness(FacilityProfile facility) =>
         ComplianceRiskEngine.ComputeReadiness(facility);
+
+    /// <inheritdoc />
+    public SeverityAwareComplianceScore ComputeSeverityAwareComplianceScore(FacilityProfile facility, SeverityLevel eventSeverity) =>
+        ComplianceRiskEngine.ComputeSeverityAwareComplianceScore(facility, eventSeverity);
+
+    /// <inheritdoc />
+    public SeverityAwareRiskScore ComputeSeverityAwareRiskScore(FacilityProfile facility, SeverityLevel eventSeverity, int employeeInjuryCount, int machineFailureCount, int eventChainLength) =>
+        ComplianceRiskEngine.ComputeSeverityAwareRiskScore(facility, eventSeverity, employeeInjuryCount, machineFailureCount, eventChainLength);
 }

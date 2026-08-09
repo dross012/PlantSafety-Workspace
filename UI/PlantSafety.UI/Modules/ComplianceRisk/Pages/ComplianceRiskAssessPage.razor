@@ -1,0 +1,47 @@
+@* ============================================================================
+   Purpose:        Runs Shared.SafetyData's real Compliance & Risk subsystem,
+                    including Phase C.10's severity-aware compliance/risk
+                    scoring -- builds a FacilityProfile for the given
+                    industry/completion state, then adjusts both scores for
+                    a triggering safety event's severity/injury/failure/
+                    chain context.
+   Module:         ComplianceRisk
+   StateContainer: ComplianceRiskAssessState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by ComplianceRiskUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/compliance-risk/assess"
+@inject ComplianceRiskAssessState State
+
+<PageTitle>Compliance &amp; Risk Assessment</PageTitle>
+
+<h1>Compliance &amp; Risk Assessment</h1>
+
+<EngineConsoleComponent
+    Title="Assess Facility"
+    Description="Builds a FacilityProfile for the given industry and completion state, then returns both its severity-aware compliance score and severity-aware risk score for the given triggering event context."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.AssessAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "facilityId": "00000000-0000-0000-0000-000000000001",
+      "name": "Plant 1",
+      "industryName": "Chemical Manufacturing",
+      "location": "Houston, TX",
+      "completedElementCodes": [],
+      "eventSeverity": "Severe",
+      "employeeInjuryCount": 1,
+      "machineFailureCount": 0,
+      "eventChainLength": 2
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

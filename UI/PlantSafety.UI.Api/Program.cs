@@ -29,6 +29,7 @@ using Shared.FacilityDomain.Infrastructure.DependencyInjection;
 using Shared.MachineDomain.Abstractions.ValueObjects;
 using Shared.MachineDomain.Infrastructure.DependencyInjection;
 using Shared.SafetyData.Abstractions.Models.Industries.Orchestration;
+using Shared.SafetyData.Infrastructure.DependencyInjection;
 using Shared.SafetyData.Infrastructure.Industries;
 
 using Enterprise.RulesEngine.Abstractions.Ids;
@@ -53,6 +54,10 @@ builder.Services.AddSingleton<IEnterpriseGraphProvider>(sp => sp.GetRequiredServ
 
 // ---- Shared.SafetyData multi-facility tenant registry (Path C.8) ----
 builder.Services.AddSingleton<ITenantFacilityRegistryV2, TenantFacilityRegistryV2>();
+
+// ---- Shared.SafetyData Facility Profile + Compliance & Risk, incl. severity-aware scoring (Path C.10) ----
+builder.Services.AddFacilityProfiles();
+builder.Services.AddComplianceRisk();
 
 // ---- Enterprise.Integration adapters (Path D.9) -- one no-op-mapping adapter per system as a demo default ----
 builder.Services.AddSingleton<IReadOnlyDictionary<EnterpriseIntegrationSystem, IEnterpriseIntegrationAdapter>>(_ =>

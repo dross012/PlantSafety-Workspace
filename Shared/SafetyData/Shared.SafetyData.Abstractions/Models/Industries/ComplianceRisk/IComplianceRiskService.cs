@@ -41,4 +41,10 @@ public interface IComplianceRiskService
 
     /// <summary>Computes the given facility's compliance and risk readiness.</summary>
     (ComplianceReadiness ComplianceReadiness, RiskReadiness RiskReadiness) ComputeReadiness(FacilityProfile facility);
+
+    /// <summary>Computes the given facility's compliance score adjusted for a triggering safety event's severity (Phase C.10).</summary>
+    SeverityAwareComplianceScore ComputeSeverityAwareComplianceScore(FacilityProfile facility, SeverityLevel eventSeverity);
+
+    /// <summary>Computes the given facility's risk score adjusted for a triggering safety event's severity/injury/failure/chain context (Phase C.10).</summary>
+    SeverityAwareRiskScore ComputeSeverityAwareRiskScore(FacilityProfile facility, SeverityLevel eventSeverity, int employeeInjuryCount, int machineFailureCount, int eventChainLength);
 }

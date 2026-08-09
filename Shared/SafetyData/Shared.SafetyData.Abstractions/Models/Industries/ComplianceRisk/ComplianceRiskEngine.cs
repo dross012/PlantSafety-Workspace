@@ -16,6 +16,16 @@
 //                  subsystem a single, discoverable static entry point (and
 //                  the shape IComplianceRiskService below mirrors for DI),
 //                  not to hold any logic of its own.
+//
+//                  ComputeSeverityAwareComplianceScore/ComputeSeverityAwareRiskScore
+//                  wire up Phase C.10's SeverityAwareComplianceScoreBuilder/
+//                  SeverityAwareRiskScoreBuilder -- previously built but never
+//                  called from anywhere reachable by the UI (flagged as a gap
+//                  in the PlantSafety.UI build-out report). Each is a thin
+//                  compose-not-reimplement wrapper: build the base score the
+//                  same way ComputeComplianceScore/ComputeRiskScore already do,
+//                  then hand it to the existing C.10 builder for the
+//                  severity adjustment.
 //                  Additive-only evolution.
 // ============================================================================
 using Shared.SafetyData.Abstractions.Models.Industries.Facilities;
@@ -55,4 +65,24 @@ public static class ComplianceRiskEngine
     /// </summary>
     public static (ComplianceReadiness ComplianceReadiness, RiskReadiness RiskReadiness) ComputeReadiness(FacilityProfile facility) =>
         (ComplianceReadinessBuilder.Build(facility), RiskReadinessBuilder.Build(facility));
+
+    /// <summary>
+    /// Computes the given facility's compliance score, then adjusts it for a triggering safety
+    /// event's severity (<see cref="SeverityAwareComplianceScoreBuilder.Build"/>, Phase C.10).
+    /// </summary>
+    public static SeverityAwareComplianceScore ComputeSeverityAwareComplianceScore(FacilityProfile facility, SeverityLevel eventSeverity) =>
+        SeverityAwareComplianceScoreBuilder.Build(ComplianceScoreBuilder.Build(facility), eventSeverity);
+
+    /// <summary>
+    /// Computes the given facility's multi-dimensional risk score, then adjusts its overall level for
+    /// a triggering safety event's severity/injury/failure/chain context
+    /// (<see cref="SeverityAwareRiskScoreBuilder.Build"/>, Phase C.10).
+    /// </summary>
+    public static SeverityAwareRiskScore ComputeSeverityAwareRiskScore(
+        FacilityProfile facility,
+        SeverityLevel eventSeverity,
+        int employeeInjuryCount,
+        int machineFailureCount,
+        int eventChainLength) =>
+        SeverityAwareRiskScoreBuilder.Build(RiskScoreBuilder.Build(facility), eventSeverity, employeeInjuryCount, machineFailureCount, eventChainLength);
 }

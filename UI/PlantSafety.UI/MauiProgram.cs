@@ -42,6 +42,8 @@ using PlantSafety.UI.Modules.Integration.Services;
 using PlantSafety.UI.Modules.Integration.State;
 using PlantSafety.UI.Modules.TenantFacilityRegistry.Services;
 using PlantSafety.UI.Modules.TenantFacilityRegistry.State;
+using PlantSafety.UI.Modules.ComplianceRisk.Services;
+using PlantSafety.UI.Modules.ComplianceRisk.State;
 using PlantSafety.UI.Modules.AiReasoning.Services;
 using PlantSafety.UI.Modules.AiReasoning.State;
 using PlantSafety.UI.Modules.AiHazardUnderstanding.Services;
@@ -144,6 +146,10 @@ public static class MauiProgram
         // ---- Tenant Facility Registry module ----
         builder.Services.AddScoped<TenantFacilityRegistryUiService>();
         builder.Services.AddScoped<TenantFacilityRegistryListState>();
+
+        // ---- Compliance & Risk module ----
+        builder.Services.AddScoped<ComplianceRiskUiService>();
+        builder.Services.AddScoped<ComplianceRiskAssessState>();
 
         // ---- AI Reasoning module ----
         builder.Services.AddScoped<AiReasoningUiService>();
