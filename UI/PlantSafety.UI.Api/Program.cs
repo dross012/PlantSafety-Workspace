@@ -206,6 +206,14 @@ app.Services.GetRequiredService<IModuleEventGateway>().Subscribe<FacilityCreated
     return Task.CompletedTask;
 });
 
+// ---- Phase 3.9: HSTS outside Development, environment-manifest-driven (Phase 2.5
+//      convention) rather than the default app.Environment.IsDevelopment() branch. ----
+if (environmentManifest.EnvironmentName != "Development")
+{
+    app.UseHsts();
+}
+
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRequestTimeouts();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(context =>
