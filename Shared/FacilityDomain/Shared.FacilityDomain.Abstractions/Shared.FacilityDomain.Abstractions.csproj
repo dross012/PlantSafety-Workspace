@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Folder Include="Aggregates\" />
+    <Folder Include="Chains\" />
     <Folder Include="Events\" />
     <Folder Include="Hazards\" />
     <Folder Include="Hierarchy\" />
