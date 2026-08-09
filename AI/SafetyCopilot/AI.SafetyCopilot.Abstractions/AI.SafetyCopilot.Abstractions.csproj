@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>AI.SafetyCopilot.Abstractions</RootNamespace>
+    <AssemblyName>AI.SafetyCopilot.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\HazardUnderstanding\AI.HazardUnderstanding.Abstractions\AI.HazardUnderstanding.Abstractions.csproj" />
+    <ProjectReference Include="..\..\WorkflowAutomation\AI.WorkflowAutomation.Abstractions\AI.WorkflowAutomation.Abstractions.csproj" />
+    <ProjectReference Include="..\..\RegulatoryInterpretation\AI.RegulatoryInterpretation.Abstractions\AI.RegulatoryInterpretation.Abstractions.csproj" />
+    <ProjectReference Include="..\..\SeverityAssessment\AI.SeverityAssessment.Abstractions\AI.SeverityAssessment.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Copilot\" />
+    <Folder Include="Engine\" />
+    <Folder Include="Recommendations\" />
+  </ItemGroup>
+
+</Project>

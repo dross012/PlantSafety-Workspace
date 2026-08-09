@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>AI.DigitalTwinLearning.Abstractions</RootNamespace>
+    <AssemblyName>AI.DigitalTwinLearning.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\PredictiveModels\Shared.PredictiveModels.Abstractions\Shared.PredictiveModels.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Engine\" />
+    <Folder Include="Learning\" />
+    <Folder Include="Rules\" />
+  </ItemGroup>
+
+</Project>

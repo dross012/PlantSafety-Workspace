@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Enterprise.DataLake.Abstractions</RootNamespace>
+    <AssemblyName>Enterprise.DataLake.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Enums\" />
+    <Folder Include="Query\" />
+    <Folder Include="Records\" />
+    <Folder Include="Storage\" />
+  </ItemGroup>
+
+</Project>
