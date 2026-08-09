@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Enterprise.Graph.Abstractions</RootNamespace>
+    <AssemblyName>Enterprise.Graph.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Edges\" />
+    <Folder Include="Enums\" />
+    <Folder Include="Graph\" />
+    <Folder Include="Ids\" />
+    <Folder Include="Nodes\" />
+  </ItemGroup>
+
+</Project>
