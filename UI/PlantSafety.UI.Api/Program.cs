@@ -27,6 +27,7 @@ using Shared.ErrorHandling.Abstractions.Policy;
 using Shared.Telemetry.Abstractions.Correlation;
 using Shared.Telemetry.Abstractions.Events;
 using Shared.Configuration.Abstractions.Manifest;
+using Shared.Configuration.Abstractions.Secrets;
 using Shared.Configuration.Abstractions.Validation;
 using Shared.ModuleContracts.Abstractions.Events;
 
@@ -143,6 +144,28 @@ builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = 
 builder.Services.AddSingleton<IModuleEventGateway, ModuleEventGateway>();
 
 var app = builder.Build();
+
+// ---- Phase 3.2: log that configuration loaded successfully, without ever touching
+//      manifest.Secrets/ConnectionStrings values directly -- RedactedEnvironmentManifest
+//      carries key names and enabled-flag names only. ----
+{
+    RedactedEnvironmentManifest redacted = SecretRedactor.Redact(environmentManifest);
+    IClock startupClock = app.Services.GetRequiredService<IClock>();
+    app.Services.GetRequiredService<ILogEventWriter>().Write(new LogEvent(
+        EventId: "ENVIRONMENT_MANIFEST_LOADED",
+        Category: LogCategory.Infrastructure,
+        Severity: LogSeverity.Info,
+        Message: $"Environment manifest loaded for \"{redacted.EnvironmentName}\": {redacted.EnabledFeatureFlags.Count} feature flag(s) enabled, {redacted.ConnectionStringKeys.Count} connection string(s), {redacted.SecretKeys.Count} secret(s) configured.",
+        Payload: new Dictionary<string, object?>
+        {
+            ["EnabledFeatureFlags"] = redacted.EnabledFeatureFlags,
+            ["ConnectionStringKeys"] = redacted.ConnectionStringKeys,
+            ["SecretKeys"] = redacted.SecretKeys,
+        },
+        CorrelationId: "startup",
+        Module: "Configuration",
+        OccurredAtUtc: startupClock.UtcNow));
+}
 
 if (environmentManifest.IsFeatureEnabled("EnableOpenApi"))
 {
