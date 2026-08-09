@@ -11,10 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.79" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
@@ -22,6 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared.SafetyData.Abstractions\Shared.SafetyData.Abstractions.csproj" />
+    <ProjectReference Include="..\..\SqlGateway\Shared.SqlGateway.Abstractions\Shared.SqlGateway.Abstractions.csproj" />
+    <ProjectReference Include="..\..\SqlGateway\Shared.SqlGateway.Infrastructure\Shared.SqlGateway.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
