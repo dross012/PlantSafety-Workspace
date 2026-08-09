@@ -8,7 +8,8 @@
    ============================================================================ *@
 @page "/employee/create"
 @inject EmployeeUiService EmployeeUiService
-@inject NavigationManager Navigation
+@inject IUiNavigator Navigation
+@inject INotificationService Notifications
 
 <PageTitle>New Employee</PageTitle>
 
@@ -55,6 +56,7 @@
             var created = await EmployeeUiService.CreateAsync(request);
             if (created is not null)
             {
+                Notifications.Success($"Employee \"{created.Name}\" created.");
                 Navigation.NavigateTo(EmployeeRoutes.Detail.Replace("{Id}", created.EmployeeId.ToString()));
             }
         }

@@ -8,7 +8,8 @@
    ============================================================================ *@
 @page "/machine/create"
 @inject MachineUiService MachineUiService
-@inject NavigationManager Navigation
+@inject IUiNavigator Navigation
+@inject INotificationService Notifications
 
 <PageTitle>New Machine</PageTitle>
 
@@ -70,6 +71,7 @@
             var created = await MachineUiService.CreateAsync(request);
             if (created is not null)
             {
+                Notifications.Success($"Machine \"{created.Name}\" created.");
                 Navigation.NavigateTo(MachineRoutes.Detail.Replace("{Id}", created.MachineId.ToString()));
             }
         }

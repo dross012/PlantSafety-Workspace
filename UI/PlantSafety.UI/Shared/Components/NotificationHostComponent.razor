@@ -1,0 +1,34 @@
+@* ============================================================================
+   Purpose:        Renders the active transient notifications from
+                    INotificationService. One instance lives in MainLayout
+                    (Section 7's global AppShell), so every page gets
+                    notification display for free without wiring anything
+                    itself.
+   Inputs:         none (reads INotificationService directly).
+   Outputs:        none.
+   Accessibility:  role="status" region; each notification's dismiss
+                    button is independently focusable/labelled.
+   ============================================================================ *@
+@implements IDisposable
+@inject PlantSafety.UI.Services.INotificationService Notifications
+
+@if (Notifications.Active.Count > 0)
+{
+    <div class="ps-notifications" role="status" aria-live="polite">
+        @foreach (var notification in Notifications.Active)
+        {
+            <div class="ps-notification ps-notification--@notification.Severity.ToString().ToLowerInvariant()" @key="notification.NotificationId">
+                <span class="ps-notification__message">@notification.Message</span>
+                <button type="button" class="ps-notification__dismiss" aria-label="Dismiss" @onclick="() => Notifications.Dismiss(notification.NotificationId)">&times;</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    protected override void OnInitialized() => Notifications.Changed += OnNotificationsChanged;
+
+    private void OnNotificationsChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Notifications.Changed -= OnNotificationsChanged;
+}

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Shared.SqlGateway.Abstractions</RootNamespace>
+    <AssemblyName>Shared.SqlGateway.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Gateway\" />
+    <Folder Include="Diagnostics\" />
+  </ItemGroup>
+
+</Project>

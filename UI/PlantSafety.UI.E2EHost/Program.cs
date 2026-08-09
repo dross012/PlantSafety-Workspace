@@ -63,6 +63,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
+// ---- Phase 2.2: Blazor Hybrid UI stabilization seams (mirrors MauiProgram.cs) ----
+builder.Services.AddScoped<IClock, SystemClock>();
+builder.Services.AddScoped<IUiDispatcher, UiDispatcher>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IUiNavigator, UiNavigator>();
+
 string apiBaseAddress = builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5129/";
 builder.Services.AddHttpClient<PlantSafetyApiClient>(client => client.BaseAddress = new Uri(apiBaseAddress));
 

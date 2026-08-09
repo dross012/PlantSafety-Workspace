@@ -14,4 +14,5 @@ namespace AI.RegulatoryInterpretation.Abstractions.Interpretation;
 /// <summary>The result of a regulatory-interpretation session.</summary>
 public sealed record RegulatoryInterpretationOutput(
     IReadOnlyList<RegulatoryInterpretationRule> Interpretations,
+    IReadOnlyList<string> EscalationNotes,
     DateTime GeneratedAtUtc);

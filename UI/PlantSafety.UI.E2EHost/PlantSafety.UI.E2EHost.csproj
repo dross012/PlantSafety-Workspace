@@ -25,6 +25,7 @@
   <ItemGroup>
     <Compile Include="..\PlantSafety.UI\Modules\**\*.cs" LinkBase="Modules" />
     <Compile Include="..\PlantSafety.UI\Services\**\*.cs" LinkBase="Services" />
+    <Compile Include="..\PlantSafety.UI\Policies\**\*.cs" LinkBase="Policies" />
     <Compile Include="..\PlantSafety.UI\State\**\*.cs" LinkBase="State" />
     <Compile Include="..\PlantSafety.UI\Routes\**\*.cs" LinkBase="Routes" />
 

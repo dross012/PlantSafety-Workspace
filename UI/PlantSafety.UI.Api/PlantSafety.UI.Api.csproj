@@ -12,6 +12,13 @@
 
   <!-- Path B/C: Shared.* real aggregates + pure deterministic engines -->
   <ItemGroup>
+    <ProjectReference Include="..\..\Shared\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\ErrorHandling\Shared.ErrorHandling.Abstractions\Shared.ErrorHandling.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\Configuration\Shared.Configuration.Abstractions\Shared.Configuration.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\ModuleContracts\Shared.ModuleContracts.Abstractions\Shared.ModuleContracts.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\Workflow\Shared.Workflow.Abstractions\Shared.Workflow.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\AiInference\Shared.AiInference.Abstractions\Shared.AiInference.Abstractions.csproj" />
     <ProjectReference Include="..\..\Shared\FacilityDomain\Shared.FacilityDomain.Abstractions\Shared.FacilityDomain.Abstractions.csproj" />
     <ProjectReference Include="..\..\Shared\FacilityDomain\Shared.FacilityDomain.Infrastructure\Shared.FacilityDomain.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared\EmployeeDomain\Shared.EmployeeDomain.Abstractions\Shared.EmployeeDomain.Abstractions.csproj" />

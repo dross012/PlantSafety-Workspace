@@ -12,12 +12,14 @@ using Microsoft.AspNetCore.Mvc;
 using AI.PredictiveOptimization.Abstractions.Engine;
 using AI.PredictiveOptimization.Abstractions.Optimization;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Runs AI.PredictiveOptimization's deterministic weighted-target optimizer.</summary>
 [ApiController]
 [Route("api/v1/ui/engines/predictive-optimization")]
-public sealed class PredictiveOptimizationController : ControllerBase
+public sealed class PredictiveOptimizationController(IClock clock) : ControllerBase
 {
     /// <summary>POST api/v1/ui/engines/predictive-optimization/optimize.</summary>
     [HttpPost("optimize")]
@@ -25,7 +27,7 @@ public sealed class PredictiveOptimizationController : ControllerBase
     {
         try
         {
-            return Ok(PredictiveOptimizationEngine.Optimize(input));
+            return Ok(PredictiveOptimizationEngine.Optimize(input, clock.UtcNow));
         }
         catch (ArgumentException ex)
         {
