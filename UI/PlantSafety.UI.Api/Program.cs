@@ -28,6 +28,9 @@ using Shared.Telemetry.Abstractions.Correlation;
 using Shared.Telemetry.Abstractions.Events;
 using Shared.Configuration.Abstractions.Manifest;
 using Shared.Configuration.Abstractions.Validation;
+using Shared.ModuleContracts.Abstractions.Events;
+
+using PlantSafety.UI.Api.Events;
 
 using Shared.EmployeeDomain.Abstractions.ValueObjects;
 using Shared.EmployeeDomain.Infrastructure.DependencyInjection;
@@ -133,12 +136,35 @@ builder.Services.AddSingleton(environmentManifest);
 builder.Services.AddRequestTimeouts(options => options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy { Timeout = environmentManifest.RuntimeLimits.RequestTimeout });
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = environmentManifest.RuntimeLimits.MaxRequestBodySizeBytes);
 
+// ---- Phase 2.7: module boundary event gateway. Singleton -- subscriptions live for the
+//      process lifetime. FacilitiesController publishes FacilityCreatedEvent; the
+//      subscriber below (a different "module" from the publisher's point of view) reacts
+//      by logging a structured event, without FacilitiesController referencing it at all. ----
+builder.Services.AddSingleton<IModuleEventGateway, ModuleEventGateway>();
+
 var app = builder.Build();
 
 if (environmentManifest.IsFeatureEnabled("EnableOpenApi"))
 {
     app.MapOpenApi();
 }
+
+app.Services.GetRequiredService<IModuleEventGateway>().Subscribe<FacilityCreatedEvent>((evt, _) =>
+{
+    app.Services.GetRequiredService<ILogEventWriter>().Write(new LogEvent(
+        EventId: "FACILITY_CREATED",
+        Category: LogCategory.Facility,
+        Severity: LogSeverity.Info,
+        Message: $"Facility \"{evt.Name}\" ({evt.FacilityId}) created.",
+        Payload: new Dictionary<string, object?> { ["FacilityId"] = evt.FacilityId, ["Name"] = evt.Name },
+        // This subscriber is wired once at startup (a singleton), outside any one
+        // request's scope, so it has no ICorrelationContext to read from -- the event's
+        // own FacilityId is the natural correlating key for this event-driven flow.
+        CorrelationId: evt.FacilityId.ToString(),
+        Module: "Facility",
+        OccurredAtUtc: evt.OccurredAtUtc));
+    return Task.CompletedTask;
+});
 
 app.UseRequestTimeouts();
 app.UseMiddleware<CorrelationIdMiddleware>();
