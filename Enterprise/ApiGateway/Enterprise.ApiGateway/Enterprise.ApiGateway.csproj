@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Enterprise.ApiGateway</RootNamespace>
+    <AssemblyName>Enterprise.ApiGateway</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\DataLake\Enterprise.DataLake.Abstractions\Enterprise.DataLake.Abstractions.csproj" />
+    <ProjectReference Include="..\..\DataLake\Enterprise.DataLake.Infrastructure\Enterprise.DataLake.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Graph\Enterprise.Graph.Abstractions\Enterprise.Graph.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
+    <Folder Include="Routing\" />
+  </ItemGroup>
+
+</Project>
