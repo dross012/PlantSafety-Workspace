@@ -8,6 +8,7 @@
     <LangVersion>12</LangVersion>
     <RootNamespace>Shared.SqlGateway.Infrastructure</RootNamespace>
     <AssemblyName>Shared.SqlGateway.Infrastructure</AssemblyName>
+      <PlantSafetyStrictBuild>true</PlantSafetyStrictBuild>
   </PropertyGroup>
 
   <ItemGroup>

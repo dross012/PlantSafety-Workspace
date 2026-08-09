@@ -8,6 +8,7 @@
     <LangVersion>12</LangVersion>
     <RootNamespace>Shared.ModuleContracts.Abstractions</RootNamespace>
     <AssemblyName>Shared.ModuleContracts.Abstractions</AssemblyName>
+      <PlantSafetyStrictBuild>true</PlantSafetyStrictBuild>
   </PropertyGroup>
 
   <ItemGroup>

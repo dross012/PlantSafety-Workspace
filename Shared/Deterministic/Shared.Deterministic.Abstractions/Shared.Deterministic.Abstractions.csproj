@@ -8,6 +8,7 @@
     <LangVersion>12</LangVersion>
     <RootNamespace>Shared.Deterministic.Abstractions</RootNamespace>
     <AssemblyName>Shared.Deterministic.Abstractions</AssemblyName>
+      <PlantSafetyStrictBuild>true</PlantSafetyStrictBuild>
   </PropertyGroup>
 
   <ItemGroup>
