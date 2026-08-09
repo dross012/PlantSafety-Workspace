@@ -14,6 +14,7 @@
 // ============================================================================
 using Shared.FacilityDomain.Abstractions.Events;
 using Shared.FacilityDomain.Abstractions.Hazards;
+using Shared.FacilityDomain.Abstractions.Hierarchy;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
 
 namespace Shared.FacilityDomain.Abstractions.Aggregates;
@@ -48,6 +49,7 @@ public sealed class FacilityAggregate
             HazardProfile: new FacilityHazardProfile([], nowUtc),
             RegulatoryProfile: new FacilityRegulatoryProfile([], nowUtc),
             ProgramProfile: new FacilityProgramProfile([], nowUtc),
+            Hierarchy: FacilityHierarchy.Empty(nowUtc),
             CreatedAtUtc: nowUtc,
             UpdatedAtUtc: nowUtc);
 
@@ -91,6 +93,88 @@ public sealed class FacilityAggregate
     {
         State = State with { ProgramProfile = new FacilityProgramProfile(requiredProgramCodes, nowUtc), UpdatedAtUtc = nowUtc };
         _domainEvents.Add(new FacilityUpdatedEvent(State.FacilityId, FacilityUpdateKind.ProgramProfile, nowUtc));
+    }
+
+    /// <summary>Adds a new, empty building to the facility's hierarchy.</summary>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is null or whitespace.</exception>
+    public void AddBuilding(BuildingId buildingId, string name, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Building name is required.", nameof(name));
+        }
+
+        var building = new FacilityBuilding(buildingId, name, []);
+        State = State with { Hierarchy = State.Hierarchy with { Buildings = [.. State.Hierarchy.Buildings, building], UpdatedAtUtc = nowUtc }, UpdatedAtUtc = nowUtc };
+        _domainEvents.Add(new FacilityHierarchyUpdatedEvent(State.FacilityId, FacilityHierarchyChangeKind.BuildingAdded, nowUtc));
+    }
+
+    /// <summary>Adds a new, empty area to an existing building.</summary>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is null or whitespace.</exception>
+    /// <exception cref="InvalidOperationException">No building with <paramref name="buildingId"/> exists.</exception>
+    public void AddArea(BuildingId buildingId, AreaId areaId, string name, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Area name is required.", nameof(name));
+        }
+
+        var area = new FacilityArea(areaId, name, []);
+        IReadOnlyList<FacilityBuilding> buildings = State.Hierarchy.Buildings
+            .Select(b => b.BuildingId == buildingId ? b with { Areas = [.. b.Areas, area] } : b)
+            .ToArray();
+
+        if (!buildings.Any(b => b.BuildingId == buildingId))
+        {
+            throw new InvalidOperationException($"No building with id '{buildingId}' exists on this facility.");
+        }
+
+        State = State with { Hierarchy = State.Hierarchy with { Buildings = buildings, UpdatedAtUtc = nowUtc }, UpdatedAtUtc = nowUtc };
+        _domainEvents.Add(new FacilityHierarchyUpdatedEvent(State.FacilityId, FacilityHierarchyChangeKind.AreaAdded, nowUtc));
+    }
+
+    /// <summary>Adds a new zone to an existing area.</summary>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is null or whitespace.</exception>
+    /// <exception cref="InvalidOperationException">No area with <paramref name="areaId"/> exists.</exception>
+    public void AddZone(AreaId areaId, ZoneId zoneId, string name, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Zone name is required.", nameof(name));
+        }
+
+        var zone = new FacilityZone(zoneId, name);
+        bool areaFound = false;
+        IReadOnlyList<FacilityBuilding> buildings = State.Hierarchy.Buildings
+            .Select(building => building with
+            {
+                Areas = building.Areas.Select(area =>
+                {
+                    if (area.AreaId != areaId)
+                    {
+                        return area;
+                    }
+
+                    areaFound = true;
+                    return area with { Zones = [.. area.Zones, zone] };
+                }).ToArray(),
+            })
+            .ToArray();
+
+        if (!areaFound)
+        {
+            throw new InvalidOperationException($"No area with id '{areaId}' exists on this facility.");
+        }
+
+        State = State with { Hierarchy = State.Hierarchy with { Buildings = buildings, UpdatedAtUtc = nowUtc }, UpdatedAtUtc = nowUtc };
+        _domainEvents.Add(new FacilityHierarchyUpdatedEvent(State.FacilityId, FacilityHierarchyChangeKind.ZoneAdded, nowUtc));
+    }
+
+    /// <summary>Replaces the facility's entire hierarchy wholesale.</summary>
+    public void UpdateHierarchy(FacilityHierarchy hierarchy, DateTime nowUtc)
+    {
+        State = State with { Hierarchy = hierarchy with { UpdatedAtUtc = nowUtc }, UpdatedAtUtc = nowUtc };
+        _domainEvents.Add(new FacilityHierarchyUpdatedEvent(State.FacilityId, FacilityHierarchyChangeKind.Replaced, nowUtc));
     }
 
     /// <summary>Clears every pending domain event, e.g. after a caller has persisted/published them.</summary>

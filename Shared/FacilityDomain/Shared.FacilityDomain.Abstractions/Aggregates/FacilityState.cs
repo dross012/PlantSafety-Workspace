@@ -8,6 +8,7 @@
 //                  allowed to construct/replace a FacilityState -- callers
 //                  read it, they don't build it directly.
 // ============================================================================
+using Shared.FacilityDomain.Abstractions.Hierarchy;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
 
 namespace Shared.FacilityDomain.Abstractions.Aggregates;
@@ -21,5 +22,6 @@ public sealed record FacilityState(
     FacilityHazardProfile HazardProfile,
     FacilityRegulatoryProfile RegulatoryProfile,
     FacilityProgramProfile ProgramProfile,
+    FacilityHierarchy Hierarchy,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc);

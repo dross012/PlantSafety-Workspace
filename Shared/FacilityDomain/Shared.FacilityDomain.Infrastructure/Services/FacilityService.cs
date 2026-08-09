@@ -14,6 +14,7 @@
 // ============================================================================
 using Shared.FacilityDomain.Abstractions.Aggregates;
 using Shared.FacilityDomain.Abstractions.Hazards;
+using Shared.FacilityDomain.Abstractions.Hierarchy;
 using Shared.FacilityDomain.Abstractions.Repositories;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
 
@@ -46,6 +47,22 @@ public sealed class FacilityService(IFacilityRepository repository) : IFacilityS
     /// <inheritdoc />
     public async Task<FacilityState?> UpdateProgramProfileAsync(FacilityId facilityId, IReadOnlyList<string> requiredProgramCodes, CancellationToken cancellationToken = default) =>
         await ApplyUpdateAsync(facilityId, aggregate => aggregate.UpdateProgramProfile(requiredProgramCodes, DateTime.UtcNow), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<FacilityState?> AddBuildingAsync(FacilityId facilityId, string name, CancellationToken cancellationToken = default) =>
+        await ApplyUpdateAsync(facilityId, aggregate => aggregate.AddBuilding(BuildingId.New(), name, DateTime.UtcNow), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<FacilityState?> AddAreaAsync(FacilityId facilityId, BuildingId buildingId, string name, CancellationToken cancellationToken = default) =>
+        await ApplyUpdateAsync(facilityId, aggregate => aggregate.AddArea(buildingId, AreaId.New(), name, DateTime.UtcNow), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<FacilityState?> AddZoneAsync(FacilityId facilityId, AreaId areaId, string name, CancellationToken cancellationToken = default) =>
+        await ApplyUpdateAsync(facilityId, aggregate => aggregate.AddZone(areaId, ZoneId.New(), name, DateTime.UtcNow), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<FacilityState?> UpdateHierarchyAsync(FacilityId facilityId, FacilityHierarchy hierarchy, CancellationToken cancellationToken = default) =>
+        await ApplyUpdateAsync(facilityId, aggregate => aggregate.UpdateHierarchy(hierarchy, DateTime.UtcNow), cancellationToken);
 
     /// <inheritdoc />
     public async Task<FacilityState?> GetFacilityAsync(FacilityId facilityId, CancellationToken cancellationToken = default)

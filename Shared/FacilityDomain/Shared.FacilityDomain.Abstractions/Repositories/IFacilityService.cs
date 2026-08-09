@@ -11,6 +11,7 @@
 // ============================================================================
 using Shared.FacilityDomain.Abstractions.Aggregates;
 using Shared.FacilityDomain.Abstractions.Hazards;
+using Shared.FacilityDomain.Abstractions.Hierarchy;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
 
 namespace Shared.FacilityDomain.Abstractions.Repositories;
@@ -32,6 +33,20 @@ public interface IFacilityService
 
     /// <summary>Updates an existing facility's program profile. Returns null if no facility with that id exists.</summary>
     Task<FacilityState?> UpdateProgramProfileAsync(FacilityId facilityId, IReadOnlyList<string> requiredProgramCodes, CancellationToken cancellationToken = default);
+
+    /// <summary>Adds a new building to an existing facility's hierarchy. Returns null if no facility with that id exists.</summary>
+    Task<FacilityState?> AddBuildingAsync(FacilityId facilityId, string name, CancellationToken cancellationToken = default);
+
+    /// <summary>Adds a new area to an existing building. Returns null if no facility with that id exists.</summary>
+    /// <exception cref="InvalidOperationException">No building with <paramref name="buildingId"/> exists.</exception>
+    Task<FacilityState?> AddAreaAsync(FacilityId facilityId, BuildingId buildingId, string name, CancellationToken cancellationToken = default);
+
+    /// <summary>Adds a new zone to an existing area. Returns null if no facility with that id exists.</summary>
+    /// <exception cref="InvalidOperationException">No area with <paramref name="areaId"/> exists.</exception>
+    Task<FacilityState?> AddZoneAsync(FacilityId facilityId, AreaId areaId, string name, CancellationToken cancellationToken = default);
+
+    /// <summary>Replaces an existing facility's entire hierarchy wholesale. Returns null if no facility with that id exists.</summary>
+    Task<FacilityState?> UpdateHierarchyAsync(FacilityId facilityId, FacilityHierarchy hierarchy, CancellationToken cancellationToken = default);
 
     /// <summary>Returns the facility with the given id, or null if none exists.</summary>
     Task<FacilityState?> GetFacilityAsync(FacilityId facilityId, CancellationToken cancellationToken = default);
