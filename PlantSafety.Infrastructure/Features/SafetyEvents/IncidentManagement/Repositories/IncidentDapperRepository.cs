@@ -35,7 +35,8 @@ public sealed class IncidentDapperRepository(
     DapperQueryExecutor queryExecutor,
     IOutboxWriter outboxWriter,
     ILogger<IncidentDapperRepository> logger,
-    ICrossModuleEventRelay? crossModuleEventRelay = null)
+    ICrossModuleEventRelay? crossModuleEventRelay = null,
+    ICrossModuleEventRelayV2? crossModuleEventRelayV2 = null)
     : IIncidentRepository
 {
     /// <inheritdoc/>
@@ -127,12 +128,16 @@ public sealed class IncidentDapperRepository(
         {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), actorId.ToString(), correlationId.ToString());
             crossModuleEventRelay?.Enqueue(domainEvent, aggregate.TenantId.ToString(), actorId.ToString(), correlationId.ToString());
+            crossModuleEventRelayV2?.Enqueue(domainEvent, aggregate.TenantId.ToString(), actorId.ToString(), correlationId.ToString());
         }
 
         aggregate.ClearDomainEvents();
 
         if (crossModuleEventRelay is { HasPendingEvents: true })
             await crossModuleEventRelay.FlushAsync(cancellationToken);
+
+        if (crossModuleEventRelayV2 is { HasPendingEvents: true })
+            await crossModuleEventRelayV2.FlushAsync(cancellationToken);
     }
 
     /// <inheritdoc/>

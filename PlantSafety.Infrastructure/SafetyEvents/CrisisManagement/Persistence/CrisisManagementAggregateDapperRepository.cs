@@ -25,6 +25,7 @@ using PlantSafety.Domain.SafetyEvents.CrisisManagement.Enums;
 using PlantSafety.Domain.SafetyEvents.CrisisManagement.Events;
 using PlantSafety.Domain.SafetyEvents.CrisisManagement.Interfaces;
 using PlantSafety.Domain.SafetyEvents.CrisisManagement.ValueObjects.Ids;
+using PlantSafety.Infrastructure.Messaging.CrossModule;
 using PlantSafety.Infrastructure.Persistence.Reflection;
 // Type alias required: this file's own namespace (PlantSafety.Infrastructure.SafetyEvents
 // .CrisisManagement.Persistence) contains a "CrisisManagement" segment, so an unqualified
@@ -41,7 +42,8 @@ public sealed class CrisisManagementAggregateDapperRepository(
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
     IOutboxWriter outboxWriter,
-    ILogger<CrisisManagementAggregateDapperRepository> logger)
+    ILogger<CrisisManagementAggregateDapperRepository> logger,
+    ICrossModuleEventRelayV2? crossModuleEventRelayV2 = null)
     : ICrisisManagementRepository
 {
     /// <inheritdoc/>
@@ -93,8 +95,16 @@ public sealed class CrisisManagementAggregateDapperRepository(
         foreach (var domainEvent in aggregate.DomainEvents)
         {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+            // Phase B.3 (Path B): first-ever cross-module relay for CrisisManagement -- see
+            // CrisisManagementDeclaredIntegrationEventV2.cs's header. V1 has none (no case arm
+            // exists in CrossModuleDomainEventMapper for any CrisisManagement event), so only
+            // the V2 relay is wired here.
+            crossModuleEventRelayV2?.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
         }
         aggregate.ClearDomainEvents();
+
+        if (crossModuleEventRelayV2 is { HasPendingEvents: true })
+            await crossModuleEventRelayV2.FlushAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -140,8 +150,12 @@ public sealed class CrisisManagementAggregateDapperRepository(
         foreach (var domainEvent in aggregate.DomainEvents)
         {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+            crossModuleEventRelayV2?.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
         }
         aggregate.ClearDomainEvents();
+
+        if (crossModuleEventRelayV2 is { HasPendingEvents: true })
+            await crossModuleEventRelayV2.FlushAsync(cancellationToken);
     }
 
     /// <summary>Reconstructs a <see cref="CrisisManagementAggregate"/> from its flat read-model row.</summary>

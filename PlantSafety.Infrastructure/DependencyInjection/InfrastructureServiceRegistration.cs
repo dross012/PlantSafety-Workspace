@@ -294,6 +294,14 @@ public static class InfrastructureServiceRegistration
         services.AddSharedEventBus(configuration);
         services.AddScoped<Messaging.CrossModule.ICrossModuleEventRelay, Messaging.CrossModule.CrossModuleEventRelay>();
 
+        // Phase B.3/B.4 (Path B): V2 (enriched) cross-module relay, parallel to the V1 relay
+        // above -- publishes through EventEnvelopeV2 via CrossModuleDomainEventMapperV2. No real
+        // tenant-to-facility binding exists anywhere yet, so NullFacilityInferenceResolver (honest
+        // "unknown" for every tenant) is the default; replace this registration once a real
+        // binding source exists (see Shared.EventBus's FacilityInferenceRules.cs header).
+        services.AddSingleton<Shared.EventBus.Abstractions.Contracts.IFacilityInferenceResolver, Shared.EventBus.Abstractions.Contracts.NullFacilityInferenceResolver>();
+        services.AddScoped<Messaging.CrossModule.ICrossModuleEventRelayV2, Messaging.CrossModule.CrossModuleEventRelayV2>();
+
         // Application-layer transactional Unit of Work (consumed by TransactionBehavior<,> for
         // EVERY ICommand). Registered here with the FULLY QUALIFIED interface name -- deliberately
         // NOT relying on the ambiguous bare "IUnitOfWork" that this file's `using

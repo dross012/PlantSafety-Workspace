@@ -37,7 +37,8 @@ public sealed class AccidentDapperRepository(
     DapperCommandExecutor commandExecutor,
     IOutboxWriter outboxWriter,
     ILogger<AccidentDapperRepository> logger,
-    ICrossModuleEventRelay? crossModuleEventRelay = null)
+    ICrossModuleEventRelay? crossModuleEventRelay = null,
+    ICrossModuleEventRelayV2? crossModuleEventRelayV2 = null)
     : IAccidentRepository
 {
     /// <inheritdoc/>
@@ -207,11 +208,15 @@ public sealed class AccidentDapperRepository(
         {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
             crossModuleEventRelay?.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+            crossModuleEventRelayV2?.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
         }
         aggregate.ClearDomainEvents();
 
         if (crossModuleEventRelay is { HasPendingEvents: true })
             await crossModuleEventRelay.FlushAsync(cancellationToken);
+
+        if (crossModuleEventRelayV2 is { HasPendingEvents: true })
+            await crossModuleEventRelayV2.FlushAsync(cancellationToken);
     }
 
     private async Task<IReadOnlyList<CorrectiveActionRow>> GetCorrectiveActionRowsAsync(AccidentId id, Guid tenantId, CancellationToken cancellationToken)

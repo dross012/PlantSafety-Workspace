@@ -31,6 +31,7 @@ using PlantSafety.Domain.SafetyEvents.EmergencyManagement.Events;
 using PlantSafety.Domain.SafetyEvents.EmergencyManagement.Interfaces;
 using PlantSafety.Domain.SafetyEvents.EmergencyManagement.Specifications;
 using PlantSafety.Domain.SafetyEvents.EmergencyManagement.ValueObjects.Ids;
+using PlantSafety.Infrastructure.Messaging.CrossModule;
 using PlantSafety.Infrastructure.Persistence.Reflection;
 
 namespace PlantSafety.Infrastructure.SafetyEvents.EmergencyManagement.Persistence;
@@ -44,7 +45,8 @@ public sealed class EmergencyManagementWriteDapperRepository(
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
     IOutboxWriter outboxWriter,
-    ILogger<EmergencyManagementWriteDapperRepository> logger)
+    ILogger<EmergencyManagementWriteDapperRepository> logger,
+    ICrossModuleEventRelayV2? crossModuleEventRelayV2 = null)
     : IEmergencyManagementRepository
 {
     /// <inheritdoc/>
@@ -116,8 +118,15 @@ public sealed class EmergencyManagementWriteDapperRepository(
         foreach (var domainEvent in aggregate.DomainEvents)
         {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+            // Phase B.3 (Path B): first-ever cross-module relay for EmergencyManagement -- see
+            // EmergencyManagementCreatedIntegrationEventV2.cs's header. V1 has none, so only the
+            // V2 relay is wired here.
+            crossModuleEventRelayV2?.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
         }
         aggregate.ClearDomainEvents();
+
+        if (crossModuleEventRelayV2 is { HasPendingEvents: true })
+            await crossModuleEventRelayV2.FlushAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -162,8 +171,12 @@ public sealed class EmergencyManagementWriteDapperRepository(
         foreach (var domainEvent in aggregate.DomainEvents)
         {
             outboxWriter.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
+            crossModuleEventRelayV2?.Enqueue(domainEvent, aggregate.TenantId.ToString(), "system", Guid.Empty.ToString());
         }
         aggregate.ClearDomainEvents();
+
+        if (crossModuleEventRelayV2 is { HasPendingEvents: true })
+            await crossModuleEventRelayV2.FlushAsync(cancellationToken);
     }
 
     /// <summary>Reconstructs an <see cref="PlantSafety.Domain.SafetyEvents.EmergencyManagement.Aggregates.EmergencyManagement"/> aggregate from its flat read-model row.</summary>
