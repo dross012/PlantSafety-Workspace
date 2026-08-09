@@ -44,6 +44,14 @@ public sealed class FacilityCrudE2ETests(E2EEnvironmentFixture fixture)
             await page.WaitForURLAsync("**/facility/detail/**", new PageWaitForURLOptions { WaitUntil = WaitUntilState.Commit });
             await page.WaitForSelectorAsync($"h1:has-text('{facilityName}')");
 
+            // Phase 2.2: the success notification is raised by the create page but
+            // rendered by NotificationHostComponent in MainLayout, which persists
+            // across the client-side navigation to the detail page -- so it should
+            // still be visible here, not just momentarily on the create page.
+            await page.WaitForSelectorAsync(".ps-notification--success");
+            (await page.Locator(".ps-notification--success .ps-notification__message").TextContentAsync())
+                .Should().Contain(facilityName);
+
             await page.GotoAsync(fixture.HostUrl + "/facility/list");
             await page.WaitForSelectorAsync("tbody tr");
             (await page.Locator("tbody").TextContentAsync()).Should().Contain(facilityName);

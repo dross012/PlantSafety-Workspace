@@ -82,6 +82,12 @@ public static class MauiProgram
 
         builder.Services.AddMauiBlazorWebView();
 
+        // ---- Phase 2.2: Blazor Hybrid UI stabilization seams ----
+        builder.Services.AddScoped<IClock, SystemClock>();
+        builder.Services.AddScoped<IUiDispatcher, UiDispatcher>();
+        builder.Services.AddScoped<INotificationService, NotificationService>();
+        builder.Services.AddScoped<IUiNavigator, UiNavigator>();
+
         // ---- The one approved typed HttpClient wrapper (Section 10) ----
         builder.Services.AddHttpClient<PlantSafetyApiClient>(client =>
         {

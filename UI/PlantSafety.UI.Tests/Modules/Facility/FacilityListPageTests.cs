@@ -57,6 +57,47 @@ public sealed class FacilityListPageTests : TestContext
     }
 
     [Fact]
+    public void TypeInFilter_MatchingSubstring_DebouncesThenShowsOnlyMatchingRow()
+    {
+        const string json = """
+        [
+          {
+            "facilityId": "11111111-1111-1111-1111-111111111111",
+            "name": "Riverside Plant",
+            "industry": { "industryName": "Chemical", "naicsCode": "325180" },
+            "location": { "addressLine1": "1 Plant Rd", "city": "Akron", "stateOrProvince": "OH", "postalCode": "44301", "countryCode": "US" },
+            "hazardProfile": { "activeHazardTypes": ["Fire"] },
+            "hierarchy": { "buildings": [] },
+            "lifecycleStatus": "Active",
+            "createdAtUtc": "2026-01-01T00:00:00Z",
+            "updatedAtUtc": "2026-01-01T00:00:00Z"
+          },
+          {
+            "facilityId": "33333333-3333-3333-3333-333333333333",
+            "name": "Lakeside Depot",
+            "industry": { "industryName": "Logistics", "naicsCode": null },
+            "location": { "addressLine1": "2 Dock Rd", "city": "Toledo", "stateOrProvince": "OH", "postalCode": "43601", "countryCode": "US" },
+            "hazardProfile": { "activeHazardTypes": [] },
+            "hierarchy": { "buildings": [] },
+            "lifecycleStatus": "Active",
+            "createdAtUtc": "2026-01-01T00:00:00Z",
+            "updatedAtUtc": "2026-01-01T00:00:00Z"
+          }
+        ]
+        """;
+        RegisterFacilityServices(new FakeHttpMessageHandler().When(HttpMethod.Get, FacilitiesRoute, json));
+        IRenderedComponent<FacilityListPage> component = RenderComponent<FacilityListPage>();
+        component.FindAll("tbody tr").Should().HaveCount(2);
+
+        component.Find("#facility-filter").Input("River");
+
+        component.WaitForAssertion(
+            () => component.FindAll("tbody tr").Should().HaveCount(1),
+            TimeSpan.FromSeconds(2));
+        component.Find("tbody tr td").TextContent.Should().Be("Riverside Plant");
+    }
+
+    [Fact]
     public void Render_NoFacilities_ShowsEmptyComponent()
     {
         RegisterFacilityServices(new FakeHttpMessageHandler().When(HttpMethod.Get, FacilitiesRoute, "[]"));
@@ -82,5 +123,7 @@ public sealed class FacilityListPageTests : TestContext
         var apiClient = new PlantSafetyApiClient(httpClient);
         var uiService = new FacilityUiService(apiClient);
         Services.AddSingleton(new FacilityListState(uiService));
+        Services.AddSingleton<IUiDispatcher, UiDispatcher>();
+        Services.AddSingleton<IUiNavigator, UiNavigator>();
     }
 }

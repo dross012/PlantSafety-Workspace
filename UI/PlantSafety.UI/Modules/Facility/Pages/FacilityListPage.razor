@@ -8,8 +8,10 @@
    Versioning:     v1
    ============================================================================ *@
 @page "/facility/list"
+@implements IDisposable
 @inject FacilityListState State
-@inject NavigationManager Navigation
+@inject IUiNavigator Navigation
+@inject IUiDispatcher Dispatcher
 
 <PageTitle>Facilities</PageTitle>
 
@@ -30,28 +32,67 @@ else if (State.Facilities.Count == 0)
 }
 else
 {
-    <table class="ps-table">
-        <thead>
-            <tr><th>Name</th><th>Industry</th><th>City</th><th>Status</th><th>Buildings</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var facility in State.Facilities)
-            {
-                <tr @key="facility.FacilityId">
-                    <td>@facility.Name</td>
-                    <td>@facility.IndustryName</td>
-                    <td>@facility.City</td>
-                    <td>@facility.LifecycleStatus</td>
-                    <td>@facility.BuildingCount</td>
-                    <td><button type="button" @onclick="() => GoToDetail(facility.FacilityId)">View</button></td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div>
+        <label for="facility-filter">Filter by name</label>
+        <input id="facility-filter" type="text" value="@_filterText" @oninput="OnFilterInput" />
+    </div>
+
+    @if (FilteredFacilities.Count == 0)
+    {
+        <EmptyComponent Message="No facilities match your filter." />
+    }
+    else
+    {
+        <table class="ps-table">
+            <thead>
+                <tr><th>Name</th><th>Industry</th><th>City</th><th>Status</th><th>Buildings</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var facility in FilteredFacilities)
+                {
+                    <tr @key="facility.FacilityId">
+                        <td>@facility.Name</td>
+                        <td>@facility.IndustryName</td>
+                        <td>@facility.City</td>
+                        <td>@facility.LifecycleStatus</td>
+                        <td>@facility.BuildingCount</td>
+                        <td><button type="button" @onclick="() => GoToDetail(facility.FacilityId)">View</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
 }
 
 @code {
-    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+    private DebounceGuard? _filterDebounce;
+    private string _filterText = string.Empty;
+    private string _appliedFilterText = string.Empty;
+
+    private IReadOnlyList<PlantSafety.UI.Modules.Facility.Mappings.FacilityViewModel> FilteredFacilities =>
+        string.IsNullOrWhiteSpace(_appliedFilterText)
+            ? State.Facilities
+            : State.Facilities.Where(f => f.Name.Contains(_appliedFilterText, StringComparison.OrdinalIgnoreCase)).ToArray();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _filterDebounce = new DebounceGuard(Dispatcher, TimeSpan.FromMilliseconds(300));
+        await State.LoadAsync();
+    }
+
+    private void OnFilterInput(ChangeEventArgs e)
+    {
+        _filterText = e.Value?.ToString() ?? string.Empty;
+        string capturedFilterText = _filterText;
+        _filterDebounce!.Trigger(() =>
+        {
+            _appliedFilterText = capturedFilterText;
+            StateHasChanged();
+            return Task.CompletedTask;
+        });
+    }
 
     private void GoToDetail(Guid facilityId) => Navigation.NavigateTo(FacilityRoutes.Detail.Replace("{Id}", facilityId.ToString()));
+
+    public void Dispose() => _filterDebounce?.Dispose();
 }
