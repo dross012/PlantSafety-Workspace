@@ -12,15 +12,17 @@ using Microsoft.AspNetCore.Mvc;
 using AI.HazardUnderstanding.Abstractions.Engine;
 using AI.HazardUnderstanding.Abstractions.Semantics;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Runs AI.HazardUnderstanding's deterministic semantic-model builder.</summary>
 [ApiController]
 [Route("api/v1/ui/engines/hazard-understanding")]
-public sealed class HazardUnderstandingController : ControllerBase
+public sealed class HazardUnderstandingController(IClock clock) : ControllerBase
 {
     /// <summary>POST api/v1/ui/engines/hazard-understanding/understand.</summary>
     [HttpPost("understand")]
     public ActionResult<HazardUnderstandingOutput> Understand([FromBody] HazardUnderstandingInput input) =>
-        Ok(HazardUnderstandingEngine.Understand(input));
+        Ok(HazardUnderstandingEngine.Understand(input, clock.UtcNow));
 }

@@ -13,15 +13,17 @@ using AI.WorkflowAutomation.Abstractions.Automation;
 using AI.WorkflowAutomation.Abstractions.Engine;
 using AI.WorkflowAutomation.Abstractions.Rules;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Runs AI.WorkflowAutomation's deterministic workflow-artifact generator.</summary>
 [ApiController]
 [Route("api/v1/ui/engines/workflow-automation")]
-public sealed class WorkflowAutomationController : ControllerBase
+public sealed class WorkflowAutomationController(IClock clock) : ControllerBase
 {
     /// <summary>POST api/v1/ui/engines/workflow-automation/automate -- generates workflow artifacts against the standard shutdown/restart rule set.</summary>
     [HttpPost("automate")]
     public ActionResult<WorkflowAutomationOutput> Automate([FromBody] WorkflowAutomationInput input) =>
-        Ok(WorkflowAutomationEngine.Automate(input, WorkflowAutomationRuleSet.Standard));
+        Ok(WorkflowAutomationEngine.Automate(input, WorkflowAutomationRuleSet.Standard, clock.UtcNow));
 }

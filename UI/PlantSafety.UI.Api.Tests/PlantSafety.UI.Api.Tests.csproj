@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PlantSafety.UI.Api\PlantSafety.UI.Api.csproj" />
+    <ProjectReference Include="..\..\Shared\SnapshotTesting\Shared.SnapshotTesting\Shared.SnapshotTesting.csproj" />
   </ItemGroup>
 
 </Project>

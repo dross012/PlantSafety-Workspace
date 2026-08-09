@@ -12,15 +12,17 @@ using Microsoft.AspNetCore.Mvc;
 using AI.RegulatoryInterpretation.Abstractions.Engine;
 using AI.RegulatoryInterpretation.Abstractions.Interpretation;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Runs AI.RegulatoryInterpretation's deterministic jurisdiction interpretation.</summary>
 [ApiController]
 [Route("api/v1/ui/engines/regulatory-interpretation")]
-public sealed class RegulatoryInterpretationController : ControllerBase
+public sealed class RegulatoryInterpretationController(IClock clock) : ControllerBase
 {
     /// <summary>POST api/v1/ui/engines/regulatory-interpretation/interpret.</summary>
     [HttpPost("interpret")]
     public ActionResult<RegulatoryInterpretationOutput> Interpret([FromBody] RegulatoryInterpretationInput input) =>
-        Ok(RegulatoryInterpretationEngine.Interpret(input));
+        Ok(RegulatoryInterpretationEngine.Interpret(input, clock.UtcNow));
 }

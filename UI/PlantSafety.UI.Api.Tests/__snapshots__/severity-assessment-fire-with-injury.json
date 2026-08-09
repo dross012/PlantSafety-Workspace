@@ -1,0 +1,19 @@
+{
+  "result": {
+    "baseSeverity": "Severe",
+    "digitalTwinSimulatedSeverity": "Severe",
+    "finalAssessedSeverity": "Severe",
+    "notes": [
+      "Fire hazard with employee injury; confirm evacuation and fire-suppression status."
+    ],
+    "generatedAtUtc": "2029-12-31T18:00:00-06:00"
+  },
+  "inference": {
+    "inferenceId": "96ba173e-04ae-3bcd-9986-9e56f0adbf3a",
+    "modelName": "SeverityAssessmentEngine",
+    "inputHash": "76fe9a211ad932e08d6e44660bb351d7e74c8ed2886b85a609699d7a4c71e795",
+    "outputHash": "1a1a596a3872d869fc979cdf8710548bda8d54fff8ca0f573aa51ae7f278802b",
+    "correlationId": "snapshot-test-correlation-id",
+    "generatedAtUtc": "2029-12-31T18:00:00-06:00"
+  }
+}

@@ -48,7 +48,7 @@ public sealed class SeverityAssessmentController(IClock clock, IRandomProvider r
     {
         AiInferenceResult<SeverityAssessmentOutput> result = await AiInferenceExecutor.ExecuteAsync(
             input,
-            i => SeverityAssessmentEngine.Assess(i, SeverityAssessmentRuleSet.Standard),
+            i => SeverityAssessmentEngine.Assess(i, SeverityAssessmentRuleSet.Standard, clock.UtcNow),
             fallback: i => new SeverityAssessmentOutput(
                 SeverityLevel.Catastrophic,
                 i.DigitalTwinSimulatedSeverity,

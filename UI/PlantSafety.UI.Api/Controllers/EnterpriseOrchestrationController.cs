@@ -20,15 +20,17 @@ using AI.EnterpriseOrchestration.Abstractions.Engine;
 using AI.EnterpriseOrchestration.Abstractions.Orchestration;
 using AI.EnterpriseOrchestration.Abstractions.Rules;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Runs AI.EnterpriseOrchestration's deterministic cross-facility aggregation.</summary>
 [ApiController]
 [Route("api/v1/ui/engines/enterprise-orchestration")]
-public sealed class EnterpriseOrchestrationController : ControllerBase
+public sealed class EnterpriseOrchestrationController(IClock clock) : ControllerBase
 {
     /// <summary>POST api/v1/ui/engines/enterprise-orchestration/orchestrate -- aggregates across facilities against the standard alert rule set.</summary>
     [HttpPost("orchestrate")]
     public ActionResult<EnterpriseOrchestrationOutput> Orchestrate([FromBody] EnterpriseOrchestrationInput input) =>
-        Ok(EnterpriseOrchestrationEngine.Orchestrate(input, EnterpriseOrchestrationRuleSet.Standard));
+        Ok(EnterpriseOrchestrationEngine.Orchestrate(input, EnterpriseOrchestrationRuleSet.Standard, clock.UtcNow));
 }

@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 using Enterprise.PredictiveModeling.Abstractions.Engine;
 using Enterprise.PredictiveModeling.Abstractions.Forecasts;
 
+using Shared.Deterministic.Abstractions.Clock;
+
 namespace PlantSafety.UI.Api.Controllers;
 
 /// <summary>Request body for the risk/hazard/severity forecasts (double series).</summary>
@@ -23,25 +25,25 @@ public sealed record IntSeriesForecastRequest(IReadOnlyList<int> History, int Wi
 /// <summary>Runs Enterprise.PredictiveModeling's four deterministic enterprise-wide forecasts.</summary>
 [ApiController]
 [Route("api/v1/ui/engines/predictive-modeling")]
-public sealed class PredictiveModelingController : ControllerBase
+public sealed class PredictiveModelingController(IClock clock) : ControllerBase
 {
     /// <summary>POST .../risk.</summary>
     [HttpPost("risk")]
     public ActionResult<EnterpriseRiskForecast> Risk([FromBody] DoubleSeriesForecastRequest request) =>
-        Ok(EnterprisePredictiveModelEngine.ForecastRisk(request.History, request.WindowSize));
+        Ok(EnterprisePredictiveModelEngine.ForecastRisk(request.History, request.WindowSize, clock.UtcNow));
 
     /// <summary>POST .../compliance.</summary>
     [HttpPost("compliance")]
     public ActionResult<EnterpriseComplianceForecast> Compliance([FromBody] DoubleSeriesForecastRequest request) =>
-        Ok(EnterprisePredictiveModelEngine.ForecastCompliance(request.History, request.WindowSize));
+        Ok(EnterprisePredictiveModelEngine.ForecastCompliance(request.History, request.WindowSize, clock.UtcNow));
 
     /// <summary>POST .../hazard.</summary>
     [HttpPost("hazard")]
     public ActionResult<EnterpriseHazardForecast> Hazard([FromBody] IntSeriesForecastRequest request) =>
-        Ok(EnterprisePredictiveModelEngine.ForecastHazard(request.History, request.WindowSize));
+        Ok(EnterprisePredictiveModelEngine.ForecastHazard(request.History, request.WindowSize, clock.UtcNow));
 
     /// <summary>POST .../severity.</summary>
     [HttpPost("severity")]
     public ActionResult<EnterpriseSeverityForecast> Severity([FromBody] IntSeriesForecastRequest request) =>
-        Ok(EnterprisePredictiveModelEngine.ForecastSeverity(request.History, request.WindowSize));
+        Ok(EnterprisePredictiveModelEngine.ForecastSeverity(request.History, request.WindowSize, clock.UtcNow));
 }
