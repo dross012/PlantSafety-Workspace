@@ -1,0 +1,45 @@
+@* ============================================================================
+   Purpose:        Runs AI.WorkflowAutomation's deterministic workflow-
+                    artifact generator (Phase E.3), wrapping Shared.
+                    WorkflowEngine + Enterprise.WorkflowOrchestration.
+   Module:         AiWorkflowAutomation
+   StateContainer: AiWorkflowAutomationConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by AiWorkflowAutomationUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-workflow-automation/console"
+@inject AiWorkflowAutomationConsoleState State
+
+<PageTitle>AI Workflow Automation</PageTitle>
+
+<h1>AI Workflow Automation</h1>
+
+<EngineConsoleComponent
+    Title="Automate Workflow"
+    Description="Generates required actions/SOP/permit/evacuation/shutdown/restart steps and a deterministic execution plan."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.AutomateAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "context": {
+        "hazardType": "Fire",
+        "severityLevel": "Severe",
+        "affectedScope": "Building",
+        "employeeExposureCount": 1,
+        "machineFailureCount": 0,
+        "eventChainLength": 2
+      },
+      "requiresShutdown": true,
+      "requiresRestart": false
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

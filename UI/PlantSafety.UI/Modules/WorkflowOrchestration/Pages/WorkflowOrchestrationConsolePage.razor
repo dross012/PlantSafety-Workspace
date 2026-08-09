@@ -1,0 +1,41 @@
+@* ============================================================================
+   Purpose:        Runs Enterprise.WorkflowOrchestration's deterministic
+                    execution-plan builder (Evacuation -> Shutdown -> Permit
+                    -> SOP -> RequiredAction -> Restart ordering). State
+                    transition guarding is reachable via the same API's
+                    /transition endpoint (not given its own dedicated page in
+                    this pass -- disclosed scoping decision).
+   Module:         WorkflowOrchestration
+   StateContainer: WorkflowOrchestrationConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by WorkflowOrchestrationUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/workflow-orchestration/console"
+@inject WorkflowOrchestrationConsoleState State
+
+<PageTitle>Workflow Orchestration</PageTitle>
+
+<h1>Enterprise Workflow Orchestration</h1>
+
+<EngineConsoleComponent
+    Title="Build Execution Plan"
+    Description="Orders the given workflow steps into a deterministic execution plan (Evacuation, Shutdown, Permit, SOP, RequiredAction, Restart)."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.BuildPlanAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    [
+      { "stepType": "RequiredAction", "code": "MEDICAL-EVALUATION", "description": "Evaluate exposed personnel." },
+      { "stepType": "EvacuationTrigger", "code": "EVAC-BUILDING", "description": "Evacuate the affected building." },
+      { "stepType": "SopTrigger", "code": "FIRE-RESPONSE-SOP", "description": "Fire hazard detected." }
+    ]
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

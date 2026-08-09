@@ -1,0 +1,78 @@
+@* ============================================================================
+   Purpose:        Shows a single machine's detail and lets a maintainer
+                    record a failure.
+   Module:         Machine
+   StateContainer: MachineDetailState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  navigation/API calls logged by MachineUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/machine/detail/{Id:guid}"
+@inject MachineDetailState State
+
+<PageTitle>Machine Detail</PageTitle>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading machine..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" />
+}
+else if (State.Machine is null)
+{
+    <EmptyComponent Message="Machine not found." />
+}
+else
+{
+    <h1>@State.Machine.Name</h1>
+    <dl>
+        <dt>Type</dt><dd>@State.Machine.MachineType</dd>
+        <dt>Facility</dt><dd>@State.Machine.FacilityId</dd>
+        <dt>Area</dt><dd>@State.Machine.AreaDescription</dd>
+        <dt>Next Maintenance</dt><dd>@State.Machine.NextScheduledMaintenanceAtUtc?.ToString("u")</dd>
+        <dt>Failures</dt><dd>@State.Machine.FailureRecordCount</dd>
+        <dt>Safety Score</dt><dd>@State.Machine.SafetyScore</dd>
+    </dl>
+
+    <EditForm Model="@_failureModel" OnValidSubmit="SubmitFailureAsync">
+        <label for="failure-description">Record Failure</label>
+        <InputText id="failure-description" @bind-Value="_failureModel.Description" />
+        <label for="failure-hazard">Resulting Hazard Type</label>
+        <InputSelect id="failure-hazard" @bind-Value="_failureModel.ResultingHazardType">
+            <option value="Fire">Fire</option>
+            <option value="ChemicalSpill">ChemicalSpill</option>
+            <option value="Injury">Injury</option>
+            <option value="EnvironmentalRelease">EnvironmentalRelease</option>
+            <option value="ConfinedSpace">ConfinedSpace</option>
+            <option value="LOTOFailure">LOTOFailure</option>
+            <option value="HotWork">HotWork</option>
+            <option value="FleetIncident">FleetIncident</option>
+            <option value="Other">Other</option>
+        </InputSelect>
+        <button type="submit">Record</button>
+    </EditForm>
+}
+
+@code {
+    /// <summary>The machine id from the route.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private readonly FailureFormModel _failureModel = new();
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(Id);
+
+    private async Task SubmitFailureAsync()
+    {
+        await State.RecordFailureAsync(_failureModel.Description, _failureModel.ResultingHazardType);
+        _failureModel.Description = string.Empty;
+    }
+
+    private sealed class FailureFormModel
+    {
+        public string Description { get; set; } = string.Empty;
+        public string ResultingHazardType { get; set; } = "Other";
+    }
+}

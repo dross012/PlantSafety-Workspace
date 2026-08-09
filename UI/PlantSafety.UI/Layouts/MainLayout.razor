@@ -1,0 +1,30 @@
+@* ============================================================================
+   Purpose:        The required, global, non-overridable AppShell (Section
+                    7): header, navigation, content area, footer,
+                    environment banner, user identity indicator.
+   Inputs:         none (layout, no business/API/domain logic).
+   Outputs:        none.
+   Accessibility:  landmark elements (header/nav/main/footer), skip-nav link.
+   ============================================================================ *@
+@inherits LayoutComponentBase
+
+<a href="#ps-main-content" class="ps-skip-nav">Skip to content</a>
+
+<header class="ps-header">
+    <span class="ps-header__title">PlantSafety.UI</span>
+    <span class="ps-header__environment" aria-label="Environment">DEV</span>
+    <span class="ps-header__version" aria-label="Version">v1.0</span>
+    <span class="ps-header__identity" aria-label="Current user">local-operator</span>
+</header>
+
+<nav class="ps-nav" aria-label="Module navigation">
+    <PlantSafety.UI.Components.ModuleNavComponent />
+</nav>
+
+<main id="ps-main-content" class="ps-main">
+    @Body
+</main>
+
+<footer class="ps-footer">
+    <span>PlantSafety.UI &mdash; Blazor Hybrid</span>
+</footer>

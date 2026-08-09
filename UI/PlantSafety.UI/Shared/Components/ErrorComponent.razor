@@ -1,0 +1,25 @@
+@* ============================================================================
+   Purpose:        Deterministic "Error" state banner, shared across every
+                    module page. Renders the backend-supplied message
+                    verbatim -- never rewrites/hides it (Section 12).
+   Inputs:         Error (message text), OnRetry (optional retry callback).
+   Outputs:        OnRetry EventCallback.
+   Accessibility:  role="alert" so screen readers announce it immediately.
+   ============================================================================ *@
+<div class="ps-error" role="alert">
+    <p class="ps-error__message">@Error</p>
+    @if (OnRetry.HasDelegate)
+    {
+        <button type="button" class="ps-error__retry" @onclick="() => OnRetry.InvokeAsync()">Retry</button>
+    }
+</div>
+
+@code {
+    /// <summary>The error message to display, verbatim.</summary>
+    [Parameter, EditorRequired]
+    public string Error { get; set; } = string.Empty;
+
+    /// <summary>Raised when the user activates the retry action.</summary>
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+}

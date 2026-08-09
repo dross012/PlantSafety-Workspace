@@ -1,0 +1,10 @@
+.ps-error {
+    padding: var(--ps-spacing-md, 1rem);
+    border: 0.0625rem solid var(--ps-color-danger, red);
+    border-radius: var(--ps-radius-sm, 0.25rem);
+    color: var(--ps-color-danger, red);
+}
+
+.ps-error__retry {
+    margin-top: var(--ps-spacing-sm, 0.5rem);
+}

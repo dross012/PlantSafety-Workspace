@@ -1,0 +1,45 @@
+@* ============================================================================
+   Purpose:        Runs AI.Reasoning's deterministic safety reasoning session
+                    (Phase E.1). No UI-authorable rule catalog yet (rules are
+                    typed predicates) -- evaluates with an empty rule set,
+                    still returning the aggregated worst-case severity.
+   Module:         AiReasoning
+   StateContainer: AiReasoningConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by AiReasoningUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-reasoning/console"
+@inject AiReasoningConsoleState State
+
+<PageTitle>AI Reasoning</PageTitle>
+
+<h1>AI Safety Reasoning</h1>
+
+<EngineConsoleComponent
+    Title="Reason Over Safety Context"
+    Description="Deterministic, explicit, rule-based reasoning over facility/employee/machine/hazard/severity/regulatory/workflow/graph/digital-twin signals -- no ML, no model calls."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.ReasonAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "facilityStatus": "Active",
+      "employeeInjuryCount": 1,
+      "machineFailureCount": 0,
+      "hazardType": "Fire",
+      "severityLevel": "Severe",
+      "applicableJurisdictions": ["Osha"],
+      "workflowState": "InProgress",
+      "enterpriseGraphConnectedFacilityCount": 2,
+      "digitalTwinSimulatedSeverity": "Severe"
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

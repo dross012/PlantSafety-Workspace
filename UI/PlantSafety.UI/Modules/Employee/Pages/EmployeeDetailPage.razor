@@ -1,0 +1,65 @@
+@* ============================================================================
+   Purpose:        Shows a single employee's detail and lets a supervisor
+                    record an injury.
+   Module:         Employee
+   StateContainer: EmployeeDetailState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  navigation/API calls logged by EmployeeUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/employee/detail/{Id:guid}"
+@inject EmployeeDetailState State
+
+<PageTitle>Employee Detail</PageTitle>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading employee..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" />
+}
+else if (State.Employee is null)
+{
+    <EmptyComponent Message="Employee not found." />
+}
+else
+{
+    <h1>@State.Employee.Name</h1>
+    <dl>
+        <dt>Role</dt><dd>@State.Employee.Role</dd>
+        <dt>Completed Training</dt><dd>@State.Employee.CompletedTrainingCount</dd>
+        <dt>Certifications</dt><dd>@State.Employee.CertificationCount</dd>
+        <dt>Exposure Records</dt><dd>@State.Employee.ExposureRecordCount</dd>
+        <dt>Injuries</dt><dd>@State.Employee.InjuryCount</dd>
+        <dt>Safety Score</dt><dd>@State.Employee.SafetyScore</dd>
+    </dl>
+
+    <EditForm Model="@_injuryModel" OnValidSubmit="SubmitInjuryAsync">
+        <label for="injury-description">Record Injury</label>
+        <InputText id="injury-description" @bind-Value="_injuryModel.Description" />
+        <button type="submit">Record</button>
+    </EditForm>
+}
+
+@code {
+    /// <summary>The employee id from the route.</summary>
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private readonly InjuryFormModel _injuryModel = new();
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(Id);
+
+    private async Task SubmitInjuryAsync()
+    {
+        await State.RecordInjuryAsync(_injuryModel.Description);
+        _injuryModel.Description = string.Empty;
+    }
+
+    private sealed class InjuryFormModel
+    {
+        public string Description { get; set; } = string.Empty;
+    }
+}

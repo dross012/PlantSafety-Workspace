@@ -1,0 +1,12 @@
+﻿<Router AppAssembly="typeof(MauiProgram).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(PlantSafety.UI.Layouts.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <PlantSafety.UI.Layouts.MainLayout>
+            <p role="alert">Sorry, there's nothing at this address.</p>
+        </PlantSafety.UI.Layouts.MainLayout>
+    </NotFound>
+</Router>

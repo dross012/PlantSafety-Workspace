@@ -1,0 +1,38 @@
+@* ============================================================================
+   Purpose:        Renders the module navigation menu for the AppShell.
+                    Uses standard NavLink hyperlinks only (browser-driven
+                    href navigation) -- never calls NavigationManager.
+                    NavigateTo() itself, honoring "only pages may navigate
+                    imperatively" (Section 8).
+   Inputs:         none.
+   Outputs:        none.
+   Accessibility:  a real <nav> list of links; NavLink sets aria-current
+                    automatically for the active route.
+   ============================================================================ *@
+@using PlantSafety.UI.Routes
+
+<ul class="ps-module-nav">
+    <li><NavLink href="@FacilityRoutes.List">Facilities</NavLink></li>
+    <li><NavLink href="@EmployeeRoutes.List">Employees</NavLink></li>
+    <li><NavLink href="@MachineRoutes.List">Machines</NavLink></li>
+    <li><NavLink href="@WorkflowEngineRoutes.Evaluate">Workflow Engine</NavLink></li>
+    <li><NavLink href="@PredictiveModelsRoutes.Console">Predictive Models</NavLink></li>
+    <li><NavLink href="@DataLakeRoutes.Dashboard">Data Lake</NavLink></li>
+    <li><NavLink href="@EnterpriseGraphRoutes.Console">Enterprise Graph</NavLink></li>
+    <li><NavLink href="@EnterpriseDashboardRoutes.Dashboard">Enterprise Dashboard</NavLink></li>
+    <li><NavLink href="@RulesEngineRoutes.Console">Rules Engine</NavLink></li>
+    <li><NavLink href="@WorkflowOrchestrationRoutes.Console">Workflow Orchestration</NavLink></li>
+    <li><NavLink href="@DigitalTwinRoutes.Console">Digital Twin</NavLink></li>
+    <li><NavLink href="@PredictiveModelingRoutes.Console">Predictive Modeling</NavLink></li>
+    <li><NavLink href="@IntegrationRoutes.Console">Integration</NavLink></li>
+    <li><NavLink href="@TenantFacilityRegistryRoutes.List">Tenant Facility Registry</NavLink></li>
+    <li><NavLink href="@AiReasoningRoutes.Console">AI Reasoning</NavLink></li>
+    <li><NavLink href="@AiHazardUnderstandingRoutes.Console">AI Hazard Understanding</NavLink></li>
+    <li><NavLink href="@AiWorkflowAutomationRoutes.Console">AI Workflow Automation</NavLink></li>
+    <li><NavLink href="@AiRegulatoryInterpretationRoutes.Console">AI Regulatory Interpretation</NavLink></li>
+    <li><NavLink href="@AiSeverityAssessmentRoutes.Console">AI Severity Assessment</NavLink></li>
+    <li><NavLink href="@AiPredictiveOptimizationRoutes.Console">AI Predictive Optimization</NavLink></li>
+    <li><NavLink href="@AiDigitalTwinLearningRoutes.Console">AI Digital Twin Learning</NavLink></li>
+    <li><NavLink href="@AiSafetyCopilotRoutes.Dashboard">AI Safety Copilot</NavLink></li>
+    <li><NavLink href="@AiEnterpriseOrchestrationRoutes.Console">AI Enterprise Orchestration</NavLink></li>
+</ul>

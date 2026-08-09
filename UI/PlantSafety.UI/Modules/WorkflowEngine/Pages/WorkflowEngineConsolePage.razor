@@ -1,0 +1,41 @@
+@* ============================================================================
+   Purpose:        Runs Shared.WorkflowEngine's deterministic per-event
+                    evaluation (required actions/SOP/permit/evacuation
+                    triggers/notification routing).
+   Module:         WorkflowEngine
+   StateContainer: WorkflowEngineConsoleState
+   LoadingStates:  Ready / Error (single-action console, no initial load).
+   Observability:  API calls logged by WorkflowEngineUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/workflow-engine/evaluate"
+@inject WorkflowEngineConsoleState State
+
+<PageTitle>Workflow Engine</PageTitle>
+
+<h1>Workflow Engine</h1>
+
+<EngineConsoleComponent
+    Title="Evaluate Workflow Context"
+    Description="Evaluates a HazardType/SeverityLevel/scope/exposure/failure/chain-length context into required actions, SOP/permit/evacuation triggers, and notification routings."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.EvaluateAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "hazardType": "Fire",
+      "severityLevel": "Severe",
+      "affectedScope": "Building",
+      "employeeExposureCount": 1,
+      "machineFailureCount": 0,
+      "eventChainLength": 2
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

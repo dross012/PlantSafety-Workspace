@@ -1,0 +1,40 @@
+@* ============================================================================
+   Purpose:        Runs AI.HazardUnderstanding's deterministic semantic-model
+                    builder (classification, related hazards, propagation
+                    chain, regulatory impact, multi-hazard chain) (Phase E.2).
+   Module:         AiHazardUnderstanding
+   StateContainer: AiHazardUnderstandingConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by AiHazardUnderstandingUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-hazard-understanding/console"
+@inject AiHazardUnderstandingConsoleState State
+
+<PageTitle>AI Hazard Understanding</PageTitle>
+
+<h1>AI Hazard Understanding</h1>
+
+<EngineConsoleComponent
+    Title="Understand Hazard"
+    Description="Composes Path B/C's real classification/propagation/severity/regulatory engines into a full semantic hazard model."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.UnderstandAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "hazardType": "Fire",
+      "originPropagationStage": "Smoke",
+      "employeeInjuryCount": 1,
+      "machineFailureCount": 0,
+      "eventChainLength": 2
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

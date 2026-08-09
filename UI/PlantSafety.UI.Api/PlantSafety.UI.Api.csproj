@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+  </ItemGroup>
+
+  <!-- Path B/C: Shared.* real aggregates + pure deterministic engines -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\FacilityDomain\Shared.FacilityDomain.Abstractions\Shared.FacilityDomain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\FacilityDomain\Shared.FacilityDomain.Infrastructure\Shared.FacilityDomain.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\EmployeeDomain\Shared.EmployeeDomain.Abstractions\Shared.EmployeeDomain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\EmployeeDomain\Shared.EmployeeDomain.Infrastructure\Shared.EmployeeDomain.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\MachineDomain\Shared.MachineDomain.Abstractions\Shared.MachineDomain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\MachineDomain\Shared.MachineDomain.Infrastructure\Shared.MachineDomain.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\WorkflowEngine\Shared.WorkflowEngine.Abstractions\Shared.WorkflowEngine.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\PredictiveModels\Shared.PredictiveModels.Abstractions\Shared.PredictiveModels.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\SafetyData\Shared.SafetyData.Abstractions\Shared.SafetyData.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\SafetyData\Shared.SafetyData.Infrastructure\Shared.SafetyData.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- Path D: Enterprise.* platform -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\Enterprise\Graph\Enterprise.Graph.Abstractions\Enterprise.Graph.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Enterprise\ApiGateway\Enterprise.ApiGateway\Enterprise.ApiGateway.csproj" />
+    <ProjectReference Include="..\..\Enterprise\DataLake\Enterprise.DataLake.Abstractions\Enterprise.DataLake.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Enterprise\DataLake\Enterprise.DataLake.Infrastructure\Enterprise.DataLake.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Enterprise\Dashboard\Enterprise.Dashboard\Enterprise.Dashboard.csproj" />
+    <ProjectReference Include="..\..\Enterprise\RulesEngine\Enterprise.RulesEngine.Abstractions\Enterprise.RulesEngine.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Enterprise\WorkflowOrchestration\Enterprise.WorkflowOrchestration.Abstractions\Enterprise.WorkflowOrchestration.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Enterprise\DigitalTwin\Enterprise.DigitalTwin.Abstractions\Enterprise.DigitalTwin.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Enterprise\PredictiveModeling\Enterprise.PredictiveModeling.Abstractions\Enterprise.PredictiveModeling.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Enterprise\Integration\Enterprise.Integration\Enterprise.Integration.csproj" />
+  </ItemGroup>
+
+  <!-- Path E: AI.* deterministic rule engines -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\AI\Reasoning\AI.Reasoning.Abstractions\AI.Reasoning.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI\HazardUnderstanding\AI.HazardUnderstanding.Abstractions\AI.HazardUnderstanding.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI\WorkflowAutomation\AI.WorkflowAutomation.Abstractions\AI.WorkflowAutomation.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI\RegulatoryInterpretation\AI.RegulatoryInterpretation.Abstractions\AI.RegulatoryInterpretation.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI\SeverityAssessment\AI.SeverityAssessment.Abstractions\AI.SeverityAssessment.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI\PredictiveOptimization\AI.PredictiveOptimization.Abstractions\AI.PredictiveOptimization.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI\DigitalTwinLearning\AI.DigitalTwinLearning.Abstractions\AI.DigitalTwinLearning.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI\SafetyCopilot\AI.SafetyCopilot.Abstractions\AI.SafetyCopilot.Abstractions.csproj" />
+    <ProjectReference Include="..\..\AI\EnterpriseOrchestration\AI.EnterpriseOrchestration.Abstractions\AI.EnterpriseOrchestration.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,154 @@
+@* ============================================================================
+   Purpose:        The AI Safety Copilot dashboard -- an operator/supervisor
+                    fills in a hazard/severity/exposure context and gets
+                    audience-tailored guidance (Phase E.8), composing
+                    AI.HazardUnderstanding/WorkflowAutomation/
+                    RegulatoryInterpretation/SeverityAssessment.
+   Module:         AiSafetyCopilot
+   StateContainer: AiSafetyCopilotDashboardState
+   LoadingStates:  Ready / Error (single-action dashboard).
+   Observability:  API calls logged by AiSafetyCopilotUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-safety-copilot/dashboard"
+@inject AiSafetyCopilotDashboardState State
+
+<PageTitle>AI Safety Copilot</PageTitle>
+
+<h1>AI Safety Copilot</h1>
+
+<EditForm Model="@_model" OnValidSubmit="SubmitAsync">
+    <div>
+        <label for="audience">Audience</label>
+        <InputSelect id="audience" @bind-Value="_model.Audience">
+            <option value="Employee">Employee</option>
+            <option value="Supervisor">Supervisor</option>
+        </InputSelect>
+    </div>
+    <div>
+        <label for="hazard-type">Hazard Type</label>
+        <InputSelect id="hazard-type" @bind-Value="_model.HazardType">
+            <option value="Fire">Fire</option>
+            <option value="ChemicalSpill">ChemicalSpill</option>
+            <option value="Injury">Injury</option>
+            <option value="EnvironmentalRelease">EnvironmentalRelease</option>
+            <option value="ConfinedSpace">ConfinedSpace</option>
+            <option value="LOTOFailure">LOTOFailure</option>
+            <option value="HotWork">HotWork</option>
+            <option value="FleetIncident">FleetIncident</option>
+            <option value="Other">Other</option>
+        </InputSelect>
+    </div>
+    <div>
+        <label for="origin-stage">Origin Propagation Stage</label>
+        <InputSelect id="origin-stage" @bind-Value="_model.OriginPropagationStage">
+            <option value="Smoke">Smoke</option>
+            <option value="Evacuation">Evacuation</option>
+            <option value="Vapor">Vapor</option>
+            <option value="Exposure">Exposure</option>
+            <option value="Injury">Injury</option>
+            <option value="Shutdown">Shutdown</option>
+        </InputSelect>
+    </div>
+    <div>
+        <label for="severity">Severity Level</label>
+        <InputSelect id="severity" @bind-Value="_model.SeverityLevel">
+            <option value="Minor">Minor</option>
+            <option value="Moderate">Moderate</option>
+            <option value="Severe">Severe</option>
+            <option value="Catastrophic">Catastrophic</option>
+        </InputSelect>
+    </div>
+    <div>
+        <label for="scope">Affected Scope</label>
+        <InputSelect id="scope" @bind-Value="_model.AffectedScope">
+            <option value="Zone">Zone</option>
+            <option value="Area">Area</option>
+            <option value="Building">Building</option>
+            <option value="Facility">Facility</option>
+        </InputSelect>
+    </div>
+    <div>
+        <label for="injury-count">Employee Injury Count</label>
+        <InputNumber id="injury-count" @bind-Value="_model.EmployeeInjuryCount" />
+    </div>
+    <div>
+        <label for="exposure-count">Employee Exposure Count</label>
+        <InputNumber id="exposure-count" @bind-Value="_model.EmployeeExposureCount" />
+    </div>
+    <div>
+        <label for="failure-count">Machine Failure Count</label>
+        <InputNumber id="failure-count" @bind-Value="_model.MachineFailureCount" />
+    </div>
+    <div>
+        <label for="chain-length">Event Chain Length</label>
+        <InputNumber id="chain-length" @bind-Value="_model.EventChainLength" />
+    </div>
+    <div>
+        <label for="twin-severity">Digital Twin Simulated Severity</label>
+        <InputSelect id="twin-severity" @bind-Value="_model.DigitalTwinSimulatedSeverity">
+            <option value="Minor">Minor</option>
+            <option value="Moderate">Moderate</option>
+            <option value="Severe">Severe</option>
+            <option value="Catastrophic">Catastrophic</option>
+        </InputSelect>
+    </div>
+    <button type="submit" disabled="@State.IsLoading">Get Guidance</button>
+</EditForm>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Composing guidance..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" />
+}
+else if (State.Guidance is null)
+{
+    <EmptyComponent Message="Submit a context above to get tailored guidance." />
+}
+else
+{
+    <h2>Actions</h2>
+    <ul>
+        @foreach (var action in State.Guidance.Actions)
+        {
+            <li>@action.ActionCode &mdash; @action.Description</li>
+        }
+    </ul>
+
+    <h2>Recommendations</h2>
+    <ul>
+        @foreach (var recommendation in State.Guidance.Recommendations)
+        {
+            <li><strong>@recommendation.Title:</strong> @recommendation.Guidance</li>
+        }
+    </ul>
+}
+
+@code {
+    private readonly CopilotFormModel _model = new();
+
+    private async Task SubmitAsync()
+    {
+        var request = new PlantSafety.UI.Modules.AiSafetyCopilot.Services.SafetyCopilotGuidanceRequest(
+            _model.Audience, _model.HazardType, _model.OriginPropagationStage, _model.SeverityLevel, _model.AffectedScope,
+            _model.EmployeeInjuryCount, _model.EmployeeExposureCount, _model.MachineFailureCount, _model.EventChainLength, _model.DigitalTwinSimulatedSeverity);
+        await State.RequestGuidanceAsync(request);
+    }
+
+    private sealed class CopilotFormModel
+    {
+        public string Audience { get; set; } = "Employee";
+        public string HazardType { get; set; } = "Fire";
+        public string OriginPropagationStage { get; set; } = "Smoke";
+        public string SeverityLevel { get; set; } = "Severe";
+        public string AffectedScope { get; set; } = "Building";
+        public int EmployeeInjuryCount { get; set; } = 1;
+        public int EmployeeExposureCount { get; set; } = 1;
+        public int MachineFailureCount { get; set; }
+        public int EventChainLength { get; set; } = 2;
+        public string DigitalTwinSimulatedSeverity { get; set; } = "Severe";
+    }
+}

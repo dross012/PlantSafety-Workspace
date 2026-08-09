@@ -1,0 +1,39 @@
+@* ============================================================================
+   Purpose:        Runs AI.EnterpriseOrchestration's deterministic
+                    cross-facility aggregation (Phase E.9). This is the one
+                    console in this pass whose full input (per-facility,
+                    nesting four other engines' outputs) is accepted as raw,
+                    advanced JSON rather than flattened into a form --
+                    disclosed scoping decision, see the final delivery report.
+   Module:         AiEnterpriseOrchestration
+   StateContainer: AiEnterpriseOrchestrationConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by AiEnterpriseOrchestrationUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/ai-enterprise-orchestration/console"
+@inject AiEnterpriseOrchestrationConsoleState State
+
+<PageTitle>AI Enterprise Orchestration</PageTitle>
+
+<h1>AI Enterprise Orchestration</h1>
+
+<EngineConsoleComponent
+    Title="Orchestrate Across Facilities"
+    Description="Aggregates already-computed per-facility AI.WorkflowAutomation/HazardUnderstanding/RegulatoryInterpretation/PredictiveOptimization outputs across the enterprise. Advanced/expert JSON input -- see other AI.* consoles to produce each facility's per-engine output first."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.OrchestrateAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "facilities": []
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

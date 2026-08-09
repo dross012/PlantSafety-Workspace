@@ -1,0 +1,19 @@
+@* ============================================================================
+   Purpose:        Deterministic "Loading" state view, shared across every
+                    module page (Section 5: every page supports Loading/
+                    Error/Empty/Ready).
+   Inputs:         Message (optional override text).
+   Outputs:        none.
+   Accessibility:  role="status", aria-live="polite" so screen readers
+                    announce the loading state without focus stealing.
+   ============================================================================ *@
+<div class="ps-loading" role="status" aria-live="polite">
+    <span class="ps-loading__spinner" aria-hidden="true"></span>
+    <span class="ps-loading__text">@Message</span>
+</div>
+
+@code {
+    /// <summary>The loading message to display.</summary>
+    [Parameter]
+    public string Message { get; set; } = "Loading...";
+}

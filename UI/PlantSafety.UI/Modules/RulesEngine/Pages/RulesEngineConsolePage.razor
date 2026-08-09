@@ -1,0 +1,46 @@
+@* ============================================================================
+   Purpose:        Runs Enterprise.RulesEngine's deterministic condition/
+                    action rule evaluation against a caller-defined rule set
+                    and fact dictionary.
+   Module:         RulesEngine
+   StateContainer: RulesEngineConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by RulesEngineUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/rules-engine/console"
+@inject RulesEngineConsoleState State
+
+<PageTitle>Rules Engine</PageTitle>
+
+<h1>Enterprise Rules Engine</h1>
+
+<EngineConsoleComponent
+    Title="Evaluate Rules"
+    Description="Evaluates every supplied rule (AND-only conditions) against the supplied fact dictionary."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.EvaluateAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "rules": [
+        {
+          "ruleId": "11111111-1111-1111-1111-111111111111",
+          "name": "High Severity Escalation",
+          "ruleType": "Escalation",
+          "conditions": [ { "factKey": "SeverityLevel", "operator": "Equals", "comparisonValue": "Catastrophic" } ],
+          "actions": [ { "actionCode": "NOTIFY-EXECUTIVE", "description": "Notify executive leadership." } ],
+          "isEnabled": true
+        }
+      ],
+      "facts": { "SeverityLevel": "Catastrophic" }
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}

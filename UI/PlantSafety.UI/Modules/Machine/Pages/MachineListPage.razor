@@ -1,0 +1,55 @@
+@* ============================================================================
+   Purpose:        Lists every machine (Shared.MachineDomain, real
+                    repository-backed aggregate).
+   Module:         Machine
+   StateContainer: MachineListState
+   LoadingStates:  Loading / Error / Empty / Ready
+   Observability:  navigation/API calls logged by MachineUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/machine/list"
+@inject MachineListState State
+@inject NavigationManager Navigation
+
+<PageTitle>Machines</PageTitle>
+
+<h1>Machines</h1>
+<button type="button" @onclick="() => Navigation.NavigateTo(MachineRoutes.Create)">New Machine</button>
+
+@if (State.IsLoading)
+{
+    <LoadingComponent Message="Loading machines..." />
+}
+else if (State.HasError)
+{
+    <ErrorComponent Error="@State.Error" OnRetry="State.RefreshAsync" />
+}
+else if (State.Machines.Count == 0)
+{
+    <EmptyComponent Message="No machines yet." />
+}
+else
+{
+    <table class="ps-table">
+        <thead><tr><th>Name</th><th>Type</th><th>Area</th><th>Safety Score</th><th>Failures</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var machine in State.Machines)
+            {
+                <tr @key="machine.MachineId">
+                    <td>@machine.Name</td>
+                    <td>@machine.MachineType</td>
+                    <td>@machine.AreaDescription</td>
+                    <td>@machine.SafetyScore</td>
+                    <td>@machine.FailureRecordCount</td>
+                    <td><button type="button" @onclick="() => GoToDetail(machine.MachineId)">View</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    protected override async Task OnInitializedAsync() => await State.LoadAsync();
+
+    private void GoToDetail(Guid machineId) => Navigation.NavigateTo(MachineRoutes.Detail.Replace("{Id}", machineId.ToString()));
+}

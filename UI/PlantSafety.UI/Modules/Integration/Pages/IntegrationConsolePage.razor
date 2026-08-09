@@ -1,0 +1,46 @@
+@* ============================================================================
+   Purpose:        Ingests an inbound event from an external enterprise
+                    system (HR/ERP/MES/CMMS/EHS) via Enterprise.Integration's
+                    deterministic, explicit field-mapping adapters.
+   Module:         Integration
+   StateContainer: IntegrationConsoleState
+   LoadingStates:  Ready / Error (single-action console).
+   Observability:  API calls logged by IntegrationUiService/ApiClient.
+   Versioning:     v1
+   ============================================================================ *@
+@page "/integration/console"
+@inject IntegrationConsoleState State
+
+<PageTitle>Integration</PageTitle>
+
+<h1>Enterprise Integration</h1>
+
+<label for="system-select">Source System</label>
+<select id="system-select" @bind="State.SelectedSystem">
+    <option value="Hr">HR</option>
+    <option value="Erp">ERP</option>
+    <option value="Mes">MES</option>
+    <option value="Cmms">CMMS</option>
+    <option value="Ehs">EHS</option>
+</select>
+
+<EngineConsoleComponent
+    Title="Ingest External Event"
+    Description="Adapts a raw external-system payload into an EnterpriseIntegrationEvent via an explicit, deterministic field mapping. Unmapped fields are dropped, never guessed."
+    InputJson="@State.InputJson"
+    InputJsonChanged="@(json => State.InputJson = json)"
+    ResultJson="@State.ResultJson"
+    IsBusy="@State.IsLoading"
+    ErrorMessage="@State.Error"
+    OnRun="@(async json => { State.InputJson = json; await State.IngestAsync(); })" />
+
+@code {
+    private const string SampleJson = """
+    {
+      "eventType": "EmployeeUpdated",
+      "rawPayload": { "employee_id": "12345", "employee_name": "Jane Doe" }
+    }
+    """;
+
+    protected override async Task OnInitializedAsync() => await State.LoadAsync(SampleJson);
+}
