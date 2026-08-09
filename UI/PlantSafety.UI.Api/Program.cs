@@ -24,6 +24,8 @@ using Enterprise.Integration.Mapping;
 using Shared.Deterministic.Abstractions;
 using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Policy;
+using Shared.Telemetry.Abstractions.Correlation;
+using Shared.Telemetry.Abstractions.Events;
 
 using Shared.EmployeeDomain.Abstractions.ValueObjects;
 using Shared.EmployeeDomain.Infrastructure.DependencyInjection;
@@ -107,6 +109,12 @@ builder.Services.AddCors(options => options.AddPolicy(uiCorsPolicy, policy =>
 builder.Services.AddSingleton(new CircuitBreaker(CircuitBreakerPolicy.Standard, new SystemClock()));
 builder.Services.AddSingleton<IErrorPolicy>(sp => new StandardErrorPolicy(ErrorRetryPolicy.Standard, sp.GetRequiredService<CircuitBreaker>()));
 
+// ---- Phase 2.4: structured, JSON-formatted logging + per-request correlation context. ----
+builder.Logging.AddJsonConsole();
+builder.Services.AddScoped<CorrelationContext>();
+builder.Services.AddScoped<ICorrelationContext>(sp => sp.GetRequiredService<CorrelationContext>());
+builder.Services.AddSingleton<ILogEventWriter, LogEventWriter>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -114,13 +122,14 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(context =>
     GlobalErrorHandler.HandleAsync(
         context,
         context.RequestServices.GetRequiredService<IClock>(),
         context.RequestServices.GetRequiredService<IErrorPolicy>(),
         context.RequestServices.GetRequiredService<CircuitBreaker>(),
-        context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("PlantSafety.UI.Api.GlobalErrorHandler"))));
+        context.RequestServices.GetRequiredService<ILogEventWriter>())));
 app.UseCors(uiCorsPolicy);
 app.UseHttpsRedirection();
 app.UseAuthorization();

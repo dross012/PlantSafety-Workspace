@@ -12,13 +12,16 @@
 //                  X-Correlation-Id header PlantSafetyApiClient already
 //                  sends on every request (Services/PlantSafetyApiClient.cs),
 //                  so a single correlation id ties a UI action to its
-//                  server-side error log entry.
+//                  server-side error log entry. Phase 2.4: logs through
+//                  ILogEventWriter (structured, JSON-formattable) instead
+//                  of a raw ILogger message template.
 // ============================================================================
 using Microsoft.AspNetCore.Diagnostics;
 
 using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Envelope;
 using Shared.ErrorHandling.Abstractions.Policy;
+using Shared.Telemetry.Abstractions.Events;
 
 namespace PlantSafety.UI.Api.Middleware;
 
@@ -28,7 +31,7 @@ public static class GlobalErrorHandler
     private const string CorrelationIdHeader = "X-Correlation-Id";
 
     /// <summary>Handles the current unhandled exception and writes the standardized JSON response.</summary>
-    public static async Task HandleAsync(HttpContext context, IClock clock, IErrorPolicy errorPolicy, CircuitBreaker circuitBreaker, ILogger logger)
+    public static async Task HandleAsync(HttpContext context, IClock clock, IErrorPolicy errorPolicy, CircuitBreaker circuitBreaker, ILogEventWriter logEventWriter)
     {
         IExceptionHandlerPathFeature? feature = context.Features.Get<IExceptionHandlerPathFeature>();
         Exception exception = feature?.Error ?? new Exception("Unknown error.");
@@ -45,10 +48,21 @@ public static class GlobalErrorHandler
             circuitBreaker.RecordFailure();
         }
 
-        logger.LogError(
-            exception,
-            "ErrorEnvelope {ErrorCode} ({Category}) in module {Module}, correlation {CorrelationId}: {DeveloperMessage}. Policy: {PolicyReason}",
-            envelope.ErrorCode, envelope.Category, envelope.Module, envelope.CorrelationId, envelope.DeveloperMessage, decision.Reason);
+        logEventWriter.Write(new LogEvent(
+            EventId: envelope.ErrorCode,
+            Category: LogCategoryClassifier.Classify(module),
+            Severity: LogSeverity.Error,
+            Message: envelope.DeveloperMessage,
+            Payload: new Dictionary<string, object?>
+            {
+                ["ErrorCategory"] = envelope.Category.ToString(),
+                ["PolicyDecision"] = decision.Reason,
+                ["ShouldRetry"] = decision.ShouldRetry,
+                ["ShouldEscalate"] = decision.ShouldEscalate,
+            },
+            CorrelationId: correlationId,
+            Module: module,
+            OccurredAtUtc: envelope.OccurredAtUtc));
 
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = ErrorCategoryHttpMapping.ToHttpStatusCode(envelope.Category);

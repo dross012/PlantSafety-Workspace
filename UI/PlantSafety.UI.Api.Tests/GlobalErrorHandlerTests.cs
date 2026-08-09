@@ -16,11 +16,11 @@ using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging.Abstractions;
 
 using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Envelope;
 using Shared.ErrorHandling.Abstractions.Policy;
+using Shared.Telemetry.Abstractions.Events;
 
 using PlantSafety.UI.Api.Middleware;
 
@@ -30,6 +30,13 @@ namespace PlantSafety.UI.Api.Tests;
 
 public sealed class GlobalErrorHandlerTests
 {
+    private sealed class CapturingLogEventWriter : ILogEventWriter
+    {
+        public ILogEvent? LastEvent { get; private set; }
+
+        public void Write(ILogEvent logEvent) => LastEvent = logEvent;
+    }
+
     private static DefaultHttpContext CreateContext(Exception exception, string path, string? correlationId = null)
     {
         var context = new DefaultHttpContext();
@@ -58,7 +65,7 @@ public sealed class GlobalErrorHandlerTests
         DefaultHttpContext context = CreateContext(new ArgumentException("bad input"), "/api/v1/ui/facilities", correlationId: "corr-123");
         (IClock clock, IErrorPolicy policy, CircuitBreaker breaker) = CreatePolicyStack();
 
-        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, NullLogger.Instance);
+        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, new CapturingLogEventWriter());
 
         context.Response.StatusCode.Should().Be(400);
         context.Response.Body.Position = 0;
@@ -75,7 +82,7 @@ public sealed class GlobalErrorHandlerTests
         DefaultHttpContext context = CreateContext(new Exception("boom"), "/api/v1/ui/engines/severity-assessment/assess");
         (IClock clock, IErrorPolicy policy, CircuitBreaker breaker) = CreatePolicyStack();
 
-        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, NullLogger.Instance);
+        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, new CapturingLogEventWriter());
 
         context.Response.Body.Position = 0;
         ErrorEnvelope? envelope = await JsonSerializer.DeserializeAsync<ErrorEnvelope>(context.Response.Body, new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -89,7 +96,7 @@ public sealed class GlobalErrorHandlerTests
         DefaultHttpContext context = CreateContext(new Exception("boom"), "/api/v1/ui/engines/severity-assessment/assess");
         (IClock clock, IErrorPolicy policy, CircuitBreaker breaker) = CreatePolicyStack();
 
-        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, NullLogger.Instance);
+        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, new CapturingLogEventWriter());
 
         context.Response.Body.Position = 0;
         ErrorEnvelope? envelope = await JsonSerializer.DeserializeAsync<ErrorEnvelope>(context.Response.Body, new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -102,7 +109,7 @@ public sealed class GlobalErrorHandlerTests
         DefaultHttpContext context = CreateContext(new HttpRequestException("downstream unavailable"), "/api/v1/ui/facilities");
         (IClock clock, IErrorPolicy policy, CircuitBreaker breaker) = CreatePolicyStack();
 
-        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, NullLogger.Instance);
+        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, new CapturingLogEventWriter());
 
         context.Response.StatusCode.Should().Be(502);
         context.Response.Headers.RetryAfter.ToString().Should().NotBeNullOrEmpty();
@@ -116,9 +123,24 @@ public sealed class GlobalErrorHandlerTests
 
         for (var i = 0; i < CircuitBreakerPolicy.Standard.FailureThreshold; i++)
         {
-            await GlobalErrorHandler.HandleAsync(CreateContext(new Exception("mystery"), "/api/v1/ui/facilities"), clock, policy, breaker, NullLogger.Instance);
+            await GlobalErrorHandler.HandleAsync(CreateContext(new Exception("mystery"), "/api/v1/ui/facilities"), clock, policy, breaker, new CapturingLogEventWriter());
         }
 
         breaker.State.Should().Be(CircuitState.Open);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WritesAStructuredLogEventWithTheCorrelationIdAndClassifiedCategory()
+    {
+        DefaultHttpContext context = CreateContext(new ArgumentException("bad input"), "/api/v1/ui/facilities", correlationId: "corr-999");
+        (IClock clock, IErrorPolicy policy, CircuitBreaker breaker) = CreatePolicyStack();
+        var writer = new CapturingLogEventWriter();
+
+        await GlobalErrorHandler.HandleAsync(context, clock, policy, breaker, writer);
+
+        writer.LastEvent.Should().NotBeNull();
+        writer.LastEvent!.CorrelationId.Should().Be("corr-999");
+        writer.LastEvent.Category.Should().Be(LogCategory.Facility);
+        writer.LastEvent.Severity.Should().Be(LogSeverity.Error);
     }
 }
