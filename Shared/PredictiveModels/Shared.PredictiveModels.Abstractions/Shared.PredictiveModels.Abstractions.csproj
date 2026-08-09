@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Shared.PredictiveModels.Abstractions</RootNamespace>
+    <AssemblyName>Shared.PredictiveModels.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\" />
+    <Folder Include="Statistics\" />
+  </ItemGroup>
+
+</Project>

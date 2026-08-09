@@ -45,4 +45,15 @@ public static class EventOrchestrationServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Registers <see cref="ITenantFacilityRegistryV2"/> (backed by <see cref="TenantFacilityRegistryV2"/>) as a
+    /// singleton. Phase C.8: multi-facility-per-tenant, parallel to (not a replacement for) <see cref="AddEventBusOrchestration"/>.
+    /// </summary>
+    public static IServiceCollection AddMultiFacilityTenantRegistry(this IServiceCollection services)
+    {
+        services.AddSingleton<ITenantFacilityRegistryV2, TenantFacilityRegistryV2>();
+
+        return services;
+    }
 }

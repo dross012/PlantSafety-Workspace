@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Shared.WorkflowEngine.Abstractions</RootNamespace>
+    <AssemblyName>Shared.WorkflowEngine.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\FacilityDomain\Shared.FacilityDomain.Abstractions\Shared.FacilityDomain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\EmployeeDomain\Shared.EmployeeDomain.Abstractions\Shared.EmployeeDomain.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Actions\" />
+    <Folder Include="Engine\" />
+    <Folder Include="Notification\" />
+    <Folder Include="Triggers\" />
+  </ItemGroup>
+
+</Project>
