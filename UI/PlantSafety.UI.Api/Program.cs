@@ -26,6 +26,8 @@ using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Policy;
 using Shared.Telemetry.Abstractions.Correlation;
 using Shared.Telemetry.Abstractions.Events;
+using Shared.Configuration.Abstractions.Manifest;
+using Shared.Configuration.Abstractions.Validation;
 
 using Shared.EmployeeDomain.Abstractions.ValueObjects;
 using Shared.EmployeeDomain.Infrastructure.DependencyInjection;
@@ -115,13 +117,30 @@ builder.Services.AddScoped<CorrelationContext>();
 builder.Services.AddScoped<ICorrelationContext>(sp => sp.GetRequiredService<CorrelationContext>());
 builder.Services.AddSingleton<ILogEventWriter, LogEventWriter>();
 
+// ---- Phase 2.5: environment manifest, loaded and validated once at startup -- the host
+//      refuses to start with invalid configuration rather than failing unpredictably at
+//      first use. RuntimeLimits are applied to Kestrel/the request-timeout middleware
+//      below; EnableOpenApi replaces the old app.Environment.IsDevelopment() branch, so
+//      OpenAPI availability is environment-manifest-driven, not code-branched. ----
+EnvironmentManifest environmentManifest = EnvironmentManifestLoader.Load(builder.Configuration);
+IReadOnlyList<string> environmentManifestErrors = EnvironmentManifestValidator.Validate(environmentManifest);
+if (environmentManifestErrors.Count > 0)
+{
+    throw new ConfigurationValidationException(environmentManifestErrors);
+}
+
+builder.Services.AddSingleton(environmentManifest);
+builder.Services.AddRequestTimeouts(options => options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy { Timeout = environmentManifest.RuntimeLimits.RequestTimeout });
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = environmentManifest.RuntimeLimits.MaxRequestBodySizeBytes);
+
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (environmentManifest.IsFeatureEnabled("EnableOpenApi"))
 {
     app.MapOpenApi();
 }
 
+app.UseRequestTimeouts();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(context =>
     GlobalErrorHandler.HandleAsync(
