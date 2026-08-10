@@ -16,6 +16,7 @@
 /snapshot-drill-evidence.json
 /governance-drill-evidence.json
 /canary-rollout-drill-evidence.json
+/drift-reconciler-drill-evidence.json
 
 # Visual Studio
 .vs/
