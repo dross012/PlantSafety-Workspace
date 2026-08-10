@@ -222,10 +222,21 @@
         }
         else
         {
-            var failure = !targets.IsSuccess ? targets : !history.IsSuccess ? history : !retention.IsSuccess ? retention : size;
-            State.SetError(failure.IsProblem ? failure.Problem!.Detail : $"Failed to load dashboard: {failure.FaultType}");
+            State.SetError(
+                !targets.IsSuccess ? DescribeFailure(targets)
+                : !history.IsSuccess ? DescribeFailure(history)
+                : !retention.IsSuccess ? DescribeFailure(retention)
+                : DescribeFailure(size));
         }
     }
+
+    /// <summary>
+    /// Builds the user-facing error message for a failed envelope. Declared generically because
+    /// <see cref="ApiResponseEnvelope{T}"/> is sealed with no non-generic base type, so envelopes
+    /// with different payload types have no common type and cannot share one local variable.
+    /// </summary>
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load dashboard: {envelope.FaultType}";
 
     /// <summary>
     /// Approximate "Data Size Forecast": groups the Operations.Backup database size history
