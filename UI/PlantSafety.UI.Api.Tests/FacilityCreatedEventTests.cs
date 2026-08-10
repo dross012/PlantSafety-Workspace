@@ -2,11 +2,17 @@
 //  Project:        PlantSafety.UI.Api.Tests
 //  File:           FacilityCreatedEventTests.cs
 //  Created:        2026-08-09
-//  Description:    Phase 2.7: proves FacilitiesController.Create actually
-//                  publishes FacilityCreatedEvent through the real
-//                  IModuleEventGateway resolved from the real host -- a
-//                  test subscriber with no reference to FacilitiesController
-//                  receives it, end to end through a real HTTP request.
+//  Description:    Phase 2.7: proves creating a facility actually publishes
+//                  FacilityCreatedEvent through the real IModuleEventGateway
+//                  resolved from the real host -- a test subscriber with no
+//                  reference to the publisher receives it, end to end
+//                  through a real HTTP request. Phase 4: the publish moved
+//                  from FacilitiesController into FacilityService (handler-
+//                  level orchestration, not controller logic), so this test
+//                  now imports Shared.FacilityDomain.Infrastructure.Events'
+//                  FacilityCreatedEvent instead of PlantSafety.UI.Api.Events'
+//                  -- the observable behavior (an HTTP create publishes the
+//                  event) is unchanged.
 // ============================================================================
 using System.Net.Http.Json;
 
@@ -18,7 +24,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Shared.ModuleContracts.Abstractions.Events;
 
 using PlantSafety.UI.Api.Controllers;
-using PlantSafety.UI.Api.Events;
+using Shared.FacilityDomain.Infrastructure.Events;
 
 using Xunit;
 

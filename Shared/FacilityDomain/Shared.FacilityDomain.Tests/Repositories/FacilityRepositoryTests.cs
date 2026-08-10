@@ -7,12 +7,16 @@
 // ============================================================================
 using FluentAssertions;
 
+using Shared.Deterministic.Abstractions.Clock;
 using Shared.FacilityDomain.Abstractions.Aggregates;
 using Shared.FacilityDomain.Abstractions.Hazards;
 using Shared.FacilityDomain.Abstractions.Repositories;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
 using Shared.FacilityDomain.Infrastructure.Persistence;
 using Shared.FacilityDomain.Infrastructure.Services;
+using Shared.ModuleContracts.Abstractions.Events;
+using Shared.Telemetry.Abstractions.Correlation;
+using Shared.Telemetry.Abstractions.Events;
 
 using Xunit;
 
@@ -22,6 +26,21 @@ public sealed class FacilityRepositoryTests
 {
     private static readonly FacilityIndustry Industry = new("Medical Devices");
     private static readonly FacilityLocation Location = new("1 Device Way", "Boston", "MA", "02101", "US");
+
+    private sealed class NoOpLogEventWriter : ILogEventWriter
+    {
+        public void Write(ILogEvent logEvent)
+        {
+        }
+    }
+
+    private sealed class FixedCorrelationContext : ICorrelationContext
+    {
+        public string CorrelationId => "test-correlation";
+    }
+
+    private static FacilityService CreateService(IFacilityRepository repository) =>
+        new(repository, new SystemClock(), new ModuleEventGateway(), new NoOpLogEventWriter(), new FixedCorrelationContext());
 
     [Fact]
     public async Task FindAsync_UnknownFacilityId_ReturnsNull()
@@ -79,7 +98,7 @@ public sealed class FacilityRepositoryTests
     [Fact]
     public async Task FacilityService_CreateThenUpdateHazardProfile_PersistsChange()
     {
-        IFacilityService service = new FacilityService(new FacilityRepository(new FacilityStore()));
+        IFacilityService service = CreateService(new FacilityRepository(new FacilityStore()));
 
         FacilityState created = await service.CreateFacilityAsync("Plant 1", Industry, Location);
         FacilityState? updated = await service.UpdateHazardProfileAsync(created.FacilityId, [HazardType.Fire]);
@@ -91,7 +110,7 @@ public sealed class FacilityRepositoryTests
     [Fact]
     public async Task FacilityService_UpdateUnknownFacility_ReturnsNull()
     {
-        IFacilityService service = new FacilityService(new FacilityRepository(new FacilityStore()));
+        IFacilityService service = CreateService(new FacilityRepository(new FacilityStore()));
 
         FacilityState? result = await service.UpdateRegulatoryProfileAsync(FacilityId.New(), ["OSHA"]);
 
@@ -101,7 +120,7 @@ public sealed class FacilityRepositoryTests
     [Fact]
     public async Task FacilityService_GetAllFacilitiesAsync_ReflectsCreatedFacilities()
     {
-        IFacilityService service = new FacilityService(new FacilityRepository(new FacilityStore()));
+        IFacilityService service = CreateService(new FacilityRepository(new FacilityStore()));
         await service.CreateFacilityAsync("Plant 1", Industry, Location);
         await service.CreateFacilityAsync("Plant 2", Industry, Location);
 

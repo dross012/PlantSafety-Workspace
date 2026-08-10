@@ -9,6 +9,15 @@
 //                  process-local store); IFacilityRepository/IFacilityService
 //                  are scoped, matching this codebase's established
 //                  convention for stateless services over a singleton store.
+//
+//                  Phase 4 (Facility domain pass): FacilityService now
+//                  depends on Shared.Deterministic's IClock and
+//                  Shared.ModuleContracts'/Shared.Telemetry's
+//                  IModuleEventGateway/ILogEventWriter/ICorrelationContext.
+//                  The caller's host must already have those registered
+//                  (e.g. via AddDeterministicRuntime + the Phase 2.4/2.7
+//                  telemetry/event-gateway registrations PlantSafety.UI.Api's
+//                  Program.cs already does) before calling AddFacilityDomain.
 // ============================================================================
 using Microsoft.Extensions.DependencyInjection;
 

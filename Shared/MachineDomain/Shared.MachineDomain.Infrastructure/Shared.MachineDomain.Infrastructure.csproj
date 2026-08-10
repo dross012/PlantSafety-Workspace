@@ -16,10 +16,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared.MachineDomain.Abstractions\Shared.MachineDomain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\ModuleContracts\Shared.ModuleContracts.Abstractions\Shared.ModuleContracts.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="DependencyInjection\" />
+    <Folder Include="Events\" />
     <Folder Include="Persistence\" />
     <Folder Include="Services\" />
   </ItemGroup>

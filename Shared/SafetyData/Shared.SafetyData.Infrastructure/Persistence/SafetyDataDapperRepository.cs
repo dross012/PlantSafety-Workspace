@@ -6,16 +6,23 @@
 //  Created:        2026-07-27
 //  Author:         Platform Team
 //  SchemaVersion:  2026.1
-//  Description:    Dapper-backed, READ-ONLY implementation of ISafetyDataRepository
-//                  over [PlantSafety.CoreDB]'s [RiskMgmt].[Risk] /
+//  Description:    Read-only implementation of ISafetyDataRepository over
+//                  [PlantSafety.CoreDB]'s [RiskMgmt].[Risk] /
 //                  [RiskMgmt].[ControlMeasure] / [ContinuousImprovement].[CAPA]
 //                  tables, calling dbo.usp_GetHazardSummary,
 //                  dbo.usp_GetCorrectiveActions, and dbo.usp_GetSafetyCompliance
-//                  (see ..\..\sql\Phase1-StoredProcedures). Mirrors
-//                  Shared.AuditLogging.Infrastructure.Persistence.
-//                  AuditLogDapperRepository's shape (own SqlConnection from
-//                  options, DynamicParameters, QueryMultipleAsync for
-//                  count-then-page, SqlException -> module-specific exception).
+//                  (see ..\..\sql\Phase1-StoredProcedures).
+//
+//                  Phase 4.2 (Repository Modernization): migrated from owning
+//                  its own SqlConnection/DynamicParameters directly onto
+//                  Shared.SqlGateway's ISqlGateway (Phase 2.6/3.6) -- the
+//                  connection, retry/circuit-breaker policy, and structured
+//                  SQL telemetry logging are now the gateway's job, not this
+//                  repository's. Deferred from Phase 3.6 specifically to
+//                  avoid entangling that phase's isolation work with a real
+//                  consumer's migration; done now that ISqlGateway itself is
+//                  hardened (Phase 3.6's SqlCircuitBreaker + retry policy +
+//                  ValidateOnStart).
 //
 //                  SAFETY: Each method issues a single stored-procedure call that
 //                  itself only SELECTs. This class must never gain an
@@ -23,41 +30,25 @@
 //                  own all writes to these tables.
 //                  Additive-only evolution.
 // ============================================================================
-using Dapper;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Shared.SafetyData.Abstractions.Models;
 using Shared.SafetyData.Abstractions.Repositories;
 using Shared.SafetyData.Infrastructure.Exceptions;
 using Shared.SafetyData.Infrastructure.Options;
+using Shared.SqlGateway.Abstractions.Gateway;
 
 namespace Shared.SafetyData.Infrastructure.Persistence;
 
-/// <summary>Dapper-backed, read-only repository over PlantSafety's Hazard/Risk, Corrective Action, and Safety Compliance data.</summary>
-public sealed class SafetyDataDapperRepository : ISafetyDataRepository
+/// <summary>ISqlGateway-backed, read-only repository over PlantSafety's Hazard/Risk, Corrective Action, and Safety Compliance data.</summary>
+public sealed class SafetyDataDapperRepository(ISqlGateway sqlGateway, IOptions<SafetyDataOptions> options) : ISafetyDataRepository
 {
     private const string HazardSummaryProcedureName = "dbo.usp_GetHazardSummary";
     private const string CorrectiveActionsProcedureName = "dbo.usp_GetCorrectiveActions";
     private const string SafetyComplianceProcedureName = "dbo.usp_GetSafetyCompliance";
 
-    private readonly SafetyDataOptions _options;
-    private readonly ILogger<SafetyDataDapperRepository> _logger;
-
-    /// <summary>Initialises dependencies.</summary>
-    public SafetyDataDapperRepository(IOptions<SafetyDataOptions> options, ILogger<SafetyDataDapperRepository> logger)
-    {
-        _options = options.Value;
-        _logger = logger;
-    }
-
-    private SqlConnection CreateCoreDbConnection()
-    {
-        var connection = new SqlConnection(_options.CoreDbConnectionString);
-        connection.Open();
-        return connection;
-    }
+    private readonly SafetyDataOptions _options = options.Value;
 
     /// <inheritdoc/>
     public async Task<SafetySearchResult<HazardSummaryEntry>> GetHazardSummaryAsync(SafetySearchCriteria criteria, CancellationToken cancellationToken)
@@ -65,35 +56,28 @@ public sealed class SafetyDataDapperRepository : ISafetyDataRepository
         ArgumentNullException.ThrowIfNull(criteria);
 
         var (pageNumber, pageSize) = NormalizePaging(criteria);
-
-        var parameters = new DynamicParameters();
-        parameters.Add("@TenantId", criteria.TenantId);
-        parameters.Add("@SiteId", criteria.SiteId);
-        parameters.Add("@FromUtc", criteria.FromUtc);
-        parameters.Add("@ToUtc", criteria.ToUtc);
-        parameters.Add("@PageNumber", pageNumber);
-        parameters.Add("@PageSize", pageSize);
+        var parameters = new
+        {
+            TenantId = criteria.TenantId,
+            SiteId = criteria.SiteId,
+            FromUtc = criteria.FromUtc,
+            ToUtc = criteria.ToUtc,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+        };
 
         try
         {
-            using var connection = CreateCoreDbConnection();
-
             // dbo.usp_GetHazardSummary returns three result sets: (1) a single-row total
             // count, (2) the requested page of RiskMgmt.Risk rows, newest first, (3) the
             // RiskMgmt.ControlMeasure rows for every RiskId in result set 2 -- see the
             // stored procedure's header comment for why control measures are returned as
             // a separate result set rather than a joined/duplicated row set.
-            using var multi = await connection.QueryMultipleAsync(
-                new CommandDefinition(
-                    HazardSummaryProcedureName,
-                    parameters,
-                    commandType: System.Data.CommandType.StoredProcedure,
-                    commandTimeout: _options.QueryCommandTimeoutSeconds,
-                    cancellationToken: cancellationToken));
+            await using ISqlMultiResultReader multi = await sqlGateway.QueryMultipleAsync(HazardSummaryProcedureName, parameters, cancellationToken);
 
             var totalCount = await multi.ReadFirstAsync<int>();
-            var riskRows = (await multi.ReadAsync<RiskRow>()).ToList();
-            var controlMeasureRows = (await multi.ReadAsync<ControlMeasureRow>()).ToList();
+            IReadOnlyList<RiskRow> riskRows = await multi.ReadAsync<RiskRow>();
+            IReadOnlyList<ControlMeasureRow> controlMeasureRows = await multi.ReadAsync<ControlMeasureRow>();
 
             var controlMeasuresByRiskId = controlMeasureRows
                 .GroupBy(cm => cm.RiskId)
@@ -111,12 +95,6 @@ public sealed class SafetyDataDapperRepository : ISafetyDataRepository
         }
         catch (SqlException ex)
         {
-            _logger.LogError(
-                ex,
-                "Stored procedure {ProcedureName} failed with SQL error {ErrorNumber} while querying " +
-                "PlantSafety.CoreDB.RiskMgmt.Risk.",
-                HazardSummaryProcedureName, ex.Number);
-
             throw new SafetyDataQueryException(
                 $"Failed to retrieve hazard summary data via {HazardSummaryProcedureName}.", ex);
         }
@@ -128,31 +106,24 @@ public sealed class SafetyDataDapperRepository : ISafetyDataRepository
         ArgumentNullException.ThrowIfNull(criteria);
 
         var (pageNumber, pageSize) = NormalizePaging(criteria);
-
-        var parameters = new DynamicParameters();
-        parameters.Add("@TenantId", criteria.TenantId);
-        parameters.Add("@SiteId", criteria.SiteId);
-        parameters.Add("@FromUtc", criteria.FromUtc);
-        parameters.Add("@ToUtc", criteria.ToUtc);
-        parameters.Add("@PageNumber", pageNumber);
-        parameters.Add("@PageSize", pageSize);
+        var parameters = new
+        {
+            TenantId = criteria.TenantId,
+            SiteId = criteria.SiteId,
+            FromUtc = criteria.FromUtc,
+            ToUtc = criteria.ToUtc,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+        };
 
         try
         {
-            using var connection = CreateCoreDbConnection();
-
             // dbo.usp_GetCorrectiveActions returns two result sets: (1) a single-row total
             // count, (2) the requested page of ContinuousImprovement.CAPA rows, newest first.
-            using var multi = await connection.QueryMultipleAsync(
-                new CommandDefinition(
-                    CorrectiveActionsProcedureName,
-                    parameters,
-                    commandType: System.Data.CommandType.StoredProcedure,
-                    commandTimeout: _options.QueryCommandTimeoutSeconds,
-                    cancellationToken: cancellationToken));
+            await using ISqlMultiResultReader multi = await sqlGateway.QueryMultipleAsync(CorrectiveActionsProcedureName, parameters, cancellationToken);
 
             var totalCount = await multi.ReadFirstAsync<int>();
-            var rows = await multi.ReadAsync<CapaRow>();
+            IReadOnlyList<CapaRow> rows = await multi.ReadAsync<CapaRow>();
 
             var items = rows.Select(r => new CorrectiveActionEntry(
                 r.CapaId.ToString(),
@@ -166,12 +137,6 @@ public sealed class SafetyDataDapperRepository : ISafetyDataRepository
         }
         catch (SqlException ex)
         {
-            _logger.LogError(
-                ex,
-                "Stored procedure {ProcedureName} failed with SQL error {ErrorNumber} while querying " +
-                "PlantSafety.CoreDB.ContinuousImprovement.CAPA.",
-                CorrectiveActionsProcedureName, ex.Number);
-
             throw new SafetyDataQueryException(
                 $"Failed to retrieve corrective action data via {CorrectiveActionsProcedureName}.", ex);
         }
@@ -182,23 +147,17 @@ public sealed class SafetyDataDapperRepository : ISafetyDataRepository
     {
         ArgumentNullException.ThrowIfNull(criteria);
 
-        var parameters = new DynamicParameters();
-        parameters.Add("@TenantId", criteria.TenantId);
-        parameters.Add("@SiteId", criteria.SiteId);
-        parameters.Add("@FromUtc", criteria.FromUtc);
-        parameters.Add("@ToUtc", criteria.ToUtc);
+        var parameters = new
+        {
+            TenantId = criteria.TenantId,
+            SiteId = criteria.SiteId,
+            FromUtc = criteria.FromUtc,
+            ToUtc = criteria.ToUtc,
+        };
 
         try
         {
-            using var connection = CreateCoreDbConnection();
-
-            var rows = await connection.QueryAsync<SafetyComplianceRow>(
-                new CommandDefinition(
-                    SafetyComplianceProcedureName,
-                    parameters,
-                    commandType: System.Data.CommandType.StoredProcedure,
-                    commandTimeout: _options.QueryCommandTimeoutSeconds,
-                    cancellationToken: cancellationToken));
+            IReadOnlyList<SafetyComplianceRow> rows = await sqlGateway.QueryAsync<SafetyComplianceRow>(SafetyComplianceProcedureName, parameters, cancellationToken);
 
             return rows.Select(r => new SafetyComplianceEntry(
                 r.Category,
@@ -211,12 +170,6 @@ public sealed class SafetyDataDapperRepository : ISafetyDataRepository
         }
         catch (SqlException ex)
         {
-            _logger.LogError(
-                ex,
-                "Stored procedure {ProcedureName} failed with SQL error {ErrorNumber} while computing " +
-                "PlantSafety.CoreDB safety compliance rollup.",
-                SafetyComplianceProcedureName, ex.Number);
-
             throw new SafetyDataQueryException(
                 $"Failed to retrieve safety compliance data via {SafetyComplianceProcedureName}.", ex);
         }

@@ -7,6 +7,7 @@
 // ============================================================================
 using FluentAssertions;
 
+using Shared.Deterministic.Abstractions.Clock;
 using Shared.FacilityDomain.Abstractions.Hazards;
 using Shared.FacilityDomain.Abstractions.ValueObjects;
 
@@ -17,6 +18,9 @@ using Shared.MachineDomain.Abstractions.Repositories;
 using Shared.MachineDomain.Abstractions.ValueObjects;
 using Shared.MachineDomain.Infrastructure.Persistence;
 using Shared.MachineDomain.Infrastructure.Services;
+using Shared.ModuleContracts.Abstractions.Events;
+using Shared.Telemetry.Abstractions.Correlation;
+using Shared.Telemetry.Abstractions.Events;
 
 using Xunit;
 
@@ -25,6 +29,21 @@ namespace Shared.MachineDomain.Tests.Repositories;
 public sealed class MachineRepositoryTests
 {
     private static readonly MachineLocation Location = new(FacilityId.New(), "Building 2, Bay 4");
+
+    private sealed class NoOpLogEventWriter : ILogEventWriter
+    {
+        public void Write(ILogEvent logEvent)
+        {
+        }
+    }
+
+    private sealed class FixedCorrelationContext : ICorrelationContext
+    {
+        public string CorrelationId => "test-correlation";
+    }
+
+    private static MachineService CreateService(IMachineRepository repository) =>
+        new(repository, new SystemClock(), new ModuleEventGateway(), new NoOpLogEventWriter(), new FixedCorrelationContext());
 
     [Fact]
     public async Task FindAsync_UnknownMachineId_ReturnsNull()
@@ -82,7 +101,7 @@ public sealed class MachineRepositoryTests
     [Fact]
     public async Task MachineService_CreateThenRecordFailure_PersistsChange()
     {
-        IMachineService service = new MachineService(new MachineRepository(new MachineStore()));
+        IMachineService service = CreateService(new MachineRepository(new MachineStore()));
 
         MachineState created = await service.CreateMachineAsync("Press 1", MachineType.PressureVessel, Location);
         MachineState? updated = await service.RecordFailureAsync(created.MachineId, "Seal failure", HazardType.ChemicalSpill);
@@ -94,7 +113,7 @@ public sealed class MachineRepositoryTests
     [Fact]
     public async Task MachineService_UpdateUnknownMachine_ReturnsNull()
     {
-        IMachineService service = new MachineService(new MachineRepository(new MachineStore()));
+        IMachineService service = CreateService(new MachineRepository(new MachineStore()));
 
         MachineState? result = await service.UpdateMaintenanceProfileAsync(MachineId.New(), null, null, 30);
 
@@ -104,7 +123,7 @@ public sealed class MachineRepositoryTests
     [Fact]
     public async Task MachineService_GetAllMachinesAsync_ReflectsCreatedMachines()
     {
-        IMachineService service = new MachineService(new MachineRepository(new MachineStore()));
+        IMachineService service = CreateService(new MachineRepository(new MachineStore()));
         await service.CreateMachineAsync("Press 1", MachineType.PressureVessel, Location);
         await service.CreateMachineAsync("Conveyor 1", MachineType.ConveyorSystem, Location);
 

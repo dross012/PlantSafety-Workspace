@@ -8,6 +8,15 @@
 //                  container. IEmployeeStore is a singleton (it IS the
 //                  process-local store); IEmployeeRepository/IEmployeeService
 //                  are scoped, matching Shared.FacilityDomain's convention.
+//
+//                  Phase 4 (Employee domain pass): EmployeeService now
+//                  depends on Shared.Deterministic's IClock and
+//                  Shared.ModuleContracts'/Shared.Telemetry's
+//                  IModuleEventGateway/ILogEventWriter/ICorrelationContext.
+//                  The caller's host must already have those registered
+//                  (e.g. via AddDeterministicRuntime + the Phase 2.4/2.7
+//                  telemetry/event-gateway registrations PlantSafety.UI.Api's
+//                  Program.cs already does) before calling AddEmployeeDomain.
 // ============================================================================
 using Microsoft.Extensions.DependencyInjection;
 
