@@ -98,4 +98,21 @@ public static class PlantSafetyMetrics
     /// <summary>Total API-key resolutions performed, tagged by outcome (NoKeyProvided/Recognized/Unrecognized).</summary>
     public static readonly Counter<long> ApiKeyResolutionsPerformed = Meter.CreateCounter<long>(
         "plantsafety.api_key_resolutions_performed", unit: "{resolution}", description: "Total API-key resolutions performed, tagged by outcome.");
+
+    // ---- Phase 11 (Multi-Tenant & Contextual Access Modernization): deterministic tenant
+    //      resolution (see Shared.Authorization.Abstractions.Tenant.TenantContextFactory) and
+    //      tenant-isolation checks (TenantIsolationCheck), tagged by outcome. Same Meter, same
+    //      pattern as every instrument above. ----
+
+    /// <summary>Total tenant resolutions performed, tagged by outcome (NoKeyProvided/Recognized/Unrecognized).</summary>
+    public static readonly Counter<long> TenantResolutionsPerformed = Meter.CreateCounter<long>(
+        "plantsafety.tenant_resolutions_performed", unit: "{resolution}", description: "Total tenant resolutions performed, tagged by outcome.");
+
+    /// <summary>Total tenant-isolation checks performed, tagged by module and outcome (Allow/Deny).</summary>
+    public static readonly Counter<long> TenantIsolationChecksPerformed = Meter.CreateCounter<long>(
+        "plantsafety.tenant_isolation_checks_performed", unit: "{check}", description: "Total tenant-isolation checks performed, tagged by module and outcome.");
+
+    /// <summary>Total tenant-isolation checks that denied cross-tenant/cross-facility access, tagged by module.</summary>
+    public static readonly Counter<long> TenantIsolationDenials = Meter.CreateCounter<long>(
+        "plantsafety.tenant_isolation_denials", unit: "{denial}", description: "Total tenant-isolation checks that denied access, tagged by module.");
 }

@@ -22,10 +22,21 @@
 //                  here). Authorization enforcement continues to happen only
 //                  inside the domain (Phase 9's WorkflowEngineAuthorization
 //                  and friends), unchanged by this phase.
+//
+//                  Phase 11: also resolves the same "X-Api-Key" header
+//                  against TenantAuthenticationOptions' independent
+//                  key -> TenantId map (via TenantContextFactory) and
+//                  populates TenantContextProvider once for the request --
+//                  the prompt's own requirement that TenantContext "must be
+//                  constructed by AuthenticationMiddleware." Falls back to
+//                  TenantContext.Unscoped when no tenant binding is
+//                  registered for the key, same "no endpoint breaks"
+//                  guarantee as the CallerContext resolution above.
 // ============================================================================
 using Shared.Authorization.Abstractions.Caller;
 using Shared.Authorization.Abstractions.Identity;
 using Shared.Authorization.Abstractions.Roles;
+using Shared.Authorization.Abstractions.Tenant;
 using Shared.Authorization.Infrastructure.Governance;
 using Shared.Authorization.Infrastructure.Telemetry;
 using Shared.Deterministic.Abstractions.Clock;
@@ -34,7 +45,7 @@ using Shared.Telemetry.Abstractions.Events;
 
 namespace PlantSafety.UI.Api.Middleware;
 
-/// <summary>Resolves the request's API key (if any) into a CallerContext and makes it available for the rest of the pipeline.</summary>
+/// <summary>Resolves the request's API key (if any) into a CallerContext + TenantContext and makes both available for the rest of the pipeline.</summary>
 public sealed class ApiKeyAuthenticationMiddleware(RequestDelegate next)
 {
     private const string ApiKeyHeader = "X-Api-Key";
@@ -43,7 +54,9 @@ public sealed class ApiKeyAuthenticationMiddleware(RequestDelegate next)
     public async Task InvokeAsync(
         HttpContext context,
         CallerContextProvider callerContextProvider,
+        TenantContextProvider tenantContextProvider,
         IReadOnlyDictionary<string, EnterpriseRole> registeredApiKeys,
+        IReadOnlyDictionary<string, string> registeredKeyTenants,
         ICorrelationContext correlationContext,
         IClock clock,
         ILogEventWriter logEventWriter)
@@ -58,6 +71,13 @@ public sealed class ApiKeyAuthenticationMiddleware(RequestDelegate next)
 
         AuthenticationTelemetry.RecordResolution(resolution, clock, logEventWriter);
         AuthenticationGovernanceEvaluator.EvaluateAndReport(resolution, clock, logEventWriter);
+
+        TenantContextResolution tenantResolution = TenantContextFactory.Create(apiKeyHeaderValue, registeredKeyTenants, resolution.Caller, correlationContext.CorrelationId);
+
+        tenantContextProvider.Set(tenantResolution.Context);
+
+        TenantTelemetry.RecordResolution(tenantResolution, clock, logEventWriter);
+        TenantGovernanceEvaluator.EvaluateResolutionAndReport(tenantResolution, clock, logEventWriter);
 
         await next(context);
     }
