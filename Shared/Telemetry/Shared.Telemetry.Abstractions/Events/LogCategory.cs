@@ -46,6 +46,9 @@ public enum LogCategory
     /// <summary>Shared.PredictiveSafety's deterministic, ML-free predictive inference engines (Phase 15).</summary>
     PredictiveSafety,
 
+    /// <summary>Shared.SafetyGraph's deterministic, unified cross-module graph model (Phase 16).</summary>
+    SafetyGraph,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 

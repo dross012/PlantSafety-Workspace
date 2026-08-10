@@ -160,4 +160,24 @@ public static class PlantSafetyMetrics
     /// <summary>Total Predictive Safety governance violations detected, tagged by rule name.</summary>
     public static readonly Counter<long> PredictiveGovernanceViolationsDetected = Meter.CreateCounter<long>(
         "plantsafety.predictive_governance_violations_detected", unit: "{violation}", description: "Total Predictive Safety governance violations detected, tagged by rule name.");
+
+    // ---- Phase 16 (Safety Graph Model): deterministic graph construction, traversal, and
+    //      inference (Shared.SafetyGraph, new this phase). Same Meter, same pattern as every
+    //      instrument above. ----
+
+    /// <summary>Total SafetyGraph construction/assembly operations, tagged by outcome.</summary>
+    public static readonly Counter<long> SafetyGraphsConstructed = Meter.CreateCounter<long>(
+        "plantsafety.safety_graphs_constructed", unit: "{graph}", description: "Total SafetyGraph construction operations, tagged by outcome.");
+
+    /// <summary>Total SafetyGraph traversal operations performed, tagged by traversal kind (DepthFirst/BreadthFirst/PathEnumeration/CycleDetection/Reachability/DependencyResolution).</summary>
+    public static readonly Counter<long> SafetyGraphTraversalsPerformed = Meter.CreateCounter<long>(
+        "plantsafety.safety_graph_traversals_performed", unit: "{traversal}", description: "Total SafetyGraph traversal operations performed, tagged by traversal kind.");
+
+    /// <summary>Total SafetyGraph inference evaluations computed, tagged by whether graph-wide escalation was required.</summary>
+    public static readonly Counter<long> SafetyGraphInferencesComputed = Meter.CreateCounter<long>(
+        "plantsafety.safety_graph_inferences_computed", unit: "{inference}", description: "Total SafetyGraph inference evaluations computed, tagged by escalation outcome.");
+
+    /// <summary>Total Safety Graph governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> SafetyGraphGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.safety_graph_governance_violations_detected", unit: "{violation}", description: "Total Safety Graph governance violations detected, tagged by rule name.");
 }

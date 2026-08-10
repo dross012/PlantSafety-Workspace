@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Shared.SafetyGraph.Abstractions</RootNamespace>
+    <AssemblyName>Shared.SafetyGraph.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+    <ProjectReference Include="..\..\FacilityDomain\Shared.FacilityDomain.Abstractions\Shared.FacilityDomain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\SafetyData\Shared.SafetyData.Abstractions\Shared.SafetyData.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Scheduling\Shared.Scheduling.Abstractions\Shared.Scheduling.Abstractions.csproj" />
+    <ProjectReference Include="..\..\PredictiveSafety\Shared.PredictiveSafety.Abstractions\Shared.PredictiveSafety.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Graph\" />
+    <Folder Include="Construction\" />
+    <Folder Include="Traversal\" />
+    <Folder Include="Inference\" />
+    <Folder Include="Contracts\" />
+    <Folder Include="Governance\" />
+  </ItemGroup>
+
+</Project>

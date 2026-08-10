@@ -88,6 +88,11 @@ public static class LogCategoryClassifier
             return LogCategory.PredictiveSafety;
         }
 
+        if (normalized is "safetygraph" or "safety-graph" or "graph")
+        {
+            return LogCategory.SafetyGraph;
+        }
+
         if (AiEngineModules.Contains(normalized))
         {
             return LogCategory.AiEngine;
