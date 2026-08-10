@@ -12,6 +12,9 @@
 [Ll]og/
 [Ll]ogs/
 
+# Locally-run operator drill evidence (CI uploads its own copy as a build artifact)
+/snapshot-drill-evidence.json
+
 # Visual Studio
 .vs/
 *.user
