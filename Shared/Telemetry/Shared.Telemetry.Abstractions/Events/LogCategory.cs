@@ -28,6 +28,9 @@ public enum LogCategory
     /// <summary>Shared.AuditLogging.</summary>
     Audit,
 
+    /// <summary>Shared.Authorization.</summary>
+    Authorization,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 

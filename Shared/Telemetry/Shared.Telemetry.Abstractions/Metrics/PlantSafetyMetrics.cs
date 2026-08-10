@@ -74,4 +74,20 @@ public static class PlantSafetyMetrics
     /// <summary>Total telemetry governance violations detected, tagged by rule name.</summary>
     public static readonly Counter<long> GovernanceViolationsDetected = Meter.CreateCounter<long>(
         "plantsafety.governance_violations_detected", unit: "{violation}", description: "Total telemetry governance violations detected, tagged by rule name.");
+
+    // ---- Phase 9 (Authorization Modernization): CallerContext-based authorization checks
+    //      (see Shared.Authorization.Abstractions.Checks.AuthorizationCheck), tagged by module
+    //      and outcome. Same Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total authorization checks performed, tagged by module and outcome (Allow/Deny).</summary>
+    public static readonly Counter<long> AuthorizationChecksPerformed = Meter.CreateCounter<long>(
+        "plantsafety.authorization_checks_performed", unit: "{check}", description: "Total authorization checks performed, tagged by module and outcome.");
+
+    /// <summary>Total authorization checks that denied the caller, tagged by module and required permission.</summary>
+    public static readonly Counter<long> AuthorizationDenials = Meter.CreateCounter<long>(
+        "plantsafety.authorization_denials", unit: "{denial}", description: "Total authorization checks that denied the caller, tagged by module and required permission.");
+
+    /// <summary>Total MFA requirement checks that failed (caller's MfaStatus was not Verified), tagged by module.</summary>
+    public static readonly Counter<long> MfaRequirementFailures = Meter.CreateCounter<long>(
+        "plantsafety.mfa_requirement_failures", unit: "{failure}", description: "Total MFA requirement checks that failed, tagged by module.");
 }
