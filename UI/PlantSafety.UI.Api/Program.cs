@@ -25,6 +25,7 @@ using Shared.Authorization.Abstractions.Caller;
 using Shared.Authorization.Abstractions.Identity;
 using Shared.Authorization.Abstractions.Permissions;
 using Shared.Authorization.Abstractions.Roles;
+using Shared.Authorization.Abstractions.Tenant;
 using Shared.Deterministic.Abstractions;
 using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Policy;
@@ -54,6 +55,7 @@ using Enterprise.Graph.Abstractions.Ids;
 
 using PlantSafety.UI.Api.Json;
 using PlantSafety.UI.Api.Middleware;
+using PlantSafety.UI.Api.Tenant;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -186,6 +188,20 @@ builder.Configuration.GetSection(ApiKeyAuthenticationOptions.SectionName).Bind(a
 builder.Services.AddSingleton<IReadOnlyDictionary<string, EnterpriseRole>>(apiKeyAuthenticationOptions.ToRoleMap());
 builder.Services.AddScoped<CallerContextProvider>();
 builder.Services.AddScoped<ICallerContextProvider>(sp => sp.GetRequiredService<CallerContextProvider>());
+
+// ---- Phase 11: multi-tenant/contextual access. The key -> TenantId map is bound independently
+//      of Phase 10's key -> EnterpriseRole map (additive, defaults to empty -- no live caller
+//      sends a tenant-bound key today, so this reproduces pre-Phase-11 behavior: every request
+//      resolves to TenantContext.Unscoped). TenantFacilityAccessResolver adapts the real,
+//      already-registered ITenantFacilityRegistryV2 (Path C.8) to the seam TenantIsolationCheck
+//      uses, without Shared.Authorization depending on Shared.SafetyData -- see
+//      ITenantFacilityAccessResolver.cs's own header comment. ----
+var tenantAuthenticationOptions = new TenantAuthenticationOptions();
+builder.Configuration.GetSection(TenantAuthenticationOptions.SectionName).Bind(tenantAuthenticationOptions);
+builder.Services.AddSingleton<IReadOnlyDictionary<string, string>>(tenantAuthenticationOptions.RegisteredKeyTenants);
+builder.Services.AddSingleton<ITenantFacilityAccessResolver, TenantFacilityAccessResolver>();
+builder.Services.AddScoped<TenantContextProvider>();
+builder.Services.AddScoped<ITenantContextProvider>(sp => sp.GetRequiredService<TenantContextProvider>());
 
 var app = builder.Build();
 

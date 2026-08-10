@@ -37,15 +37,29 @@
 //                  comment for why PlatformAdmin-by-default is the honest,
 //                  documented placeholder rather than a route around
 //                  authorization.
+//
+//                  Phase 11: Evaluate now goes through WorkflowEngineTenant,
+//                  which runs a tenant-isolation check (TenantIsolationCheck)
+//                  before WorkflowEngineAuthorization. The resolved
+//                  TenantContext comes from the same middleware, via
+//                  ITenantContextProvider. requestedFacilityId is passed as
+//                  null -- WorkflowContext carries no facility field today
+//                  (confirmed before this phase), so there is nothing to
+//                  check a boundary against yet; see WorkflowEngineTenant.cs's
+//                  own header comment. With no tenant key configured, the
+//                  resolved TenantContext is TenantContext.Unscoped, which
+//                  TenantIsolationCheck always allows, so this request's
+//                  observable behavior remains unchanged.
 // ============================================================================
 using Microsoft.AspNetCore.Mvc;
 
 using Shared.Authorization.Abstractions.Caller;
 using Shared.Authorization.Abstractions.Permissions;
+using Shared.Authorization.Abstractions.Tenant;
 using Shared.Deterministic.Abstractions.Clock;
 using Shared.Telemetry.Abstractions.Events;
 using Shared.WorkflowEngine.Abstractions.Engine;
-using Shared.WorkflowEngine.Infrastructure.Authorization;
+using Shared.WorkflowEngine.Infrastructure.Tenant;
 
 namespace PlantSafety.UI.Api.Controllers;
 
@@ -56,13 +70,17 @@ public sealed class WorkflowEngineController(
     IClock clock,
     ILogEventWriter logEventWriter,
     ICallerContextProvider callerContextProvider,
-    IPermissionResolver permissionResolver) : ControllerBase
+    ITenantContextProvider tenantContextProvider,
+    IPermissionResolver permissionResolver,
+    ITenantFacilityAccessResolver tenantFacilityAccessResolver) : ControllerBase
 {
     /// <summary>POST api/v1/ui/engines/workflow/evaluate -- evaluates a WorkflowContext into a WorkflowDecision.</summary>
     [HttpPost("evaluate")]
     public async Task<ActionResult<WorkflowDecision>> Evaluate([FromBody] WorkflowContext context)
     {
         CallerContext caller = callerContextProvider.Current;
-        return Ok(await WorkflowEngineAuthorization.EvaluateWithAuthorizationAsync(context, caller, permissionResolver, clock, logEventWriter));
+        TenantContext tenantContext = tenantContextProvider.Current;
+        return Ok(await WorkflowEngineTenant.EvaluateWithTenantEnforcementAsync(
+            context, caller, tenantContext, requestedFacilityId: null, permissionResolver, tenantFacilityAccessResolver, clock, logEventWriter));
     }
 }
