@@ -14,6 +14,7 @@ using Xunit;
 
 namespace Deployment.Tests.Unit;
 
+[Trait("Category", "Unit")]
 public sealed class DeploymentEngineTests
 {
     private sealed class CapturingLogEventWriter : ILogEventWriter

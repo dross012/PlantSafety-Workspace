@@ -12,6 +12,7 @@ using Xunit;
 
 namespace Deployment.Tests.Unit;
 
+[Trait("Category", "Unit")]
 public sealed class ConfigValidatorTests
 {
     private static DeploymentContractMetadata Metadata() => new(DeploymentContractMetadata.CurrentVersion, "acme-plant-1", "corr-1", DateTime.UtcNow);

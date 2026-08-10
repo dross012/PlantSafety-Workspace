@@ -17,6 +17,7 @@ using Xunit;
 
 namespace Deployment.Tests.Unit;
 
+[Trait("Category", "Unit")]
 public sealed class TenantLifecycleTests
 {
     private static readonly IPermissionResolver Resolver = new EnterprisePermissionResolver();

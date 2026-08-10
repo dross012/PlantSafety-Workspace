@@ -25,6 +25,7 @@ using Xunit;
 
 namespace Deployment.Tests.Integration;
 
+[Trait("Category", "Integration")]
 public sealed class TenantIsolationIntegrationTests
 {
     private sealed class CapturingLogEventWriter : ILogEventWriter
