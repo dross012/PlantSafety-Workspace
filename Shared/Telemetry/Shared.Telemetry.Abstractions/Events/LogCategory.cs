@@ -37,6 +37,9 @@ public enum LogCategory
     /// <summary>Shared.Authorization's multi-tenant/contextual access layer (Phase 11).</summary>
     Tenant,
 
+    /// <summary>Shared.SafetyData's Eventing &amp; Orchestration routing subsystem (Phase 13).</summary>
+    Routing,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 

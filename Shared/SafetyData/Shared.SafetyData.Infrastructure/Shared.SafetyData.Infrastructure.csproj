@@ -21,6 +21,10 @@
     <ProjectReference Include="..\Shared.SafetyData.Abstractions\Shared.SafetyData.Abstractions.csproj" />
     <ProjectReference Include="..\..\SqlGateway\Shared.SqlGateway.Abstractions\Shared.SqlGateway.Abstractions.csproj" />
     <ProjectReference Include="..\..\SqlGateway\Shared.SqlGateway.Infrastructure\Shared.SqlGateway.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Authorization\Shared.Authorization.Abstractions\Shared.Authorization.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Authorization\Shared.Authorization.Infrastructure\Shared.Authorization.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +32,9 @@
     <Folder Include="Options\" />
     <Folder Include="DependencyInjection\" />
     <Folder Include="Exceptions\" />
+    <Folder Include="Telemetry\" />
+    <Folder Include="Authorization\" />
+    <Folder Include="Tenant\" />
   </ItemGroup>
 
 </Project>

@@ -29,6 +29,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Shared.SafetyData.Abstractions\Shared.SafetyData.Abstractions.csproj" />
     <ProjectReference Include="..\Shared.SafetyData.Infrastructure\Shared.SafetyData.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Authorization\Shared.Authorization.Abstractions\Shared.Authorization.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Authorization\Shared.Authorization.Infrastructure\Shared.Authorization.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

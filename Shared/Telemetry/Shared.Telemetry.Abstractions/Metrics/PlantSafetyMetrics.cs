@@ -115,4 +115,12 @@ public static class PlantSafetyMetrics
     /// <summary>Total tenant-isolation checks that denied cross-tenant/cross-facility access, tagged by module.</summary>
     public static readonly Counter<long> TenantIsolationDenials = Meter.CreateCounter<long>(
         "plantsafety.tenant_isolation_denials", unit: "{denial}", description: "Total tenant-isolation checks that denied access, tagged by module.");
+
+    // ---- Phase 13 (Routing Modernization): EventRoutingEngine.Route invocations (Shared.SafetyData,
+    //      Phase C.8 -- already deterministic, wrapped for the first time in this phase). Same
+    //      Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total EventRoutingEngine.Route invocations, tagged by event code.</summary>
+    public static readonly Counter<long> RoutingDecisionsComputed = Meter.CreateCounter<long>(
+        "plantsafety.routing_decisions_computed", unit: "{decision}", description: "Total EventRoutingEngine.Route invocations, tagged by event code.");
 }

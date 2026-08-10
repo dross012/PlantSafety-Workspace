@@ -73,6 +73,11 @@ public static class LogCategoryClassifier
             return LogCategory.Tenant;
         }
 
+        if (normalized == "routing")
+        {
+            return LogCategory.Routing;
+        }
+
         if (AiEngineModules.Contains(normalized))
         {
             return LogCategory.AiEngine;
