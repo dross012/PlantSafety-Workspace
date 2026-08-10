@@ -25,6 +25,9 @@ public enum LogCategory
     /// <summary>Shared.WorkflowEngine / Enterprise.WorkflowOrchestration.</summary>
     WorkflowEngine,
 
+    /// <summary>Shared.AuditLogging.</summary>
+    Audit,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 
