@@ -26,6 +26,7 @@ using Shared.Authorization.Abstractions.Identity;
 using Shared.Authorization.Abstractions.Permissions;
 using Shared.Authorization.Abstractions.Roles;
 using Shared.Authorization.Abstractions.Tenant;
+using Shared.Authorization.Infrastructure.Options;
 using Shared.Deterministic.Abstractions;
 using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Policy;

@@ -123,4 +123,25 @@ public static class PlantSafetyMetrics
     /// <summary>Total EventRoutingEngine.Route invocations, tagged by event code.</summary>
     public static readonly Counter<long> RoutingDecisionsComputed = Meter.CreateCounter<long>(
         "plantsafety.routing_decisions_computed", unit: "{decision}", description: "Total EventRoutingEngine.Route invocations, tagged by event code.");
+
+    // ---- Phase 14 (Scheduling Modernization): SchedulingScheduleCalculator.Calculate invocations
+    //      and SchedulingDueTimeEvaluator.EvaluateStatus rollups (Shared.Scheduling, new this
+    //      phase -- deterministic rule engine + due-time engine, no ML/probabilistic inference).
+    //      Same Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total SchedulingScheduleCalculator.Calculate invocations, tagged by whether immediate scheduling was required.</summary>
+    public static readonly Counter<long> SchedulingSchedulesComputed = Meter.CreateCounter<long>(
+        "plantsafety.scheduling_schedules_computed", unit: "{schedule}", description: "Total SchedulingScheduleCalculator.Calculate invocations, tagged by whether immediate scheduling was required.");
+
+    /// <summary>Total SchedulingDueTimeEngine.CalculateDueTimes due-time evaluations, tagged by resulting status.</summary>
+    public static readonly Counter<long> SchedulingDueTimeEvaluationsPerformed = Meter.CreateCounter<long>(
+        "plantsafety.scheduling_due_time_evaluations_performed", unit: "{evaluation}", description: "Total due-time status evaluations performed, tagged by resulting status.");
+
+    /// <summary>Total SchedulingScheduleCalculator.Calculate results that required immediate scheduling (worst-case-wins escalation).</summary>
+    public static readonly Counter<long> SchedulingImmediateRequiredCount = Meter.CreateCounter<long>(
+        "plantsafety.scheduling_immediate_required_count", unit: "{schedule}", description: "Total scheduling evaluations that required immediate scheduling.");
+
+    /// <summary>Total Scheduling governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> SchedulingGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.scheduling_governance_violations_detected", unit: "{violation}", description: "Total Scheduling-specific governance violations detected, tagged by rule name.");
 }

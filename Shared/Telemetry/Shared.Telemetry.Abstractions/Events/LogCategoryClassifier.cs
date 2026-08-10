@@ -78,6 +78,11 @@ public static class LogCategoryClassifier
             return LogCategory.Routing;
         }
 
+        if (normalized == "scheduling")
+        {
+            return LogCategory.Scheduling;
+        }
+
         if (AiEngineModules.Contains(normalized))
         {
             return LogCategory.AiEngine;

@@ -40,6 +40,9 @@ public enum LogCategory
     /// <summary>Shared.SafetyData's Eventing &amp; Orchestration routing subsystem (Phase 13).</summary>
     Routing,
 
+    /// <summary>Shared.Scheduling's deterministic rule/due-time engine and orchestration (Phase 14).</summary>
+    Scheduling,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 
