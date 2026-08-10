@@ -180,4 +180,20 @@ public static class PlantSafetyMetrics
     /// <summary>Total Safety Graph governance violations detected, tagged by rule name.</summary>
     public static readonly Counter<long> SafetyGraphGovernanceViolationsDetected = Meter.CreateCounter<long>(
         "plantsafety.safety_graph_governance_violations_detected", unit: "{violation}", description: "Total Safety Graph governance violations detected, tagged by rule name.");
+
+    // ---- Phase 17 (Simulation Engine): deterministic scenario replay and evaluation
+    //      (Shared.Simulation, new this phase). Same Meter, same pattern as every instrument
+    //      above. ----
+
+    /// <summary>Total scenario replays performed, tagged by validity outcome.</summary>
+    public static readonly Counter<long> SimulationReplaysPerformed = Meter.CreateCounter<long>(
+        "plantsafety.simulation_replays_performed", unit: "{replay}", description: "Total scenario replays performed, tagged by validity outcome.");
+
+    /// <summary>Total scenario evaluations computed, tagged by escalation outcome.</summary>
+    public static readonly Counter<long> SimulationScenariosEvaluated = Meter.CreateCounter<long>(
+        "plantsafety.simulation_scenarios_evaluated", unit: "{scenario}", description: "Total scenario evaluations computed, tagged by escalation outcome.");
+
+    /// <summary>Total Simulation governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> SimulationGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.simulation_governance_violations_detected", unit: "{violation}", description: "Total Simulation governance violations detected, tagged by rule name.");
 }

@@ -49,6 +49,9 @@ public enum LogCategory
     /// <summary>Shared.SafetyGraph's deterministic, unified cross-module graph model (Phase 16).</summary>
     SafetyGraph,
 
+    /// <summary>Shared.Simulation's deterministic, ML-free replay/scenario engine (Phase 17).</summary>
+    Simulation,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 

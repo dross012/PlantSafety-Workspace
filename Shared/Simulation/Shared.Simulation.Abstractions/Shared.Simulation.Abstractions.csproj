@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Shared.Simulation.Abstractions</RootNamespace>
+    <AssemblyName>Shared.Simulation.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+    <ProjectReference Include="..\..\PredictiveSafety\Shared.PredictiveSafety.Abstractions\Shared.PredictiveSafety.Abstractions.csproj" />
+    <ProjectReference Include="..\..\SafetyGraph\Shared.SafetyGraph.Abstractions\Shared.SafetyGraph.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Simulation\" />
+    <Folder Include="Replay\" />
+    <Folder Include="Scenario\" />
+    <Folder Include="Contracts\" />
+    <Folder Include="Governance\" />
+  </ItemGroup>
+
+</Project>

@@ -93,6 +93,11 @@ public static class LogCategoryClassifier
             return LogCategory.SafetyGraph;
         }
 
+        if (normalized is "simulation")
+        {
+            return LogCategory.Simulation;
+        }
+
         if (AiEngineModules.Contains(normalized))
         {
             return LogCategory.AiEngine;

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Shared.Simulation.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.v3.runner.console" Version="3.2.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared.Simulation.Abstractions\Shared.Simulation.Abstractions.csproj" />
+    <ProjectReference Include="..\Shared.Simulation.Infrastructure\Shared.Simulation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\PredictiveSafety\Shared.PredictiveSafety.Abstractions\Shared.PredictiveSafety.Abstractions.csproj" />
+    <ProjectReference Include="..\..\SafetyGraph\Shared.SafetyGraph.Abstractions\Shared.SafetyGraph.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Authorization\Shared.Authorization.Abstractions\Shared.Authorization.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Authorization\Shared.Authorization.Infrastructure\Shared.Authorization.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
