@@ -196,4 +196,24 @@ public static class PlantSafetyMetrics
     /// <summary>Total Simulation governance violations detected, tagged by rule name.</summary>
     public static readonly Counter<long> SimulationGovernanceViolationsDetected = Meter.CreateCounter<long>(
         "plantsafety.simulation_governance_violations_detected", unit: "{violation}", description: "Total Simulation governance violations detected, tagged by rule name.");
+
+    // ---- Phase 18 (Deployment Modernization): deterministic deployment orchestration, config
+    //      registry, drift reconciliation, and governance (Deployment/, new this phase). Same
+    //      Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total deployment steps executed by DeploymentEngine, tagged by outcome.</summary>
+    public static readonly Counter<long> DeploymentStepsExecuted = Meter.CreateCounter<long>(
+        "plantsafety.deployment_steps_executed", unit: "{step}", description: "Total deployment steps executed, tagged by outcome.");
+
+    /// <summary>Total config registry snapshots published, tagged by tenant.</summary>
+    public static readonly Counter<long> ConfigSnapshotsPublished = Meter.CreateCounter<long>(
+        "plantsafety.config_snapshots_published", unit: "{snapshot}", description: "Total config registry snapshots published, tagged by tenant.");
+
+    /// <summary>Total drift reconciliation passes performed, tagged by whether drift was found.</summary>
+    public static readonly Counter<long> DriftReconciliationsPerformed = Meter.CreateCounter<long>(
+        "plantsafety.drift_reconciliations_performed", unit: "{reconciliation}", description: "Total drift reconciliation passes performed, tagged by whether drift was found.");
+
+    /// <summary>Total Deployment governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> DeploymentGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.deployment_governance_violations_detected", unit: "{violation}", description: "Total Deployment governance violations detected, tagged by rule name.");
 }

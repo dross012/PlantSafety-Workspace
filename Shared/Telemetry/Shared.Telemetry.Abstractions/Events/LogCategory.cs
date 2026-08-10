@@ -52,6 +52,9 @@ public enum LogCategory
     /// <summary>Shared.Simulation's deterministic, ML-free replay/scenario engine (Phase 17).</summary>
     Simulation,
 
+    /// <summary>Deployment's deterministic multi-tenant deployment, config registry, and rollout orchestration (Phase 18).</summary>
+    Deployment,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 

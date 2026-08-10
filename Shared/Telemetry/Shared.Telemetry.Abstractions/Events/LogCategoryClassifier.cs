@@ -98,6 +98,11 @@ public static class LogCategoryClassifier
             return LogCategory.Simulation;
         }
 
+        if (normalized is "deployment")
+        {
+            return LogCategory.Deployment;
+        }
+
         if (AiEngineModules.Contains(normalized))
         {
             return LogCategory.AiEngine;

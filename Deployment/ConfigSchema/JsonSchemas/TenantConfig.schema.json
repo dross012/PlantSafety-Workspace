@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plantsafety.internal/schemas/deployment/TenantConfig.schema.json",
+  "title": "TenantConfig",
+  "description": "Phase 18. Mirrors Deployment.ConfigSchema.Contracts.TenantConfig field-for-field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "tenantId", "tenantName", "topology", "status", "resourceQuota", "assignedModuleIds", "assignedRoleIds"],
+  "properties": {
+    "metadata": { "$ref": "DeploymentContractMetadata.schema.json" },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "tenantName": { "type": "string", "minLength": 1 },
+    "topology": { "type": "string", "enum": ["Shared", "Isolated"] },
+    "status": { "type": "string", "enum": ["Active", "Suspended", "Deleted"] },
+    "resourceQuota": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxMachineGroups", "maxConcurrentDeployments", "maxStorageBytes"],
+      "properties": {
+        "maxMachineGroups": { "type": "integer", "minimum": 1 },
+        "maxConcurrentDeployments": { "type": "integer", "minimum": 1 },
+        "maxStorageBytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "assignedModuleIds": { "type": "array", "items": { "type": "string" } },
+    "assignedRoleIds": { "type": "array", "items": { "type": "string" } }
+  }
+}
