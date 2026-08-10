@@ -37,4 +37,57 @@ public static class PlantSafetyMetrics
     /// <summary>Total times a circuit breaker recorded a failure that tripped it open.</summary>
     public static readonly Counter<long> CircuitBreakerTrips = Meter.CreateCounter<long>(
         "plantsafety.circuit_breaker_trips", unit: "{trip}", description: "Total circuit breaker trips, tagged by module.");
+
+    // ---- Phase 8 (Observability, Telemetry, Diagnostics, and Governance): instrumentation for
+    //      real execution paths only (WorkflowEngine.Evaluate, live via WorkflowEngineController)
+    //      and dormant-but-real capabilities (Facility's inference rules, Audit's search --
+    //      neither has a live caller in PlantSafety.UI.Api today; see
+    //      Shared.FacilityDomain.Infrastructure/Telemetry/FacilityTelemetry.cs and
+    //      Shared.AuditLogging.Infrastructure/Telemetry/AuditTelemetry.cs for that caveat). No
+    //      new Meter, no new metric type beyond Counter/Histogram -- same Meter instance as
+    //      every other instrument in this class. ----
+
+    /// <summary>Total WorkflowEngine.Evaluate invocations, tagged by resulting SeverityLevel.</summary>
+    public static readonly Counter<long> WorkflowDecisionsEvaluated = Meter.CreateCounter<long>(
+        "plantsafety.workflow_decisions_evaluated", unit: "{decision}", description: "Total WorkflowEngine.Evaluate invocations, tagged by resulting SeverityLevel.");
+
+    /// <summary>Total Facility inference-rule evaluations (Hazard/Severity/Regulatory), tagged by rule name.</summary>
+    public static readonly Counter<long> FacilityInferenceRuleEvaluations = Meter.CreateCounter<long>(
+        "plantsafety.facility_inference_rule_evaluations", unit: "{evaluation}", description: "Total Facility inference-rule evaluations, tagged by rule name.");
+
+    /// <summary>Total IAuditLogRepository.SearchAsync invocations, tagged by outcome (Success/Failure).</summary>
+    public static readonly Counter<long> AuditSearchesExecuted = Meter.CreateCounter<long>(
+        "plantsafety.audit_searches_executed", unit: "{search}", description: "Total audit log searches executed, tagged by outcome.");
+
+    /// <summary>Duration of each IAuditLogRepository.SearchAsync call, in milliseconds.</summary>
+    public static readonly Histogram<double> AuditSearchDurationMs = Meter.CreateHistogram<double>(
+        "plantsafety.audit_search_duration_ms", unit: "ms", description: "Duration of each audit log search, in milliseconds.");
+
+    /// <summary>Total operations wrapped by ReliabilityHooks.ExecuteAsync that failed, tagged by module and operation name.</summary>
+    public static readonly Counter<long> ReliabilityFailures = Meter.CreateCounter<long>(
+        "plantsafety.reliability_failures", unit: "{failure}", description: "Total ReliabilityHooks-wrapped operations that failed, tagged by module and operation.");
+
+    /// <summary>Duration of every operation wrapped by ReliabilityHooks.ExecuteAsync, in milliseconds.</summary>
+    public static readonly Histogram<double> ReliabilityOperationDurationMs = Meter.CreateHistogram<double>(
+        "plantsafety.reliability_operation_duration_ms", unit: "ms", description: "Duration of every ReliabilityHooks-wrapped operation, in milliseconds.");
+
+    /// <summary>Total telemetry governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> GovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.governance_violations_detected", unit: "{violation}", description: "Total telemetry governance violations detected, tagged by rule name.");
+
+    // ---- Phase 9 (Authorization Modernization): CallerContext-based authorization checks
+    //      (see Shared.Authorization.Abstractions.Checks.AuthorizationCheck), tagged by module
+    //      and outcome. Same Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total authorization checks performed, tagged by module and outcome (Allow/Deny).</summary>
+    public static readonly Counter<long> AuthorizationChecksPerformed = Meter.CreateCounter<long>(
+        "plantsafety.authorization_checks_performed", unit: "{check}", description: "Total authorization checks performed, tagged by module and outcome.");
+
+    /// <summary>Total authorization checks that denied the caller, tagged by module and required permission.</summary>
+    public static readonly Counter<long> AuthorizationDenials = Meter.CreateCounter<long>(
+        "plantsafety.authorization_denials", unit: "{denial}", description: "Total authorization checks that denied the caller, tagged by module and required permission.");
+
+    /// <summary>Total MFA requirement checks that failed (caller's MfaStatus was not Verified), tagged by module.</summary>
+    public static readonly Counter<long> MfaRequirementFailures = Meter.CreateCounter<long>(
+        "plantsafety.mfa_requirement_failures", unit: "{failure}", description: "Total MFA requirement checks that failed, tagged by module.");
 }

@@ -19,6 +19,8 @@
     <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
     <ProjectReference Include="..\..\ModuleContracts\Shared.ModuleContracts.Abstractions\Shared.ModuleContracts.Abstractions.csproj" />
     <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Authorization\Shared.Authorization.Abstractions\Shared.Authorization.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Authorization\Shared.Authorization.Infrastructure\Shared.Authorization.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +28,8 @@
     <Folder Include="Events\" />
     <Folder Include="Persistence\" />
     <Folder Include="Services\" />
+    <Folder Include="Telemetry\" />
+    <Folder Include="Authorization\" />
   </ItemGroup>
 
 </Project>

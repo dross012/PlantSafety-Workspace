@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared.WorkflowEngine.Abstractions\Shared.WorkflowEngine.Abstractions.csproj" />
+    <ProjectReference Include="..\Shared.WorkflowEngine.Infrastructure\Shared.WorkflowEngine.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

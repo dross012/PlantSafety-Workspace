@@ -21,6 +21,7 @@ using Enterprise.Integration.Adapters;
 using Enterprise.Integration.Events;
 using Enterprise.Integration.Mapping;
 
+using Shared.Authorization.Abstractions.Permissions;
 using Shared.Deterministic.Abstractions;
 using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Policy;
@@ -161,6 +162,13 @@ builder.Services.AddRateLimiter(options =>
 //      publisher's point of view) reacts by logging a structured event, without
 //      FacilityService referencing it at all. ----
 builder.Services.AddSingleton<IModuleEventGateway, ModuleEventGateway>();
+
+// ---- Phase 9: Shared.Authorization's deterministic permission resolver. Stateless, pure --
+//      registered as a singleton like every other stateless resolver in this host. No
+//      authentication scheme is registered (see WorkflowEngineController.cs's own header
+//      comment) -- this only makes the real, existing role/permission model resolvable and
+//      observable; it does not itself enforce anything at the API boundary. ----
+builder.Services.AddSingleton<IPermissionResolver, EnterprisePermissionResolver>();
 
 var app = builder.Build();
 

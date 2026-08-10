@@ -48,9 +48,19 @@ public static class LogCategoryClassifier
             return LogCategory.Machine;
         }
 
-        if (normalized == "workflow-engine")
+        if (normalized is "workflow-engine" or "workflowengine")
         {
             return LogCategory.WorkflowEngine;
+        }
+
+        if (normalized == "audit")
+        {
+            return LogCategory.Audit;
+        }
+
+        if (normalized == "authorization")
+        {
+            return LogCategory.Authorization;
         }
 
         if (AiEngineModules.Contains(normalized))

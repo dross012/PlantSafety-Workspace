@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\Shared\MachineDomain\Shared.MachineDomain.Abstractions\Shared.MachineDomain.Abstractions.csproj" />
     <ProjectReference Include="..\..\Shared\MachineDomain\Shared.MachineDomain.Infrastructure\Shared.MachineDomain.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared\WorkflowEngine\Shared.WorkflowEngine.Abstractions\Shared.WorkflowEngine.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\WorkflowEngine\Shared.WorkflowEngine.Infrastructure\Shared.WorkflowEngine.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared\PredictiveModels\Shared.PredictiveModels.Abstractions\Shared.PredictiveModels.Abstractions.csproj" />
     <ProjectReference Include="..\..\Shared\SafetyData\Shared.SafetyData.Abstractions\Shared.SafetyData.Abstractions.csproj" />
     <ProjectReference Include="..\..\Shared\SafetyData\Shared.SafetyData.Infrastructure\Shared.SafetyData.Infrastructure.csproj" />
