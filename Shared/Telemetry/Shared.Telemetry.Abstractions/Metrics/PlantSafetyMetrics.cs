@@ -144,4 +144,20 @@ public static class PlantSafetyMetrics
     /// <summary>Total Scheduling governance violations detected, tagged by rule name.</summary>
     public static readonly Counter<long> SchedulingGovernanceViolationsDetected = Meter.CreateCounter<long>(
         "plantsafety.scheduling_governance_violations_detected", unit: "{violation}", description: "Total Scheduling-specific governance violations detected, tagged by rule name.");
+
+    // ---- Phase 15 (Predictive Safety Engine): deterministic, ML-free prediction evaluations
+    //      across the Hazard/Maintenance/Routing/Scheduling/Audit domains (Shared.PredictiveSafety,
+    //      new this phase). Same Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total predictive evaluations computed, tagged by domain (Hazard/Maintenance/Routing/Scheduling/Audit).</summary>
+    public static readonly Counter<long> PredictiveEvaluationsComputed = Meter.CreateCounter<long>(
+        "plantsafety.predictive_evaluations_computed", unit: "{evaluation}", description: "Total predictive evaluations computed, tagged by domain.");
+
+    /// <summary>Total predictive evaluations that required immediate escalation, tagged by domain.</summary>
+    public static readonly Counter<long> PredictiveEscalationsRequired = Meter.CreateCounter<long>(
+        "plantsafety.predictive_escalations_required", unit: "{escalation}", description: "Total predictive evaluations that required immediate escalation, tagged by domain.");
+
+    /// <summary>Total Predictive Safety governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> PredictiveGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.predictive_governance_violations_detected", unit: "{violation}", description: "Total Predictive Safety governance violations detected, tagged by rule name.");
 }

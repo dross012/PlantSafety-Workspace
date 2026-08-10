@@ -43,6 +43,9 @@ public enum LogCategory
     /// <summary>Shared.Scheduling's deterministic rule/due-time engine and orchestration (Phase 14).</summary>
     Scheduling,
 
+    /// <summary>Shared.PredictiveSafety's deterministic, ML-free predictive inference engines (Phase 15).</summary>
+    PredictiveSafety,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Shared.PredictiveSafety.Abstractions</RootNamespace>
+    <AssemblyName>Shared.PredictiveSafety.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+    <ProjectReference Include="..\..\FacilityDomain\Shared.FacilityDomain.Abstractions\Shared.FacilityDomain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\MachineDomain\Shared.MachineDomain.Abstractions\Shared.MachineDomain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\SafetyData\Shared.SafetyData.Abstractions\Shared.SafetyData.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Scheduling\Shared.Scheduling.Abstractions\Shared.Scheduling.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Common\" />
+    <Folder Include="Hazard\" />
+    <Folder Include="Maintenance\" />
+    <Folder Include="Routing\" />
+    <Folder Include="Scheduling\" />
+    <Folder Include="Audit\" />
+    <Folder Include="Contracts\" />
+    <Folder Include="Governance\" />
+  </ItemGroup>
+
+</Project>

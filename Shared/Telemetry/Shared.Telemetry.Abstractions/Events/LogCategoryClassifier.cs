@@ -83,6 +83,11 @@ public static class LogCategoryClassifier
             return LogCategory.Scheduling;
         }
 
+        if (normalized is "predictivesafety" or "predictive-safety" or "predictive")
+        {
+            return LogCategory.PredictiveSafety;
+        }
+
         if (AiEngineModules.Contains(normalized))
         {
             return LogCategory.AiEngine;
