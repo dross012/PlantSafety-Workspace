@@ -40,7 +40,10 @@
        gets the same compiled .razor component types without pulling in those MSBuild targets. -->
   <ItemGroup>
     <Reference Include="PlantSafety.UI">
-      <HintPath>..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\PlantSafety.UI.dll</HintPath>
+      <!-- $(Configuration), not a hardcoded "Debug": this path previously pinned bin\Debug, so
+           the project compiled under Debug but failed under Release with 29 CS0234 errors,
+           because the assembly simply is not at that path in a Release build. -->
+      <HintPath>..\PlantSafety.UI\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\PlantSafety.UI.dll</HintPath>
     </Reference>
   </ItemGroup>
 
@@ -51,7 +54,7 @@
        managed PlantSafety.UI.dll, not these deployment assets. Mirror them from the
        already-built PlantSafety.UI win-x64 output. -->
   <ItemGroup>
-    <None Include="..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Bootstrap.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Bootstrap.Net.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Insights.Resource.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.Windows.ApplicationModel.WindowsAppRuntime.Projection.dll;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\Microsoft.Windows.ApplicationModel.WindowsAppRuntime.winmd;..\PlantSafety.UI\bin\Debug\net10.0-windows10.0.19041.0\win-x64\WindowsAppRuntime.DeploymentExtensions.OneCore.dll"
+    <None Include="..\PlantSafety.UI\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Bootstrap.dll;..\PlantSafety.UI\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Bootstrap.Net.dll;..\PlantSafety.UI\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.dll;..\PlantSafety.UI\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\Microsoft.WindowsAppRuntime.Insights.Resource.dll;..\PlantSafety.UI\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\Microsoft.Windows.ApplicationModel.WindowsAppRuntime.Projection.dll;..\PlantSafety.UI\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\Microsoft.Windows.ApplicationModel.WindowsAppRuntime.winmd;..\PlantSafety.UI\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\WindowsAppRuntime.DeploymentExtensions.OneCore.dll"
           CopyToOutputDirectory="PreserveNewest"
           Link="%(Filename)%(Extension)" />
   </ItemGroup>
