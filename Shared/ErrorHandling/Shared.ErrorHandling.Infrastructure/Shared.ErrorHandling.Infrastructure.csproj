@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Shared.ErrorHandling.Infrastructure</RootNamespace>
+    <AssemblyName>Shared.ErrorHandling.Infrastructure</AssemblyName>
+    <PlantSafetyStrictBuild>true</PlantSafetyStrictBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared.ErrorHandling.Abstractions\Shared.ErrorHandling.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Governance\" />
+    <Folder Include="Telemetry\" />
+  </ItemGroup>
+
+</Project>

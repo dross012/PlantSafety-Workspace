@@ -32,11 +32,21 @@
 //                  TenantContext.Unscoped when no tenant binding is
 //                  registered for the key, same "no endpoint breaks"
 //                  guarantee as the CallerContext resolution above.
+//
+//                  Phase 12: composes the resolved CallerContextResolution +
+//                  TenantContextResolution into a ContractMetadata
+//                  (ContractMetadataFactory) and runs SchemaGovernanceEvaluator
+//                  once per request -- the single composed identity/contract/
+//                  tenant governance pass this phase's "Unified Governance"
+//                  section asks for, on top of (not instead of) the
+//                  per-layer Authentication/Tenant governance calls above.
 // ============================================================================
 using Shared.Authorization.Abstractions.Caller;
+using Shared.Authorization.Abstractions.Contracts;
 using Shared.Authorization.Abstractions.Identity;
 using Shared.Authorization.Abstractions.Roles;
 using Shared.Authorization.Abstractions.Tenant;
+using Shared.Authorization.Infrastructure.Contracts;
 using Shared.Authorization.Infrastructure.Governance;
 using Shared.Authorization.Infrastructure.Telemetry;
 using Shared.Deterministic.Abstractions.Clock;
@@ -78,6 +88,10 @@ public sealed class ApiKeyAuthenticationMiddleware(RequestDelegate next)
 
         TenantTelemetry.RecordResolution(tenantResolution, clock, logEventWriter);
         TenantGovernanceEvaluator.EvaluateResolutionAndReport(tenantResolution, clock, logEventWriter);
+
+        ContractMetadata contractMetadata = ContractMetadataFactory.Create(tenantResolution.Context, clock);
+        contractMetadata.RecordEmitted(clock, logEventWriter);
+        SchemaGovernanceEvaluator.EvaluateAndReport(resolution, tenantResolution, contractMetadata, clock, logEventWriter);
 
         await next(context);
     }

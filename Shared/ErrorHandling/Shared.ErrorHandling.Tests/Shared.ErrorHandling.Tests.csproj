@@ -23,7 +23,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared.ErrorHandling.Abstractions\Shared.ErrorHandling.Abstractions.csproj" />
+    <ProjectReference Include="..\Shared.ErrorHandling.Infrastructure\Shared.ErrorHandling.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>
