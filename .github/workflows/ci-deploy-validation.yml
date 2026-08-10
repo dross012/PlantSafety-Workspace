@@ -47,6 +47,9 @@ jobs:
       - name: Build SnapshotDrill
         run: dotnet build Deployment/Tools/SnapshotDrill/SnapshotDrill.csproj -c Release
 
+      - name: Build GovernanceDrill
+        run: dotnet build Deployment/Tools/GovernanceDrill/GovernanceDrill.csproj -c Release
+
       - name: Run unit tests (Category=Unit)
         run: dotnet run --project Deployment/Tests/Deployment.Tests.csproj -c Release --no-build -- -trait "Category=Unit"
 
@@ -77,10 +80,15 @@ jobs:
       - name: ConfigRegistry snapshot/rollback drill
         run: dotnet run --project Deployment/Tools/SnapshotDrill/SnapshotDrill.csproj -c Release --no-build -- snapshot-drill-evidence.json
 
-      - name: Upload snapshot drill evidence
+      - name: DeploymentGovernanceEvaluator blocking drill
+        run: dotnet run --project Deployment/Tools/GovernanceDrill/GovernanceDrill.csproj -c Release --no-build -- governance-drill-evidence.json
+
+      - name: Upload drill evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: snapshot-drill-evidence
-          path: snapshot-drill-evidence.json
+          name: drill-evidence
+          path: |
+            snapshot-drill-evidence.json
+            governance-drill-evidence.json
           retention-days: 90
