@@ -31,6 +31,9 @@ public enum LogCategory
     /// <summary>Shared.Authorization.</summary>
     Authorization,
 
+    /// <summary>Shared.Authorization's API-key authentication layer (Phase 10).</summary>
+    Authentication,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 

@@ -21,7 +21,10 @@ using Enterprise.Integration.Adapters;
 using Enterprise.Integration.Events;
 using Enterprise.Integration.Mapping;
 
+using Shared.Authorization.Abstractions.Caller;
+using Shared.Authorization.Abstractions.Identity;
 using Shared.Authorization.Abstractions.Permissions;
+using Shared.Authorization.Abstractions.Roles;
 using Shared.Deterministic.Abstractions;
 using Shared.Deterministic.Abstractions.Clock;
 using Shared.ErrorHandling.Abstractions.Policy;
@@ -170,6 +173,20 @@ builder.Services.AddSingleton<IModuleEventGateway, ModuleEventGateway>();
 //      observable; it does not itself enforce anything at the API boundary. ----
 builder.Services.AddSingleton<IPermissionResolver, EnterprisePermissionResolver>();
 
+// ---- Phase 10: deterministic, header-based API-key authentication. The registered-key map is
+//      bound once from configuration ("ApiKeyAuthentication:RegisteredKeys") and defaults to
+//      empty -- unless an operator actually configures keys, this reproduces today's exact
+//      behavior (every request resolves to CallerContext.SystemDefault). CallerContextProvider
+//      is request-scoped (Set once by ApiKeyAuthenticationMiddleware, read by controllers),
+//      mirroring CorrelationContext's own scoped registration above. No authentication scheme,
+//      no [Authorize]/UseAuthorization() reliance -- see ApiKeyAuthenticationMiddleware.cs's own
+//      header comment for why. ----
+var apiKeyAuthenticationOptions = new ApiKeyAuthenticationOptions();
+builder.Configuration.GetSection(ApiKeyAuthenticationOptions.SectionName).Bind(apiKeyAuthenticationOptions);
+builder.Services.AddSingleton<IReadOnlyDictionary<string, EnterpriseRole>>(apiKeyAuthenticationOptions.ToRoleMap());
+builder.Services.AddScoped<CallerContextProvider>();
+builder.Services.AddScoped<ICallerContextProvider>(sp => sp.GetRequiredService<CallerContextProvider>());
+
 var app = builder.Build();
 
 // ---- Phase 3.2: log that configuration loaded successfully, without ever touching
@@ -226,6 +243,7 @@ if (environmentManifest.EnvironmentName != "Development")
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRequestTimeouts();
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
 app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(context =>
     GlobalErrorHandler.HandleAsync(
         context,

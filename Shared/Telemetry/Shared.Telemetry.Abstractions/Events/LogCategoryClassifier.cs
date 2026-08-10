@@ -63,6 +63,11 @@ public static class LogCategoryClassifier
             return LogCategory.Authorization;
         }
 
+        if (normalized == "authentication")
+        {
+            return LogCategory.Authentication;
+        }
+
         if (AiEngineModules.Contains(normalized))
         {
             return LogCategory.AiEngine;

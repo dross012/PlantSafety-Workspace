@@ -21,13 +21,21 @@
 //                  Phase 9: Evaluate now goes through WorkflowEngineAuthorization,
 //                  which runs a real, deterministic permission check
 //                  (Shared.Authorization's EnterprisePermissionResolver)
-//                  before calling WorkflowEngineTelemetry. PlantSafety.UI.Api
-//                  has no authentication scheme, so the caller is
-//                  CallerContext.SystemDefault -- EnterpriseRole.PlatformAdmin,
-//                  which the permission model grants every verb, so this
-//                  request's observable behavior is unchanged today. See
-//                  CallerContext.cs's own header comment for why this is the
-//                  honest, documented placeholder rather than a route around
+//                  before calling WorkflowEngineTelemetry.
+//
+//                  Phase 10: the caller is no longer constructed inline here.
+//                  ApiKeyAuthenticationMiddleware resolves it once per request
+//                  (from the "X-Api-Key" header, or CallerContext.SystemDefault
+//                  when absent/unrecognized -- see that middleware's own
+//                  header comment) and this controller reads it from
+//                  ICallerContextProvider. PlantSafety.UI.Api still has no
+//                  real identity provider, so with no API key configured
+//                  today the resolved caller is still CallerContext.SystemDefault
+//                  -- EnterpriseRole.PlatformAdmin, which the permission model
+//                  grants every verb -- so this request's observable behavior
+//                  remains unchanged. See CallerContext.cs's own header
+//                  comment for why PlatformAdmin-by-default is the honest,
+//                  documented placeholder rather than a route around
 //                  authorization.
 // ============================================================================
 using Microsoft.AspNetCore.Mvc;
@@ -35,7 +43,6 @@ using Microsoft.AspNetCore.Mvc;
 using Shared.Authorization.Abstractions.Caller;
 using Shared.Authorization.Abstractions.Permissions;
 using Shared.Deterministic.Abstractions.Clock;
-using Shared.Telemetry.Abstractions.Correlation;
 using Shared.Telemetry.Abstractions.Events;
 using Shared.WorkflowEngine.Abstractions.Engine;
 using Shared.WorkflowEngine.Infrastructure.Authorization;
@@ -48,14 +55,14 @@ namespace PlantSafety.UI.Api.Controllers;
 public sealed class WorkflowEngineController(
     IClock clock,
     ILogEventWriter logEventWriter,
-    ICorrelationContext correlationContext,
+    ICallerContextProvider callerContextProvider,
     IPermissionResolver permissionResolver) : ControllerBase
 {
     /// <summary>POST api/v1/ui/engines/workflow/evaluate -- evaluates a WorkflowContext into a WorkflowDecision.</summary>
     [HttpPost("evaluate")]
     public async Task<ActionResult<WorkflowDecision>> Evaluate([FromBody] WorkflowContext context)
     {
-        CallerContext caller = CallerContext.SystemDefault(correlationContext.CorrelationId);
+        CallerContext caller = callerContextProvider.Current;
         return Ok(await WorkflowEngineAuthorization.EvaluateWithAuthorizationAsync(context, caller, permissionResolver, clock, logEventWriter));
     }
 }
