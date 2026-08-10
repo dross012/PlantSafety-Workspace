@@ -90,4 +90,12 @@ public static class PlantSafetyMetrics
     /// <summary>Total MFA requirement checks that failed (caller's MfaStatus was not Verified), tagged by module.</summary>
     public static readonly Counter<long> MfaRequirementFailures = Meter.CreateCounter<long>(
         "plantsafety.mfa_requirement_failures", unit: "{failure}", description: "Total MFA requirement checks that failed, tagged by module.");
+
+    // ---- Phase 10 (Authentication Layer Modernization): deterministic API-key resolution
+    //      (see Shared.Authorization.Abstractions.Caller.CallerContextFactory), tagged by
+    //      outcome. Same Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total API-key resolutions performed, tagged by outcome (NoKeyProvided/Recognized/Unrecognized).</summary>
+    public static readonly Counter<long> ApiKeyResolutionsPerformed = Meter.CreateCounter<long>(
+        "plantsafety.api_key_resolutions_performed", unit: "{resolution}", description: "Total API-key resolutions performed, tagged by outcome.");
 }
