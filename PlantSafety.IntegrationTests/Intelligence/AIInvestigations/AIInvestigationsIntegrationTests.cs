@@ -115,7 +115,8 @@ public sealed class AIInvestigationsIntegrationTests(IntegrationTestWebAppFactor
                 });
         }
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(
@@ -152,15 +153,15 @@ public sealed class AIInvestigationsIntegrationTests(IntegrationTestWebAppFactor
     [Fact]
     public async Task GetAllInvestigations_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var noDataTenantId = Guid.NewGuid();
         var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(
-                new GetAllInvestigationsQuery(noDataTenantId, null, fromUtc, toUtc),
+                new GetAllInvestigationsQuery(TenantId, null, fromUtc, toUtc),
                 CancellationToken.None);
 
             result.IsSuccess.Should().BeTrue("a query with no matching rows must still succeed, not throw");

@@ -99,7 +99,8 @@ public sealed class TextingIntegrationTests(IntegrationTestWebAppFactory factory
                 });
         }
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(new GetTextingQuery(TenantId, siteId, fromUtc, toUtc), CancellationToken.None);
@@ -128,14 +129,14 @@ public sealed class TextingIntegrationTests(IntegrationTestWebAppFactory factory
     [Fact]
     public async Task GetTexting_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var noDataTenantId = Guid.NewGuid();
         var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
-            var result = await sender.Send(new GetTextingQuery(noDataTenantId, null, fromUtc, toUtc), CancellationToken.None);
+            var result = await sender.Send(new GetTextingQuery(TenantId, null, fromUtc, toUtc), CancellationToken.None);
 
             result.IsSuccess.Should().BeTrue("a query with no matching rows must still succeed, not throw");
             result.Value!.Items.Should().NotBeNull();

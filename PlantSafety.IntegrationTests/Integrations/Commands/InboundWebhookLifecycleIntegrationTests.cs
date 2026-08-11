@@ -65,7 +65,8 @@ public sealed class InboundWebhookLifecycleIntegrationTests(IntegrationTestWebAp
             DateTimeOffset.UtcNow,
             "{\"payload\":\"real seeded webhook body\"}");
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(command, CancellationToken.None);
@@ -111,7 +112,8 @@ public sealed class InboundWebhookLifecycleIntegrationTests(IntegrationTestWebAp
             DateTimeOffset.UtcNow,
             "{\"payload\":\"real seeded webhook body\"}");
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var firstResult = await sender.Send(command, CancellationToken.None);

@@ -44,7 +44,8 @@ public sealed class PermitLifecycleIntegrationTests(IntegrationTestWebAppFactory
     [Fact]
     public async Task PermitLifecycle_CreateGetApprove_ShouldRoundTripThroughRealStoredProcedures()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();
@@ -133,7 +134,8 @@ public sealed class PermitLifecycleIntegrationTests(IntegrationTestWebAppFactory
     [Fact]
     public async Task ApprovePermit_WithStaleETag_ShouldThrowConcurrencyConflict()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var permitId = await sender.Send(new CreatePermitCommand
@@ -232,7 +234,8 @@ public sealed class PermitLifecycleIntegrationTests(IntegrationTestWebAppFactory
         // Permit row that genuinely exists and whose ETag genuinely matches (so the UPDATE
         // actually reaches the NOT NULL column, rather than matching zero rows on a
         // stale/incorrect ETag).
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         Guid permitId;
         try
         {

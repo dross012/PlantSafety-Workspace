@@ -71,7 +71,8 @@ public sealed class CorrectiveActionLifecycleAndAuditIntegrationTests(Integratio
     [Fact]
     public async Task CorrectiveActionLifecycle_CreateGetByIdListRoundTrip_ShouldReturnRealDataWithStableAdvancingETag()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var sourceEventId = Guid.NewGuid();
@@ -187,7 +188,8 @@ public sealed class CorrectiveActionLifecycleAndAuditIntegrationTests(Integratio
     [Fact]
     public async Task CreateCorrectiveAction_ShouldWriteAuditLogRow()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var caId = await sender.Send(new CreateCorrectiveActionCommand

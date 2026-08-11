@@ -43,3 +43,8 @@ global using PlantSafety.Domain.Common.Types.StrongIds;
 global using PlantSafety.IntegrationTests.Setup;
 global using PlantSafety.IntegrationTests.Common.Assertions;
 global using PlantSafety.IntegrationTests.Common.TestConstants;
+
+// TenantHttpContextTestHelper: tests that send a request through the real MediatR pipeline must
+// establish a server-resolved tenant context first, or TenantIsolationBehavior sees no
+// authenticated tenant and rejects the request as a cross-tenant access attempt.
+global using PlantSafety.IntegrationTests.Tenancy;

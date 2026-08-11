@@ -108,7 +108,8 @@ public sealed class NotificationsEmailIntegrationTests(IntegrationTestWebAppFact
                 });
         }
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(new GetEmailQuery(TenantId, siteId, fromUtc, toUtc), CancellationToken.None);
@@ -137,14 +138,14 @@ public sealed class NotificationsEmailIntegrationTests(IntegrationTestWebAppFact
     [Fact]
     public async Task GetEmailDeliveries_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var noDataTenantId = Guid.NewGuid();
         var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
-            var result = await sender.Send(new GetEmailQuery(noDataTenantId, null, fromUtc, toUtc), CancellationToken.None);
+            var result = await sender.Send(new GetEmailQuery(TenantId, null, fromUtc, toUtc), CancellationToken.None);
 
             result.IsSuccess.Should().BeTrue("a query with no matching rows must still succeed, not throw");
             result.Value!.Items.Should().NotBeNull();
@@ -352,7 +353,8 @@ public sealed class NotificationsInternalIntegrationTests(IntegrationTestWebAppF
                 });
         }
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(new GetInternalQuery(TenantId, siteId, fromUtc, toUtc), CancellationToken.None);
@@ -381,14 +383,14 @@ public sealed class NotificationsInternalIntegrationTests(IntegrationTestWebAppF
     [Fact]
     public async Task GetInternalNotifications_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var noDataTenantId = Guid.NewGuid();
         var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
-            var result = await sender.Send(new GetInternalQuery(noDataTenantId, null, fromUtc, toUtc), CancellationToken.None);
+            var result = await sender.Send(new GetInternalQuery(TenantId, null, fromUtc, toUtc), CancellationToken.None);
 
             result.IsSuccess.Should().BeTrue("a query with no matching rows must still succeed, not throw");
             result.Value!.Items.Should().NotBeNull();
@@ -595,7 +597,8 @@ public sealed class NotificationsTextingIntegrationTests(IntegrationTestWebAppFa
                 });
         }
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(new GetTextingQuery(TenantId, siteId, fromUtc, toUtc), CancellationToken.None);
@@ -624,14 +627,14 @@ public sealed class NotificationsTextingIntegrationTests(IntegrationTestWebAppFa
     [Fact]
     public async Task GetTextingDeliveries_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var noDataTenantId = Guid.NewGuid();
         var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
-            var result = await sender.Send(new GetTextingQuery(noDataTenantId, null, fromUtc, toUtc), CancellationToken.None);
+            var result = await sender.Send(new GetTextingQuery(TenantId, null, fromUtc, toUtc), CancellationToken.None);
 
             result.IsSuccess.Should().BeTrue("a query with no matching rows must still succeed, not throw");
             result.Value!.Items.Should().NotBeNull();

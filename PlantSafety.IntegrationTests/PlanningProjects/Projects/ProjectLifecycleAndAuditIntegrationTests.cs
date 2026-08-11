@@ -52,7 +52,8 @@ public sealed class ProjectLifecycleAndAuditIntegrationTests(IntegrationTestWebA
     [Fact]
     public async Task ProjectLifecycle_CreateGetRoundTrip_ShouldReturnRealDataWithStableAdvancingETag()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();
@@ -174,7 +175,8 @@ public sealed class ProjectLifecycleAndAuditIntegrationTests(IntegrationTestWebA
     [Fact]
     public async Task CreateProject_ShouldWriteAuditLogRow()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();

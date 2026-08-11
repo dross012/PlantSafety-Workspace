@@ -81,7 +81,8 @@ public sealed class AuditViewerIntegrationTests(IntegrationTestWebAppFactory fac
         // Act — resolve ISender from the real, fully-wired DI container (the same
         // container OperationsAuditViewerV1Controller resolves from) and send the query
         // exactly as the controller does.
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         AuditLogSearchResult result;
         try
         {
@@ -115,7 +116,8 @@ public sealed class AuditViewerIntegrationTests(IntegrationTestWebAppFactory fac
         var criteria = new AuditLogSearchCriteria(
             Module: $"{ModuleName}.NoSuchModule.{Guid.NewGuid():N}", PageNumber: 1, PageSize: 50);
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var response = await sender.Send(new SearchAuditLogQuery(criteria), CancellationToken.None);

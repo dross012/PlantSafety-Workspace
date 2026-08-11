@@ -100,7 +100,8 @@ public sealed class PlanningProjectsGetProjectsIntegrationTests(IntegrationTestW
                 });
         }
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(

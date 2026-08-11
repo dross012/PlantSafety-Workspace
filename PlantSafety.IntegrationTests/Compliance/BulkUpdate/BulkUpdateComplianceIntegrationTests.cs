@@ -36,7 +36,8 @@ public sealed class BulkUpdateComplianceIntegrationTests(IntegrationTestWebAppFa
     [Fact]
     public async Task BulkUpdateCompliance_Close_ShouldReportSuccessNotNotFound()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var resourceId = Guid.NewGuid();
@@ -123,7 +124,8 @@ public sealed class BulkUpdateComplianceIntegrationTests(IntegrationTestWebAppFa
     [Fact]
     public async Task BulkUpdateCompliance_UnknownResource_ShouldReportNotFound()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var command = new BulkUpdateComplianceCommand(
