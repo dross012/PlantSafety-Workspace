@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.Scorecards.ReportingDistribution.Queries;
 
 /// <summary>
-/// Retrieves Reporting & Distribution data for the given tenant, optionally scoped to a single site,
+/// Retrieves Reporting &amp; Distribution data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

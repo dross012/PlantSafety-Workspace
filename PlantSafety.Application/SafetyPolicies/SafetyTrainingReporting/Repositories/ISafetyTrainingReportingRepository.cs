@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.SafetyTrainingReporting.Models;
 
 namespace PlantSafety.Application.SafetyPolicies.SafetyTrainingReporting.Repositories;
 
-/// <summary>Read-only repository for Safety Training & Reporting Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Safety Training &amp; Reporting Policies data. Implemented in the Infrastructure layer.</summary>
 public interface ISafetyTrainingReportingRepository
 {
-    /// <summary>Returns Safety Training & Reporting Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Safety Training &amp; Reporting Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<SafetyTrainingReportingItemDto>> GetSafetyTrainingReportingAsync(
         Guid tenantId,
         Guid? siteId,

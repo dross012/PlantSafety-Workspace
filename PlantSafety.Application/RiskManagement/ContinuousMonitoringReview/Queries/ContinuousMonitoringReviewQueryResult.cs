@@ -11,7 +11,7 @@ namespace PlantSafety.Application.RiskManagement.ContinuousMonitoringReview.Quer
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Continuous Monitoring & Review items.</param>
+/// <param name="Items">Matching Continuous Monitoring &amp; Review items.</param>
 public sealed record ContinuousMonitoringReviewQueryResult(
     Guid TenantId,
     Guid? SiteId,

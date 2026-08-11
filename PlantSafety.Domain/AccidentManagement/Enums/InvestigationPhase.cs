@@ -14,16 +14,16 @@ namespace PlantSafety.Domain.AccidentManagement.Enums;
 /// <summary>Smart Enum representing the governing category taxonomy for AccidentManagement.</summary>
 public sealed class InvestigationPhase : IEquatable<InvestigationPhase>
 {
-    /// <summary>Site Securing, Injury Triage & Emergency Plan Execution</summary>
+    /// <summary>Site Securing, Injury Triage &amp; Emergency Plan Execution</summary>
     public static readonly InvestigationPhase SiteSecuringAndTriage = new("SiteSecuringAndTriage", "Site Securing, Injury Triage & Emergency Plan Execution");
 
-    /// <summary>Investigation & Root Cause Analysis</summary>
+    /// <summary>Investigation &amp; Root Cause Analysis</summary>
     public static readonly InvestigationPhase InvestigationRootCauseAnalysis = new("InvestigationRootCauseAnalysis", "Investigation & Root Cause Analysis");
 
     /// <summary>Corrective Actions (CAPA)</summary>
     public static readonly InvestigationPhase CorrectiveActionsCAPA = new("CorrectiveActionsCAPA", "Corrective Actions (CAPA)");
 
-    /// <summary>Regulatory Compliance & Documentation</summary>
+    /// <summary>Regulatory Compliance &amp; Documentation</summary>
     public static readonly InvestigationPhase RegulatoryComplianceDocumentation = new("RegulatoryComplianceDocumentation", "Regulatory Compliance & Documentation");
 
     /// <summary>All defined InvestigationPhase instances.</summary>

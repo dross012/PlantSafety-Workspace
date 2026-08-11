@@ -11,7 +11,7 @@ namespace PlantSafety.Application.AccidentManagement.InvestigationRootCauseAnaly
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Investigation & Root Cause Analysis items.</param>
+/// <param name="Items">Matching Investigation &amp; Root Cause Analysis items.</param>
 public sealed record InvestigationRootCauseAnalysisQueryResult(
     Guid TenantId,
     Guid? SiteId,

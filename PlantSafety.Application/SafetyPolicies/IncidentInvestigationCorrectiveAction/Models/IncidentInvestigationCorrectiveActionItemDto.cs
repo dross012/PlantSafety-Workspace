@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.IncidentInvestigationCorrectiveAction.Models;
 
-/// <summary>A single Incident Investigation & Corrective Action Policies read-model item.</summary>
+/// <summary>A single Incident Investigation &amp; Corrective Action Policies read-model item.</summary>
 public sealed record IncidentInvestigationCorrectiveActionItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

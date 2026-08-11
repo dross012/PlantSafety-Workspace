@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.Scorecards.CulturalPrecursorMetrics.Models;
 
-/// <summary>A single Cultural & Precursor Metrics (Near-Miss, Behavioral Observations) read-model item.</summary>
+/// <summary>A single Cultural &amp; Precursor Metrics (Near-Miss, Behavioral Observations) read-model item.</summary>
 public sealed record CulturalPrecursorMetricsItemDto
 {
     /// <summary>Scorecard identifier.</summary>

@@ -13,7 +13,7 @@ namespace PlantSafety.SharedKernel.Abstractions.Logging;
 
 /// <summary>
 /// Provides correlation and causation identifiers for log events.
-/// Implementations MUST follow the Canonical Correlation & Causality Lineage Rule.
+/// Implementations MUST follow the Canonical Correlation &amp; Causality Lineage Rule.
 /// </summary>
 public interface ILogCorrelationProvider
 {

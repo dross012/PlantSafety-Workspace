@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.RiskManagement.LotoConfinedSpaces.Models;
 
-/// <summary>A single Lockout/Tagout (LOTO) & Confined Spaces read-model item.</summary>
+/// <summary>A single Lockout/Tagout (LOTO) &amp; Confined Spaces read-model item.</summary>
 public sealed record LotoConfinedSpacesItemDto
 {
     /// <summary>Risk identifier.</summary>

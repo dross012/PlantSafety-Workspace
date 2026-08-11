@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.SafetyPolicies.HazardCommunicationAssessment.Queries;
 
 /// <summary>
-/// Retrieves Hazard Communication & Assessment Policies data for the given tenant, optionally scoped to a single site,
+/// Retrieves Hazard Communication &amp; Assessment Policies data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

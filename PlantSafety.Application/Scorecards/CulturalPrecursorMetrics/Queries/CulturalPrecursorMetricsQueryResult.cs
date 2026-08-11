@@ -11,7 +11,7 @@ namespace PlantSafety.Application.Scorecards.CulturalPrecursorMetrics.Queries;
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Cultural & Precursor Metrics (Near-Miss, Behavioral Observations) items.</param>
+/// <param name="Items">Matching Cultural &amp; Precursor Metrics (Near-Miss, Behavioral Observations) items.</param>
 public sealed record CulturalPrecursorMetricsQueryResult(
     Guid TenantId,
     Guid? SiteId,

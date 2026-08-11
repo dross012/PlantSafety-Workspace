@@ -11,7 +11,7 @@ namespace PlantSafety.Application.RiskManagement.TrainingContractorManagement.Qu
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Training & Contractor Management items.</param>
+/// <param name="Items">Matching Training &amp; Contractor Management items.</param>
 public sealed record TrainingContractorManagementQueryResult(
     Guid TenantId,
     Guid? SiteId,

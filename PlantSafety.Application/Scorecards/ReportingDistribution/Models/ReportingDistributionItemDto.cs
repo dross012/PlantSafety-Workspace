@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.Scorecards.ReportingDistribution.Models;
 
-/// <summary>A single Reporting & Distribution read-model item.</summary>
+/// <summary>A single Reporting &amp; Distribution read-model item.</summary>
 public sealed record ReportingDistributionItemDto
 {
     /// <summary>Scorecard identifier.</summary>

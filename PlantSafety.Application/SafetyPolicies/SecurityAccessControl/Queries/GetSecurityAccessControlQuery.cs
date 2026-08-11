@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.SafetyPolicies.SecurityAccessControl.Queries;
 
 /// <summary>
-/// Retrieves Security & Access Control Policies data for the given tenant, optionally scoped to a single site,
+/// Retrieves Security &amp; Access Control Policies data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

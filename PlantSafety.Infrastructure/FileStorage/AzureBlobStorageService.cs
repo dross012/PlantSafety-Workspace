@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.FileStorage;
 /// </summary>
 public sealed class AzureBlobStorageService(
     BlobServiceClient blobServiceClient,
-    IOptions<BlobStorageOptions> opts,
     ILogger<AzureBlobStorageService> logger)
     : IBlobStorageService
 {

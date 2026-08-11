@@ -12,7 +12,7 @@ namespace PlantSafety.Application.Observability;
 /// </summary>
 /// <remarks>
 /// <para><b>Purpose:</b> Transforms manufacturing plant safety from a reactive process into a proactive, real-time intelligence system by integrating sensors, computer vision, IoT devices, and machine data.</para>
-/// <para><b>Responsibilities:</b> PPE & behavioral compliance monitoring; machine & process safety monitoring; environmental & asset monitoring; facility & traffic control monitoring; automated incident detection.</para>
+/// <para><b>Responsibilities:</b> PPE &amp; behavioral compliance monitoring; machine &amp; process safety monitoring; environmental &amp; asset monitoring; facility &amp; traffic control monitoring; automated incident detection.</para>
 /// <para><b>Dependencies:</b> PlantSafety.Domain.Observability.*; PlantSafety.SharedKernel. No Infrastructure/EF/SQL dependencies.</para>
 /// <para><b>Inputs:</b> Camera/computer-vision feeds, IoT sensor data, machine PLC/controller data, wearables, access control systems, environmental monitors (data acquisition is out of scope for this C#-only Domain/Application layer; only structured detection events are modeled).</para>
 /// <para><b>Outputs:</b> Real-time hazard alerts; PPE compliance maps; machine health dashboards; environmental condition dashboards; traffic/congestion heatmaps; automated incident creation triggers.</para>

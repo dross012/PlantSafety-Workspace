@@ -7,10 +7,10 @@ using PlantSafety.Application.RiskManagement.ContinuousMonitoringReview.Models;
 
 namespace PlantSafety.Application.RiskManagement.ContinuousMonitoringReview.Repositories;
 
-/// <summary>Read-only repository for Continuous Monitoring & Review data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Continuous Monitoring &amp; Review data. Implemented in the Infrastructure layer.</summary>
 public interface IContinuousMonitoringReviewRepository
 {
-    /// <summary>Returns Continuous Monitoring & Review items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Continuous Monitoring &amp; Review items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<ContinuousMonitoringReviewItemDto>> GetContinuousMonitoringReviewAsync(
         Guid tenantId,
         Guid? siteId,

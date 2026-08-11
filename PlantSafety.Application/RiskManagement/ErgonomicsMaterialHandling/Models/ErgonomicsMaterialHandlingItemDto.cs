@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.RiskManagement.ErgonomicsMaterialHandling.Models;
 
-/// <summary>A single Ergonomics & Material Handling read-model item.</summary>
+/// <summary>A single Ergonomics &amp; Material Handling read-model item.</summary>
 public sealed record ErgonomicsMaterialHandlingItemDto
 {
     /// <summary>Risk identifier.</summary>

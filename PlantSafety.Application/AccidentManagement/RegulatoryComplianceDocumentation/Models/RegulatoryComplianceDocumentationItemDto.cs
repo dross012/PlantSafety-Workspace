@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.AccidentManagement.RegulatoryComplianceDocumentation.Models;
 
-/// <summary>A single Regulatory Compliance & Documentation read-model item.</summary>
+/// <summary>A single Regulatory Compliance &amp; Documentation read-model item.</summary>
 public sealed record RegulatoryComplianceDocumentationItemDto
 {
     /// <summary>Accident identifier.</summary>

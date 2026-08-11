@@ -13,8 +13,7 @@ namespace PlantSafety.Infrastructure.Financials.Services;
 
 /// <summary>Application service for Financials infrastructure operations.</summary>
 public sealed class FinancialsService(
-    FinancialsRepository repository,
-    ILogger<FinancialsService> logger)
+    FinancialsRepository repository)
 {
     /// <summary>Retrieves a financial record by identifier.</summary>
     public Task<FinancialsReadModel?> GetByIdAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)

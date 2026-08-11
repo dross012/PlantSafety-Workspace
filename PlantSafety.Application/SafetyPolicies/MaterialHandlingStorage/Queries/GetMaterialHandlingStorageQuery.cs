@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.SafetyPolicies.MaterialHandlingStorage.Queries;
 
 /// <summary>
-/// Retrieves Material Handling & Storage Policies data for the given tenant, optionally scoped to a single site,
+/// Retrieves Material Handling &amp; Storage Policies data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

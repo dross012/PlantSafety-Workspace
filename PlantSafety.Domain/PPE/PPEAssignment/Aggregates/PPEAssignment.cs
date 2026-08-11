@@ -125,7 +125,7 @@ public sealed partial class PPEAssignment
     }
 
     /// <summary>
-    /// Records a respirator/PPE fit test result ("PPE Training & Fit Testing"). Passing results
+    /// Records a respirator/PPE fit test result ("PPE Training &amp; Fit Testing"). Passing results
     /// verify the assignment; failing results flag the assignment for replacement.
     /// Valid from <see cref="PPEAssignmentStatus.Assigned"/> or <see cref="PPEAssignmentStatus.FitTestVerified"/> (re-test).
     /// </summary>

@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.RiskManagement.ContinuousMonitoringReview.Models;
 
-/// <summary>A single Continuous Monitoring & Review read-model item.</summary>
+/// <summary>A single Continuous Monitoring &amp; Review read-model item.</summary>
 public sealed record ContinuousMonitoringReviewItemDto
 {
     /// <summary>Risk identifier.</summary>

@@ -14,28 +14,28 @@ namespace PlantSafety.Domain.SafetyPolicies.Enums;
 /// <summary>Smart Enum representing the governing category taxonomy for SafetyPolicies.</summary>
 public sealed class PolicyCategory : IEquatable<PolicyCategory>
 {
-    /// <summary>Hazard Communication & Assessment Policies</summary>
+    /// <summary>Hazard Communication &amp; Assessment Policies</summary>
     public static readonly PolicyCategory HazardCommunicationAssessment = new("HazardCommunicationAssessment", "Hazard Communication & Assessment Policies");
 
-    /// <summary>Equipment & Machine Operation Policies</summary>
+    /// <summary>Equipment &amp; Machine Operation Policies</summary>
     public static readonly PolicyCategory EquipmentMachineOperation = new("EquipmentMachineOperation", "Equipment & Machine Operation Policies");
 
     /// <summary>Personal Protective Equipment (PPE) Policies</summary>
     public static readonly PolicyCategory PersonalProtectiveEquipment = new("PersonalProtectiveEquipment", "Personal Protective Equipment (PPE) Policies");
 
-    /// <summary>Emergency Response & Evacuation Policies</summary>
+    /// <summary>Emergency Response &amp; Evacuation Policies</summary>
     public static readonly PolicyCategory EmergencyResponseEvacuation = new("EmergencyResponseEvacuation", "Emergency Response & Evacuation Policies");
 
-    /// <summary>Housekeeping & Ergonomics Policies</summary>
+    /// <summary>Housekeeping &amp; Ergonomics Policies</summary>
     public static readonly PolicyCategory HousekeepingErgonomics = new("HousekeepingErgonomics", "Housekeeping & Ergonomics Policies");
 
-    /// <summary>Safety Training & Reporting Policies</summary>
+    /// <summary>Safety Training &amp; Reporting Policies</summary>
     public static readonly PolicyCategory SafetyTrainingReporting = new("SafetyTrainingReporting", "Safety Training & Reporting Policies");
 
     /// <summary>Contractor Safety Policies</summary>
     public static readonly PolicyCategory ContractorSafety = new("ContractorSafety", "Contractor Safety Policies");
 
-    /// <summary>Environmental & Chemical Safety Policies</summary>
+    /// <summary>Environmental &amp; Chemical Safety Policies</summary>
     public static readonly PolicyCategory EnvironmentalChemicalSafety = new("EnvironmentalChemicalSafety", "Environmental & Chemical Safety Policies");
 
     /// <summary>Electrical Safety Policies</summary>
@@ -50,19 +50,19 @@ public sealed class PolicyCategory : IEquatable<PolicyCategory>
     /// <summary>Hot Work Policies</summary>
     public static readonly PolicyCategory HotWork = new("HotWork", "Hot Work Policies");
 
-    /// <summary>Material Handling & Storage Policies</summary>
+    /// <summary>Material Handling &amp; Storage Policies</summary>
     public static readonly PolicyCategory MaterialHandlingStorage = new("MaterialHandlingStorage", "Material Handling & Storage Policies");
 
-    /// <summary>Machine Maintenance & Inspection Policies</summary>
+    /// <summary>Machine Maintenance &amp; Inspection Policies</summary>
     public static readonly PolicyCategory MachineMaintenanceInspection = new("MachineMaintenanceInspection", "Machine Maintenance & Inspection Policies");
 
-    /// <summary>Security & Access Control Policies</summary>
+    /// <summary>Security &amp; Access Control Policies</summary>
     public static readonly PolicyCategory SecurityAccessControl = new("SecurityAccessControl", "Security & Access Control Policies");
 
-    /// <summary>Incident Investigation & Corrective Action Policies</summary>
+    /// <summary>Incident Investigation &amp; Corrective Action Policies</summary>
     public static readonly PolicyCategory IncidentInvestigationCorrectiveAction = new("IncidentInvestigationCorrectiveAction", "Incident Investigation & Corrective Action Policies");
 
-    /// <summary>Safety Culture & Behavioral Policies</summary>
+    /// <summary>Safety Culture &amp; Behavioral Policies</summary>
     public static readonly PolicyCategory SafetyCultureBehavioral = new("SafetyCultureBehavioral", "Safety Culture & Behavioral Policies");
 
     /// <summary>All defined PolicyCategory instances.</summary>

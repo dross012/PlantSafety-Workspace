@@ -12,7 +12,7 @@ namespace PlantSafety.Application.PPE;
 /// </summary>
 /// <remarks>
 /// <para><b>Purpose:</b> Centralizes PPE requirements, inventory, inspections, fit testing, training, compliance monitoring, and integration with hazard zones, job roles, and machine operations.</para>
-/// <para><b>Responsibilities:</b> PPE category & hazard alignment; assignment & compliance; inventory & lifecycle management; training & fit testing; zone mapping.</para>
+/// <para><b>Responsibilities:</b> PPE category &amp; hazard alignment; assignment &amp; compliance; inventory &amp; lifecycle management; training &amp; fit testing; zone mapping.</para>
 /// <para><b>Dependencies:</b> PlantSafety.Domain.PPE.*; PlantSafety.SharedKernel. No Infrastructure/EF/SQL dependencies.</para>
 /// <para><b>Inputs:</b> Hazard scores from Risk Management; PPE requirements from SafetyProcedures (LOTO, hot work, confined space entry); PPE requirements from MachineSafety; PPE verification requests from ContractorSafety onboarding.</para>
 /// <para><b>Outputs:</b> PPE assignment profiles; PPE compliance alerts; PPE stock/inventory dashboards; PPE zone maps; PPE audit logs.</para>

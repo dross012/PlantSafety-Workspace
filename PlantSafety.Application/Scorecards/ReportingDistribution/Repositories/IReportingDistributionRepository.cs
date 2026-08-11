@@ -7,10 +7,10 @@ using PlantSafety.Application.Scorecards.ReportingDistribution.Models;
 
 namespace PlantSafety.Application.Scorecards.ReportingDistribution.Repositories;
 
-/// <summary>Read-only repository for Reporting & Distribution data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Reporting &amp; Distribution data. Implemented in the Infrastructure layer.</summary>
 public interface IReportingDistributionRepository
 {
-    /// <summary>Returns Reporting & Distribution items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Reporting &amp; Distribution items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<ReportingDistributionItemDto>> GetReportingDistributionAsync(
         Guid tenantId,
         Guid? siteId,

@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.AccidentManagement.InvestigationRootCauseAnalysis.Models;
 
-/// <summary>A single Investigation & Root Cause Analysis read-model item.</summary>
+/// <summary>A single Investigation &amp; Root Cause Analysis read-model item.</summary>
 public sealed record InvestigationRootCauseAnalysisItemDto
 {
     /// <summary>Accident identifier.</summary>

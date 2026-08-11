@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.EquipmentMachineOperation.Models;
 
-/// <summary>A single Equipment & Machine Operation Policies read-model item.</summary>
+/// <summary>A single Equipment &amp; Machine Operation Policies read-model item.</summary>
 public sealed record EquipmentMachineOperationItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

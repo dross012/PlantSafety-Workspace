@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.RiskManagement.ErgonomicsMaterialHandling.Queries;
 
 /// <summary>
-/// Retrieves Ergonomics & Material Handling data for the given tenant, optionally scoped to a single site,
+/// Retrieves Ergonomics &amp; Material Handling data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

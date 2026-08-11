@@ -11,7 +11,7 @@ namespace PlantSafety.Application.Scorecards.ScorecardStructureVisualization.Que
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Scorecard Structure & Visualization Panels items.</param>
+/// <param name="Items">Matching Scorecard Structure &amp; Visualization Panels items.</param>
 public sealed record ScorecardStructureVisualizationQueryResult(
     Guid TenantId,
     Guid? SiteId,

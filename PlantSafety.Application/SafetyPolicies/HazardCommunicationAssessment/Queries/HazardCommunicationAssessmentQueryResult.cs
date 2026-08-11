@@ -11,7 +11,7 @@ namespace PlantSafety.Application.SafetyPolicies.HazardCommunicationAssessment.Q
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Hazard Communication & Assessment Policies items.</param>
+/// <param name="Items">Matching Hazard Communication &amp; Assessment Policies items.</param>
 public sealed record HazardCommunicationAssessmentQueryResult(
     Guid TenantId,
     Guid? SiteId,

@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.HousekeepingErgonomics.Models;
 
 namespace PlantSafety.Application.SafetyPolicies.HousekeepingErgonomics.Repositories;
 
-/// <summary>Read-only repository for Housekeeping & Ergonomics Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Housekeeping &amp; Ergonomics Policies data. Implemented in the Infrastructure layer.</summary>
 public interface IHousekeepingErgonomicsRepository
 {
-    /// <summary>Returns Housekeeping & Ergonomics Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Housekeeping &amp; Ergonomics Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<HousekeepingErgonomicsItemDto>> GetHousekeepingErgonomicsAsync(
         Guid tenantId,
         Guid? siteId,

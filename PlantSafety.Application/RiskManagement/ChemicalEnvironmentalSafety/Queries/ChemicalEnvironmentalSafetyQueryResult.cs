@@ -11,7 +11,7 @@ namespace PlantSafety.Application.RiskManagement.ChemicalEnvironmentalSafety.Que
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Chemical & Environmental Safety items.</param>
+/// <param name="Items">Matching Chemical &amp; Environmental Safety items.</param>
 public sealed record ChemicalEnvironmentalSafetyQueryResult(
     Guid TenantId,
     Guid? SiteId,

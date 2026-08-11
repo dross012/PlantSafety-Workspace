@@ -20,7 +20,7 @@ public sealed class IndicatorCategory : IEquatable<IndicatorCategory>
     /// <summary>Leading Indicators (Proactive Activities)</summary>
     public static readonly IndicatorCategory Leading = new("Leading", "Leading Indicators (Proactive Activities)");
 
-    /// <summary>Cultural & Precursor Metrics</summary>
+    /// <summary>Cultural &amp; Precursor Metrics</summary>
     public static readonly IndicatorCategory Cultural = new("Cultural", "Cultural & Precursor Metrics");
 
     /// <summary>All defined IndicatorCategory instances.</summary>

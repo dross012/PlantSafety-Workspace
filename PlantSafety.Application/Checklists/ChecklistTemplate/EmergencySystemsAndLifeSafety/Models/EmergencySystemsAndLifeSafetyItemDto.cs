@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.Checklists.ChecklistTemplate.EmergencySystemsAndLifeSafety.Models;
 
-/// <summary>A single Emergency Systems & Life Safety Checklists read-model row.</summary>
+/// <summary>A single Emergency Systems &amp; Life Safety Checklists read-model row.</summary>
 public sealed record EmergencySystemsAndLifeSafetyItemDto
 {
     /// <summary>Record identifier.</summary>

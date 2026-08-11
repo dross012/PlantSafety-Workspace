@@ -7,10 +7,10 @@ using PlantSafety.Application.AccidentManagement.RegulatoryComplianceDocumentati
 
 namespace PlantSafety.Application.AccidentManagement.RegulatoryComplianceDocumentation.Repositories;
 
-/// <summary>Read-only repository for Regulatory Compliance & Documentation data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Regulatory Compliance &amp; Documentation data. Implemented in the Infrastructure layer.</summary>
 public interface IRegulatoryComplianceDocumentationRepository
 {
-    /// <summary>Returns Regulatory Compliance & Documentation items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Regulatory Compliance &amp; Documentation items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<RegulatoryComplianceDocumentationItemDto>> GetRegulatoryComplianceDocumentationAsync(
         Guid tenantId,
         Guid? siteId,

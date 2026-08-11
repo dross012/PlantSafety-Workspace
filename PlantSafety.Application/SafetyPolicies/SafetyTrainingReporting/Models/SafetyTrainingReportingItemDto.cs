@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.SafetyTrainingReporting.Models;
 
-/// <summary>A single Safety Training & Reporting Policies read-model item.</summary>
+/// <summary>A single Safety Training &amp; Reporting Policies read-model item.</summary>
 public sealed record SafetyTrainingReportingItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

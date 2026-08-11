@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.RiskManagement.MachineOperationalGuarding.Models;
 
-/// <summary>A single Machine & Operational Guarding read-model item.</summary>
+/// <summary>A single Machine &amp; Operational Guarding read-model item.</summary>
 public sealed record MachineOperationalGuardingItemDto
 {
     /// <summary>Risk identifier.</summary>

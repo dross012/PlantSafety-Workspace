@@ -13,8 +13,7 @@ namespace PlantSafety.Infrastructure.PlanningProjects.Services;
 
 /// <summary>Application service for PlanningProjects infrastructure operations.</summary>
 public sealed class PlanningProjectsService(
-    PlanningProjectsRepository repository,
-    ILogger<PlanningProjectsService> logger)
+    PlanningProjectsRepository repository)
 {
     /// <summary>Retrieves a project by identifier.</summary>
     public Task<PlanningProjectsReadModel?> GetByIdAsync(Guid id, Guid tenantId, CancellationToken ct = default)

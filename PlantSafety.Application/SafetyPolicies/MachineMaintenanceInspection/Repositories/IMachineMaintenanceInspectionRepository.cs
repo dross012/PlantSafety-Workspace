@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.MachineMaintenanceInspection.Models
 
 namespace PlantSafety.Application.SafetyPolicies.MachineMaintenanceInspection.Repositories;
 
-/// <summary>Read-only repository for Machine Maintenance & Inspection Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Machine Maintenance &amp; Inspection Policies data. Implemented in the Infrastructure layer.</summary>
 public interface IMachineMaintenanceInspectionRepository
 {
-    /// <summary>Returns Machine Maintenance & Inspection Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Machine Maintenance &amp; Inspection Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<MachineMaintenanceInspectionItemDto>> GetMachineMaintenanceInspectionAsync(
         Guid tenantId,
         Guid? siteId,

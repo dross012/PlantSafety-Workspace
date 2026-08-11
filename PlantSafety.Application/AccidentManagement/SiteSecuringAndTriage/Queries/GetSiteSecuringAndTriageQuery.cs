@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.AccidentManagement.SiteSecuringAndTriage.Queries;
 
 /// <summary>
-/// Retrieves Site Securing, Injury Triage & Emergency Plan Execution data for the given tenant, optionally scoped to a single site,
+/// Retrieves Site Securing, Injury Triage &amp; Emergency Plan Execution data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

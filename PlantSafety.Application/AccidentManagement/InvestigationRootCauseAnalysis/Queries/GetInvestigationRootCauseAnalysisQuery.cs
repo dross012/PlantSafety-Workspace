@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.AccidentManagement.InvestigationRootCauseAnalysis.Queries;
 
 /// <summary>
-/// Retrieves Investigation & Root Cause Analysis data for the given tenant, optionally scoped to a single site,
+/// Retrieves Investigation &amp; Root Cause Analysis data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

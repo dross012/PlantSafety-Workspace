@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.MaterialHandlingStorage.Models;
 
 namespace PlantSafety.Application.SafetyPolicies.MaterialHandlingStorage.Repositories;
 
-/// <summary>Read-only repository for Material Handling & Storage Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Material Handling &amp; Storage Policies data. Implemented in the Infrastructure layer.</summary>
 public interface IMaterialHandlingStorageRepository
 {
-    /// <summary>Returns Material Handling & Storage Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Material Handling &amp; Storage Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<MaterialHandlingStorageItemDto>> GetMaterialHandlingStorageAsync(
         Guid tenantId,
         Guid? siteId,

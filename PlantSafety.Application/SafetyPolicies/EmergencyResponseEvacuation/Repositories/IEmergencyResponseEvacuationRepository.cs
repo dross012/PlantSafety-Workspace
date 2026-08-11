@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.EmergencyResponseEvacuation.Models;
 
 namespace PlantSafety.Application.SafetyPolicies.EmergencyResponseEvacuation.Repositories;
 
-/// <summary>Read-only repository for Emergency Response & Evacuation Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Emergency Response &amp; Evacuation Policies data. Implemented in the Infrastructure layer.</summary>
 public interface IEmergencyResponseEvacuationRepository
 {
-    /// <summary>Returns Emergency Response & Evacuation Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Emergency Response &amp; Evacuation Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<EmergencyResponseEvacuationItemDto>> GetEmergencyResponseEvacuationAsync(
         Guid tenantId,
         Guid? siteId,

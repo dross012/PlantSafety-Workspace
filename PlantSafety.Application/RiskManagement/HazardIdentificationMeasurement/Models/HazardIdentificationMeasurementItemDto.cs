@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.RiskManagement.HazardIdentificationMeasurement.Models;
 
-/// <summary>A single Hazard Identification & Measurement read-model item.</summary>
+/// <summary>A single Hazard Identification &amp; Measurement read-model item.</summary>
 public sealed record HazardIdentificationMeasurementItemDto
 {
     /// <summary>Risk identifier.</summary>

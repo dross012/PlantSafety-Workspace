@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.SafetyPolicies.EmergencyResponseEvacuation.Queries;
 
 /// <summary>
-/// Retrieves Emergency Response & Evacuation Policies data for the given tenant, optionally scoped to a single site,
+/// Retrieves Emergency Response &amp; Evacuation Policies data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

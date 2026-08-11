@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.RiskManagement.ChemicalEnvironmentalSafety.Models;
 
-/// <summary>A single Chemical & Environmental Safety read-model item.</summary>
+/// <summary>A single Chemical &amp; Environmental Safety read-model item.</summary>
 public sealed record ChemicalEnvironmentalSafetyItemDto
 {
     /// <summary>Risk identifier.</summary>
