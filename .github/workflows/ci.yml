@@ -82,12 +82,18 @@ jobs:
       - name: Restore
         run: dotnet restore "${{ env.SOLUTION_PATH }}"
 
-      # Built once here so every suite below can use --no-build. Without this, a
-      # compilation failure would be reported against whichever test step happened to
-      # trigger the build first, which is a confusing place to read it.
-      - name: Build (Release)
-        run: dotnet build "${{ env.SOLUTION_PATH }}" --configuration Release --no-restore
-
+      # No solution-wide build step here, deliberately. `dotnet build <solution>
+      # --no-restore` currently FAILS on PlantSafety.UI (NETSDK1047: the restored assets
+      # file has no target for net10.0-maccatalyst/maccatalyst-arm64), so building the
+      # whole solution would break this job on a defect that has nothing to do with any
+      # test. The `build` job above uses that same pattern and is affected independently
+      # -- flagged, not worked around here.
+      #
+      # Each `dotnet run` below builds its own project incrementally instead. The first
+      # compiles the shared Application/Domain/Infrastructure/SharedKernel projects and
+      # the rest reuse that output, so this costs one build, not a dozen -- and it never
+      # touches the MAUI head project, which no test suite references.
+      #
       # ------------------------------------------------------------------------
       # EVERY suite is invoked with `dotnet run`, never `dotnet test`.
       #
@@ -107,15 +113,15 @@ jobs:
       # ------------------------------------------------------------------------
 
       - name: Run unit tests (PlantSafety.Tests)
-        run: dotnet run --project "PlantSafety/PlantSafety.Tests/PlantSafety.Tests.csproj" --configuration Release --no-build -- -trx TestResults/unit-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.Tests/PlantSafety.Tests.csproj" --configuration Release --no-restore -- -trx TestResults/unit-tests.trx
 
       # Regression and penetration first among the specialised suites: they are the two
       # most likely to explain WHY something else broke.
       - name: Run regression tests (PlantSafety.RegressionTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.RegressionTests/PlantSafety.RegressionTests.csproj" --configuration Release --no-build -- -trx TestResults/regression-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.RegressionTests/PlantSafety.RegressionTests.csproj" --configuration Release --no-restore -- -trx TestResults/regression-tests.trx
 
       - name: Run penetration tests (PlantSafety.PenetrationTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.PenetrationTests/PlantSafety.PenetrationTests.csproj" --configuration Release --no-build -- -trx TestResults/penetration-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.PenetrationTests/PlantSafety.PenetrationTests.csproj" --configuration Release --no-restore -- -trx TestResults/penetration-tests.trx
 
       # The remaining deterministic suites. All are in-process with no Docker, no
       # database and no network, and complete in about four seconds combined -- there is
@@ -127,28 +133,28 @@ jobs:
       # that finishes faster than a single checkout. The step name still identifies
       # which suite failed.
       - name: Run smoke tests (PlantSafety.SmokeTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.SmokeTests/PlantSafety.SmokeTests.csproj" --configuration Release --no-build -- -trx TestResults/smoke-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.SmokeTests/PlantSafety.SmokeTests.csproj" --configuration Release --no-restore -- -trx TestResults/smoke-tests.trx
 
       - name: Run security tests (PlantSafety.SecurityTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.SecurityTests/PlantSafety.SecurityTests.csproj" --configuration Release --no-build -- -trx TestResults/security-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.SecurityTests/PlantSafety.SecurityTests.csproj" --configuration Release --no-restore -- -trx TestResults/security-tests.trx
 
       - name: Run acceptance tests (PlantSafety.AcceptanceTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.AcceptanceTests/PlantSafety.AcceptanceTests.csproj" --configuration Release --no-build -- -trx TestResults/acceptance-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.AcceptanceTests/PlantSafety.AcceptanceTests.csproj" --configuration Release --no-restore -- -trx TestResults/acceptance-tests.trx
 
       - name: Run scenario tests (PlantSafety.ScenarioTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.ScenarioTests/PlantSafety.ScenarioTests.csproj" --configuration Release --no-build -- -trx TestResults/scenario-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.ScenarioTests/PlantSafety.ScenarioTests.csproj" --configuration Release --no-restore -- -trx TestResults/scenario-tests.trx
 
       - name: Run resilience tests (PlantSafety.ResilienceTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.ResilienceTests/PlantSafety.ResilienceTests.csproj" --configuration Release --no-build -- -trx TestResults/resilience-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.ResilienceTests/PlantSafety.ResilienceTests.csproj" --configuration Release --no-restore -- -trx TestResults/resilience-tests.trx
 
       - name: Run compatibility tests (PlantSafety.CompatibilityTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.CompatibilityTests/PlantSafety.CompatibilityTests.csproj" --configuration Release --no-build -- -trx TestResults/compatibility-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.CompatibilityTests/PlantSafety.CompatibilityTests.csproj" --configuration Release --no-restore -- -trx TestResults/compatibility-tests.trx
 
       # DataIntegrationTests references Dapper but needs no live database -- it exercises
       # mapping and parameter construction in-process, which is why it belongs here
       # rather than in the Testcontainers job.
       - name: Run data integration tests (PlantSafety.DataIntegrationTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.DataIntegrationTests/PlantSafety.DataIntegrationTests.csproj" --configuration Release --no-build -- -trx TestResults/data-integration-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.DataIntegrationTests/PlantSafety.DataIntegrationTests.csproj" --configuration Release --no-restore -- -trx TestResults/data-integration-tests.trx
 
       # ------------------------------------------------------------------------
       # Timing-sensitive suites, kept last and grouped so a flake here is immediately
@@ -163,10 +169,10 @@ jobs:
       # while removing the only thing it was measuring.
       # ------------------------------------------------------------------------
       - name: Run performance tests (PlantSafety.PerformanceTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.PerformanceTests/PlantSafety.PerformanceTests.csproj" --configuration Release --no-build -- -trx TestResults/performance-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.PerformanceTests/PlantSafety.PerformanceTests.csproj" --configuration Release --no-restore -- -trx TestResults/performance-tests.trx
 
       - name: Run stress tests (PlantSafety.StressTests)
-        run: dotnet run --project "PlantSafety/PlantSafety.StressTests/PlantSafety.StressTests.csproj" --configuration Release --no-build -- -trx TestResults/stress-tests.trx
+        run: dotnet run --project "PlantSafety/PlantSafety.StressTests/PlantSafety.StressTests.csproj" --configuration Release --no-restore -- -trx TestResults/stress-tests.trx
 
       - name: Publish test results
         if: always()
@@ -378,6 +384,11 @@ jobs:
           CONTRACT_DIR="PlantSafety/PlantSafety.Tests/SharedKernel/Contracts/Enterprise"
           if [ -d "$CONTRACT_DIR" ]; then
             echo "Enterprise contract-test directory found -- running as a hard gate."
+            # NOTE: if the contract tests land as an xunit v3 console-runner project
+            # (OutputType Exe, no Microsoft.NET.Test.Sdk) -- the convention every other
+            # test project here follows -- this `dotnet test` will exit 0 without running
+            # anything, exactly as the unit and integration steps silently did before
+            # this pass. Switch it to `dotnet run --project <csproj>` when it lands.
             dotnet test "$CONTRACT_DIR" --configuration Release
           else
             echo "::warning::$CONTRACT_DIR does not exist yet (Enterprise contract tests not landed). Skipping as a soft gate -- remove 'continue-on-error' on this job once it lands."
