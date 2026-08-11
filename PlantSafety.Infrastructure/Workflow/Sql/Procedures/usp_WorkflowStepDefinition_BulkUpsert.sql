@@ -61,6 +61,14 @@ BEGIN
             s.EntryConditionField, s.EntryConditionOperator, s.EntryConditionValue, s.TimeoutSeconds, s.TimeoutAction, s.RetryMaxAttempts, s.RetryBackoffStrategy, s.RetryBaseDelaySeconds
         FROM @Steps s
         WHERE NOT EXISTS (SELECT 1 FROM [Workflow].[WorkflowStepDefinition] wsd WHERE wsd.StepId = s.StepId);
+        -- Canonical audit trail (Handbook section 2.11): recorded after the write, in its own
+        -- TRY/CATCH so an audit failure can never fail the operation it describes.
+        BEGIN TRY
+            INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+            VALUES (N'WorkflowStepDefinition', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'WorkflowDefinitionId=', @WorkflowDefinitionId), 0, OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+        END CATCH;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'WorkflowDefinitionId=', @WorkflowDefinitionId, N'; User=', SYSTEM_USER);

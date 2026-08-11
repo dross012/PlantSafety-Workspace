@@ -19,6 +19,8 @@ CREATE OR ALTER PROCEDURE [Enterprise].[usp_CostCenterMappings_Upsert]
 AS
 SET NOCOUNT ON;
 
+BEGIN TRY
+
 DECLARE @SiteIdKey UNIQUEIDENTIFIER = ISNULL(@SiteId, '00000000-0000-0000-0000-000000000000');
 
 MERGE [Enterprise].[CostCenterMappings] AS target
@@ -33,4 +35,28 @@ WHEN MATCHED THEN
 WHEN NOT MATCHED THEN
     INSERT (Id, TenantId, SiteId, ExternalCostCenterCode, Description, UpdatedAtUtc, UpdatedBy)
     VALUES (NEWID(), @TenantId, @SiteId, @ExternalCostCenterCode, @Description, @UpdatedAtUtc, @UpdatedBy);
+
+        -- Canonical audit trail (Handbook section 2.11): recorded after the write, in its own
+        -- TRY/CATCH so an audit failure can never fail the operation it describes.
+        BEGIN TRY
+            INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+            VALUES (N'CostCenterMappings', DB_NAME(), N'UPSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'TenantId=', @TenantId, N'; SiteId=', ISNULL(CONVERT(NVARCHAR(36), @SiteId), N'(none)'), N'; ExternalCostCenterCode=', @ExternalCostCenterCode), 0, OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+        END CATCH;
+END TRY
+BEGIN CATCH
+        DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; ExternalCostCenterCode=', @ExternalCostCenterCode, N'; User=', SYSTEM_USER);
+        DECLARE @__ErrorDetails nvarchar(max) = CONCAT(N'ErrorNumber=', ERROR_NUMBER(), N'; ErrorMessage=', ERROR_MESSAGE());
+
+        BEGIN TRY
+            INSERT INTO [PlantSafety.ErrorDB].dbo.ErrorLog (ErrorNumber, ErrorSeverity, ErrorState, ErrorProcedure, ErrorLine, ErrorMessage, ErrorDate, ErrorContext, ErrorParameters, SourceDatabase, Module)
+            VALUES (ERROR_NUMBER(), ERROR_SEVERITY(), ERROR_STATE(), ERROR_PROCEDURE(), ERROR_LINE(), ERROR_MESSAGE(), SYSUTCDATETIME(), @__ErrorContext, @__ErrorDetails, DB_NAME(), OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+            -- Error logging must never mask the original error
+        END CATCH;
+
+        THROW;
+END CATCH
 GO
