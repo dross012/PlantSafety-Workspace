@@ -57,6 +57,11 @@ public sealed class IntegrationTestWebAppFactory : WebApplicationFactory<Program
         // AuthorizationBehavior's PermissionUsageLog capture and GetTenantAuditStreamQuery.
         await TestDatabaseFactory.ApplyComplianceMonitoringSchemaAsync(ConnectionString);
 
+        // Last, so the real .sql definitions overwrite (CREATE OR ALTER) whatever the
+        // Apply*SchemaAsync methods above declared inline. The real files are the source of
+        // truth; see RealStoredProcedureLoader for why the inline duplicates were a problem.
+        await RealStoredProcedureLoader.ApplyAsync(ConnectionString);
+
         await TestDataSeeder.SeedAsync(ConnectionString);
     }
 
