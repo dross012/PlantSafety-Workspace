@@ -1239,7 +1239,6 @@
     <Folder Include="Endpoints\V1\" />
     <Folder Include="Endpoints\V2\" />
     <Folder Include="Financials\Endpoints\" />
-    <Folder Include="Financials\Requests\" />
     <Folder Include="HealthChecks\Authorization\" />
     <Folder Include="HealthChecks\Contracts\Requests\" />
     <Folder Include="HealthChecks\Contracts\Responses\" />
@@ -1466,7 +1465,6 @@
     <Folder Include="Operational\Training\Models\Responses\" />
     <Folder Include="Operational\Training\Telemetry\" />
     <Folder Include="PlanningProjects\Endpoints\" />
-    <Folder Include="PlanningProjects\Requests\" />
     <Folder Include="SafetyEvents\CrisisManagement\Authorization\" />
     <Folder Include="SafetyEvents\CrisisManagement\Contracts\Requests\" />
     <Folder Include="SafetyEvents\CrisisManagement\Contracts\Responses\" />

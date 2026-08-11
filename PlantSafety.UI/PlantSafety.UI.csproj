@@ -115,15 +115,9 @@
         <Folder Include="Modules\PlanningProjects\ApiClients\" />
         <Folder Include="Modules\PlanningProjects\Models\" />
         <Folder Include="Modules\Compliance\Pages\" />
-        <Folder Include="Modules\Compliance\Components\" />
         <Folder Include="Modules\Compliance\State\" />
         <Folder Include="Modules\Compliance\ApiClients\" />
         <Folder Include="Modules\Compliance\Models\" />
-        <Folder Include="Modules\Incidents\Pages\" />
-        <Folder Include="Modules\Incidents\Components\" />
-        <Folder Include="Modules\Incidents\State\" />
-        <Folder Include="Modules\Incidents\ApiClients\" />
-        <Folder Include="Modules\Incidents\Models\" />
     </ItemGroup>
 
 </Project>

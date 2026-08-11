@@ -164,9 +164,6 @@
     <Folder Include="SafetyEvents\IncidentManagement\Enums\" />
     <Folder Include="SafetyEvents\IncidentManagement\Events\" />
     <Folder Include="SafetyEvents\IncidentManagement\Exceptions\" />
-    <Folder Include="SafetyEvents\IncidentManagement\Rules\" />
-    <Folder Include="SafetyEvents\IncidentManagement\Services\" />
-    <Folder Include="SafetyEvents\IncidentManagement\Specifications\" />
     <Folder Include="SafetyEvents\IncidentManagement\ValueObjects\" />
     <Folder Include="SafetyEvents\Observation\Aggregates\" />
     <Folder Include="SafetyEvents\Observation\Entities\" />
