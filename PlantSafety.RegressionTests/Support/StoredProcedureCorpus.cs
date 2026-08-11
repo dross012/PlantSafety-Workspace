@@ -34,8 +34,14 @@ public static class StoredProcedureCorpus
         @"CREATE\s+(?:OR\s+ALTER\s+)?PROCEDURE\s+\[(?<schema>[^\]]+)\]\s*\.\s*\[(?<name>[^\]]+)\]",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // The \r? is load-bearing. In multiline mode $ matches before \n, so on a CRLF file the
+    // carriage return sits between "GO" and the anchor and the separator never matches. Every
+    // procedure in such a file then collapses into ONE segment, which silently mis-attributes
+    // each finding to whichever procedure happens to be declared first -- and hides real gaps in
+    // the later ones, because the first procedure's audit block satisfies the check for all of
+    // them. This repository has files of both kinds.
     private static readonly Regex BatchSeparator = new(
-        @"^[ \t]*GO[ \t]*$",
+        @"^[ \t]*GO[ \t]*\r?$",
         RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>Gets every procedure defined under PlantSafety.Infrastructure's Sql/Procedures folders.</summary>

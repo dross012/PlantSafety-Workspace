@@ -31,6 +31,14 @@ BEGIN
         (WasteDiversionRecordId, AdvancedMetricsLedgerId, TenantId, TotalWasteKg, DivertedWasteKg, DiversionRatePercent, MethodologyVersion, IntervalEndAtUtc, RecordedAtUtc, RecordedBy)
         VALUES
         (@WasteDiversionRecordId, @AdvancedMetricsLedgerId, @TenantId, @TotalWasteKg, @DivertedWasteKg, @DiversionRatePercent, @MethodologyVersion, @IntervalEndAtUtc, @RecordedAtUtc, @RecordedBy);
+        -- Canonical audit trail (Handbook section 2.11): recorded after the write, in its own
+        -- TRY/CATCH so an audit failure can never fail the operation it describes.
+        BEGIN TRY
+            INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+            VALUES (N'WasteDiversionRecord', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'WasteDiversionRecordId=', @WasteDiversionRecordId), 0, OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+        END CATCH;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'WasteDiversionRecordId=', @WasteDiversionRecordId, N'; User=', SYSTEM_USER);

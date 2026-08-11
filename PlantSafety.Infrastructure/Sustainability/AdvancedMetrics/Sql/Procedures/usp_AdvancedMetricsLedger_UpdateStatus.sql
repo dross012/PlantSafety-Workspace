@@ -24,7 +24,17 @@ BEGIN
         SET Status = @Status, UpdatedBy = @UpdatedBy, UpdatedAtUtc = SYSUTCDATETIME()
         WHERE AdvancedMetricsLedgerId = @AdvancedMetricsLedgerId AND TenantId = @TenantId AND IsDeleted = 0;
 
-        SELECT @@ROWCOUNT;
+        DECLARE @__RowsAffected INT = @@ROWCOUNT;
+        -- Canonical audit trail (Handbook section 2.11): recorded after the write, in its own
+        -- TRY/CATCH so an audit failure can never fail the operation it describes.
+        BEGIN TRY
+            INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+            VALUES (N'AdvancedMetricsLedger', DB_NAME(), N'UPDATE', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'AdvancedMetricsLedgerId=', @AdvancedMetricsLedgerId), 0, OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+        END CATCH;
+
+        SELECT @__RowsAffected;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'AdvancedMetricsLedgerId=', @AdvancedMetricsLedgerId, N'; User=', SYSTEM_USER);

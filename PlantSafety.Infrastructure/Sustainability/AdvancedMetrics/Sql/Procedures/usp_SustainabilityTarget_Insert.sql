@@ -33,6 +33,14 @@ BEGIN
         (SustainabilityTargetId, AdvancedMetricsLedgerId, TenantId, TargetType, BaselineValue, TargetValue, CurrentValue, TargetDateUtc, Status, SetAtUtc, SetBy)
         VALUES
         (@SustainabilityTargetId, @AdvancedMetricsLedgerId, @TenantId, @TargetType, @BaselineValue, @TargetValue, @CurrentValue, @TargetDateUtc, @Status, @SetAtUtc, @SetBy);
+        -- Canonical audit trail (Handbook section 2.11): recorded after the write, in its own
+        -- TRY/CATCH so an audit failure can never fail the operation it describes.
+        BEGIN TRY
+            INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+            VALUES (N'SustainabilityTarget', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'SustainabilityTargetId=', @SustainabilityTargetId), 0, OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+        END CATCH;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'SustainabilityTargetId=', @SustainabilityTargetId, N'; User=', SYSTEM_USER);
