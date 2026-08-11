@@ -123,9 +123,9 @@ jobs:
       # locally before being wired, so none is gating on unknown state.
       #
       # One step per suite rather than a matrix: these run in seconds, so a matrix would
-      # spend nine runner start-ups and nine Release builds to parallelise work that
-      # finishes faster than a single checkout. The step name still identifies which
-      # suite failed.
+      # spend a dozen runner start-ups and a dozen Release builds to parallelise work
+      # that finishes faster than a single checkout. The step name still identifies
+      # which suite failed.
       - name: Run smoke tests (PlantSafety.SmokeTests)
         run: dotnet run --project "PlantSafety/PlantSafety.SmokeTests/PlantSafety.SmokeTests.csproj" --configuration Release --no-build -- -trx TestResults/smoke-tests.trx
 
@@ -196,6 +196,16 @@ jobs:
   #      turning it into a hard gate immediately risks blocking every PR on pre-existing
   #      failures nobody has triaged yet. Flip to a hard gate once a human confirms a first
   #      green run against a real runner.
+  #
+  #      UPDATE: the "never invoked" note above was more literally true than intended. The
+  #      step existed but used `dotnet test`, which cannot run an xunit v3 console-runner
+  #      project that does not reference Microsoft.NET.Test.Sdk -- it exits 0 having run
+  #      nothing. So this job has been passing vacuously, and its soft-fail was guarding
+  #      against failures from a command incapable of producing one. Now corrected to
+  #      `dotnet run`. The soft-fail is KEPT and its rationale now actually applies: this
+  #      suite is about to execute in CI for the first time, against a real Docker daemon,
+  #      and it passes 286/286 locally but has never been run on a GitHub runner. Flip to
+  #      a hard gate once a human confirms a first green run there.
   # --------------------------------------------------------------------------
   integration-tests:
     name: Integration Tests (Testcontainers)
