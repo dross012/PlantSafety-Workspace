@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyCulture.CultureAssessment.NearMissRep
 
 /// <summary>Dapper-backed repository for NearMissReportingRate read-model queries.</summary>
 public sealed class NearMissReportingRateDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<NearMissReportingRateDapperRepository> logger)
     : INearMissReportingRateRepository

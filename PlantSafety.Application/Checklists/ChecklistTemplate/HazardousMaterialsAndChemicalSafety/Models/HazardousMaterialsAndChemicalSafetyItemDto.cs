@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.Checklists.ChecklistTemplate.HazardousMaterialsAndChemicalSafety.Models;
 
-/// <summary>A single Hazardous Materials & Chemical Safety Checklists read-model row.</summary>
+/// <summary>A single Hazardous Materials &amp; Chemical Safety Checklists read-model row.</summary>
 public sealed record HazardousMaterialsAndChemicalSafetyItemDto
 {
     /// <summary>Record identifier.</summary>

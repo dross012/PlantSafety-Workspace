@@ -35,8 +35,7 @@ public static class WorkatHeightEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/workatheight")
             .RequireAuthorization(WorkatHeightAuthorizationPolicies.Read)
-            .WithTags("WorkatHeight")
-            .WithOpenApi();
+            .WithTags("WorkatHeight");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

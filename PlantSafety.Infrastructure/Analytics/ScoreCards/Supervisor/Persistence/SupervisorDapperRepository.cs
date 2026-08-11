@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.ScoreCards.Supervisor.Persistence
 
 /// <summary>Dapper-backed repository for <see cref="SupervisorItemDto"/> queries.</summary>
 public sealed class SupervisorDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<SupervisorDapperRepository> logger)
     : ISupervisorRepository

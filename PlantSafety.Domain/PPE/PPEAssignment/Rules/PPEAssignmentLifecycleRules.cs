@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.PPE.PPEAssignment.Rules;
 public static class PPEAssignmentLifecycleRules
 {
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
-    public static bool CanActivate(PPEAssignmentStatus current) => current == PPEAssignmentStatus.Created;
+    public static bool CanActivate(PPEAssignmentStatus current) => current == PPEAssignmentStatus.Draft;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
-    public static bool CanComplete(PPEAssignmentStatus current) => current == PPEAssignmentStatus.Active;
+    public static bool CanComplete(PPEAssignmentStatus current) => current == PPEAssignmentStatus.Assigned;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be closed from <paramref name="current"/>.</summary>
-    public static bool CanClose(PPEAssignmentStatus current) => current == PPEAssignmentStatus.Completed;
+    public static bool CanClose(PPEAssignmentStatus current) => current == PPEAssignmentStatus.Retired;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be archived from <paramref name="current"/>.</summary>
-    public static bool CanArchive(PPEAssignmentStatus current) => current == PPEAssignmentStatus.Closed;
+    public static bool CanArchive(PPEAssignmentStatus current) => current == PPEAssignmentStatus.Retired;
 }

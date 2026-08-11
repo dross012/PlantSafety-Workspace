@@ -35,8 +35,7 @@ public static class PredictiveAnalyticsEndpoints
         var group = app
             .MapGroup("api/v1/analytics/predictiveanalytics")
             .RequireAuthorization(PredictiveAnalyticsAuthorizationPolicies.Read)
-            .WithTags("PredictiveAnalytics")
-            .WithOpenApi();
+            .WithTags("PredictiveAnalytics");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

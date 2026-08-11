@@ -19,6 +19,12 @@ namespace PlantSafety.Application.Operational.PredictiveMaintenance.Commands;
 
 /// <summary>Schedules corrective maintenance action against a PredictiveMaintenanceAlert (UnderReview -&gt; ActionScheduled).</summary>
 /// <param name="WorkOrderReference">Optional reference to the work order/maintenance ticket raised for this alert.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="PredictiveMaintenanceAlertId">Identifier of the PredictiveMaintenanceAlert record.</param>
+/// <param name="ScheduledByUserId">Identifier of the user performing this operation.</param>
 public sealed record SchedulePredictiveMaintenanceAlertActionCommand(
     Guid CommandId,
     Guid CorrelationId,

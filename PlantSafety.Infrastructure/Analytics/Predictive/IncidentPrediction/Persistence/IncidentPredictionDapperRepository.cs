@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Predictive.IncidentPrediction.Per
 
 /// <summary>Dapper-backed repository for <see cref="IncidentPredictionItemDto"/> queries.</summary>
 public sealed class IncidentPredictionDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<IncidentPredictionDapperRepository> logger)
     : IIncidentPredictionRepository

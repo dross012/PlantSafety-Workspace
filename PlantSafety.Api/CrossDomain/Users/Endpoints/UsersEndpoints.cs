@@ -35,8 +35,7 @@ public static class UsersEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/users")
             .RequireAuthorization(UsersAuthorizationPolicies.Read)
-            .WithTags("Users")
-            .WithOpenApi();
+            .WithTags("Users");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

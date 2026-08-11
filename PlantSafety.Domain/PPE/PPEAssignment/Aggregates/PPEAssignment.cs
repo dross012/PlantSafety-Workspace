@@ -57,7 +57,14 @@ public sealed partial class PPEAssignment
         => new ReadOnlyCollection<IPPEAssignmentDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PPEAssignment() { }
+    private PPEAssignment() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        AssignedPpeItems = null!;
+        HazardZone = null!;
+        JobRole = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 
@@ -125,7 +132,7 @@ public sealed partial class PPEAssignment
     }
 
     /// <summary>
-    /// Records a respirator/PPE fit test result ("PPE Training & Fit Testing"). Passing results
+    /// Records a respirator/PPE fit test result ("PPE Training &amp; Fit Testing"). Passing results
     /// verify the assignment; failing results flag the assignment for replacement.
     /// Valid from <see cref="PPEAssignmentStatus.Assigned"/> or <see cref="PPEAssignmentStatus.FitTestVerified"/> (re-test).
     /// </summary>

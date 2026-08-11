@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.Checklists.ChecklistTemplate.MachineGuardingAndLoto.Models;
 
-/// <summary>A single Machine Guarding & LOTO Checklists read-model row.</summary>
+/// <summary>A single Machine Guarding &amp; LOTO Checklists read-model row.</summary>
 public sealed record MachineGuardingAndLotoItemDto
 {
     /// <summary>Record identifier.</summary>

@@ -35,8 +35,7 @@ public static class DepartmentEndpoints
         var group = app
             .MapGroup("api/v1/analytics/scorecards/department")
             .RequireAuthorization(DepartmentAuthorizationPolicies.Read)
-            .WithTags("Department")
-            .WithOpenApi();
+            .WithTags("Department");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

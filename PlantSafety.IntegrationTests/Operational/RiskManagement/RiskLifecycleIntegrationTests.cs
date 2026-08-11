@@ -53,7 +53,8 @@ public sealed class RiskLifecycleIntegrationTests(IntegrationTestWebAppFactory f
     [Fact]
     public async Task RiskLifecycle_CreateScorePrioritizeApplyControlValidateCloseArchive_ShouldRoundTripThroughRealStoredProcedures()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var ownerId = Guid.NewGuid();
@@ -150,7 +151,8 @@ public sealed class RiskLifecycleIntegrationTests(IntegrationTestWebAppFactory f
     [Fact]
     public async Task ScoreRisk_ForUnknownRisk_ShouldReturnFailureResult()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var result = await sender.Send(new ScoreRiskCommand(

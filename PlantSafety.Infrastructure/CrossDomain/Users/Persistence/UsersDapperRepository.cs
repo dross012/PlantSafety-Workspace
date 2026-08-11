@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Users.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="UsersItemDto"/> queries.</summary>
 public sealed class UsersDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<UsersDapperRepository> logger)
     : IUsersRepository

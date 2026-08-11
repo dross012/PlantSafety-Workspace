@@ -35,8 +35,7 @@ public static class PlanningProjectsEndpoints
         var group = app
             .MapGroup("api/v1/planning-projects")
             .RequireAuthorization(PlanningProjectsAuthorizationPolicies.Read)
-            .WithTags("PlanningProjects")
-            .WithOpenApi();
+            .WithTags("PlanningProjects");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

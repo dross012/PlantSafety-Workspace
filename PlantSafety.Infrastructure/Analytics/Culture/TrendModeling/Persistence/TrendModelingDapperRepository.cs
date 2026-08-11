@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Culture.TrendModeling.Persistence
 
 /// <summary>Dapper-backed repository for <see cref="TrendModelingItemDto"/> queries.</summary>
 public sealed class TrendModelingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<TrendModelingDapperRepository> logger)
     : ITrendModelingRepository

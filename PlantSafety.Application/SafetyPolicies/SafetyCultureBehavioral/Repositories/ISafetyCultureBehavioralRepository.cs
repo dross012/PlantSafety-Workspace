@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.SafetyCultureBehavioral.Models;
 
 namespace PlantSafety.Application.SafetyPolicies.SafetyCultureBehavioral.Repositories;
 
-/// <summary>Read-only repository for Safety Culture & Behavioral Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Safety Culture &amp; Behavioral Policies data. Implemented in the Infrastructure layer.</summary>
 public interface ISafetyCultureBehavioralRepository
 {
-    /// <summary>Returns Safety Culture & Behavioral Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Safety Culture &amp; Behavioral Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<SafetyCultureBehavioralItemDto>> GetSafetyCultureBehavioralAsync(
         Guid tenantId,
         Guid? siteId,

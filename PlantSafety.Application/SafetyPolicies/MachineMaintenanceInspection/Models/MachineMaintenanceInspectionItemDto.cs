@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.MachineMaintenanceInspection.Models;
 
-/// <summary>A single Machine Maintenance & Inspection Policies read-model item.</summary>
+/// <summary>A single Machine Maintenance &amp; Inspection Policies read-model item.</summary>
 public sealed record MachineMaintenanceInspectionItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

@@ -25,7 +25,6 @@ namespace PlantSafety.Infrastructure.Analytics.PredictiveAnalytics.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="PredictiveAnalyticsItemDto"/> queries.</summary>
 public sealed class PredictiveAnalyticsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<PredictiveAnalyticsDapperRepository> logger)
     : IPredictiveAnalyticsRepository

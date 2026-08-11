@@ -35,8 +35,7 @@ public static class RootCauseAnalysisEndpoints
         var group = app
             .MapGroup("api/v1/safety-events/root-cause-analysis")
             .RequireAuthorization(RootCauseAnalysisAuthorizationPolicies.Read)
-            .WithTags("RootCauseAnalysis")
-            .WithOpenApi();
+            .WithTags("RootCauseAnalysis");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

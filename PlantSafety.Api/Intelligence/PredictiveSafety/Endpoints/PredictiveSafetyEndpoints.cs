@@ -34,8 +34,7 @@ public static class PredictiveSafetyEndpoints
         var group = app
             .MapGroup("api/v1/intelligence/predictivesafety")
             .RequireAuthorization(PredictiveSafetyAuthorizationPolicies.Read)
-            .WithTags("PredictiveSafety")
-            .WithOpenApi();
+            .WithTags("PredictiveSafety");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

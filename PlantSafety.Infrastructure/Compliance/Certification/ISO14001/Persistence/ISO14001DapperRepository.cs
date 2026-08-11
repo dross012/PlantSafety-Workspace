@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Certification.ISO14001.Persisten
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ISO14001DapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ISO14001DapperRepository> logger)
     : IISO14001Repository

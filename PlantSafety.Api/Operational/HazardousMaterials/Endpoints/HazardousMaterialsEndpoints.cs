@@ -35,8 +35,7 @@ public static class HazardousMaterialsEndpoints
         var group = app
             .MapGroup("api/v1/operational/hazardous-materials")
             .RequireAuthorization(HazardousMaterialsAuthorizationPolicies.Read)
-            .WithTags("HazardousMaterials")
-            .WithOpenApi();
+            .WithTags("HazardousMaterials");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -35,8 +35,7 @@ public static class ComplianceAuditEndpoints
         var group = app
             .MapGroup("api/v1/compliance/auditing/complianceaudit")
             .RequireAuthorization(ComplianceAuditAuthorizationPolicies.Read)
-            .WithTags("ComplianceAudit")
-            .WithOpenApi();
+            .WithTags("ComplianceAudit");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

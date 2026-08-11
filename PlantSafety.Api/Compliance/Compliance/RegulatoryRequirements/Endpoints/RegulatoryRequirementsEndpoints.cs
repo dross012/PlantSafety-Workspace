@@ -35,8 +35,7 @@ public static class RegulatoryRequirementsEndpoints
         var group = app
             .MapGroup("api/v1/compliance/compliance/regulatoryrequirements")
             .RequireAuthorization(RegulatoryRequirementsAuthorizationPolicies.Read)
-            .WithTags("RegulatoryRequirements")
-            .WithOpenApi();
+            .WithTags("RegulatoryRequirements");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

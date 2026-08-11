@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Updates.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="UpdatesItemDto"/> queries.</summary>
 public sealed class UpdatesDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<UpdatesDapperRepository> logger)
     : IUpdatesRepository

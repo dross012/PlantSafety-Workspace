@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Culture.Behavior.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="BehaviorItemDto"/> queries.</summary>
 public sealed class BehaviorDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<BehaviorDapperRepository> logger)
     : IBehaviorRepository

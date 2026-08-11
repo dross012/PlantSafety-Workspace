@@ -35,8 +35,7 @@ public static class EnvironmentalEndpoints
         var group = app
             .MapGroup("api/v1/compliance/policy/environmental")
             .RequireAuthorization(EnvironmentalAuthorizationPolicies.Read)
-            .WithTags("Environmental")
-            .WithOpenApi();
+            .WithTags("Environmental");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

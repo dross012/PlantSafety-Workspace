@@ -23,7 +23,6 @@ namespace PlantSafety.Infrastructure.SafetyEvents.EmergencyManagement.Persistenc
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class EmergencyManagementDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<EmergencyManagementDapperRepository> logger)
     : IEmergencyManagementRepository

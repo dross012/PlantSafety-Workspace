@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.Scorecards.ScorecardStructureVisualization.Models;
 
-/// <summary>A single Scorecard Structure & Visualization Panels read-model item.</summary>
+/// <summary>A single Scorecard Structure &amp; Visualization Panels read-model item.</summary>
 public sealed record ScorecardStructureVisualizationItemDto
 {
     /// <summary>Scorecard identifier.</summary>

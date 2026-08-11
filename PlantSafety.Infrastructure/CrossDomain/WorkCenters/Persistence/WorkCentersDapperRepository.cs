@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.WorkCenters.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="WorkCentersItemDto"/> queries.</summary>
 public sealed class WorkCentersDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<WorkCentersDapperRepository> logger)
     : IWorkCentersRepository

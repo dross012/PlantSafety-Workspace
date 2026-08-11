@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.EmergencyResponseEvacuation.Models;
 
-/// <summary>A single Emergency Response & Evacuation Policies read-model item.</summary>
+/// <summary>A single Emergency Response &amp; Evacuation Policies read-model item.</summary>
 public sealed record EmergencyResponseEvacuationItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

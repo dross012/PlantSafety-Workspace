@@ -9,7 +9,7 @@ using PlantSafety.Application.Common.Results;
 namespace PlantSafety.Application.Scorecards.CulturalPrecursorMetrics.Queries;
 
 /// <summary>
-/// Retrieves Cultural & Precursor Metrics (Near-Miss, Behavioral Observations) data for the given tenant, optionally scoped to a single site,
+/// Retrieves Cultural &amp; Precursor Metrics (Near-Miss, Behavioral Observations) data for the given tenant, optionally scoped to a single site,
 /// within the inclusive UTC date range [<paramref name="From"/>, <paramref name="To"/>].
 /// </summary>
 /// <param name="TenantId">Tenant identifier resolved from JWT claims.</param>

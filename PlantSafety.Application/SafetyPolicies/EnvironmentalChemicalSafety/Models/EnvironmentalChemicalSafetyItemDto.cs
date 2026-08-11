@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.EnvironmentalChemicalSafety.Models;
 
-/// <summary>A single Environmental & Chemical Safety Policies read-model item.</summary>
+/// <summary>A single Environmental &amp; Chemical Safety Policies read-model item.</summary>
 public sealed record EnvironmentalChemicalSafetyItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

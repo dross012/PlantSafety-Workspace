@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.PermitToWork.PermitTemplate.Rules;
 public static class PermitTemplateLifecycleRules
 {
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
-    public static bool CanActivate(PermitTemplateStatus current) => current == PermitTemplateStatus.Created;
+    public static bool CanActivate(PermitTemplateStatus current) => current == PermitTemplateStatus.Draft;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
     public static bool CanComplete(PermitTemplateStatus current) => current == PermitTemplateStatus.Active;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be closed from <paramref name="current"/>.</summary>
-    public static bool CanClose(PermitTemplateStatus current) => current == PermitTemplateStatus.Completed;
+    public static bool CanClose(PermitTemplateStatus current) => current == PermitTemplateStatus.Retired;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be archived from <paramref name="current"/>.</summary>
-    public static bool CanArchive(PermitTemplateStatus current) => current == PermitTemplateStatus.Closed;
+    public static bool CanArchive(PermitTemplateStatus current) => current == PermitTemplateStatus.Retired;
 }

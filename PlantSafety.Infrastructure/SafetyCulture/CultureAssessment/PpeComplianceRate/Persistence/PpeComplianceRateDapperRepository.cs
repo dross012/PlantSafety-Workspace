@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyCulture.CultureAssessment.PpeComplian
 
 /// <summary>Dapper-backed repository for PpeComplianceRate read-model queries.</summary>
 public sealed class PpeComplianceRateDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<PpeComplianceRateDapperRepository> logger)
     : IPpeComplianceRateRepository

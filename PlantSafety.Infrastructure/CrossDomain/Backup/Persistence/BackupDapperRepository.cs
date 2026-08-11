@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Backup.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="BackupItemDto"/> queries.</summary>
 public sealed class BackupDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<BackupDapperRepository> logger)
     : IBackupRepository

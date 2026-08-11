@@ -32,7 +32,6 @@ namespace PlantSafety.Infrastructure.Features.SafetyEvents.IncidentManagement.Re
 public sealed class IncidentDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperCommandExecutor commandExecutor,
-    DapperQueryExecutor queryExecutor,
     IOutboxWriter outboxWriter,
     ILogger<IncidentDapperRepository> logger,
     ICrossModuleEventRelay? crossModuleEventRelay = null,

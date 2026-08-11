@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.AccidentManagement.SiteSecuringAndTriage.Models;
 
-/// <summary>A single Site Securing, Injury Triage & Emergency Plan Execution read-model item.</summary>
+/// <summary>A single Site Securing, Injury Triage &amp; Emergency Plan Execution read-model item.</summary>
 public sealed record SiteSecuringAndTriageItemDto
 {
     /// <summary>Accident identifier.</summary>

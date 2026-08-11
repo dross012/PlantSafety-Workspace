@@ -35,8 +35,7 @@ public static class TrainingEndpoints
         var group = app
             .MapGroup("api/v1/operational/training")
             .RequireAuthorization(TrainingAuthorizationPolicies.Read)
-            .WithTags("Training")
-            .WithOpenApi();
+            .WithTags("Training");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -11,7 +11,7 @@ namespace PlantSafety.Application.RiskManagement.ErgonomicsMaterialHandling.Quer
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Ergonomics & Material Handling items.</param>
+/// <param name="Items">Matching Ergonomics &amp; Material Handling items.</param>
 public sealed record ErgonomicsMaterialHandlingQueryResult(
     Guid TenantId,
     Guid? SiteId,

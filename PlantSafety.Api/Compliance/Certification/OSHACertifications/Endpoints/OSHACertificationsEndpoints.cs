@@ -35,8 +35,7 @@ public static class OSHACertificationsEndpoints
         var group = app
             .MapGroup("api/v1/compliance/certification/oshacertifications")
             .RequireAuthorization(OSHACertificationsAuthorizationPolicies.Read)
-            .WithTags("OSHACertifications")
-            .WithOpenApi();
+            .WithTags("OSHACertifications");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

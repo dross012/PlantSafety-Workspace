@@ -19,6 +19,12 @@ namespace PlantSafety.Application.Analytics.PredictiveAnalytics.Commands;
 
 /// <summary>Records that a reviewed prediction has been acted upon (Active -&gt; Completed, i.e. "Actioned").</summary>
 /// <param name="ActionNotes">Optional free-text notes describing the action taken.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="PredictiveAnalyticsId">Identifier of the PredictiveAnalytics record.</param>
+/// <param name="ActionedByUserId">Identifier of the user performing this operation.</param>
 public sealed record ActionPredictiveAnalyticsCommand(
     Guid CommandId,
     Guid CorrelationId,

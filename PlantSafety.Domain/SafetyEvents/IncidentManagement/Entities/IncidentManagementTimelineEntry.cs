@@ -42,7 +42,15 @@ public sealed class IncidentManagementTimelineEntry
     public string Description { get; private set; }
 
     /// <summary>For ORM/read-model rehydration only.</summary>
-    private IncidentManagementTimelineEntry() { }
+    private IncidentManagementTimelineEntry() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        Actor = null!;
+        Description = null!;
+        EventType = null!;
+        Severity = null!;
+    }
 
     /// <summary>Creates a new timeline entry.</summary>
     public IncidentManagementTimelineEntry(

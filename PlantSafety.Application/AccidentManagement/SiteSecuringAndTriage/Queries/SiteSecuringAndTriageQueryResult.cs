@@ -11,7 +11,7 @@ namespace PlantSafety.Application.AccidentManagement.SiteSecuringAndTriage.Queri
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Site Securing, Injury Triage & Emergency Plan Execution items.</param>
+/// <param name="Items">Matching Site Securing, Injury Triage &amp; Emergency Plan Execution items.</param>
 public sealed record SiteSecuringAndTriageQueryResult(
     Guid TenantId,
     Guid? SiteId,

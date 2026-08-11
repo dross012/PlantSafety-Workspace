@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Certification.IndustrySpecific.P
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class IndustrySpecificDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<IndustrySpecificDapperRepository> logger)
     : IIndustrySpecificRepository

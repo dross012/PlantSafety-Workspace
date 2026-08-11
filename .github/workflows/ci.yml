@@ -37,7 +37,10 @@ on:
   workflow_dispatch:
 
 env:
-  DOTNET_VERSION: "8.0.x"
+  # Left at 8.0.x after the platform moved to .NET 10. Every project in the solution now
+  # targets net10.0, so the 8.0 SDK cannot build any of them -- this pinned an SDK that
+  # would fail the restore step before a single test ran.
+  DOTNET_VERSION: "10.0.x"
   SOLUTION_PATH: "PlantSafety/PlantSafety.sln"
 
 jobs:
@@ -55,8 +58,26 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # MAUI workloads are a hard prerequisite for PlantSafety.UI (android/ios/maccatalyst
+      # /maui-windows). A runner without them cannot build that project at all, whatever
+      # else is correct.
+      - name: Restore workloads
+        run: dotnet workload restore "${{ env.SOLUTION_PATH }}"
+
+      # -p:Configuration=Release is load-bearing, not decoration.
+      #
+      # `dotnet restore` defaults to Debug. The build below is Release. For most projects
+      # that mismatch is harmless, but MAUI builds MacCatalyst as a UNIVERSAL binary in
+      # Release only -- x64 AND arm64 -- while the Debug restore resolves maccatalyst-x64
+      # alone. The build then asks for a maccatalyst-arm64 target the assets file does not
+      # contain and fails with NETSDK1047.
+      #
+      # So this job has been failing on PlantSafety.UI purely because its restore and its
+      # build disagreed about the configuration. Verified both directions locally: a Debug
+      # build against the Debug restore succeeds, and a Release restore makes the Release
+      # build succeed.
       - name: Restore
-        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+        run: dotnet restore "${{ env.SOLUTION_PATH }}" -p:Configuration=Release
 
       - name: Build (Release, 0 warnings-as-errors baseline)
         run: dotnet build "${{ env.SOLUTION_PATH }}" --configuration Release --no-restore
@@ -76,18 +97,117 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # Needed even though this job builds no MAUI output: the restore below is
+      # solution-wide, and evaluating PlantSafety.UI's TFMs requires the workload
+      # manifests to be present.
+      - name: Restore workloads
+        run: dotnet workload restore "${{ env.SOLUTION_PATH }}"
+
+      # Release, matching the configuration every suite below runs in. See the `build`
+      # job for why the mismatch mattered (MAUI/NETSDK1047); keeping the two in step here
+      # too costs nothing and removes a trap for whoever adds a build step later.
       - name: Restore
-        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+        run: dotnet restore "${{ env.SOLUTION_PATH }}" -p:Configuration=Release
+
+      # No solution-wide build step here. The `build` job above already compiles the whole
+      # solution, including PlantSafety.UI; repeating it would add minutes to gate results
+      # that no test depends on. Each `dotnet run` below builds its own project
+      # incrementally instead -- the first compiles the shared Application/Domain/
+      # Infrastructure/SharedKernel projects and the rest reuse that output, so this costs
+      # one build, not a dozen, and never touches the MAUI head project (no test suite
+      # references it, so it cannot affect a test result).
+      #
+      # ------------------------------------------------------------------------
+      # EVERY suite is invoked with `dotnet run`, never `dotnet test`.
+      #
+      # All thirteen test projects are xunit v3 console-runner projects
+      # (OutputType Exe) and none references Microsoft.NET.Test.Sdk. Without that
+      # package there is no VSTest adapter for `dotnet test` to drive, so it prints
+      # nothing, runs nothing, and EXITS 0. Verified directly: `dotnet test` on
+      # PlantSafety.Tests exits 0 while `dotnet run` on the same project executes
+      # 1,333 tests.
+      #
+      # That is the one failure mode a gate must never have -- a green check that
+      # asserts nothing -- and it is why the two steps that previously used
+      # `dotnet test` have been converted rather than left alone.
+      #
+      # -trx writes a result file per suite so the artifact upload below stays
+      # meaningful; the console runner has no --logger switch.
+      # ------------------------------------------------------------------------
 
       - name: Run unit tests (PlantSafety.Tests)
-        run: dotnet test "PlantSafety/PlantSafety.Tests/PlantSafety.Tests.csproj" --configuration Release --no-restore --logger "trx;LogFileName=unit-tests.trx"
+        run: dotnet run --project "PlantSafety/PlantSafety.Tests/PlantSafety.Tests.csproj" --configuration Release --no-restore -- -trx TestResults/unit-tests.trx
+
+      # Regression and penetration first among the specialised suites: they are the two
+      # most likely to explain WHY something else broke.
+      - name: Run regression tests (PlantSafety.RegressionTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.RegressionTests/PlantSafety.RegressionTests.csproj" --configuration Release --no-restore -- -trx TestResults/regression-tests.trx
+
+      - name: Run penetration tests (PlantSafety.PenetrationTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.PenetrationTests/PlantSafety.PenetrationTests.csproj" --configuration Release --no-restore -- -trx TestResults/penetration-tests.trx
+
+      # The remaining deterministic suites. All are in-process with no Docker, no
+      # database and no network, and complete in about four seconds combined -- there is
+      # no cost argument for leaving any of them out, and each was already passing
+      # locally before being wired, so none is gating on unknown state.
+      #
+      # One step per suite rather than a matrix: these run in seconds, so a matrix would
+      # spend a dozen runner start-ups and a dozen Release builds to parallelise work
+      # that finishes faster than a single checkout. The step name still identifies
+      # which suite failed.
+      - name: Run smoke tests (PlantSafety.SmokeTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.SmokeTests/PlantSafety.SmokeTests.csproj" --configuration Release --no-restore -- -trx TestResults/smoke-tests.trx
+
+      - name: Run security tests (PlantSafety.SecurityTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.SecurityTests/PlantSafety.SecurityTests.csproj" --configuration Release --no-restore -- -trx TestResults/security-tests.trx
+
+      - name: Run acceptance tests (PlantSafety.AcceptanceTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.AcceptanceTests/PlantSafety.AcceptanceTests.csproj" --configuration Release --no-restore -- -trx TestResults/acceptance-tests.trx
+
+      - name: Run scenario tests (PlantSafety.ScenarioTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.ScenarioTests/PlantSafety.ScenarioTests.csproj" --configuration Release --no-restore -- -trx TestResults/scenario-tests.trx
+
+      - name: Run resilience tests (PlantSafety.ResilienceTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.ResilienceTests/PlantSafety.ResilienceTests.csproj" --configuration Release --no-restore -- -trx TestResults/resilience-tests.trx
+
+      - name: Run compatibility tests (PlantSafety.CompatibilityTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.CompatibilityTests/PlantSafety.CompatibilityTests.csproj" --configuration Release --no-restore -- -trx TestResults/compatibility-tests.trx
+
+      # DataIntegrationTests references Dapper but needs no live database -- it exercises
+      # mapping and parameter construction in-process, which is why it belongs here
+      # rather than in the Testcontainers job.
+      - name: Run data integration tests (PlantSafety.DataIntegrationTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.DataIntegrationTests/PlantSafety.DataIntegrationTests.csproj" --configuration Release --no-restore -- -trx TestResults/data-integration-tests.trx
+
+      # ------------------------------------------------------------------------
+      # Timing-sensitive suites, kept last and grouped so a flake here is immediately
+      # attributable.
+      #
+      # These are hard gates like the rest, deliberately. Their thresholds carry orders
+      # of magnitude of headroom -- PLNT-PERF-ALARM-001 allows 500ms p99 for an in-memory
+      # object construction that takes microseconds, and PLNT-STRS-ALARM-002 asserts a
+      # throughput RATIO with a 0.25 floor precisely so scheduler noise cannot reach it.
+      # If either starts flaking on a shared runner, the threshold is wrong and should be
+      # corrected here; downgrading them to continue-on-error would keep the check green
+      # while removing the only thing it was measuring.
+      # ------------------------------------------------------------------------
+      - name: Run performance tests (PlantSafety.PerformanceTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.PerformanceTests/PlantSafety.PerformanceTests.csproj" --configuration Release --no-restore -- -trx TestResults/performance-tests.trx
+
+      - name: Run stress tests (PlantSafety.StressTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.StressTests/PlantSafety.StressTests.csproj" --configuration Release --no-restore -- -trx TestResults/stress-tests.trx
 
       - name: Publish test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-results
-          path: "**/unit-tests.trx"
+          name: test-results
+          # Both patterns: the runner writes -trx paths relative to the job's working
+          # directory, which is the checkout root, so the files land in ./TestResults.
+          # The recursive pattern alone is not worth relying on to match at depth zero.
+          path: |
+            TestResults/*.trx
+            **/TestResults/*.trx
 
   # --------------------------------------------------------------------------
   # 2a2. Integration tests (PlantSafety.IntegrationTests)
@@ -105,6 +225,16 @@ jobs:
   #      turning it into a hard gate immediately risks blocking every PR on pre-existing
   #      failures nobody has triaged yet. Flip to a hard gate once a human confirms a first
   #      green run against a real runner.
+  #
+  #      UPDATE: the "never invoked" note above was more literally true than intended. The
+  #      step existed but used `dotnet test`, which cannot run an xunit v3 console-runner
+  #      project that does not reference Microsoft.NET.Test.Sdk -- it exits 0 having run
+  #      nothing. So this job has been passing vacuously, and its soft-fail was guarding
+  #      against failures from a command incapable of producing one. Now corrected to
+  #      `dotnet run`. The soft-fail is KEPT and its rationale now actually applies: this
+  #      suite is about to execute in CI for the first time, against a real Docker daemon,
+  #      and it passes 286/286 locally but has never been run on a GitHub runner. Flip to
+  #      a hard gate once a human confirms a first green run there.
   # --------------------------------------------------------------------------
   integration-tests:
     name: Integration Tests (Testcontainers)
@@ -122,15 +252,22 @@ jobs:
       - name: Restore
         run: dotnet restore "PlantSafety/PlantSafety.IntegrationTests/PlantSafety.IntegrationTests.csproj"
 
+      # `dotnet run`, not `dotnet test`, for the same reason as the suites in the `test`
+      # job: this is an xunit v3 console-runner project with no Microsoft.NET.Test.Sdk,
+      # so `dotnet test` exits 0 without running anything. This step has therefore never
+      # executed a test since it was added -- its continue-on-error below was guarding
+      # against failures from a command that could not fail.
       - name: Run integration tests (PlantSafety.IntegrationTests)
-        run: dotnet test "PlantSafety/PlantSafety.IntegrationTests/PlantSafety.IntegrationTests.csproj" --configuration Release --no-restore --logger "trx;LogFileName=integration-tests.trx"
+        run: dotnet run --project "PlantSafety/PlantSafety.IntegrationTests/PlantSafety.IntegrationTests.csproj" --configuration Release --no-restore -- -trx TestResults/integration-tests.trx
 
       - name: Publish test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-results
-          path: "**/integration-tests.trx"
+          path: |
+            TestResults/integration-tests.trx
+            **/TestResults/integration-tests.trx
 
   # --------------------------------------------------------------------------
   # 2b. Dependency vulnerability scan (Phase 7 §5.1 Security Hardening)
@@ -270,6 +407,11 @@ jobs:
           CONTRACT_DIR="PlantSafety/PlantSafety.Tests/SharedKernel/Contracts/Enterprise"
           if [ -d "$CONTRACT_DIR" ]; then
             echo "Enterprise contract-test directory found -- running as a hard gate."
+            # NOTE: if the contract tests land as an xunit v3 console-runner project
+            # (OutputType Exe, no Microsoft.NET.Test.Sdk) -- the convention every other
+            # test project here follows -- this `dotnet test` will exit 0 without running
+            # anything, exactly as the unit and integration steps silently did before
+            # this pass. Switch it to `dotnet run --project <csproj>` when it lands.
             dotnet test "$CONTRACT_DIR" --configuration Release
           else
             echo "::warning::$CONTRACT_DIR does not exist yet (Enterprise contract tests not landed). Skipping as a soft gate -- remove 'continue-on-error' on this job once it lands."

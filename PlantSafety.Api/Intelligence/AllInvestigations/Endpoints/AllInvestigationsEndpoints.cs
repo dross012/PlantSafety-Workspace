@@ -34,8 +34,7 @@ public static class AllInvestigationsEndpoints
         var group = app
             .MapGroup("api/v1/intelligence/allinvestigations")
             .RequireAuthorization(AllInvestigationsAuthorizationPolicies.Read)
-            .WithTags("AllInvestigations")
-            .WithOpenApi();
+            .WithTags("AllInvestigations");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Checklists.ChecklistTemplate.PersonalProtec
 
 /// <summary>Dapper-backed repository for PersonalProtectiveEquipment read-model queries.</summary>
 public sealed class PersonalProtectiveEquipmentDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<PersonalProtectiveEquipmentDapperRepository> logger)
     : IPersonalProtectiveEquipmentRepository

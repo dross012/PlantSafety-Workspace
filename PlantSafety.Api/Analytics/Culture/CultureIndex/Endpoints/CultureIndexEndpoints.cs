@@ -35,8 +35,7 @@ public static class CultureIndexEndpoints
         var group = app
             .MapGroup("api/v1/analytics/culture/cultureindex")
             .RequireAuthorization(CultureIndexAuthorizationPolicies.Read)
-            .WithTags("CultureIndex")
-            .WithOpenApi();
+            .WithTags("CultureIndex");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

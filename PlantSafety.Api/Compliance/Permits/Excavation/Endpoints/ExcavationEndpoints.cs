@@ -35,8 +35,7 @@ public static class ExcavationEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/excavation")
             .RequireAuthorization(ExcavationAuthorizationPolicies.Read)
-            .WithTags("Excavation")
-            .WithOpenApi();
+            .WithTags("Excavation");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

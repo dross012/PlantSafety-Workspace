@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.ChemicalHandling.Persist
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ChemicalHandlingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ChemicalHandlingDapperRepository> logger)
     : IChemicalHandlingRepository

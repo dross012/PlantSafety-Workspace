@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.PPE.PPEInventory.Rules;
 public static class PPEInventoryLifecycleRules
 {
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
-    public static bool CanActivate(PPEInventoryStatus current) => current == PPEInventoryStatus.Created;
+    public static bool CanActivate(PPEInventoryStatus current) => current == PPEInventoryStatus.InStock;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
-    public static bool CanComplete(PPEInventoryStatus current) => current == PPEInventoryStatus.Active;
+    public static bool CanComplete(PPEInventoryStatus current) => current == PPEInventoryStatus.InStock;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be closed from <paramref name="current"/>.</summary>
-    public static bool CanClose(PPEInventoryStatus current) => current == PPEInventoryStatus.Completed;
+    public static bool CanClose(PPEInventoryStatus current) => current == PPEInventoryStatus.Retired;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be archived from <paramref name="current"/>.</summary>
-    public static bool CanArchive(PPEInventoryStatus current) => current == PPEInventoryStatus.Closed;
+    public static bool CanArchive(PPEInventoryStatus current) => current == PPEInventoryStatus.Retired;
 }

@@ -57,7 +57,13 @@ public sealed partial class EnvironmentalAssetMonitoring
         => new ReadOnlyCollection<IEnvironmentalAssetMonitoringDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private EnvironmentalAssetMonitoring() { }
+    private EnvironmentalAssetMonitoring() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        MeasurementType = null!;
+        SensorId = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

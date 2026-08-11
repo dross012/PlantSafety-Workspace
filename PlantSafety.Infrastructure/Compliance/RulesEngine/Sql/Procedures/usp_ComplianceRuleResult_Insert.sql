@@ -30,6 +30,14 @@ BEGIN
         (ComplianceRuleResultId, ComplianceEvaluationId, RuleId, RuleCode, RuleName, Category, Passed, ViolationsJson, EvaluatedAtUtc)
         VALUES
         (@ComplianceRuleResultId, @ComplianceEvaluationId, @RuleId, @RuleCode, @RuleName, @Category, @Passed, @ViolationsJson, @EvaluatedAtUtc);
+        -- Canonical audit trail (Handbook section 2.11): recorded after the write, in its own
+        -- TRY/CATCH so an audit failure can never fail the operation it describes.
+        BEGIN TRY
+            INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+            VALUES (N'ComplianceRuleResult', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'ComplianceRuleResultId=', @ComplianceRuleResultId), 0, OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+        END CATCH;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'ComplianceRuleResultId=', @ComplianceRuleResultId, N'; User=', SYSTEM_USER);

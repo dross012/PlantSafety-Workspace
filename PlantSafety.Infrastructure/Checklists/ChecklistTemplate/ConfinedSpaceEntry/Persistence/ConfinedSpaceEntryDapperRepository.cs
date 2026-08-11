@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Checklists.ChecklistTemplate.ConfinedSpaceE
 
 /// <summary>Dapper-backed repository for ConfinedSpaceEntry read-model queries.</summary>
 public sealed class ConfinedSpaceEntryDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ConfinedSpaceEntryDapperRepository> logger)
     : IConfinedSpaceEntryRepository

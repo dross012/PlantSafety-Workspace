@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.MaterialHandlingStorage.Models;
 
-/// <summary>A single Material Handling & Storage Policies read-model item.</summary>
+/// <summary>A single Material Handling &amp; Storage Policies read-model item.</summary>
 public sealed record MaterialHandlingStorageItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

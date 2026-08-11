@@ -35,8 +35,7 @@ public static class HazardAssessmentsEndpoints
         var group = app
             .MapGroup("api/v1/operational/hazard-assessments")
             .RequireAuthorization(HazardAssessmentsAuthorizationPolicies.Read)
-            .WithTags("HazardAssessments")
-            .WithOpenApi();
+            .WithTags("HazardAssessments");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

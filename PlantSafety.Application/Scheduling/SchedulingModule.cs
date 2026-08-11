@@ -12,7 +12,7 @@ namespace PlantSafety.Application.Scheduling;
 /// </summary>
 /// <remarks>
 /// <para><b>Purpose:</b> Coordinates people, equipment, and processes so that hazard mitigation is embedded into daily, weekly, and long-term manufacturing operations.</para>
-/// <para><b>Responsibilities:</b> Shift & fatigue management; preventive maintenance scheduling; hazard isolation & sequencing; emergency response & drill planning; safety work order prioritization (P1-P4).</para>
+/// <para><b>Responsibilities:</b> Shift &amp; fatigue management; preventive maintenance scheduling; hazard isolation &amp; sequencing; emergency response &amp; drill planning; safety work order prioritization (P1-P4).</para>
 /// <para><b>Dependencies:</b> PlantSafety.Domain.Scheduling.*; PlantSafety.SharedKernel. No Infrastructure/EF/SQL dependencies.</para>
 /// <para><b>Inputs:</b> Hazard scores and PSSR requirements from Risk Management; PM schedules and guarding inspections from Machines; LOTO tasks and drills from Procedures; fit-testing schedules from PPE; permit-to-work timing from Contractors/PermitToWork; sensor alerts from Observability; inspection schedules from Auditing.</para>
 /// <para><b>Outputs:</b> Daily safety calendars; weekly hazard-based work plans; monthly compliance schedules; annual safety training and drill calendars.</para>

@@ -60,7 +60,13 @@ public sealed partial class PMScheduling
         => new ReadOnlyCollection<IPMSchedulingDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PMScheduling() { }
+    private PMScheduling() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        EquipmentDescription = null!;
+        PmTaskType = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

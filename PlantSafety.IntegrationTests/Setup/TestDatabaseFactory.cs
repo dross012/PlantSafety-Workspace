@@ -800,6 +800,8 @@ public static partial class TestDatabaseFactory
                     WHERE RiskId = @RiskId AND TenantId = @TenantId AND IsDeleted = 0
                       AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
 
+                    -- Captured immediately after the UPDATE, before the audit INSERT below can
+                    -- clobber @@ROWCOUNT.
                     DECLARE @RowsAffected INT = @@ROWCOUNT;
 
                     BEGIN TRY
@@ -809,6 +811,11 @@ public static partial class TestDatabaseFactory
                     BEGIN CATCH
                     END CATCH;
 
+                    -- Must return the affected row count, matching the real
+                    -- RiskManagement/Sql/Procedures/usp_Risk_Update.sql: RiskDapperRepository
+                    -- reads this via ExecuteScalarAsync and treats 0 as a concurrency conflict.
+                    -- Returning the ETag here instead made that read throw
+                    -- FormatException converting a 0x... string to Int32.
                     SELECT @RowsAffected;
                 END TRY
                 BEGIN CATCH
@@ -835,6 +842,8 @@ public static partial class TestDatabaseFactory
                     LastValidatedAtUtc, ReviewCadence, LastReviewedAtUtc, NextReviewDueUtc, ReviewRequired, ReviewCount,
                     RiskVersion, CreatedAtUtc, CreatedBy
                 FROM [RiskMgmt].[Risk]
+                -- Tenant-scoped, matching the real RiskManagement/Sql/Procedures/usp_Risk_GetById.sql:
+                -- a cross-tenant lookup must return no row rather than relying on RLS alone.
                 WHERE RiskId = @RiskId AND TenantId = @TenantId AND IsDeleted = 0;
             END;");
 
@@ -1132,6 +1141,8 @@ public static partial class TestDatabaseFactory
                     WHERE AccidentId = @AccidentId AND TenantId = @TenantId AND IsDeleted = 0
                       AND (@ETag IS NULL OR CONVERT(NVARCHAR(34), CAST(RowVersion AS BINARY(8)), 1) = @ETag);
 
+                    -- Captured immediately after the UPDATE, before the audit INSERT below can
+                    -- clobber @@ROWCOUNT.
                     DECLARE @RowsAffected INT = @@ROWCOUNT;
 
                     BEGIN TRY
@@ -1141,6 +1152,12 @@ public static partial class TestDatabaseFactory
                     BEGIN CATCH
                     END CATCH;
 
+                    -- Must return the affected row count, matching the real
+                    -- AccidentManagement/Sql/Procedures/usp_Accident_Update.sql, whose own header
+                    -- records that it returns @RowsAffected in place of the previous ETag-only
+                    -- SELECT. The caller reads this via ExecuteScalarAsync and treats 0 as a
+                    -- concurrency conflict; returning the ETag made that read throw
+                    -- FormatException converting a 0x... string to Int32.
                     SELECT @RowsAffected;
                 END TRY
                 BEGIN CATCH
@@ -6354,6 +6371,25 @@ BEGIN
         [Status]                NVARCHAR(50)        NOT NULL,
         [PredictedAtUtc]  DATETIME2(3)        NOT NULL,
         [ReviewedBy]      UNIQUEIDENTIFIER    NULL,
+        -- The columns below are required by the real Operational/Sql/Procedures/
+        -- usp_PredictiveMaintenanceAlert_{Insert,Update,GetById,List}.sql. This table has no
+        -- Sql/Tables/*.sql of its own for RealStoredProcedureLoader to top it up from, so unlike
+        -- every other drifted table it has to be corrected here by hand.
+        [ReviewedAtUtc]        DATETIME2(3)     NULL,
+        [ActionScheduledBy]    UNIQUEIDENTIFIER NULL,
+        [WorkOrderReference]   NVARCHAR(100)    NULL,
+        [ActionScheduledAtUtc] DATETIME2(3)     NULL,
+        [ResolvedBy]           UNIQUEIDENTIFIER NULL,
+        [ResolutionNotes]      NVARCHAR(2000)   NULL,
+        [ResolvedAtUtc]        DATETIME2(3)     NULL,
+        [DismissedBy]          UNIQUEIDENTIFIER NULL,
+        [DismissedReason]      NVARCHAR(2000)   NULL,
+        [DismissedAtUtc]       DATETIME2(3)     NULL,
+        [ClosedBy]             UNIQUEIDENTIFIER NULL,
+        [ClosedAtUtc]          DATETIME2(3)     NULL,
+        [CreatedAtUtc]         DATETIME2(3)     NOT NULL CONSTRAINT DF_PredictiveMaintenanceReadModel_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+        [CreatedBy]            UNIQUEIDENTIFIER NULL,
+        [IsDeleted]            BIT              NOT NULL CONSTRAINT DF_PredictiveMaintenanceReadModel_IsDeleted DEFAULT (0),
         RowVersion       ROWVERSION       NOT NULL
     );
 

@@ -35,8 +35,7 @@ public static class EPAEndpoints
         var group = app
             .MapGroup("api/v1/compliance/certification/epa")
             .RequireAuthorization(EPAAuthorizationPolicies.Read)
-            .WithTags("EPA")
-            .WithOpenApi();
+            .WithTags("EPA");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

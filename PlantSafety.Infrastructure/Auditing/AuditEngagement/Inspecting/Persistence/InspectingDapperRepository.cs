@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Auditing.AuditEngagement.Inspecting.Persist
 
 /// <summary>Dapper-backed repository for Inspecting read-model queries.</summary>
 public sealed class InspectingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<InspectingDapperRepository> logger)
     : IInspectingRepository

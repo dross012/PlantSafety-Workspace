@@ -35,8 +35,7 @@ public static class AnalyzersEndpoints
         var group = app
             .MapGroup("api/v1/integrations/analyzers")
             .RequireAuthorization(AnalyzersAuthorizationPolicies.Read)
-            .WithTags("Analyzers")
-            .WithOpenApi();
+            .WithTags("Analyzers");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

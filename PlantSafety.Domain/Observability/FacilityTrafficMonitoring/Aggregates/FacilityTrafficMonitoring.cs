@@ -54,7 +54,13 @@ public sealed partial class FacilityTrafficMonitoring
         => new ReadOnlyCollection<IFacilityTrafficMonitoringDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private FacilityTrafficMonitoring() { }
+    private FacilityTrafficMonitoring() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        EventType = null!;
+        ZoneCode = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

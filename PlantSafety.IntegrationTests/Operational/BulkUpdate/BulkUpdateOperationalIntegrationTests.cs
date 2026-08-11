@@ -37,7 +37,8 @@ public sealed class BulkUpdateOperationalIntegrationTests(IntegrationTestWebAppF
     [Fact]
     public async Task BulkUpdateOperational_Close_ShouldReportSuccessNotNotFound()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var resourceId = Guid.NewGuid();
@@ -124,7 +125,8 @@ public sealed class BulkUpdateOperationalIntegrationTests(IntegrationTestWebAppF
     [Fact]
     public async Task BulkUpdateOperational_UnknownResource_ShouldReportNotFound()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var command = new BulkUpdateOperationalCommand(

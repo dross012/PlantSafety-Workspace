@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.ContinuousImprovement.RCA.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class RCADapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<RCADapperRepository> logger)
     : IRCARepository

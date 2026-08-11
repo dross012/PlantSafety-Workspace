@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Operators.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="OperatorsItemDto"/> queries.</summary>
 public sealed class OperatorsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<OperatorsDapperRepository> logger)
     : IOperatorsRepository

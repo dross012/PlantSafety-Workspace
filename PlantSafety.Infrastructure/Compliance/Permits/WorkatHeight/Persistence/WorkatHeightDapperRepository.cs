@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.WorkatHeight.Persistence
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class WorkatHeightDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<WorkatHeightDapperRepository> logger)
     : IWorkatHeightRepository

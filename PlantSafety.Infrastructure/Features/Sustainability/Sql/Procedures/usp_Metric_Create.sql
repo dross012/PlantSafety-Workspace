@@ -39,6 +39,14 @@ BEGIN
         VALUES
             (@MetricId, @TenantId, @SiteId, @MetricName, @Category, @Value, @Unit, @Target, @PeriodEndUtc, @Status,
              0, @CorrelationId, @NowUtc, @ActorId);
+        -- Canonical audit trail (Handbook section 2.11): recorded after the write, in its own
+        -- TRY/CATCH so an audit failure can never fail the operation it describes.
+        BEGIN TRY
+            INSERT INTO [PlantSafety.AuditDB].dbo.AuditLog (TableName, SourceDatabase, Operation, ChangedBy, ChangeTime, ViewerAccessed, ErrorContext, Severity, Module)
+            VALUES (N'Metric', DB_NAME(), N'INSERT', SYSTEM_USER, SYSUTCDATETIME(), 0, CONCAT(N'MetricId=', @MetricId), 0, OBJECT_NAME(@@PROCID));
+        END TRY
+        BEGIN CATCH
+        END CATCH;
     END TRY
     BEGIN CATCH
         DECLARE @__ErrorContext nvarchar(400) = CONCAT(N'TenantId=', @TenantId, N'; MetricId=', @MetricId, N'; User=', SYSTEM_USER);

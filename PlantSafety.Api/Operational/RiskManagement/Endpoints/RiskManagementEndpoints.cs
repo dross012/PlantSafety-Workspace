@@ -35,8 +35,7 @@ public static class RiskManagementEndpoints
         var group = app
             .MapGroup("api/v1/operational/risk-management")
             .RequireAuthorization(RiskManagementAuthorizationPolicies.Read)
-            .WithTags("RiskManagement")
-            .WithOpenApi();
+            .WithTags("RiskManagement");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

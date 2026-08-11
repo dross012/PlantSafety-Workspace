@@ -20,6 +20,12 @@ namespace PlantSafety.Application.Scheduling.EmergencyDrillPlanning.Commands;
 
 /// <summary>Records that a scheduled drill was conducted (Created -&gt; Active).</summary>
 /// <param name="ParticipationCount">Actual participation count recorded during the drill.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="EmergencyDrillPlanningId">Identifier of the EmergencyDrillPlanning record.</param>
+/// <param name="ConductedByUserId">Identifier of the user performing this operation.</param>
 public sealed record ConductEmergencyDrillPlanningCommand(
     Guid CommandId,
     Guid CorrelationId,

@@ -35,8 +35,7 @@ public static class ComplianceFailureEndpoints
         var group = app
             .MapGroup("api/v1/analytics/predictive/compliancefailure")
             .RequireAuthorization(ComplianceFailureAuthorizationPolicies.Read)
-            .WithTags("ComplianceFailure")
-            .WithOpenApi();
+            .WithTags("ComplianceFailure");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -35,8 +35,7 @@ public static class PressureTestingEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/pressuretesting")
             .RequireAuthorization(PressureTestingAuthorizationPolicies.Read)
-            .WithTags("PressureTesting")
-            .WithOpenApi();
+            .WithTags("PressureTesting");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

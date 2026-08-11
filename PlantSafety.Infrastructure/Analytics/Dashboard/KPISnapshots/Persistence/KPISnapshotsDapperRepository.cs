@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Dashboard.KPISnapshots.Persistenc
 
 /// <summary>Dapper-backed repository for <see cref="KPISnapshotsItemDto"/> queries.</summary>
 public sealed class KPISnapshotsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<KPISnapshotsDapperRepository> logger)
     : IKPISnapshotsRepository

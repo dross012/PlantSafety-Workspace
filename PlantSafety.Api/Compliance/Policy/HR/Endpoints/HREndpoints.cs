@@ -35,8 +35,7 @@ public static class HREndpoints
         var group = app
             .MapGroup("api/v1/compliance/policy/hr")
             .RequireAuthorization(HRAuthorizationPolicies.Read)
-            .WithTags("HR")
-            .WithOpenApi();
+            .WithTags("HR");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

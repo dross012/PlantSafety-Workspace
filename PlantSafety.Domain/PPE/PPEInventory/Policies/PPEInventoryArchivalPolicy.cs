@@ -16,5 +16,5 @@ public static class PPEInventoryArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the PPEInventory may be archived.</summary>
     public static bool IsEligibleForArchival(PlantSafety.Domain.PPE.PPEInventory.Aggregates.PPEInventory aggregate)
-        => aggregate.Status == PPEInventoryStatus.Closed;
+        => aggregate.Status == PPEInventoryStatus.Retired;
 }

@@ -101,7 +101,14 @@ public sealed partial class PermitWorkflow
         => new ReadOnlyCollection<IPermitWorkflowDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PermitWorkflow() { }
+    private PermitWorkflow() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        PermitNumber = null!;
+        PermitTypeCode = null!;
+        WorkDescription = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

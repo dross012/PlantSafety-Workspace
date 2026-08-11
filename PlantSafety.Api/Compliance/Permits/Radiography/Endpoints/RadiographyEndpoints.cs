@@ -35,8 +35,7 @@ public static class RadiographyEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/radiography")
             .RequireAuthorization(RadiographyAuthorizationPolicies.Read)
-            .WithTags("Radiography")
-            .WithOpenApi();
+            .WithTags("Radiography");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

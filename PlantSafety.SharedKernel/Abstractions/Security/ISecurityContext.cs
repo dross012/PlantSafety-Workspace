@@ -14,7 +14,7 @@ namespace PlantSafety.SharedKernel.Abstractions.Security;
 /// <summary>
 /// Canonical security context for the current execution scope.
 /// MUST distinguish CRUD identity (UserId) from domain action identity (PerformedByActor),
-/// as required by the Actor & User Identity Semantics Rule.
+/// as required by the Actor &amp; User Identity Semantics Rule.
 /// </summary>
 public interface ISecurityContext
 {

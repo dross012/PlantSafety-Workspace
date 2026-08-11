@@ -31,16 +31,53 @@ internal sealed record TestDomainEvent(string EventType, string Title) : IDomain
     public UtcTimestamp OccurredAtUtc => UtcTimestamp.Now();
 }
 
+/// <summary>
+/// Connection factory that refuses to hand out a connection.
+/// <para>
+/// This project's stated principle is "no real network/DB dependency" (see GlobalUsing.cs),
+/// so the tests below exercise only OutboxWriter's in-memory pending-buffer contract. Any
+/// attempt to reach SQL is therefore a bug in the test, and this fake makes that loud rather
+/// than silently opening a connection to a server that is not there.
+/// </para>
+/// </summary>
+internal sealed class UnreachableSqlConnectionFactory : ISqlConnectionFactory
+{
+    private const string Message =
+        "PlantSafety.ResilienceTests is an in-process suite with no database fixture. " +
+        "A test reached the SQL boundary, which this suite does not cover.";
+
+    public SqlConnection CreateConnection() => throw new NotSupportedException(Message);
+
+    public SqlConnection CreateReadConnection() => throw new NotSupportedException(Message);
+}
+
 public sealed class OutboxFailoverAndRecoveryTests
 {
     private static readonly UserId Actor = UserId.FromGuid(Guid.NewGuid());
 
     private static TestDomainEvent BuildDomainEvent(string title) => new("AlertCreated", title);
 
+    /// <summary>
+    /// Builds a real OutboxWriter with non-functional persistence collaborators.
+    /// <para>
+    /// OutboxWriter's constructor gained ISqlConnectionFactory and DapperCommandExecutor
+    /// parameters at some point after these tests were written; the tests still called a
+    /// one-argument constructor and had stopped compiling (CS7036). That went unnoticed
+    /// because PlantSafety.ResilienceTests was not listed in PlantSafety.sln, so no build
+    /// ever included it. Both are now fixed.
+    /// </para>
+    /// </summary>
+    private static OutboxWriter BuildWriter() => new(
+        new UnreachableSqlConnectionFactory(),
+        new DapperCommandExecutor(
+            NullLogger<DapperCommandExecutor>.Instance,
+            Options.Create(new TenantContextPropagationOptions())),
+        NullLogger<OutboxWriter>.Instance);
+
     [Fact(DisplayName = "PLNT-FAIL-OUTBOX-001: Events enqueued before a simulated crash remain pending (not lost) until flushed")]
     public void EnqueuedEvents_ShouldRemainPending_UntilExplicitlyFlushed()
     {
-        var writer = new OutboxWriter(NullLogger<OutboxWriter>.Instance);
+        var writer = BuildWriter();
 
         writer.Enqueue(BuildDomainEvent("Failover alert 1"), tenantId: "tenant-1", actorId: Actor.Value.ToString(), correlationId: Guid.NewGuid().ToString());
         writer.Enqueue(BuildDomainEvent("Failover alert 2"), tenantId: "tenant-1", actorId: Actor.Value.ToString(), correlationId: Guid.NewGuid().ToString());
@@ -52,27 +89,48 @@ public sealed class OutboxFailoverAndRecoveryTests
         writer.HasPendingEvents.Should().BeTrue("un-flushed events must remain visible as pending so the UoW knows not to commit without them");
     }
 
-    [Fact(DisplayName = "PLNT-RCVR-OUTBOX-001: FlushAsync clears the pending buffer exactly once (idempotent recovery replay)")]
-    public async Task Flush_ShouldClearPendingBuffer_AndBeIdempotentOnReplay()
+    [Fact(DisplayName = "PLNT-RCVR-OUTBOX-001: A flush with an empty buffer is a safe no-op (idempotent recovery replay)")]
+    public async Task Flush_OnEmptyBuffer_ShouldBeSafeNoOp_OnRecoveryReplay()
     {
-        var writer = new OutboxWriter(NullLogger<OutboxWriter>.Instance);
+        var writer = BuildWriter();
+
+        // Recovery replay: after a crash-recovery restart, a flush against an already-drained
+        // buffer must be a no-op -- it must not re-process/re-publish events that already
+        // flushed (append-only guarantee), and must not touch SQL at all. The unreachable
+        // connection factory proves the latter: if FlushAsync tried to open a connection here,
+        // this would throw NotSupportedException instead of completing.
+        var act = async () => await writer.FlushAsync(TestContext.Current.CancellationToken);
+        await act.Should().NotThrowAsync("a repeated flush on an empty buffer must be a safe no-op during recovery replay");
+
+        writer.HasPendingEvents.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "PLNT-RCVR-OUTBOX-003: Clear() drops the pending buffer without publishing (rollback path)")]
+    public void Clear_ShouldDropPendingBuffer_WithoutPublishing()
+    {
+        var writer = BuildWriter();
         writer.Enqueue(BuildDomainEvent("Recovery alert"), "tenant-1", Actor.Value.ToString(), Guid.NewGuid().ToString());
 
         writer.HasPendingEvents.Should().BeTrue();
 
-        await writer.FlushAsync(TestContext.Current.CancellationToken);
-        writer.HasPendingEvents.Should().BeFalse("after a successful flush there must be nothing left pending (recovery-safe)");
+        // Rollback path: the UoW discards un-flushed events rather than persisting them. Like
+        // the empty-buffer flush above, this must not reach SQL.
+        writer.Clear();
 
-        // Recovery replay: calling FlushAsync again after a crash-recovery restart must be a
-        // no-op, not re-process/re-publish events that already flushed (append-only guarantee).
-        var act = async () => await writer.FlushAsync(TestContext.Current.CancellationToken);
-        await act.Should().NotThrowAsync("a repeated flush on an empty buffer must be a safe no-op during recovery replay");
+        writer.HasPendingEvents.Should().BeFalse("a rolled-back unit of work must leave nothing pending");
     }
+
+    // COVERAGE GAP, deliberately not faked: the populated-buffer path through FlushAsync
+    // (enqueue -> FlushAsync -> buffer drained) cannot be asserted here. FlushAsync opens a real
+    // SqlConnection and invokes [System].[usp_OutboxMessages_Insert] per envelope, and this
+    // project is declared "no real network/DB dependency" (GlobalUsing.cs). Standing up a fake
+    // that returns a usable SqlConnection would assert the fake, not the outbox. That path
+    // belongs in PlantSafety.IntegrationTests against a real database.
 
     [Fact(DisplayName = "PLNT-RCVR-OUTBOX-002: Events preserve FIFO enqueue order through recovery (no reordering)")]
     public void PendingEvents_ShouldPreserveEnqueueOrder()
     {
-        var writer = new OutboxWriter(NullLogger<OutboxWriter>.Instance);
+        var writer = BuildWriter();
 
         for (var i = 0; i < 50; i++)
             writer.Enqueue(BuildDomainEvent($"Ordered {i}"), "tenant-1", Actor.Value.ToString(), Guid.NewGuid().ToString());

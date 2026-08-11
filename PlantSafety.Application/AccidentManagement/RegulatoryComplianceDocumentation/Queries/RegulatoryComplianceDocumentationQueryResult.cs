@@ -11,7 +11,7 @@ namespace PlantSafety.Application.AccidentManagement.RegulatoryComplianceDocumen
 /// <param name="TenantId">Tenant the data belongs to.</param>
 /// <param name="SiteId">Site the data is scoped to, or null for tenant-wide results.</param>
 /// <param name="GeneratedAt">UTC timestamp when this read-model snapshot was generated.</param>
-/// <param name="Items">Matching Regulatory Compliance & Documentation items.</param>
+/// <param name="Items">Matching Regulatory Compliance &amp; Documentation items.</param>
 public sealed record RegulatoryComplianceDocumentationQueryResult(
     Guid TenantId,
     Guid? SiteId,

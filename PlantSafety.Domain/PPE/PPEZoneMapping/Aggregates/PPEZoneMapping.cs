@@ -54,7 +54,13 @@ public sealed partial class PPEZoneMapping
         => new ReadOnlyCollection<IPPEZoneMappingDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PPEZoneMapping() { }
+    private PPEZoneMapping() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        RequiredPpeCategories = null!;
+        ZoneCode = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

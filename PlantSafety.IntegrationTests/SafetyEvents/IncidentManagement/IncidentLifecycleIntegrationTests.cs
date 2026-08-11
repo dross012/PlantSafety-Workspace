@@ -53,7 +53,8 @@ public sealed class IncidentLifecycleIntegrationTests(IntegrationTestWebAppFacto
     [Fact]
     public async Task IncidentLifecycle_CreateUpdateSoftDelete_ShouldRoundTripThroughRealStoredProcedures()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();
@@ -205,7 +206,8 @@ public sealed class IncidentLifecycleIntegrationTests(IntegrationTestWebAppFacto
     [Fact]
     public async Task UpdateIncident_WithStaleETag_ShouldThrowConcurrencyConflict()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var createCommand = new CreateIncidentCommand
@@ -254,7 +256,8 @@ public sealed class IncidentLifecycleIntegrationTests(IntegrationTestWebAppFacto
     [Fact]
     public async Task GetIncident_WithoutIntermediateUpdate_ShouldKeepStableETag()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var createCommand = new CreateIncidentCommand
@@ -294,7 +297,8 @@ public sealed class IncidentLifecycleIntegrationTests(IntegrationTestWebAppFacto
     [Fact]
     public async Task IncidentCreateAndUpdate_ShouldWriteAuditLogRows()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var createCommand = new CreateIncidentCommand

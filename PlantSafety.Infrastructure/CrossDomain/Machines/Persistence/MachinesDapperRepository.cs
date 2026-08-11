@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Machines.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="MachinesItemDto"/> queries.</summary>
 public sealed class MachinesDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<MachinesDapperRepository> logger)
     : IMachinesRepository

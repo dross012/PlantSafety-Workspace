@@ -65,7 +65,8 @@ public sealed class RCAIntegrationTests(IntegrationTestWebAppFactory factory)
                 });
         }
 
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             // ---- Exercise the real MediatR pipeline -> GetRCAQueryHandler -> IRCARepository ->

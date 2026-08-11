@@ -35,8 +35,7 @@ public static class LineBreakEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/linebreak")
             .RequireAuthorization(LineBreakAuthorizationPolicies.Read)
-            .WithTags("LineBreak")
-            .WithOpenApi();
+            .WithTags("LineBreak");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

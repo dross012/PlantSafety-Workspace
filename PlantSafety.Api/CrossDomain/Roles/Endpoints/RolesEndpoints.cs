@@ -35,8 +35,7 @@ public static class RolesEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/roles")
             .RequireAuthorization(RolesAuthorizationPolicies.Read)
-            .WithTags("Roles")
-            .WithOpenApi();
+            .WithTags("Roles");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

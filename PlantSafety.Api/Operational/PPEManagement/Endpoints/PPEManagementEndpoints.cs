@@ -35,8 +35,7 @@ public static class PPEManagementEndpoints
         var group = app
             .MapGroup("api/v1/operational/ppe-management")
             .RequireAuthorization(PPEManagementAuthorizationPolicies.Read)
-            .WithTags("PPEManagement")
-            .WithOpenApi();
+            .WithTags("PPEManagement");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -35,8 +35,7 @@ public static class TrackingEndpoints
         var group = app
             .MapGroup("api/v1/compliance/compliance/tracking")
             .RequireAuthorization(TrackingAuthorizationPolicies.Read)
-            .WithTags("Tracking")
-            .WithOpenApi();
+            .WithTags("Tracking");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

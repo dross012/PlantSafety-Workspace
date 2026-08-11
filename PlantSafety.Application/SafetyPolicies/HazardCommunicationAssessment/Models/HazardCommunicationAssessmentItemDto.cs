@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.HazardCommunicationAssessment.Models;
 
-/// <summary>A single Hazard Communication & Assessment Policies read-model item.</summary>
+/// <summary>A single Hazard Communication &amp; Assessment Policies read-model item.</summary>
 public sealed record HazardCommunicationAssessmentItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

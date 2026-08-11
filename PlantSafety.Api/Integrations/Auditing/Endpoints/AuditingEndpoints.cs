@@ -35,8 +35,7 @@ public static class AuditingEndpoints
         var group = app
             .MapGroup("api/v1/integrations/auditing")
             .RequireAuthorization(AuditingAuthorizationPolicies.Read)
-            .WithTags("Auditing")
-            .WithOpenApi();
+            .WithTags("Auditing");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

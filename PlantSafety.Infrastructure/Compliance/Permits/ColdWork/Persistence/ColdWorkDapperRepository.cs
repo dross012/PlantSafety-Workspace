@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.ColdWork.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ColdWorkDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ColdWorkDapperRepository> logger)
     : IColdWorkRepository

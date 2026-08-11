@@ -57,7 +57,12 @@ public sealed partial class PPEInventory
         => new ReadOnlyCollection<IPPEInventoryDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PPEInventory() { }
+    private PPEInventory() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        PpeItemCode = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

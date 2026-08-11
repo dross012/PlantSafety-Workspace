@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyCulture.CultureAssessment.BehavioralO
 
 /// <summary>Dapper-backed repository for BehavioralObservationCompletion read-model queries.</summary>
 public sealed class BehavioralObservationCompletionDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<BehavioralObservationCompletionDapperRepository> logger)
     : IBehavioralObservationCompletionRepository

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.ContinuousImprovement.CAPA.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class CAPADapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<CAPADapperRepository> logger)
     : ICAPARepository

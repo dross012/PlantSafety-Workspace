@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.PressureTesting.Persiste
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class PressureTestingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<PressureTestingDapperRepository> logger)
     : IPressureTestingRepository

@@ -54,12 +54,12 @@ public sealed class AlertCategory : IEquatable<AlertCategory>
         "LifeSafetyEmergency", "Life-Safety Emergency Alerts", AlertSeverity.Critical, true,
         "Evacuate; Shelter in place; Avoid area; Activate emergency response team");
 
-    /// <summary>2. Injury & "Man Down" Alerts (worker collapse, panic button, lone-worker distress, fall detection).</summary>
+    /// <summary>2. Injury &amp; "Man Down" Alerts (worker collapse, panic button, lone-worker distress, fall detection).</summary>
     public static readonly AlertCategory InjuryManDown = new(
         "InjuryManDown", "Injury & Man Down Alerts", AlertSeverity.Critical, true,
         "Dispatch first responders; Provide exact GPS or indoor location; Notify supervisors and safety officers");
 
-    /// <summary>3. Operational & Hazard Alerts (E-Stop, guarding failure, interlock bypass, LOTO violation).</summary>
+    /// <summary>3. Operational &amp; Hazard Alerts (E-Stop, guarding failure, interlock bypass, LOTO violation).</summary>
     public static readonly AlertCategory OperationalHazard = new(
         "OperationalHazard", "Operational & Hazard Alerts", AlertSeverity.High, false,
         "Stop work; Lockout equipment; Notify maintenance; Isolate hazard zone");
@@ -69,12 +69,12 @@ public sealed class AlertCategory : IEquatable<AlertCategory>
         "EnvironmentalCondition", "Environmental Condition Alerts", AlertSeverity.Medium, false,
         "Ventilate area; Reduce exposure; Shut down equipment; Evacuate if thresholds exceed safe limits");
 
-    /// <summary>5. Facility & Traffic Control Alerts (forklift proximity, dock congestion, blocked exits).</summary>
+    /// <summary>5. Facility &amp; Traffic Control Alerts (forklift proximity, dock congestion, blocked exits).</summary>
     public static readonly AlertCategory FacilityTrafficControl = new(
         "FacilityTrafficControl", "Facility & Traffic Control Alerts", AlertSeverity.Medium, false,
         "Clear area; Slow down equipment; Redirect traffic; Remove obstructions");
 
-    /// <summary>6. Behavioral & PPE Compliance Alerts (missing/incorrect PPE, unsafe behavior, restricted zone entry).</summary>
+    /// <summary>6. Behavioral &amp; PPE Compliance Alerts (missing/incorrect PPE, unsafe behavior, restricted zone entry).</summary>
     public static readonly AlertCategory BehavioralPpeCompliance = new(
         "BehavioralPpeCompliance", "Behavioral & PPE Compliance Alerts", AlertSeverity.Medium, false,
         "Correct PPE; Stop unsafe behavior; Notify supervisor; Log behavioral observation");
@@ -84,22 +84,22 @@ public sealed class AlertCategory : IEquatable<AlertCategory>
         "PermitToWork", "Permit-to-Work Alerts", AlertSeverity.High, false,
         "Stop work; Verify permit; Apply required controls; Notify safety officer");
 
-    /// <summary>8. Maintenance & Equipment Health Alerts (PM overdue, sensor failure, motor overload).</summary>
+    /// <summary>8. Maintenance &amp; Equipment Health Alerts (PM overdue, sensor failure, motor overload).</summary>
     public static readonly AlertCategory MaintenanceEquipmentHealth = new(
         "MaintenanceEquipmentHealth", "Maintenance & Equipment Health Alerts", AlertSeverity.Medium, false,
         "Schedule PM; Shut down equipment; Inspect components; Notify maintenance");
 
-    /// <summary>9. Security & Access Control Alerts (unauthorized badge access, tailgating, perimeter breach).</summary>
+    /// <summary>9. Security &amp; Access Control Alerts (unauthorized badge access, tailgating, perimeter breach).</summary>
     public static readonly AlertCategory SecurityAccessControl = new(
         "SecurityAccessControl", "Security & Access Control Alerts", AlertSeverity.High, false,
         "Notify security; Lock down zone; Investigate breach");
 
-    /// <summary>10. Quality & Process Deviation Alerts (out-of-spec parameters, batch contamination).</summary>
+    /// <summary>10. Quality &amp; Process Deviation Alerts (out-of-spec parameters, batch contamination).</summary>
     public static readonly AlertCategory QualityProcessDeviation = new(
         "QualityProcessDeviation", "Quality & Process Deviation Alerts", AlertSeverity.Medium, false,
         "Stop production; Quarantine batch; Notify quality team");
 
-    /// <summary>11. Compliance & Audit Alerts (training expiration, certification lapse, audit overdue).</summary>
+    /// <summary>11. Compliance &amp; Audit Alerts (training expiration, certification lapse, audit overdue).</summary>
     public static readonly AlertCategory ComplianceAudit = new(
         "ComplianceAudit", "Compliance & Audit Alerts", AlertSeverity.Low, false,
         "Complete training; Schedule audit; Update documentation");

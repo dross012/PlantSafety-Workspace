@@ -38,7 +38,8 @@ public sealed class IncidentSqlPayloadSnapshotTests(IntegrationTestWebAppFactory
     [Fact]
     public async Task CreateIncident_ShouldPersistExactRowShape()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();
@@ -101,7 +102,8 @@ public sealed class IncidentSqlPayloadSnapshotTests(IntegrationTestWebAppFactory
     [Fact]
     public async Task UpdateIncident_ShouldPersistExactPartialDiff_LeavingUntouchedColumnsUnchanged()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();

@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.SecurityAccessControl.Models;
 
-/// <summary>A single Security & Access Control Policies read-model item.</summary>
+/// <summary>A single Security &amp; Access Control Policies read-model item.</summary>
 public sealed record SecurityAccessControlItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

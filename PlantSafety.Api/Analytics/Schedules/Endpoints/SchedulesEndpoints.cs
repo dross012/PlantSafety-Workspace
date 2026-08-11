@@ -35,8 +35,7 @@ public static class SchedulesEndpoints
         var group = app
             .MapGroup("api/v1/analytics/schedules")
             .RequireAuthorization(SchedulesAuthorizationPolicies.Read)
-            .WithTags("Schedules")
-            .WithOpenApi();
+            .WithTags("Schedules");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

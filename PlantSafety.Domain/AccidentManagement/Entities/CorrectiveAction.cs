@@ -64,7 +64,12 @@ public sealed class CorrectiveAction
     public UtcTimestamp CreatedAtUtc { get; private set; }
 
     /// <summary>For ORM rehydration only.</summary>
-    private CorrectiveAction() { }
+    private CorrectiveAction() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        Category = null!;
+    }
 
     /// <summary>Creates a new Open corrective action.</summary>
     public CorrectiveAction(

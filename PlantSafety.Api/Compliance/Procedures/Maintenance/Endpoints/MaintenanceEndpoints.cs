@@ -35,8 +35,7 @@ public static class MaintenanceEndpoints
         var group = app
             .MapGroup("api/v1/compliance/procedures/maintenance")
             .RequireAuthorization(MaintenanceAuthorizationPolicies.Read)
-            .WithTags("Maintenance")
-            .WithOpenApi();
+            .WithTags("Maintenance");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Dashboard.Executive.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="ExecutiveItemDto"/> queries.</summary>
 public sealed class ExecutiveDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ExecutiveDapperRepository> logger)
     : IExecutiveRepository

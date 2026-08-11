@@ -22,11 +22,17 @@ namespace PlantSafety.Domain.Operational.Alerts.Events;
 
 public interface IAlertDomainEvent : IDomainEvent
 {
+    // EventType, EventVersion, SchemaVersion and OccurredAtUtc are NOT redeclared here.
+    // They were, verbatim and with identical types, which hid the inherited IDomainEvent
+    // members (CS0108) while adding nothing: an interface that re-states a member it already
+    // inherits unchanged only creates two declarations to keep in step. Inheriting them means
+    // a future change to IDomainEvent reaches this interface instead of silently diverging
+    // from it.
+
+    /// <summary>Strongly-typed alert event identifier. IDomainEvent declares no EventId, so this
+    /// adds a member rather than hiding one.</summary>
     AlertEventId EventId { get; }
-    string EventType { get; }
-    int EventVersion { get; }
-    string SchemaVersion { get; }
-    UtcTimestamp OccurredAtUtc { get; }
+
     CorrelationId CorrelationId { get; }
     CausationId CausationId { get; }
     PerformedByActor Actor { get; }

@@ -34,8 +34,7 @@ public static class TextingEndpoints
         var group = app
             .MapGroup("api/v1/integrations/notifications/texting")
             .RequireAuthorization(TextingAuthorizationPolicies.Read)
-            .WithTags("Texting")
-            .WithOpenApi();
+            .WithTags("Texting");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

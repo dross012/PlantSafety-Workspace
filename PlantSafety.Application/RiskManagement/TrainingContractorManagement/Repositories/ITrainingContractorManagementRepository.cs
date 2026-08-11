@@ -7,10 +7,10 @@ using PlantSafety.Application.RiskManagement.TrainingContractorManagement.Models
 
 namespace PlantSafety.Application.RiskManagement.TrainingContractorManagement.Repositories;
 
-/// <summary>Read-only repository for Training & Contractor Management data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Training &amp; Contractor Management data. Implemented in the Infrastructure layer.</summary>
 public interface ITrainingContractorManagementRepository
 {
-    /// <summary>Returns Training & Contractor Management items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Training &amp; Contractor Management items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<TrainingContractorManagementItemDto>> GetTrainingContractorManagementAsync(
         Guid tenantId,
         Guid? siteId,

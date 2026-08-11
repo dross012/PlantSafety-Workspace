@@ -35,8 +35,7 @@ public static class OSHAEndpoints
         var group = app
             .MapGroup("api/v1/compliance/regulatory-calendar/inspections/osha")
             .RequireAuthorization(OSHAAuthorizationPolicies.Read)
-            .WithTags("OSHA")
-            .WithOpenApi();
+            .WithTags("OSHA");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

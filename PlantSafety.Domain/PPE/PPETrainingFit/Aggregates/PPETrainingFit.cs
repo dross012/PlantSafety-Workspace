@@ -54,7 +54,12 @@ public sealed partial class PPETrainingFit
         => new ReadOnlyCollection<IPPETrainingFitDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PPETrainingFit() { }
+    private PPETrainingFit() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        TrainingType = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

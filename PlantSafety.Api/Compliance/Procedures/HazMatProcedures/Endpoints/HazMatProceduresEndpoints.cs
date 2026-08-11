@@ -35,8 +35,7 @@ public static class HazMatProceduresEndpoints
         var group = app
             .MapGroup("api/v1/compliance/procedures/hazmatprocedures")
             .RequireAuthorization(HazMatProceduresAuthorizationPolicies.Read)
-            .WithTags("HazMatProcedures")
-            .WithOpenApi();
+            .WithTags("HazMatProcedures");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

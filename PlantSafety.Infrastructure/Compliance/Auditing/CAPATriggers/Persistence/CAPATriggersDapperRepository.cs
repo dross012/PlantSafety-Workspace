@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Auditing.CAPATriggers.Persistenc
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class CAPATriggersDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<CAPATriggersDapperRepository> logger)
     : ICAPATriggersRepository

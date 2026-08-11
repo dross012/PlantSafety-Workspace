@@ -23,3 +23,8 @@ global using PlantSafety.Domain.Common.Types.StrongIds;
 global using PlantSafety.SharedKernel.Identifiers;
 global using PlantSafety.SharedKernel.Primitives.ValueTypes;
 global using PlantSafety.Infrastructure.Persistence.UnitOfWork;
+global using Microsoft.Data.SqlClient;
+global using Microsoft.Extensions.Options;
+global using PlantSafety.Infrastructure.Persistence.ConnectionFactory;
+global using PlantSafety.Infrastructure.Persistence.Dapper;
+global using PlantSafety.Infrastructure.Persistence.Dapper.Commands;

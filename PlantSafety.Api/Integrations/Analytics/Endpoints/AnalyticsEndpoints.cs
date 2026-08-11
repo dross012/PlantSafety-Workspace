@@ -35,8 +35,7 @@ public static class AnalyticsEndpoints
         var group = app
             .MapGroup("api/v1/integrations/analytics")
             .RequireAuthorization(AnalyticsAuthorizationPolicies.Read)
-            .WithTags("Analytics")
-            .WithOpenApi();
+            .WithTags("Analytics");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

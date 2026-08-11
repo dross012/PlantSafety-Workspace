@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Employees.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="EmployeesItemDto"/> queries.</summary>
 public sealed class EmployeesDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<EmployeesDapperRepository> logger)
     : IEmployeesRepository

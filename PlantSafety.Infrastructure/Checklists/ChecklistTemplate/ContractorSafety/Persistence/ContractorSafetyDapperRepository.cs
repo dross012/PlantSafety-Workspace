@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Checklists.ChecklistTemplate.ContractorSafe
 
 /// <summary>Dapper-backed repository for ContractorSafety read-model queries.</summary>
 public sealed class ContractorSafetyDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ContractorSafetyDapperRepository> logger)
     : IContractorSafetyRepository

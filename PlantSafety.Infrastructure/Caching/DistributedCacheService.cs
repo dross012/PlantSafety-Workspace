@@ -19,8 +19,7 @@ namespace PlantSafety.Infrastructure.Caching;
 /// </summary>
 public sealed class DistributedCacheService(
     IDistributedCache cache,
-    IOptions<CacheOptions> opts,
-    ILogger<DistributedCacheService> logger)
+    IOptions<CacheOptions> opts)
     : ICacheService
 {
     private readonly string _prefix = opts.Value.KeyPrefix;

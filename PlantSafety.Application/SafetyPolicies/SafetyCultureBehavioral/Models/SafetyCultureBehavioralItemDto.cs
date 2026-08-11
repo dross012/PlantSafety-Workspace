@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.SafetyCultureBehavioral.Models;
 
-/// <summary>A single Safety Culture & Behavioral Policies read-model item.</summary>
+/// <summary>A single Safety Culture &amp; Behavioral Policies read-model item.</summary>
 public sealed record SafetyCultureBehavioralItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.ManagementOfChange.MOCWorkflows.
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class MOCWorkflowsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<MOCWorkflowsDapperRepository> logger)
     : IMOCWorkflowsRepository

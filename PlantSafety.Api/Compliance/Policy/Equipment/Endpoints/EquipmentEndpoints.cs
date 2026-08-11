@@ -35,8 +35,7 @@ public static class EquipmentEndpoints
         var group = app
             .MapGroup("api/v1/compliance/policy/equipment")
             .RequireAuthorization(EquipmentAuthorizationPolicies.Read)
-            .WithTags("Equipment")
-            .WithOpenApi();
+            .WithTags("Equipment");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

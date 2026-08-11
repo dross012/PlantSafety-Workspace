@@ -35,8 +35,7 @@ public static class PreventiveMaintenanceEndpoints
         var group = app
             .MapGroup("api/v1/operational/preventive-maintenance")
             .RequireAuthorization(PreventiveMaintenanceAuthorizationPolicies.Read)
-            .WithTags("PreventiveMaintenance")
-            .WithOpenApi();
+            .WithTags("PreventiveMaintenance");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

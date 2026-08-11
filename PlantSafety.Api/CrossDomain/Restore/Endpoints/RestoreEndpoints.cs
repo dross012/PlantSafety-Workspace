@@ -35,8 +35,7 @@ public static class RestoreEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/restore")
             .RequireAuthorization(RestoreAuthorizationPolicies.Read)
-            .WithTags("Restore")
-            .WithOpenApi();
+            .WithTags("Restore");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

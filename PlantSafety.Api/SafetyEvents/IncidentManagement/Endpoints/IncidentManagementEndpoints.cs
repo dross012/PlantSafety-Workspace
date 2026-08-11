@@ -35,8 +35,7 @@ public static class IncidentManagementEndpoints
         var group = app
             .MapGroup("api/v1/safety-events/incident-management")
             .RequireAuthorization(IncidentManagementAuthorizationPolicies.Read)
-            .WithTags("IncidentManagement")
-            .WithOpenApi();
+            .WithTags("IncidentManagement");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

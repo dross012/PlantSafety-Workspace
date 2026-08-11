@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Auditing.AuditEngagement.Operations.Persist
 
 /// <summary>Dapper-backed repository for Operations read-model queries.</summary>
 public sealed class OperationsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<OperationsDapperRepository> logger)
     : IOperationsRepository

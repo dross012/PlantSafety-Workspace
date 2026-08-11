@@ -35,8 +35,7 @@ public static class ISO45001Endpoints
         var group = app
             .MapGroup("api/v1/compliance/certification/iso45001")
             .RequireAuthorization(ISO45001AuthorizationPolicies.Read)
-            .WithTags("ISO45001")
-            .WithOpenApi();
+            .WithTags("ISO45001");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

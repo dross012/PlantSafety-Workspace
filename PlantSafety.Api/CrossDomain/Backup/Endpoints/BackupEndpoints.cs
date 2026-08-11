@@ -35,8 +35,7 @@ public static class BackupEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/backup")
             .RequireAuthorization(BackupAuthorizationPolicies.Read)
-            .WithTags("Backup")
-            .WithOpenApi();
+            .WithTags("Backup");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

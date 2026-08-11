@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Auditing.AuditEngagement.QualityControl.Per
 
 /// <summary>Dapper-backed repository for QualityControl read-model queries.</summary>
 public sealed class QualityControlDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<QualityControlDapperRepository> logger)
     : IQualityControlRepository

@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Auditing.AuditEngagement.FacilityAssessment
 
 /// <summary>Dapper-backed repository for FacilityAssessment read-model queries.</summary>
 public sealed class FacilityAssessmentDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<FacilityAssessmentDapperRepository> logger)
     : IFacilityAssessmentRepository

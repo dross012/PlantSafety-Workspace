@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.IncidentInvestigationCorrectiveActi
 
 namespace PlantSafety.Application.SafetyPolicies.IncidentInvestigationCorrectiveAction.Repositories;
 
-/// <summary>Read-only repository for Incident Investigation & Corrective Action Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Incident Investigation &amp; Corrective Action Policies data. Implemented in the Infrastructure layer.</summary>
 public interface IIncidentInvestigationCorrectiveActionRepository
 {
-    /// <summary>Returns Incident Investigation & Corrective Action Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Incident Investigation &amp; Corrective Action Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<IncidentInvestigationCorrectiveActionItemDto>> GetIncidentInvestigationCorrectiveActionAsync(
         Guid tenantId,
         Guid? siteId,

@@ -35,8 +35,7 @@ public static class IndustrySpecificEndpoints
         var group = app
             .MapGroup("api/v1/compliance/certification/industryspecific")
             .RequireAuthorization(IndustrySpecificAuthorizationPolicies.Read)
-            .WithTags("IndustrySpecific")
-            .WithOpenApi();
+            .WithTags("IndustrySpecific");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -52,7 +52,8 @@ public sealed class CultureWritePathIntegrationTests(IntegrationTestWebAppFactor
     [Fact]
     public async Task CultureLifecycle_CreateGetByIdGetAll_ShouldRoundTripThroughRealStoredProceduresWithAuditAndConcurrency()
     {
-        var (senderScope, sender) = Factory.Services.GetScopedService<ISender>();
+        var senderScope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = senderScope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             // ---- Create ---------------------------------------------------------

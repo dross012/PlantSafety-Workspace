@@ -35,8 +35,7 @@ public static class MOCWorkflowsEndpoints
         var group = app
             .MapGroup("api/v1/compliance/management-of-change/mocworkflows")
             .RequireAuthorization(MOCWorkflowsAuthorizationPolicies.Read)
-            .WithTags("MOCWorkflows")
-            .WithOpenApi();
+            .WithTags("MOCWorkflows");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

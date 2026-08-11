@@ -14,6 +14,12 @@ namespace PlantSafety.Application.PermitToWork.Commands;
 
 /// <summary>Issues an approved PermitWorkflow, making it active (PTW Workflow Step 4/5).</summary>
 /// <param name="ValidityHours">Optional validity window, in hours, from issuance. Null means no computed expiration.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="PermitWorkflowId">Identifier of the PermitWorkflow record.</param>
+/// <param name="IssuerUserId">Identifier of the IssuerUser record.</param>
 public sealed record IssuePermitWorkflowCommand(
     Guid CommandId,
     Guid CorrelationId,

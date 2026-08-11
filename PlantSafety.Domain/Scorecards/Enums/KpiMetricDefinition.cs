@@ -55,7 +55,7 @@ public sealed class KpiMetricDefinition : IEquatable<KpiMetricDefinition>
     /// <summary>Near-Miss Reporting Rate. High reporting = strong safety culture; low = underreporting or fear of retaliation.</summary>
     public static readonly KpiMetricDefinition NearMissReportingRate = new("NearMissReportingRate", "Near-Miss Reporting Rate", IndicatorCategoryCodes.Cultural, "(Near-Miss Reports Filed / Total Hours Worked) x Normalization Factor");
 
-    /// <summary>Safety Suggestions & Stop-Work Actions -- measures employee empowerment and participation.</summary>
+    /// <summary>Safety Suggestions &amp; Stop-Work Actions -- measures employee empowerment and participation.</summary>
     public static readonly KpiMetricDefinition SafetySuggestionsStopWorkActions = new("SafetySuggestionsStopWorkActions", "Safety Suggestions & Stop-Work Actions", IndicatorCategoryCodes.Cultural, "Count of safety suggestions submitted plus stop-work actions invoked in the period");
 
     /// <summary>Behavioral Observations -- safe behaviors observed, at-risk behaviors documented, coaching conversations completed.</summary>

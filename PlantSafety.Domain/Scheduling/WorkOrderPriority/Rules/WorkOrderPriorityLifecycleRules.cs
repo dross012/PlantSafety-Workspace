@@ -15,13 +15,13 @@ namespace PlantSafety.Domain.Scheduling.WorkOrderPriority.Rules;
 public static class WorkOrderPriorityLifecycleRules
 {
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
-    public static bool CanActivate(WorkOrderPriorityStatus current) => current == WorkOrderPriorityStatus.Created;
+    public static bool CanActivate(WorkOrderPriorityStatus current) => current == WorkOrderPriorityStatus.Open;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
-    public static bool CanComplete(WorkOrderPriorityStatus current) => current == WorkOrderPriorityStatus.Active;
+    public static bool CanComplete(WorkOrderPriorityStatus current) => current == WorkOrderPriorityStatus.InProgress;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be closed from <paramref name="current"/>.</summary>
-    public static bool CanClose(WorkOrderPriorityStatus current) => current == WorkOrderPriorityStatus.Completed;
+    public static bool CanClose(WorkOrderPriorityStatus current) => current == WorkOrderPriorityStatus.Resolved;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be archived from <paramref name="current"/>.</summary>
     public static bool CanArchive(WorkOrderPriorityStatus current) => current == WorkOrderPriorityStatus.Closed;

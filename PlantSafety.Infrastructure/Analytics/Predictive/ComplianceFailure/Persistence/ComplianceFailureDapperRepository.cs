@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Predictive.ComplianceFailure.Pers
 
 /// <summary>Dapper-backed repository for <see cref="ComplianceFailureItemDto"/> queries.</summary>
 public sealed class ComplianceFailureDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ComplianceFailureDapperRepository> logger)
     : IComplianceFailureRepository

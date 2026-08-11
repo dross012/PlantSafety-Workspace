@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.EquipmentMachineOperation.Models;
 
 namespace PlantSafety.Application.SafetyPolicies.EquipmentMachineOperation.Repositories;
 
-/// <summary>Read-only repository for Equipment & Machine Operation Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Equipment &amp; Machine Operation Policies data. Implemented in the Infrastructure layer.</summary>
 public interface IEquipmentMachineOperationRepository
 {
-    /// <summary>Returns Equipment & Machine Operation Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Equipment &amp; Machine Operation Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<EquipmentMachineOperationItemDto>> GetEquipmentMachineOperationAsync(
         Guid tenantId,
         Guid? siteId,

@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Reporting.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="ReportingItemDto"/> queries.</summary>
 public sealed class ReportingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ReportingDapperRepository> logger)
     : IReportingRepository

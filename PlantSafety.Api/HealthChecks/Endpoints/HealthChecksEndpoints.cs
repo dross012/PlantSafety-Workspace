@@ -35,8 +35,7 @@ public static class HealthChecksEndpoints
         var group = app
             .MapGroup("api/v1/health")
             .RequireAuthorization(HealthChecksAuthorizationPolicies.Read)
-            .WithTags("HealthChecks")
-            .WithOpenApi();
+            .WithTags("HealthChecks");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -35,8 +35,7 @@ public static class FinancialsEndpoints
         var group = app
             .MapGroup("api/v1/financials")
             .RequireAuthorization(FinancialsAuthorizationPolicies.Read)
-            .WithTags("Financials")
-            .WithOpenApi();
+            .WithTags("Financials");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

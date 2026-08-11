@@ -63,7 +63,7 @@ public sealed record ScorecardCompiledEvent(
     public UtcTimestamp OccurredAtUtc => CompiledAtUtc;
 }
 
-/// <summary>Raised when a Compiled scorecard is published (Reporting & Distribution).</summary>
+/// <summary>Raised when a Compiled scorecard is published (Reporting &amp; Distribution).</summary>
 public sealed record ScorecardPublishedEvent(
     ScorecardEventId EventId,
     ScorecardId      ScorecardId,

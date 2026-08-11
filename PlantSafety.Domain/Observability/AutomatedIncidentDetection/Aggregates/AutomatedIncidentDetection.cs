@@ -54,7 +54,13 @@ public sealed partial class AutomatedIncidentDetection
         => new ReadOnlyCollection<IAutomatedIncidentDetectionDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private AutomatedIncidentDetection() { }
+    private AutomatedIncidentDetection() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        DetectionType = null!;
+        LocationDescription = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Intelligence.DataLake.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class DataLakeDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<DataLakeDapperRepository> logger)
     : IDataLakeRepository

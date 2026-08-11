@@ -16,5 +16,5 @@ public static class PPEAssignmentArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the PPEAssignment may be archived.</summary>
     public static bool IsEligibleForArchival(PlantSafety.Domain.PPE.PPEAssignment.Aggregates.PPEAssignment aggregate)
-        => aggregate.Status == PPEAssignmentStatus.Closed;
+        => aggregate.Status == PPEAssignmentStatus.Retired;
 }

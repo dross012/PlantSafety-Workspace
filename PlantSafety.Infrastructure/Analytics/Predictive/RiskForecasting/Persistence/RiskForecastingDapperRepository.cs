@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Predictive.RiskForecasting.Persis
 
 /// <summary>Dapper-backed repository for <see cref="RiskForecastingItemDto"/> queries.</summary>
 public sealed class RiskForecastingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<RiskForecastingDapperRepository> logger)
     : IRiskForecastingRepository

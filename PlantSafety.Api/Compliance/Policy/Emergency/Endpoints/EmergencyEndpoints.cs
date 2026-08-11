@@ -35,8 +35,7 @@ public static class EmergencyEndpoints
         var group = app
             .MapGroup("api/v1/compliance/policy/emergency")
             .RequireAuthorization(EmergencyAuthorizationPolicies.Read)
-            .WithTags("Emergency")
-            .WithOpenApi();
+            .WithTags("Emergency");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

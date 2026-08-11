@@ -35,8 +35,7 @@ public static class HotTapEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/hottap")
             .RequireAuthorization(HotTapAuthorizationPolicies.Read)
-            .WithTags("HotTap")
-            .WithOpenApi();
+            .WithTags("HotTap");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

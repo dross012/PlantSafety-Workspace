@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.SafetyPolicies.HousekeepingErgonomics.Models;
 
-/// <summary>A single Housekeeping & Ergonomics Policies read-model item.</summary>
+/// <summary>A single Housekeeping &amp; Ergonomics Policies read-model item.</summary>
 public sealed record HousekeepingErgonomicsItemDto
 {
     /// <summary>SafetyPolicy identifier.</summary>

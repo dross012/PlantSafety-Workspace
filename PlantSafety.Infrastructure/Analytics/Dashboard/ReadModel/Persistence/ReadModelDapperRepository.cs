@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Dashboard.ReadModel.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="ReadModelItemDto"/> queries.</summary>
 public sealed class ReadModelDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ReadModelDapperRepository> logger)
     : IReadModelRepository

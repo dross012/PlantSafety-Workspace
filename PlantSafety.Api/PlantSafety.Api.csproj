@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -1239,7 +1239,6 @@
     <Folder Include="Endpoints\V1\" />
     <Folder Include="Endpoints\V2\" />
     <Folder Include="Financials\Endpoints\" />
-    <Folder Include="Financials\Requests\" />
     <Folder Include="HealthChecks\Authorization\" />
     <Folder Include="HealthChecks\Contracts\Requests\" />
     <Folder Include="HealthChecks\Contracts\Responses\" />
@@ -1466,7 +1465,6 @@
     <Folder Include="Operational\Training\Models\Responses\" />
     <Folder Include="Operational\Training\Telemetry\" />
     <Folder Include="PlanningProjects\Endpoints\" />
-    <Folder Include="PlanningProjects\Requests\" />
     <Folder Include="SafetyEvents\CrisisManagement\Authorization\" />
     <Folder Include="SafetyEvents\CrisisManagement\Contracts\Requests\" />
     <Folder Include="SafetyEvents\CrisisManagement\Contracts\Responses\" />
@@ -1571,10 +1569,10 @@
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="KubernetesClient" Version="19.0.2" />
     <PackageReference Include="MediatR" Version="14.1.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.27" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.27" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.27" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.24" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
@@ -1583,8 +1581,8 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.13.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.1.7" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.3" />
   </ItemGroup>
 
   <ItemGroup>

@@ -65,7 +65,13 @@ public sealed partial class HazardIsolationSequencing
         => new ReadOnlyCollection<IHazardIsolationSequencingDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private HazardIsolationSequencing() { }
+    private HazardIsolationSequencing() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        HazardZone = null!;
+        TaskType = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

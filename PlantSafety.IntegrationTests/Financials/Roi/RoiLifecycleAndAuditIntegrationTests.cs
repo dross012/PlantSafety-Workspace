@@ -50,7 +50,8 @@ public sealed class RoiLifecycleAndAuditIntegrationTests(IntegrationTestWebAppFa
     [Fact]
     public async Task RoiLifecycle_CalculateGetListRoundTrip_ShouldReturnRealDataWithStableAdvancingETag()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();
@@ -183,7 +184,8 @@ public sealed class RoiLifecycleAndAuditIntegrationTests(IntegrationTestWebAppFa
     [Fact]
     public async Task CalculateRoi_ShouldWriteAuditLogRow()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();

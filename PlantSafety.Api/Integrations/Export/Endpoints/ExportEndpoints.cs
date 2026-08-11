@@ -35,8 +35,7 @@ public static class ExportEndpoints
         var group = app
             .MapGroup("api/v1/integrations/export")
             .RequireAuthorization(ExportAuthorizationPolicies.Read)
-            .WithTags("Export")
-            .WithOpenApi();
+            .WithTags("Export");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

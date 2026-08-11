@@ -7,10 +7,10 @@ using PlantSafety.Application.SafetyPolicies.EnvironmentalChemicalSafety.Models;
 
 namespace PlantSafety.Application.SafetyPolicies.EnvironmentalChemicalSafety.Repositories;
 
-/// <summary>Read-only repository for Environmental & Chemical Safety Policies data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Environmental &amp; Chemical Safety Policies data. Implemented in the Infrastructure layer.</summary>
 public interface IEnvironmentalChemicalSafetyRepository
 {
-    /// <summary>Returns Environmental & Chemical Safety Policies items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Environmental &amp; Chemical Safety Policies items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<EnvironmentalChemicalSafetyItemDto>> GetEnvironmentalChemicalSafetyAsync(
         Guid tenantId,
         Guid? siteId,

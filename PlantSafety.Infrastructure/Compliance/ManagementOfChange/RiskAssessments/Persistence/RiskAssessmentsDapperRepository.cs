@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.ManagementOfChange.RiskAssessmen
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class RiskAssessmentsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<RiskAssessmentsDapperRepository> logger)
     : IRiskAssessmentsRepository

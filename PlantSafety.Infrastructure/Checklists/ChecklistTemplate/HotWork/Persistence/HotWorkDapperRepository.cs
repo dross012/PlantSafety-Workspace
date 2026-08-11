@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Checklists.ChecklistTemplate.HotWork.Persis
 
 /// <summary>Dapper-backed repository for HotWork read-model queries.</summary>
 public sealed class HotWorkDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<HotWorkDapperRepository> logger)
     : IHotWorkRepository

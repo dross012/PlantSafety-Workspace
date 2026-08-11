@@ -18,6 +18,12 @@ namespace PlantSafety.Application.Compliance.Certification.Commands;
 
 /// <summary>Renews an active Certification record, extending its expiry (status unchanged).</summary>
 /// <param name="NewExpiresAtUtc">The new UTC expiration timestamp for the certification.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="CertificationId">Identifier of the Certification record.</param>
+/// <param name="RenewedByUserId">Identifier of the user performing this operation.</param>
 public sealed record RenewCertificationCommand(
     Guid CommandId,
     Guid CorrelationId,

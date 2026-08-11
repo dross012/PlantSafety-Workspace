@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Checklists.ChecklistTemplate.WorkingAtHeigh
 
 /// <summary>Dapper-backed repository for WorkingAtHeights read-model queries.</summary>
 public sealed class WorkingAtHeightsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<WorkingAtHeightsDapperRepository> logger)
     : IWorkingAtHeightsRepository

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Auditing.InternalSafetyAudit.Per
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class InternalSafetyAuditDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<InternalSafetyAuditDapperRepository> logger)
     : IInternalSafetyAuditRepository

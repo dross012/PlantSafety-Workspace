@@ -20,7 +20,6 @@ namespace PlantSafety.Infrastructure.Analytics.TrendAnalysis.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="TrendAnalysisItemDto"/> queries (top-level).</summary>
 public sealed class TrendAnalysisDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<TrendAnalysisDapperRepository> logger)
     : ITrendAnalysisRepository

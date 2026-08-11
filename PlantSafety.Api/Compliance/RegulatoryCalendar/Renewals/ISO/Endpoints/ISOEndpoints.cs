@@ -35,8 +35,7 @@ public static class ISOEndpoints
         var group = app
             .MapGroup("api/v1/compliance/regulatory-calendar/renewals/iso")
             .RequireAuthorization(ISOAuthorizationPolicies.Read)
-            .WithTags("ISO")
-            .WithOpenApi();
+            .WithTags("ISO");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

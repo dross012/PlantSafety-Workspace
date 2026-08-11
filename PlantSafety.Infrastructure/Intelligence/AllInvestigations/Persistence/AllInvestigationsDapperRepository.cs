@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Intelligence.AllInvestigations.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class AllInvestigationsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<AllInvestigationsDapperRepository> logger)
     : IAllInvestigationsRepository

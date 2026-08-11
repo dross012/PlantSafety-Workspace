@@ -35,8 +35,7 @@ public static class EngagementEndpoints
         var group = app
             .MapGroup("api/v1/analytics/engagement")
             .RequireAuthorization(EngagementAuthorizationPolicies.Read)
-            .WithTags("Analytics - Engagement")
-            .WithOpenApi();
+            .WithTags("Analytics - Engagement");
 
         // Stub â€” no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

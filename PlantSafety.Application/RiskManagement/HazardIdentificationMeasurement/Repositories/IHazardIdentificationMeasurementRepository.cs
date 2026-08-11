@@ -7,10 +7,10 @@ using PlantSafety.Application.RiskManagement.HazardIdentificationMeasurement.Mod
 
 namespace PlantSafety.Application.RiskManagement.HazardIdentificationMeasurement.Repositories;
 
-/// <summary>Read-only repository for Hazard Identification & Measurement data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Hazard Identification &amp; Measurement data. Implemented in the Infrastructure layer.</summary>
 public interface IHazardIdentificationMeasurementRepository
 {
-    /// <summary>Returns Hazard Identification & Measurement items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Hazard Identification &amp; Measurement items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<HazardIdentificationMeasurementItemDto>> GetHazardIdentificationMeasurementAsync(
         Guid tenantId,
         Guid? siteId,

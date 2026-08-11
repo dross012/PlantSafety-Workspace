@@ -35,8 +35,7 @@ public static class InspectionsEndpoints
         var group = app
             .MapGroup("api/v1/operational/inspections")
             .RequireAuthorization(InspectionsAuthorizationPolicies.Read)
-            .WithTags("Inspections")
-            .WithOpenApi();
+            .WithTags("Inspections");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

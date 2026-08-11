@@ -57,7 +57,14 @@ public sealed partial class PPEBehavioralMonitoring
         => new ReadOnlyCollection<IPPEBehavioralMonitoringDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PPEBehavioralMonitoring() { }
+    private PPEBehavioralMonitoring() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        DetectedEventType = null!;
+        SensorId = null!;
+        ZoneCode = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

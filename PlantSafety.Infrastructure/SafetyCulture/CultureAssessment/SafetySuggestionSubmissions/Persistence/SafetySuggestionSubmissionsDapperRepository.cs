@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyCulture.CultureAssessment.SafetySugge
 
 /// <summary>Dapper-backed repository for SafetySuggestionSubmissions read-model queries.</summary>
 public sealed class SafetySuggestionSubmissionsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<SafetySuggestionSubmissionsDapperRepository> logger)
     : ISafetySuggestionSubmissionsRepository

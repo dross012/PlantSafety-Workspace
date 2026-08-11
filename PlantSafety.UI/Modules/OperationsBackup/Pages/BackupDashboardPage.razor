@@ -216,14 +216,20 @@
         }
         else
         {
-            if (!health.IsSuccess)
-                State.SetError(health.IsProblem ? health.Problem!.Detail : $"Failed to load dashboard: {health.FaultType}");
-            else if (!history.IsSuccess)
-                State.SetError(history.IsProblem ? history.Problem!.Detail : $"Failed to load dashboard: {history.FaultType}");
-            else
-                State.SetError(size.IsProblem ? size.Problem!.Detail : $"Failed to load dashboard: {size.FaultType}");
+            State.SetError(
+                !health.IsSuccess ? DescribeFailure(health)
+                : !history.IsSuccess ? DescribeFailure(history)
+                : DescribeFailure(size));
         }
     }
+
+    /// <summary>
+    /// Builds the user-facing error message for a failed envelope. Declared generically because
+    /// <see cref="ApiResponseEnvelope{T}"/> is sealed with no non-generic base type, so envelopes
+    /// with different payload types have no common type and cannot share one local variable.
+    /// </summary>
+    private static string DescribeFailure<T>(ApiResponseEnvelope<T> envelope) =>
+        envelope.IsProblem ? envelope.Problem!.Detail : $"Failed to load dashboard: {envelope.FaultType}";
 
     private async Task TriggerBackupAsync()
     {

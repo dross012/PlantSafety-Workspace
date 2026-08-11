@@ -54,7 +54,13 @@ public sealed partial class PermitTemplate
         => new ReadOnlyCollection<IPermitTemplateDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PermitTemplate() { }
+    private PermitTemplate() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        PermitTypeCode = null!;
+        RequiredControls = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

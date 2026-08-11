@@ -17,7 +17,6 @@ namespace PlantSafety.Infrastructure.Analytics.ScoreCards.Compliance.Persistence
 
 /// <summary>Dapper-backed repository for <see cref="ComplianceItemDto"/> queries.</summary>
 public sealed class ComplianceDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ComplianceDapperRepository> logger)
     : IComplianceRepository

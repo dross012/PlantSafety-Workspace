@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Culture.CultureIndex.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="CultureIndexItemDto"/> queries.</summary>
 public sealed class CultureIndexDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<CultureIndexDapperRepository> logger)
     : ICultureIndexRepository

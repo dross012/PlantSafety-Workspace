@@ -16,5 +16,5 @@ public static class AutomatedIncidentDetectionArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the AutomatedIncidentDetection may be archived.</summary>
     public static bool IsEligibleForArchival(PlantSafety.Domain.Observability.AutomatedIncidentDetection.Aggregates.AutomatedIncidentDetection aggregate)
-        => aggregate.Status == AutomatedIncidentDetectionStatus.Closed;
+        => aggregate.Status == AutomatedIncidentDetectionStatus.Dismissed;
 }

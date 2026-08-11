@@ -17,7 +17,6 @@ namespace PlantSafety.Infrastructure.Analytics.ScoreCards.Training.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="TrainingItemDto"/> queries.</summary>
 public sealed class TrainingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<TrainingDapperRepository> logger)
     : ITrainingRepository

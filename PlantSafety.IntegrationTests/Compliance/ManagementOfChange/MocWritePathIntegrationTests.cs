@@ -38,7 +38,8 @@ public sealed class MocWritePathIntegrationTests(IntegrationTestWebAppFactory fa
     [Fact]
     public async Task CreateMoc_ShouldPersistToRealMocTable()
     {
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var siteId = Guid.NewGuid();
@@ -96,7 +97,8 @@ public sealed class MocWritePathIntegrationTests(IntegrationTestWebAppFactory fa
         // the blueprint's "only three real write commands" finding, none of which is a MOC
         // approval). This still proves the real stored procedure, ROWVERSION-backed ETag guard,
         // and DapperCommandExecutor.ExecuteScalarAsync rowcount plumbing all work end-to-end.
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         try
         {
             var mocId = await sender.Send(new CreateMocCommand
@@ -214,7 +216,8 @@ public sealed class MocWritePathIntegrationTests(IntegrationTestWebAppFactory fa
         // by calling [Compliance].[usp_Moc_Approve] directly with @NowUtc = NULL against a Moc row
         // that genuinely exists and whose ETag genuinely matches (so the UPDATE actually reaches
         // the NOT NULL column, rather than matching zero rows on a stale/incorrect ETag).
-        var (scope, sender) = Factory.Services.GetScopedService<ISender>();
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         Guid mocId;
         try
         {

@@ -35,8 +35,7 @@ public static class CAPAEndpoints
         var group = app
             .MapGroup("api/v1/continuous-improvement/capa")
             .RequireAuthorization(CAPAAuthorizationPolicies.Read)
-            .WithTags("CAPA")
-            .WithOpenApi();
+            .WithTags("CAPA");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

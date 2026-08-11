@@ -35,8 +35,7 @@ public static class ImportEndpoints
         var group = app
             .MapGroup("api/v1/integrations/import")
             .RequireAuthorization(ImportAuthorizationPolicies.Read)
-            .WithTags("Import")
-            .WithOpenApi();
+            .WithTags("Import");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

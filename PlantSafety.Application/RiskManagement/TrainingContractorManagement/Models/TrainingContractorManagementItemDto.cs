@@ -5,7 +5,7 @@
 
 namespace PlantSafety.Application.RiskManagement.TrainingContractorManagement.Models;
 
-/// <summary>A single Training & Contractor Management read-model item.</summary>
+/// <summary>A single Training &amp; Contractor Management read-model item.</summary>
 public sealed record TrainingContractorManagementItemDto
 {
     /// <summary>Risk identifier.</summary>

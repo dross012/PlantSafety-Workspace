@@ -57,7 +57,13 @@ public sealed partial class WorkOrderPriority
         => new ReadOnlyCollection<IWorkOrderPriorityDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private WorkOrderPriority() { }
+    private WorkOrderPriority() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        HazardDescription = null!;
+        PriorityCode = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

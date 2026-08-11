@@ -7,10 +7,10 @@ using PlantSafety.Application.Scorecards.ScorecardStructureVisualization.Models;
 
 namespace PlantSafety.Application.Scorecards.ScorecardStructureVisualization.Repositories;
 
-/// <summary>Read-only repository for Scorecard Structure & Visualization Panels data. Implemented in the Infrastructure layer.</summary>
+/// <summary>Read-only repository for Scorecard Structure &amp; Visualization Panels data. Implemented in the Infrastructure layer.</summary>
 public interface IScorecardStructureVisualizationRepository
 {
-    /// <summary>Returns Scorecard Structure & Visualization Panels items for the tenant/site within the given UTC date range.</summary>
+    /// <summary>Returns Scorecard Structure &amp; Visualization Panels items for the tenant/site within the given UTC date range.</summary>
     Task<IReadOnlyList<ScorecardStructureVisualizationItemDto>> GetScorecardStructureVisualizationAsync(
         Guid tenantId,
         Guid? siteId,
