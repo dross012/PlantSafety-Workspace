@@ -51,10 +51,42 @@ namespace PlantSafety.IntegrationTests.Tenancy;
 /// </summary>
 [Collection(nameof(IntegrationTestCollection))]
 public sealed class CrossTenantDataLeakageTests(IntegrationTestWebAppFactory factory)
-    : IntegrationTestBase(factory)
+    : IntegrationTestBase(factory), IAsyncLifetime
 {
     private static readonly Guid TenantA = new("aaaaaaaa-1111-1111-1111-111111111111");
     private static readonly Guid TenantB = new("bbbbbbbb-2222-2222-2222-222222222222");
+
+    /// <inheritdoc/>
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+
+    /// <summary>
+    /// Removes the RLS policy this class installs on the shared
+    /// [AccidentManagement].[Accident] table.
+    /// </summary>
+    /// <remarks>
+    /// Every test in this project shares one database, and this class is the only one that turns
+    /// RLS on. Leaving the policy behind leaked it into unrelated tests: once this class had run,
+    /// any later test touching Accident over a raw connection with no SESSION_CONTEXT('TenantId')
+    /// was silently filtered to zero rows on read, and rejected on write with "target object ...
+    /// has a block predicate that conflicts with this operation". That is what broke
+    /// AccidentConcurrencyAndAuditIntegrationTests, and it made the suite order-dependent. A test
+    /// that mutates shared schema has to put it back.
+    /// </remarks>
+    public async ValueTask DisposeAsync()
+    {
+        await using var conn = new SqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        await conn.ExecuteAsync("""
+            IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = 'AccidentTenantAccessPolicy')
+                DROP SECURITY POLICY [Security].[AccidentTenantAccessPolicy];
+            """);
+
+        await conn.ExecuteAsync("""
+            IF OBJECT_ID('Security.fn_AccidentTenantAccessPredicate', 'IF') IS NOT NULL
+                DROP FUNCTION [Security].[fn_AccidentTenantAccessPredicate];
+            """);
+    }
 
     /// <summary>
     /// Applies the real production RLS mechanism (Security.fn_TenantAccessPredicate-equivalent

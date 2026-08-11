@@ -831,7 +831,8 @@ public static class TestDatabaseFactory
 
         await conn.ExecuteAsync(@"
             CREATE OR ALTER PROCEDURE [RiskMgmt].[usp_Risk_GetById]
-                @RiskId UNIQUEIDENTIFIER
+                @RiskId UNIQUEIDENTIFIER,
+                @TenantId UNIQUEIDENTIFIER
             AS
             SET NOCOUNT ON;
             BEGIN
@@ -841,7 +842,9 @@ public static class TestDatabaseFactory
                     LastValidatedAtUtc, ReviewCadence, LastReviewedAtUtc, NextReviewDueUtc, ReviewRequired, ReviewCount,
                     RiskVersion, CreatedAtUtc, CreatedBy
                 FROM [RiskMgmt].[Risk]
-                WHERE RiskId = @RiskId AND IsDeleted = 0;
+                -- Tenant-scoped, matching the real RiskManagement/Sql/Procedures/usp_Risk_GetById.sql:
+                -- a cross-tenant lookup must return no row rather than relying on RLS alone.
+                WHERE RiskId = @RiskId AND TenantId = @TenantId AND IsDeleted = 0;
             END;");
 
         await conn.ExecuteAsync(@"

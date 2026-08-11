@@ -52,7 +52,9 @@ public sealed class InboundWebhookLifecycleIntegrationTests(IntegrationTestWebAp
     [Fact]
     public async Task RecordEvent_NewEvent_ShouldBeAccepted_HaveETag_AndWriteInsertAuditLogRow()
     {
-        var tenantId = Guid.NewGuid();
+        // Must be the authenticated tenant: TenantIsolationBehavior rejects a command whose TenantId
+        // differs from IOperationContext.TenantId, and this test authenticates as TenantId below.
+        var tenantId = TenantId;
         var siteId = Guid.NewGuid();
         var eventId = Guid.NewGuid().ToString("N");
 
@@ -99,7 +101,9 @@ public sealed class InboundWebhookLifecycleIntegrationTests(IntegrationTestWebAp
     [Fact]
     public async Task RecordEvent_ReplayedSameEvent_ShouldBeIdempotent_WithStableETag_AndWriteIdempotentAcceptAuditLogRow()
     {
-        var tenantId = Guid.NewGuid();
+        // Must be the authenticated tenant: TenantIsolationBehavior rejects a command whose TenantId
+        // differs from IOperationContext.TenantId, and this test authenticates as TenantId below.
+        var tenantId = TenantId;
         var siteId = Guid.NewGuid();
         var eventId = Guid.NewGuid().ToString("N");
 
