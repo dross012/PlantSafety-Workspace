@@ -37,7 +37,10 @@ on:
   workflow_dispatch:
 
 env:
-  DOTNET_VERSION: "8.0.x"
+  # Left at 8.0.x after the platform moved to .NET 10. Every project in the solution now
+  # targets net10.0, so the 8.0 SDK cannot build any of them -- this pinned an SDK that
+  # would fail the restore step before a single test ran.
+  DOTNET_VERSION: "10.0.x"
   SOLUTION_PATH: "PlantSafety/PlantSafety.sln"
 
 jobs:
@@ -81,6 +84,23 @@ jobs:
 
       - name: Run unit tests (PlantSafety.Tests)
         run: dotnet test "PlantSafety/PlantSafety.Tests/PlantSafety.Tests.csproj" --configuration Release --no-restore --logger "trx;LogFileName=unit-tests.trx"
+
+      # Regression and penetration suites run in the same job as the unit tests, as hard
+      # gates. Both are in-process and dependency-free -- no Docker, no database, no
+      # network -- and complete in roughly ten seconds combined, so there is no cost
+      # argument for deferring them the way the Testcontainers job below is deferred.
+      #
+      # `dotnet run`, not `dotnet test`: these are xunit v3 console-runner projects
+      # (OutputType Exe). `dotnet test` reports success against them without executing a
+      # single test, which is the one failure mode a gate must not have.
+      #
+      # A regression suite that does not run on every push cannot prevent a regression;
+      # it can only explain one afterwards. That is the whole reason these are gates.
+      - name: Run regression tests (PlantSafety.RegressionTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.RegressionTests/PlantSafety.RegressionTests.csproj" --configuration Release --no-restore
+
+      - name: Run penetration tests (PlantSafety.PenetrationTests)
+        run: dotnet run --project "PlantSafety/PlantSafety.PenetrationTests/PlantSafety.PenetrationTests.csproj" --configuration Release --no-restore
 
       - name: Publish test results
         if: always()
