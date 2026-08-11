@@ -138,8 +138,8 @@ public sealed class NotificationsEmailIntegrationTests(IntegrationTestWebAppFact
     [Fact]
     public async Task GetEmailDeliveries_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = new DateTime(2035, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2035, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
         var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
         var sender = scope.ServiceProvider.GetRequiredService<ISender>();
@@ -383,8 +383,8 @@ public sealed class NotificationsInternalIntegrationTests(IntegrationTestWebAppF
     [Fact]
     public async Task GetInternalNotifications_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = new DateTime(2035, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2035, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
         var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
         var sender = scope.ServiceProvider.GetRequiredService<ISender>();
@@ -627,8 +627,8 @@ public sealed class NotificationsTextingIntegrationTests(IntegrationTestWebAppFa
     [Fact]
     public async Task GetTextingDeliveries_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = new DateTime(2035, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2035, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
         var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
         var sender = scope.ServiceProvider.GetRequiredService<ISender>();

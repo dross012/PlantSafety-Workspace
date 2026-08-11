@@ -153,8 +153,8 @@ public sealed class AIInvestigationsIntegrationTests(IntegrationTestWebAppFactor
     [Fact]
     public async Task GetAllInvestigations_NoMatchingRows_ShouldReturnEmptyItems_NotExceptionOrNull()
     {
-        var fromUtc = new DateTime(2028, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = new DateTime(2028, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        var fromUtc = new DateTime(2035, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2035, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
         var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
         var sender = scope.ServiceProvider.GetRequiredService<ISender>();
