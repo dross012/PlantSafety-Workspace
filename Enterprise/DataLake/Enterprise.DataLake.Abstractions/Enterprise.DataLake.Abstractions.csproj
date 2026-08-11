@@ -12,9 +12,7 @@
 
   <ItemGroup>
     <Folder Include="Enums\" />
-    <Folder Include="Query\" />
     <Folder Include="Records\" />
-    <Folder Include="Storage\" />
   </ItemGroup>
 
 </Project>
