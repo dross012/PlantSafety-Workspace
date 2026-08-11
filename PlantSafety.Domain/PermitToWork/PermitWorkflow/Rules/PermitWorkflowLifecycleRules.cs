@@ -15,13 +15,13 @@ namespace PlantSafety.Domain.PermitToWork.PermitWorkflow.Rules;
 public static class PermitWorkflowLifecycleRules
 {
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
-    public static bool CanActivate(PermitWorkflowStatus current) => current == PermitWorkflowStatus.Created;
+    public static bool CanActivate(PermitWorkflowStatus current) => current == PermitWorkflowStatus.Requested;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
     public static bool CanComplete(PermitWorkflowStatus current) => current == PermitWorkflowStatus.Active;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be closed from <paramref name="current"/>.</summary>
-    public static bool CanClose(PermitWorkflowStatus current) => current == PermitWorkflowStatus.Completed;
+    public static bool CanClose(PermitWorkflowStatus current) => current == PermitWorkflowStatus.Closed;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be archived from <paramref name="current"/>.</summary>
     public static bool CanArchive(PermitWorkflowStatus current) => current == PermitWorkflowStatus.Closed;

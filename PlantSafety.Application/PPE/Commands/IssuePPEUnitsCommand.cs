@@ -11,6 +11,13 @@ namespace PlantSafety.Application.PPE.Commands;
 
 /// <summary>Issues units of PPE out of a PPEInventory item's on-hand stock.</summary>
 /// <param name="ReorderThreshold">Available balance at or below which the item is flagged LowStock ("Automated reorder alerts").</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="PPEInventoryId">Identifier of the PPEInventory record.</param>
+/// <param name="PerformedByUserId">Identifier of the user performing this operation.</param>
+/// <param name="Quantity">Number of PPE units to issue out of on-hand stock.</param>
 public sealed record IssuePPEUnitsCommand(
     Guid CommandId,
     Guid CorrelationId,

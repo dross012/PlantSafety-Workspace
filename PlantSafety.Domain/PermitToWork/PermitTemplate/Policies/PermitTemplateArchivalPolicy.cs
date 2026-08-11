@@ -16,5 +16,5 @@ public static class PermitTemplateArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the PermitTemplate may be archived.</summary>
     public static bool IsEligibleForArchival(PlantSafety.Domain.PermitToWork.PermitTemplate.Aggregates.PermitTemplate aggregate)
-        => aggregate.Status == PermitTemplateStatus.Closed;
+        => aggregate.Status == PermitTemplateStatus.Retired;
 }

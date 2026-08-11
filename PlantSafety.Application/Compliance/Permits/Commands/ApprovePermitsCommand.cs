@@ -21,6 +21,12 @@ namespace PlantSafety.Application.Compliance.Permits.Commands;
 
 /// <summary>Approves and issues a Permits request (Created -&gt; Active).</summary>
 /// <param name="ValidityHours">Optional validity window, in hours, from approval. Null means no computed expiration.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="PermitsId">Identifier of the Permits record.</param>
+/// <param name="ApprovedByUserId">Identifier of the user performing this operation.</param>
 public sealed record ApprovePermitsCommand(
     Guid CommandId,
     Guid CorrelationId,

@@ -16,5 +16,5 @@ public static class PMSchedulingArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the PMScheduling may be archived.</summary>
     public static bool IsEligibleForArchival(PlantSafety.Domain.Scheduling.PMScheduling.Aggregates.PMScheduling aggregate)
-        => aggregate.Status == PMSchedulingStatus.Closed;
+        => aggregate.Status == PMSchedulingStatus.Completed;
 }

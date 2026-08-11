@@ -17,6 +17,12 @@ namespace PlantSafety.Application.SafetyEvents.NearMisses.Commands;
 
 /// <summary>Completes review of a NearMisses record and records findings (UnderReview -&gt; Completed).</summary>
 /// <param name="Findings">Free-text findings recorded when the review is completed.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="NearMissesId">Identifier of the NearMisses record.</param>
+/// <param name="CompletedByUserId">Identifier of the user performing this operation.</param>
 public sealed record CompleteNearMissesCommand(
     Guid CommandId,
     Guid CorrelationId,

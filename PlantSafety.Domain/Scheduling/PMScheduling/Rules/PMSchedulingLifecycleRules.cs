@@ -15,14 +15,14 @@ namespace PlantSafety.Domain.Scheduling.PMScheduling.Rules;
 public static class PMSchedulingLifecycleRules
 {
     /// <summary>Returns <see langword="true"/> when the aggregate may be activated from <paramref name="current"/>.</summary>
-    public static bool CanActivate(PMSchedulingStatus current) => current == PMSchedulingStatus.Created;
+    public static bool CanActivate(PMSchedulingStatus current) => current == PMSchedulingStatus.Draft;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be completed from <paramref name="current"/>.</summary>
-    public static bool CanComplete(PMSchedulingStatus current) => current == PMSchedulingStatus.Active;
+    public static bool CanComplete(PMSchedulingStatus current) => current == PMSchedulingStatus.Scheduled;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be closed from <paramref name="current"/>.</summary>
     public static bool CanClose(PMSchedulingStatus current) => current == PMSchedulingStatus.Completed;
 
     /// <summary>Returns <see langword="true"/> when the aggregate may be archived from <paramref name="current"/>.</summary>
-    public static bool CanArchive(PMSchedulingStatus current) => current == PMSchedulingStatus.Closed;
+    public static bool CanArchive(PMSchedulingStatus current) => current == PMSchedulingStatus.Completed;
 }

@@ -16,5 +16,5 @@ public static class MachineProcessMonitoringArchivalPolicy
 {
     /// <summary>Returns <see langword="true"/> when the MachineProcessMonitoring may be archived.</summary>
     public static bool IsEligibleForArchival(PlantSafety.Domain.Observability.MachineProcessMonitoring.Aggregates.MachineProcessMonitoring aggregate)
-        => aggregate.Status == MachineProcessMonitoringStatus.Closed;
+        => aggregate.Status == MachineProcessMonitoringStatus.Resolved;
 }
