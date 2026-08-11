@@ -61,7 +61,13 @@ public sealed partial class EmergencyDrillPlanning
         => new ReadOnlyCollection<IEmergencyDrillPlanningDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private EmergencyDrillPlanning() { }
+    private EmergencyDrillPlanning() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        DrillType = null!;
+        ShiftCode = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

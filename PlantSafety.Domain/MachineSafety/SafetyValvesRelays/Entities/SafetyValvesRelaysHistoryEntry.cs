@@ -36,7 +36,14 @@ public sealed class SafetyValvesRelaysHistoryEntry
     public string? Notes { get; private set; }
 
     /// <summary>For ORM rehydration only.</summary>
-    private SafetyValvesRelaysHistoryEntry() { }
+    private SafetyValvesRelaysHistoryEntry() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        ChangedBy = null!;
+        NewStatus = null!;
+        PreviousStatus = null!;
+    }
 
     /// <summary>Creates a new history entry for the given transition.</summary>
     public SafetyValvesRelaysHistoryEntry(

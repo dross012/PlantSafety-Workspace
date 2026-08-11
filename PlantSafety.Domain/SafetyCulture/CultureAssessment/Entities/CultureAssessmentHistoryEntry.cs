@@ -37,7 +37,14 @@ public sealed class CultureAssessmentHistoryEntry
     public string? Notes { get; private set; }
 
     /// <summary>For rehydration only.</summary>
-    private CultureAssessmentHistoryEntry() { }
+    private CultureAssessmentHistoryEntry() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        ChangedBy = null!;
+        NewStatus = null!;
+        PreviousStatus = null!;
+    }
 
     /// <summary>Creates a new history entry for the given transition.</summary>
     public CultureAssessmentHistoryEntry(

@@ -44,7 +44,14 @@ public sealed class ContractorHistoryEntry
     public string? Notes { get; private set; }
 
     /// <summary>For ORM rehydration only.</summary>
-    private ContractorHistoryEntry() { }
+    private ContractorHistoryEntry() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        ChangedBy = null!;
+        NewStatus = null!;
+        PreviousStatus = null!;
+    }
 
     /// <summary>Creates a new history entry for the given transition.</summary>
     public ContractorHistoryEntry(

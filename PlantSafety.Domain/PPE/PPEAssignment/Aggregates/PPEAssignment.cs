@@ -57,7 +57,14 @@ public sealed partial class PPEAssignment
         => new ReadOnlyCollection<IPPEAssignmentDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PPEAssignment() { }
+    private PPEAssignment() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        AssignedPpeItems = null!;
+        HazardZone = null!;
+        JobRole = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

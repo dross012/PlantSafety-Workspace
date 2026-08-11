@@ -64,7 +64,12 @@ public sealed partial class ShiftFatigue
         => new ReadOnlyCollection<IShiftFatigueDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private ShiftFatigue() { }
+    private ShiftFatigue() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        ShiftPattern = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

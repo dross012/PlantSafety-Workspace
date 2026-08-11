@@ -49,7 +49,12 @@ public sealed class ControlMeasure
     public UtcTimestamp ImplementedAtUtc { get; private set; }
 
     /// <summary>For ORM rehydration only.</summary>
-    private ControlMeasure() { }
+    private ControlMeasure() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        HierarchyLevel = null!;
+    }
 
     /// <summary>Creates a new control measure record.</summary>
     public ControlMeasure(

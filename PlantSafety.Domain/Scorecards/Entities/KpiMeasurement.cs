@@ -48,7 +48,12 @@ public sealed class KpiMeasurement
     public UtcTimestamp RecordedAtUtc { get; private set; }
 
     /// <summary>For ORM rehydration only.</summary>
-    private KpiMeasurement() { }
+    private KpiMeasurement() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        Metric = null!;
+    }
 
     /// <summary>Creates a new KPI measurement, computing its value via the metric's canonical formula.</summary>
     public KpiMeasurement(

@@ -57,7 +57,12 @@ public sealed partial class PermitExpiration
         => new ReadOnlyCollection<IPermitExpirationDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PermitExpiration() { }
+    private PermitExpiration() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        PermitNumber = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

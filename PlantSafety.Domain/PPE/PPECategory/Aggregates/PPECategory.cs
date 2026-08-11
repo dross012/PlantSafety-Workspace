@@ -54,7 +54,13 @@ public sealed partial class PPECategory
         => new ReadOnlyCollection<IPPECategoryDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private PPECategory() { }
+    private PPECategory() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        CategoryCode = null!;
+        HazardsMitigated = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 

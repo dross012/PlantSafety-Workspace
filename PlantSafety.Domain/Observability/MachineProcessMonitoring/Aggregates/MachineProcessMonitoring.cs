@@ -57,7 +57,12 @@ public sealed partial class MachineProcessMonitoring
         => new ReadOnlyCollection<IMachineProcessMonitoringDomainEvent>(_domainEvents);
 
     // For rehydration only.
-    private MachineProcessMonitoring() { }
+    private MachineProcessMonitoring() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        SensorType = null!;
+    }
 
     // ---- Factory -----------------------------------------------------------
 
