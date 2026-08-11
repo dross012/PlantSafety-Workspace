@@ -58,3 +58,7 @@ Thumbs.db
 *.bak
 *.swp
 *~
+
+# Downloaded eCFR source data for tools/OshaStandardsImport (28 MB, re-fetchable
+# from ecfr.gov). Not versioned: it is derived input, not source.
+/tools/OshaStandardsImport/data/*.xml

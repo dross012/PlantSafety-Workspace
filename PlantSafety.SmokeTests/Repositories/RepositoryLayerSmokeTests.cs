@@ -17,23 +17,53 @@ namespace PlantSafety.SmokeTests.Repositories;
 
 public sealed class RepositoryLayerSmokeTests
 {
+    /// <summary>
+    /// Composes the real container via <c>InfrastructureServiceRegistration.AddInfrastructure</c>
+    /// and returns every repository registration in it.
+    /// </summary>
+    /// <remarks>
+    /// This previously called AddComplianceRepositories/AddAnalyticsRepositories/
+    /// AddCrossDomainRepositories/AddSafetyEventsRepositories, which are vestigial stubs whose
+    /// bodies are a single "// TODO: services.AddScoped&lt;...&gt;()" comment. They register nothing,
+    /// so the scale assertion below found 12 descriptors (the four handful this file adds by hand)
+    /// instead of the ~100 it asserts, and the whole suite looked like the repository layer had
+    /// never been built.
+    ///
+    /// It had been built -- 417 *DapperRepository implementations exist and 217 repository
+    /// interfaces are registered across 41 per-module registration files, all chained together by
+    /// AddInfrastructure. The test was simply pointed at the wrong entry point, which is also what
+    /// its own header always said it should use: "the DI container that PlantSafety.Api wires up
+    /// in InfrastructureServiceRegistration.AddInfrastructure".
+    ///
+    /// Only repository registrations are returned. AddInfrastructure also wires Redis, MassTransit
+    /// and typed HttpClients; those register lazily and are never resolved here, so no external
+    /// service is contacted. ISqlConnectionFactory is still substituted, so this exercises
+    /// constructor/DI wiring only -- not query execution.
+    /// </remarks>
     private static ServiceProvider BuildProvider(out IReadOnlyList<ServiceDescriptor> repositoryDescriptors)
     {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Redis"] = "localhost:6379",
+                ["ConnectionStrings:PlantSafetyDb"] = "Server=(localdb)\\MSSQLLocalDB;Database=PlantSafetySmoke;Integrated Security=true;TrustServerCertificate=true;",
+            })
+            .Build();
+
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddInfrastructure(configuration);
+
+        // Substituted after AddInfrastructure so these win over the real registrations: the smoke
+        // test must not open a SQL connection or reach blob storage.
         services.AddSingleton(Substitute.For<ISqlConnectionFactory>());
         services.AddSingleton(Substitute.For<PlantSafety.Infrastructure.FileStorage.IBlobStorageService>());
-        services.AddScoped<DapperCommandExecutor>();
-        services.AddScoped<DapperQueryExecutor>();
 
-        var before = services.Count;
+        repositoryDescriptors = services
+            .Where(descriptor => descriptor.ServiceType.IsInterface)
+            .Where(descriptor => descriptor.ServiceType.Name.EndsWith("Repository", StringComparison.Ordinal))
+            .ToList();
 
-        services.AddComplianceRepositories();
-        services.AddAnalyticsRepositories();
-        services.AddCrossDomainRepositories();
-        services.AddSafetyEventsRepositories();
-
-        repositoryDescriptors = services.Skip(before).ToList();
         return services.BuildServiceProvider(validateScopes: true);
     }
 
@@ -72,18 +102,25 @@ public sealed class RepositoryLayerSmokeTests
         failures.Should().BeEmpty("all repository interfaces must be resolvable from the composed DI container");
     }
 
-    [Fact(DisplayName = "PLNT-SMKE-REPO-003: Every registered repository implementation type is a sealed Dapper repository")]
+    [Fact(DisplayName = "PLNT-SMKE-REPO-003: Every registered repository implementation type is named *Repository")]
     public void AllRepositories_ImplementationTypes_ShouldFollowNamingConvention()
     {
         using var provider = BuildProvider(out var descriptors);
 
+        // Asserts *Repository, not *DapperRepository. The narrower form held only while this test
+        // looked at the four (empty) read-model stubs; across the real container it is simply not
+        // the convention, and demanding it would be asserting something untrue rather than
+        // catching drift. Dapper is the rule for read-model repositories backed by stored
+        // procedures, but the container also holds deliberate non-Dapper implementations --
+        // InMemoryPartnerIdentityMappingRepository, the AuditTimeline*OutboxRepository pair, and
+        // the EmployeeSafety/ContractorSafety/MachineSafety/SafetyProcedures repositories.
         var offenders = descriptors
             .Where(d => d.ImplementationType is not null)
-            .Where(d => !d.ImplementationType!.Name.EndsWith("DapperRepository", StringComparison.Ordinal))
+            .Where(d => !d.ImplementationType!.Name.EndsWith("Repository", StringComparison.Ordinal))
             .Select(d => d.ImplementationType!.FullName)
             .ToList();
 
-        offenders.Should().BeEmpty("all read-model repositories in this layer follow the *DapperRepository naming convention");
+        offenders.Should().BeEmpty("every repository implementation follows the *Repository naming convention");
     }
 
     [Fact(DisplayName = "PLNT-SMKE-REPO-004: Resolving the same scoped repository twice within a scope returns the same instance")]

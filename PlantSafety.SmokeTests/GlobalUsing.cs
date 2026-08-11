@@ -21,3 +21,5 @@ global using PlantSafety.Infrastructure.Persistence.Repositories.Compliance;
 global using PlantSafety.Infrastructure.Persistence.Repositories.Analytics;
 global using PlantSafety.Infrastructure.Persistence.Repositories.CrossDomain;
 global using PlantSafety.Infrastructure.Persistence.Repositories.SafetyEvents;
+global using Microsoft.Extensions.Configuration;
+global using PlantSafety.Infrastructure.DependencyInjection;
