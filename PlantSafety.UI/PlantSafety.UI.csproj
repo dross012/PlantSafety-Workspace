@@ -26,6 +26,19 @@
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+
+        <!-- MacCatalyst is built as a UNIVERSAL binary in Release (x64 plus arm64), but
+             `dotnet restore` defaults to Debug and resolves maccatalyst-x64 alone. So the
+             plain two-command sequence anyone actually types (a bare `dotnet restore`
+             followed by `dotnet build -c Release`) failed with NETSDK1047: the assets
+             file has no net10.0-maccatalyst/maccatalyst-arm64 target for the build to
+             use. Declaring both RIDs makes the restore configuration-independent, so the
+             build works whichever configuration was restored.
+
+             CI passes -p:Configuration=Release to its restore as well, which fixes the
+             same problem from the other side; this makes the project correct on its own,
+             for anyone building it by hand. -->
+        <RuntimeIdentifiers Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">maccatalyst-x64;maccatalyst-arm64</RuntimeIdentifiers>
     </PropertyGroup>
 
     <!-- ── MAUI Resources ──────────────────────────────────────────────────────── -->

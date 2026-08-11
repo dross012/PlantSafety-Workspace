@@ -58,8 +58,26 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # MAUI workloads are a hard prerequisite for PlantSafety.UI (android/ios/maccatalyst
+      # /maui-windows). A runner without them cannot build that project at all, whatever
+      # else is correct.
+      - name: Restore workloads
+        run: dotnet workload restore "${{ env.SOLUTION_PATH }}"
+
+      # -p:Configuration=Release is load-bearing, not decoration.
+      #
+      # `dotnet restore` defaults to Debug. The build below is Release. For most projects
+      # that mismatch is harmless, but MAUI builds MacCatalyst as a UNIVERSAL binary in
+      # Release only -- x64 AND arm64 -- while the Debug restore resolves maccatalyst-x64
+      # alone. The build then asks for a maccatalyst-arm64 target the assets file does not
+      # contain and fails with NETSDK1047.
+      #
+      # So this job has been failing on PlantSafety.UI purely because its restore and its
+      # build disagreed about the configuration. Verified both directions locally: a Debug
+      # build against the Debug restore succeeds, and a Release restore makes the Release
+      # build succeed.
       - name: Restore
-        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+        run: dotnet restore "${{ env.SOLUTION_PATH }}" -p:Configuration=Release
 
       - name: Build (Release, 0 warnings-as-errors baseline)
         run: dotnet build "${{ env.SOLUTION_PATH }}" --configuration Release --no-restore
@@ -79,20 +97,25 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore
-        run: dotnet restore "${{ env.SOLUTION_PATH }}"
+      # Needed even though this job builds no MAUI output: the restore below is
+      # solution-wide, and evaluating PlantSafety.UI's TFMs requires the workload
+      # manifests to be present.
+      - name: Restore workloads
+        run: dotnet workload restore "${{ env.SOLUTION_PATH }}"
 
-      # No solution-wide build step here, deliberately. `dotnet build <solution>
-      # --no-restore` currently FAILS on PlantSafety.UI (NETSDK1047: the restored assets
-      # file has no target for net10.0-maccatalyst/maccatalyst-arm64), so building the
-      # whole solution would break this job on a defect that has nothing to do with any
-      # test. The `build` job above uses that same pattern and is affected independently
-      # -- flagged, not worked around here.
-      #
-      # Each `dotnet run` below builds its own project incrementally instead. The first
-      # compiles the shared Application/Domain/Infrastructure/SharedKernel projects and
-      # the rest reuse that output, so this costs one build, not a dozen -- and it never
-      # touches the MAUI head project, which no test suite references.
+      # Release, matching the configuration every suite below runs in. See the `build`
+      # job for why the mismatch mattered (MAUI/NETSDK1047); keeping the two in step here
+      # too costs nothing and removes a trap for whoever adds a build step later.
+      - name: Restore
+        run: dotnet restore "${{ env.SOLUTION_PATH }}" -p:Configuration=Release
+
+      # No solution-wide build step here. The `build` job above already compiles the whole
+      # solution, including PlantSafety.UI; repeating it would add minutes to gate results
+      # that no test depends on. Each `dotnet run` below builds its own project
+      # incrementally instead -- the first compiles the shared Application/Domain/
+      # Infrastructure/SharedKernel projects and the rest reuse that output, so this costs
+      # one build, not a dozen, and never touches the MAUI head project (no test suite
+      # references it, so it cannot affect a test result).
       #
       # ------------------------------------------------------------------------
       # EVERY suite is invoked with `dotnet run`, never `dotnet test`.
