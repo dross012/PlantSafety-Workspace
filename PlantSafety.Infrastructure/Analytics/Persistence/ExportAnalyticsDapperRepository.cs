@@ -35,7 +35,6 @@ namespace PlantSafety.Infrastructure.Analytics.Persistence;
 /// Dapper + Blob Storage backed implementation of <see cref="IExportAnalyticsRepository"/>.
 /// </summary>
 public sealed class ExportAnalyticsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     IBlobStorageService blobStorageService,
     ILogger<ExportAnalyticsDapperRepository> logger)

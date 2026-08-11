@@ -35,8 +35,7 @@ public static class KPISnapshotsEndpoints
         var group = app
             .MapGroup("api/v1/analytics/dashboard/kpisnapshots")
             .RequireAuthorization(KPISnapshotsAuthorizationPolicies.Read)
-            .WithTags("KPISnapshots")
-            .WithOpenApi();
+            .WithTags("KPISnapshots");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

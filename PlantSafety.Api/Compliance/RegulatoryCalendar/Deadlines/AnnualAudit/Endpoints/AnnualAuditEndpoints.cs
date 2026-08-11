@@ -35,8 +35,7 @@ public static class AnnualAuditEndpoints
         var group = app
             .MapGroup("api/v1/compliance/regulatory-calendar/deadlines/annual-audit")
             .RequireAuthorization(AnnualAuditAuthorizationPolicies.Read)
-            .WithTags("AnnualAudit")
-            .WithOpenApi();
+            .WithTags("AnnualAudit");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

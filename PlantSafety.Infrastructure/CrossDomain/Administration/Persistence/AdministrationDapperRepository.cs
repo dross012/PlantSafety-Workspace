@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Administration.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="AdministrationItemDto"/> queries.</summary>
 public sealed class AdministrationDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<AdministrationDapperRepository> logger)
     : IAdministrationRepository

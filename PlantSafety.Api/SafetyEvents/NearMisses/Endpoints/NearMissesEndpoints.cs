@@ -35,8 +35,7 @@ public static class NearMissesEndpoints
         var group = app
             .MapGroup("api/v1/safety-events/near-misses")
             .RequireAuthorization(NearMissesAuthorizationPolicies.Read)
-            .WithTags("NearMisses")
-            .WithOpenApi();
+            .WithTags("NearMisses");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -35,8 +35,7 @@ public static class DOTEndpoints
         var group = app
             .MapGroup("api/v1/compliance/regulatory-calendar/inspections/dot")
             .RequireAuthorization(DOTAuthorizationPolicies.Read)
-            .WithTags("DOT")
-            .WithOpenApi();
+            .WithTags("DOT");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

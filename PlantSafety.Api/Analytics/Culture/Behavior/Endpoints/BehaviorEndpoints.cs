@@ -35,8 +35,7 @@ public static class BehaviorEndpoints
         var group = app
             .MapGroup("api/v1/analytics/culture/behavior")
             .RequireAuthorization(BehaviorAuthorizationPolicies.Read)
-            .WithTags("Behavior")
-            .WithOpenApi();
+            .WithTags("Behavior");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

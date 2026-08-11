@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.LineBreak.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class LineBreakDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<LineBreakDapperRepository> logger)
     : ILineBreakRepository

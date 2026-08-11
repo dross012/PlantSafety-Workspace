@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Intelligence.PredictiveSafety.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class PredictiveSafetyDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<PredictiveSafetyDapperRepository> logger)
     : IPredictiveSafetyRepository

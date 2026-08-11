@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyCulture.CultureAssessment.StopWorkAct
 
 /// <summary>Dapper-backed repository for StopWorkActions read-model queries.</summary>
 public sealed class StopWorkActionsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<StopWorkActionsDapperRepository> logger)
     : IStopWorkActionsRepository

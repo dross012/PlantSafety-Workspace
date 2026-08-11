@@ -35,8 +35,7 @@ public static class FatigueManagementEndpoints
         var group = app
             .MapGroup("api/v1/operational/fatigue-management")
             .RequireAuthorization(FatigueManagementAuthorizationPolicies.Read)
-            .WithTags("FatigueManagement")
-            .WithOpenApi();
+            .WithTags("FatigueManagement");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

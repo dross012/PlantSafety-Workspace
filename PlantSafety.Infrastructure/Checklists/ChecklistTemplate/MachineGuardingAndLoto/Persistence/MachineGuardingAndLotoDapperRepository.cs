@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Checklists.ChecklistTemplate.MachineGuardin
 
 /// <summary>Dapper-backed repository for MachineGuardingAndLoto read-model queries.</summary>
 public sealed class MachineGuardingAndLotoDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<MachineGuardingAndLotoDapperRepository> logger)
     : IMachineGuardingAndLotoRepository

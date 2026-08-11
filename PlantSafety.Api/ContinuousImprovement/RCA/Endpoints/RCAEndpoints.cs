@@ -35,8 +35,7 @@ public static class RCAEndpoints
         var group = app
             .MapGroup("api/v1/continuous-improvement/rca")
             .RequireAuthorization(RCAAuthorizationPolicies.Read)
-            .WithTags("RCA")
-            .WithOpenApi();
+            .WithTags("RCA");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

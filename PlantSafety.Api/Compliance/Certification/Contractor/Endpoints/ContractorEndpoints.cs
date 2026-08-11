@@ -35,8 +35,7 @@ public static class ContractorEndpoints
         var group = app
             .MapGroup("api/v1/compliance/certification/contractor")
             .RequireAuthorization(ContractorAuthorizationPolicies.Read)
-            .WithTags("Contractor")
-            .WithOpenApi();
+            .WithTags("Contractor");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

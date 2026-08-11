@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyCulture.CultureAssessment.SafetyMeeti
 
 /// <summary>Dapper-backed repository for SafetyMeetingParticipation read-model queries.</summary>
 public sealed class SafetyMeetingParticipationDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<SafetyMeetingParticipationDapperRepository> logger)
     : ISafetyMeetingParticipationRepository

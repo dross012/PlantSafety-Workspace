@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.ScoreCards.Department.Persistence
 
 /// <summary>Dapper-backed repository for <see cref="DepartmentItemDto"/> queries.</summary>
 public sealed class DepartmentDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<DepartmentDapperRepository> logger)
     : IDepartmentRepository

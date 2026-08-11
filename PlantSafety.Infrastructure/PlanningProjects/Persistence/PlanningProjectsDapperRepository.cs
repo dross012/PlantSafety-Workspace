@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.PlanningProjects.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class PlanningProjectsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<PlanningProjectsDapperRepository> logger)
     : IPlanningProjectsRepository

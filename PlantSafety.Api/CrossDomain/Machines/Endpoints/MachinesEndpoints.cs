@@ -35,8 +35,7 @@ public static class MachinesEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/machines")
             .RequireAuthorization(MachinesAuthorizationPolicies.Read)
-            .WithTags("Machines")
-            .WithOpenApi();
+            .WithTags("Machines");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

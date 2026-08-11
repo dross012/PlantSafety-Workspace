@@ -9,6 +9,8 @@
     EVOLUTION:          Additive-only.
 ==========================================================================================================================*/
 
+using System.Diagnostics.CodeAnalysis;
+
 using PlantSafety.SharedKernel.Primitives.Errors;
 
 namespace PlantSafety.SharedKernel.Primitives.Results;
@@ -21,11 +23,21 @@ public sealed class Result<T>
     /// <summary>
     /// Indicates whether the operation succeeded.
     /// </summary>
+    /// <remarks>
+    /// The MemberNotNullWhen attribute states, to the compiler, the invariant this file's header
+    /// has always documented in prose: success implies Value is set. Without it every correct
+    /// caller -- one that checks IsSuccess and only then reads Value -- still produced a
+    /// nullable-dereference warning, and the usual way that gets silenced is the null-forgiving
+    /// operator, which suppresses genuine bugs just as effectively as false ones.
+    /// </remarks>
+    [MemberNotNullWhen(true, nameof(Value))]
     public bool IsSuccess { get; }
 
     /// <summary>
     /// Indicates whether the operation failed.
     /// </summary>
+    /// <remarks>Failure implies Error is set, the other half of the documented invariant.</remarks>
+    [MemberNotNullWhen(true, nameof(Error))]
     public bool IsFailure => !IsSuccess;
 
     /// <summary>

@@ -35,8 +35,7 @@ public static class DrillsAndExercisesEndpoints
         var group = app
             .MapGroup("api/v1/safety-events/drills-and-exercises")
             .RequireAuthorization(DrillsAndExercisesAuthorizationPolicies.Read)
-            .WithTags("DrillsAndExercises")
-            .WithOpenApi();
+            .WithTags("DrillsAndExercises");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

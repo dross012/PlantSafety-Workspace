@@ -23,7 +23,6 @@ namespace PlantSafety.Infrastructure.SafetyEvents.IncidentManagement.Persistence
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class IncidentManagementDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<IncidentManagementDapperRepository> logger)
     : IIncidentManagementRepository

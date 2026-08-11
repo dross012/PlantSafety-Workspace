@@ -35,8 +35,7 @@ public static class RevisionsEndpoints
         var group = app
             .MapGroup("api/v1/compliance/policy/revisions")
             .RequireAuthorization(RevisionsAuthorizationPolicies.Read)
-            .WithTags("Revisions")
-            .WithOpenApi();
+            .WithTags("Revisions");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Intelligence.AITraining.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class AITrainingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<AITrainingDapperRepository> logger)
     : IAITrainingRepository

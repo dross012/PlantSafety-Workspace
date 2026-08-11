@@ -35,8 +35,7 @@ public static class EmailEndpoints
         var group = app
             .MapGroup("api/v1/integrations/email")
             .RequireAuthorization(EmailAuthorizationPolicies.Read)
-            .WithTags("Email")
-            .WithOpenApi();
+            .WithTags("Email");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

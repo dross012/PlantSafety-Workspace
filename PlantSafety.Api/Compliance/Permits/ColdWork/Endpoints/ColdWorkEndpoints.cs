@@ -35,8 +35,7 @@ public static class ColdWorkEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/coldwork")
             .RequireAuthorization(ColdWorkAuthorizationPolicies.Read)
-            .WithTags("ColdWork")
-            .WithOpenApi();
+            .WithTags("ColdWork");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -35,8 +35,7 @@ public static class JobSafetyAnalysisEndpoints
         var group = app
             .MapGroup("api/v1/operational/job-safety-analysis")
             .RequireAuthorization(JobSafetyAnalysisAuthorizationPolicies.Read)
-            .WithTags("JobSafetyAnalysis")
-            .WithOpenApi();
+            .WithTags("JobSafetyAnalysis");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

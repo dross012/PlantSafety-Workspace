@@ -35,8 +35,7 @@ public static class WorkCentersEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/workcenters")
             .RequireAuthorization(WorkCentersAuthorizationPolicies.Read)
-            .WithTags("WorkCenters")
-            .WithOpenApi();
+            .WithTags("WorkCenters");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Certification.Training.Persisten
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class TrainingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<TrainingDapperRepository> logger)
     : ITrainingRepository

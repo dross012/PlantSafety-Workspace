@@ -35,8 +35,7 @@ public static class LockoutTagoutProcedureEndpoints
         var group = app
             .MapGroup("api/v1/compliance/procedures/lockouttagoutprocedure")
             .RequireAuthorization(LockoutTagoutProcedureAuthorizationPolicies.Read)
-            .WithTags("LockoutTagoutProcedure")
-            .WithOpenApi();
+            .WithTags("LockoutTagoutProcedure");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

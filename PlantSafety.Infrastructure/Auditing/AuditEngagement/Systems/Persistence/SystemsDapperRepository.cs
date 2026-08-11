@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Auditing.AuditEngagement.Systems.Persistenc
 
 /// <summary>Dapper-backed repository for Systems read-model queries.</summary>
 public sealed class SystemsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<SystemsDapperRepository> logger)
     : ISystemsRepository

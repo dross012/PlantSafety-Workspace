@@ -35,8 +35,7 @@ public static class SOPsEndpoints
         var group = app
             .MapGroup("api/v1/compliance/procedures/sops")
             .RequireAuthorization(SOPsAuthorizationPolicies.Read)
-            .WithTags("SOPs")
-            .WithOpenApi();
+            .WithTags("SOPs");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

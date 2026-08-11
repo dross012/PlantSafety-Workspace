@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.Excavation.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ExcavationDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ExcavationDapperRepository> logger)
     : IExcavationRepository

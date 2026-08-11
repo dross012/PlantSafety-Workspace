@@ -35,8 +35,7 @@ public static class OperatorsEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/operators")
             .RequireAuthorization(OperatorsAuthorizationPolicies.Read)
-            .WithTags("Operators")
-            .WithOpenApi();
+            .WithTags("Operators");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

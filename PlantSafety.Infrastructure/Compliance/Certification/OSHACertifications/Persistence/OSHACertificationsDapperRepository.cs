@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Certification.OSHACertifications
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class OSHACertificationsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<OSHACertificationsDapperRepository> logger)
     : IOSHACertificationsRepository

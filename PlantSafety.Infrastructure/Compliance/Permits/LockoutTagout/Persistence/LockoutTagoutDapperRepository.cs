@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.LockoutTagout.Persistenc
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class LockoutTagoutDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<LockoutTagoutDapperRepository> logger)
     : ILockoutTagoutRepository

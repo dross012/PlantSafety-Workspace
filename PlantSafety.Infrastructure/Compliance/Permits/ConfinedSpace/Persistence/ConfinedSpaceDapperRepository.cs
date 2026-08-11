@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.ConfinedSpace.Persistenc
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ConfinedSpaceDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ConfinedSpaceDapperRepository> logger)
     : IConfinedSpaceRepository

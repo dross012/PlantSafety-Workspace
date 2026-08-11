@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.SafetyEvents.NearMisses.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class NearMissesDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<NearMissesDapperRepository> logger)
     : INearMissesRepository

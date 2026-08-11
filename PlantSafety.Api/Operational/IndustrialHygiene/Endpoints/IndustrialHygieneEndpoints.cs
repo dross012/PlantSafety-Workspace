@@ -35,8 +35,7 @@ public static class IndustrialHygieneEndpoints
         var group = app
             .MapGroup("api/v1/operational/industrial-hygiene")
             .RequireAuthorization(IndustrialHygieneAuthorizationPolicies.Read)
-            .WithTags("IndustrialHygiene")
-            .WithOpenApi();
+            .WithTags("IndustrialHygiene");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

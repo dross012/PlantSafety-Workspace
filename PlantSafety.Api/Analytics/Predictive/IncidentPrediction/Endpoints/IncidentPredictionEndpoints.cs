@@ -35,8 +35,7 @@ public static class IncidentPredictionEndpoints
         var group = app
             .MapGroup("api/v1/analytics/predictive/incidentprediction")
             .RequireAuthorization(IncidentPredictionAuthorizationPolicies.Read)
-            .WithTags("IncidentPrediction")
-            .WithOpenApi();
+            .WithTags("IncidentPrediction");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

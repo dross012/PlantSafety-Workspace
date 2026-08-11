@@ -20,7 +20,6 @@ namespace PlantSafety.Infrastructure.Intelligence.AIInvestigations.Persistence;
 
 /// <summary>Dapper-backed read-side repository for the AIInvestigation aggregate's by-id detail query.</summary>
 public sealed class AIInvestigationReadDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<AIInvestigationReadDapperRepository> logger)
     : IAIInvestigationReadRepository

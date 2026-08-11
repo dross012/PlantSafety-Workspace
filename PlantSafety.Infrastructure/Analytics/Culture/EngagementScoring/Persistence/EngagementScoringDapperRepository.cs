@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Culture.EngagementScoring.Persist
 
 /// <summary>Dapper-backed repository for <see cref="EngagementScoringItemDto"/> queries.</summary>
 public sealed class EngagementScoringDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<EngagementScoringDapperRepository> logger)
     : IEngagementScoringRepository

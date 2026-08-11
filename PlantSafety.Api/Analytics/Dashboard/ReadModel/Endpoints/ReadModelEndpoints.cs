@@ -35,8 +35,7 @@ public static class ReadModelEndpoints
         var group = app
             .MapGroup("api/v1/analytics/dashboard/readmodel")
             .RequireAuthorization(ReadModelAuthorizationPolicies.Read)
-            .WithTags("ReadModel")
-            .WithOpenApi();
+            .WithTags("ReadModel");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

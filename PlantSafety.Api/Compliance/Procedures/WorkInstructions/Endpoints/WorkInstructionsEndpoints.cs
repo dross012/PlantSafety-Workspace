@@ -35,8 +35,7 @@ public static class WorkInstructionsEndpoints
         var group = app
             .MapGroup("api/v1/compliance/procedures/workinstructions")
             .RequireAuthorization(WorkInstructionsAuthorizationPolicies.Read)
-            .WithTags("WorkInstructions")
-            .WithOpenApi();
+            .WithTags("WorkInstructions");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

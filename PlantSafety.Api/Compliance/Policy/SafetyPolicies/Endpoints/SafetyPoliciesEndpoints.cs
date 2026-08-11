@@ -35,8 +35,7 @@ public static class SafetyPoliciesEndpoints
         var group = app
             .MapGroup("api/v1/compliance/policy/safetypolicies")
             .RequireAuthorization(SafetyPoliciesAuthorizationPolicies.Read)
-            .WithTags("SafetyPolicies")
-            .WithOpenApi();
+            .WithTags("SafetyPolicies");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

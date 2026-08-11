@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Predictive.FatigueRiskModeling.Pe
 
 /// <summary>Dapper-backed repository for <see cref="FatigueRiskModelingItemDto"/> queries.</summary>
 public sealed class FatigueRiskModelingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<FatigueRiskModelingDapperRepository> logger)
     : IFatigueRiskModelingRepository

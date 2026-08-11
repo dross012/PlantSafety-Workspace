@@ -35,8 +35,7 @@ public static class RiskForecastingEndpoints
         var group = app
             .MapGroup("api/v1/analytics/predictive/riskforecasting")
             .RequireAuthorization(RiskForecastingAuthorizationPolicies.Read)
-            .WithTags("RiskForecasting")
-            .WithOpenApi();
+            .WithTags("RiskForecasting");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

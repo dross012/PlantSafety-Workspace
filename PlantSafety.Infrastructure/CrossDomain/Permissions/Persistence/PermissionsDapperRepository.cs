@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Permissions.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="PermissionsItemDto"/> queries.</summary>
 public sealed class PermissionsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<PermissionsDapperRepository> logger)
     : IPermissionsRepository

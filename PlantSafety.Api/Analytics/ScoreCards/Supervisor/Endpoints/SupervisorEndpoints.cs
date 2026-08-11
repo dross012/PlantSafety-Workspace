@@ -35,8 +35,7 @@ public static class SupervisorEndpoints
         var group = app
             .MapGroup("api/v1/analytics/scorecards/supervisor")
             .RequireAuthorization(SupervisorAuthorizationPolicies.Read)
-            .WithTags("Supervisor")
-            .WithOpenApi();
+            .WithTags("Supervisor");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

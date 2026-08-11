@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Cleanup.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="CleanupItemDto"/> queries.</summary>
 public sealed class CleanupDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<CleanupDapperRepository> logger)
     : ICleanupRepository

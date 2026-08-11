@@ -35,8 +35,7 @@ public static class ExecutiveEndpoints
         var group = app
             .MapGroup("api/v1/analytics/dashboard/executive")
             .RequireAuthorization(ExecutiveAuthorizationPolicies.Read)
-            .WithTags("Executive")
-            .WithOpenApi();
+            .WithTags("Executive");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

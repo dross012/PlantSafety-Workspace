@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Auditing.AuditEngagement.Efficiency.Persist
 
 /// <summary>Dapper-backed repository for Efficiency read-model queries.</summary>
 public sealed class EfficiencyDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<EfficiencyDapperRepository> logger)
     : IEfficiencyRepository

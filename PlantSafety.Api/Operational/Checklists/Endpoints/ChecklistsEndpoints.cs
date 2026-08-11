@@ -35,8 +35,7 @@ public static class ChecklistsEndpoints
         var group = app
             .MapGroup("api/v1/operational/checklists")
             .RequireAuthorization(ChecklistsAuthorizationPolicies.Read)
-            .WithTags("Checklists")
-            .WithOpenApi();
+            .WithTags("Checklists");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

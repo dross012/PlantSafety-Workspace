@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.Lifting.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class LiftingDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<LiftingDapperRepository> logger)
     : ILiftingRepository

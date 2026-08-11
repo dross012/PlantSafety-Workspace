@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyEvents.SlaMonitoring.Repositories;
 
 /// <summary>Dapper-backed read-side repository for <c>IncidentSlaPolicy</c> rows.</summary>
 public sealed class SlaPolicyDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<SlaPolicyDapperRepository> logger)
     : ISlaPolicyRepository

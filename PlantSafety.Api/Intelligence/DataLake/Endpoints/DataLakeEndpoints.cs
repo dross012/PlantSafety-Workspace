@@ -34,8 +34,7 @@ public static class DataLakeEndpoints
         var group = app
             .MapGroup("api/v1/intelligence/datalake")
             .RequireAuthorization(DataLakeAuthorizationPolicies.Read)
-            .WithTags("DataLake")
-            .WithOpenApi();
+            .WithTags("DataLake");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

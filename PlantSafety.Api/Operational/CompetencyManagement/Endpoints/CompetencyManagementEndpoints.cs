@@ -35,8 +35,7 @@ public static class CompetencyManagementEndpoints
         var group = app
             .MapGroup("api/v1/operational/competency-management")
             .RequireAuthorization(CompetencyManagementAuthorizationPolicies.Read)
-            .WithTags("CompetencyManagement")
-            .WithOpenApi();
+            .WithTags("CompetencyManagement");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Checklists.ChecklistTemplate.EmergencySyste
 
 /// <summary>Dapper-backed repository for EmergencySystemsAndLifeSafety read-model queries.</summary>
 public sealed class EmergencySystemsAndLifeSafetyDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<EmergencySystemsAndLifeSafetyDapperRepository> logger)
     : IEmergencySystemsAndLifeSafetyRepository

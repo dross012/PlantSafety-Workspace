@@ -35,8 +35,7 @@ public static class DocumentsEndpoints
         var group = app
             .MapGroup("api/v1/compliance/policy/documents")
             .RequireAuthorization(DocumentsAuthorizationPolicies.Read)
-            .WithTags("Documents")
-            .WithOpenApi();
+            .WithTags("Documents");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

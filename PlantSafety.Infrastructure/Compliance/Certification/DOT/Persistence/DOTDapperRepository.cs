@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Certification.DOT.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class DOTDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<DOTDapperRepository> logger)
     : IDOTRepository

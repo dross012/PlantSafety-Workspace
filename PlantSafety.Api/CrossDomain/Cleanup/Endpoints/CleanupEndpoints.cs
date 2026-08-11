@@ -35,8 +35,7 @@ public static class CleanupEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/cleanup")
             .RequireAuthorization(CleanupAuthorizationPolicies.Read)
-            .WithTags("Cleanup")
-            .WithOpenApi();
+            .WithTags("Cleanup");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

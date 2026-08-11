@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyCulture.CultureAssessment.LeadershipE
 
 /// <summary>Dapper-backed repository for LeadershipEngagementFrequency read-model queries.</summary>
 public sealed class LeadershipEngagementFrequencyDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<LeadershipEngagementFrequencyDapperRepository> logger)
     : ILeadershipEngagementFrequencyRepository

@@ -35,8 +35,7 @@ public static class FatigueRiskModelingEndpoints
         var group = app
             .MapGroup("api/v1/analytics/predictive/fatigueriskmodeling")
             .RequireAuthorization(FatigueRiskModelingAuthorizationPolicies.Read)
-            .WithTags("FatigueRiskModeling")
-            .WithOpenApi();
+            .WithTags("FatigueRiskModeling");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

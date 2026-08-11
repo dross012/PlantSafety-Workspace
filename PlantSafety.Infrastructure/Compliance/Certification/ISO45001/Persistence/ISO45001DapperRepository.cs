@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Certification.ISO45001.Persisten
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ISO45001DapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ISO45001DapperRepository> logger)
     : IISO45001Repository

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.Radiography.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class RadiographyDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<RadiographyDapperRepository> logger)
     : IRadiographyRepository

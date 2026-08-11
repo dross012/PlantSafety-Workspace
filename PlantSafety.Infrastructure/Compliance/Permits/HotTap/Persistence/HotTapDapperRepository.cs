@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.HotTap.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class HotTapDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<HotTapDapperRepository> logger)
     : IHotTapRepository

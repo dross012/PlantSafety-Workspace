@@ -35,8 +35,7 @@ public static class InternalSafetyAuditEndpoints
         var group = app
             .MapGroup("api/v1/compliance/auditing/internalsafetyaudit")
             .RequireAuthorization(InternalSafetyAuditAuthorizationPolicies.Read)
-            .WithTags("InternalSafetyAudit")
-            .WithOpenApi();
+            .WithTags("InternalSafetyAudit");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Financials.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class FinancialsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<FinancialsDapperRepository> logger)
     : IFinancialsRepository

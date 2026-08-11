@@ -35,8 +35,7 @@ public static class ConfinedSpaceEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/confinedspace")
             .RequireAuthorization(ConfinedSpaceAuthorizationPolicies.Read)
-            .WithTags("ConfinedSpace")
-            .WithOpenApi();
+            .WithTags("ConfinedSpace");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

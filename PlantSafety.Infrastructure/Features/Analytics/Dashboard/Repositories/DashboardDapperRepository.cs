@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Features.Analytics.Dashboard.Repositories;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class DashboardDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperCommandExecutor commandExecutor,
     DapperQueryExecutor queryExecutor,
     ILogger<DashboardDapperRepository> logger)

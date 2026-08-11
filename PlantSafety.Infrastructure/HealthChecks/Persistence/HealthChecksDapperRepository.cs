@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.HealthChecks.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class HealthChecksDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<HealthChecksDapperRepository> logger)
     : IHealthChecksRepository

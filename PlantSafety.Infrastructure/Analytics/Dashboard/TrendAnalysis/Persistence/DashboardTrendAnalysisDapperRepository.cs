@@ -21,7 +21,6 @@ namespace PlantSafety.Infrastructure.Analytics.Dashboard.TrendAnalysis.Persisten
 
 /// <summary>Dapper-backed repository for <see cref="TrendAnalysisItemDto"/> queries (Dashboard subdomain).</summary>
 public sealed class DashboardTrendAnalysisDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<DashboardTrendAnalysisDapperRepository> logger)
     : ITrendAnalysisRepository

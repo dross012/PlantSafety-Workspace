@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Certification.Contractor.Persist
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ContractorDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ContractorDapperRepository> logger)
     : IContractorRepository

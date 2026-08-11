@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Permits.Electrical.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ElectricalDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ElectricalDapperRepository> logger)
     : IElectricalRepository

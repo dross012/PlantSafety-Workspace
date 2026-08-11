@@ -35,8 +35,7 @@ public static class EmployeesEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/employees")
             .RequireAuthorization(EmployeesAuthorizationPolicies.Read)
-            .WithTags("Employees")
-            .WithOpenApi();
+            .WithTags("Employees");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

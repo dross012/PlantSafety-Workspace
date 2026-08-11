@@ -18,7 +18,6 @@ namespace PlantSafety.Infrastructure.Features.SafetyEvents.IncidentManagement.Re
 /// Executes read-optimised stored procedures against the read-replica connection.
 /// </summary>
 public sealed class IncidentTimelineReadDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<IncidentTimelineReadDapperRepository> logger)
     : IIncidentTimelineReadRepository

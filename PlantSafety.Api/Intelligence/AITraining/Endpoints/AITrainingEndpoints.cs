@@ -34,8 +34,7 @@ public static class AITrainingEndpoints
         var group = app
             .MapGroup("api/v1/intelligence/aitraining")
             .RequireAuthorization(AITrainingAuthorizationPolicies.Read)
-            .WithTags("AITraining")
-            .WithOpenApi();
+            .WithTags("AITraining");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

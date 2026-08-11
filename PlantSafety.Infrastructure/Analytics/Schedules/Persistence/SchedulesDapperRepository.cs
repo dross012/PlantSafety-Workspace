@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Analytics.Schedules.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="SchedulesItemDto"/> queries.</summary>
 public sealed class SchedulesDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<SchedulesDapperRepository> logger)
     : ISchedulesRepository

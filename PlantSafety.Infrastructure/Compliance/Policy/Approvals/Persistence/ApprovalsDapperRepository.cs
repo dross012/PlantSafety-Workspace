@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Policy.Approvals.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ApprovalsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ApprovalsDapperRepository> logger)
     : IApprovalsRepository

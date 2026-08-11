@@ -35,8 +35,7 @@ public static class PermissionsEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/permissions")
             .RequireAuthorization(PermissionsAuthorizationPolicies.Read)
-            .WithTags("Permissions")
-            .WithOpenApi();
+            .WithTags("Permissions");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

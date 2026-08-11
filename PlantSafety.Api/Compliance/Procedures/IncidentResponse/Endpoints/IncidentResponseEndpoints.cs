@@ -35,8 +35,7 @@ public static class IncidentResponseEndpoints
         var group = app
             .MapGroup("api/v1/compliance/procedures/incidentresponse")
             .RequireAuthorization(IncidentResponseAuthorizationPolicies.Read)
-            .WithTags("IncidentResponse")
-            .WithOpenApi();
+            .WithTags("IncidentResponse");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

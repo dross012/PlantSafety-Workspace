@@ -35,8 +35,7 @@ public static class EnvironmentalSamplingEndpoints
         var group = app
             .MapGroup("api/v1/compliance/regulatory-calendar/inspections/environmental-sampling")
             .RequireAuthorization(EnvironmentalSamplingAuthorizationPolicies.Read)
-            .WithTags("EnvironmentalSampling")
-            .WithOpenApi();
+            .WithTags("EnvironmentalSampling");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

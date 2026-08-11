@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.SafetyCulture.CultureAssessment.TrainingCom
 
 /// <summary>Dapper-backed repository for TrainingCompletionRate read-model queries.</summary>
 public sealed class TrainingCompletionRateDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<TrainingCompletionRateDapperRepository> logger)
     : ITrainingCompletionRateRepository

@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.Compliance.Obligations.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class ObligationsDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ObligationsDapperRepository> logger)
     : IObligationsRepository

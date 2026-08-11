@@ -35,8 +35,7 @@ public static class AdministrationEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/administration")
             .RequireAuthorization(AdministrationAuthorizationPolicies.Read)
-            .WithTags("Administration")
-            .WithOpenApi();
+            .WithTags("Administration");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

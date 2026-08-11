@@ -32,8 +32,7 @@ public static class PlatformEndpointsV2
     {
         var group = app
             .MapGroup("api/v2/platform")
-            .WithTags("Platform")
-            .WithOpenApi();
+            .WithTags("Platform");
 
         // Stub - no Minimal API routes active yet.
         _ = group;

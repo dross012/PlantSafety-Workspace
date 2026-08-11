@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Auditing.AuditEngagement.Procedures.Persist
 
 /// <summary>Dapper-backed repository for Procedures read-model queries.</summary>
 public sealed class ProceduresDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<ProceduresDapperRepository> logger)
     : IProceduresRepository

@@ -18,7 +18,6 @@ namespace PlantSafety.Infrastructure.Analytics.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="EngagementDataPointDto"/> queries.</summary>
 public sealed class EngagementDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<EngagementDapperRepository> logger)
     : IEngagementRepository

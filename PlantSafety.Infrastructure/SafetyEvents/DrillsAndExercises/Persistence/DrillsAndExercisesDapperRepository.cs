@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.SafetyEvents.DrillsAndExercises.Persistence
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class DrillsAndExercisesDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<DrillsAndExercisesDapperRepository> logger)
     : IDrillsAndExercisesRepository

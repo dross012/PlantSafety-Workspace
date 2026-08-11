@@ -35,8 +35,7 @@ public static class CAPATriggersEndpoints
         var group = app
             .MapGroup("api/v1/compliance/auditing/capatriggers")
             .RequireAuthorization(CAPATriggersAuthorizationPolicies.Read)
-            .WithTags("CAPATriggers")
-            .WithOpenApi();
+            .WithTags("CAPATriggers");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

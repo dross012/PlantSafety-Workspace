@@ -35,8 +35,7 @@ public static class ComplianceEndpoints
         var group = app
             .MapGroup("api/v1/analytics/scorecards/compliance")
             .RequireAuthorization(ComplianceAuthorizationPolicies.Read)
-            .WithTags("Compliance")
-            .WithOpenApi();
+            .WithTags("Compliance");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

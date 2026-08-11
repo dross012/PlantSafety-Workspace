@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.CrossDomain.Roles.Persistence;
 
 /// <summary>Dapper-backed repository for <see cref="RolesItemDto"/> queries.</summary>
 public sealed class RolesDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<RolesDapperRepository> logger)
     : IRolesRepository

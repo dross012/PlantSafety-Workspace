@@ -35,8 +35,7 @@ public static class EngagementScoringEndpoints
         var group = app
             .MapGroup("api/v1/analytics/culture/engagementscoring")
             .RequireAuthorization(EngagementScoringAuthorizationPolicies.Read)
-            .WithTags("EngagementScoring")
-            .WithOpenApi();
+            .WithTags("EngagementScoring");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

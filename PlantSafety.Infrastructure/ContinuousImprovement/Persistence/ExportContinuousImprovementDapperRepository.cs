@@ -34,7 +34,6 @@ namespace PlantSafety.Infrastructure.ContinuousImprovement.Persistence;
 /// Dapper + Blob Storage backed implementation of <see cref="IExportContinuousImprovementRepository"/>.
 /// </summary>
 public sealed class ExportContinuousImprovementDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     IBlobStorageService blobStorageService,
     ILogger<ExportContinuousImprovementDapperRepository> logger)

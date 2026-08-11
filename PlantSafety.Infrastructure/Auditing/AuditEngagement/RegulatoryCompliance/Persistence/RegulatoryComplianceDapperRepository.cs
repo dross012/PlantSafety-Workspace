@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Auditing.AuditEngagement.RegulatoryComplian
 
 /// <summary>Dapper-backed repository for RegulatoryCompliance read-model queries.</summary>
 public sealed class RegulatoryComplianceDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<RegulatoryComplianceDapperRepository> logger)
     : IRegulatoryComplianceRepository

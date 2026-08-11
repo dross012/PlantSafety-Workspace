@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.SafetyEvents.RootCauseAnalysis.Persistence;
 /// Executes stored procedures for all persistence operations.
 /// </summary>
 public sealed class RootCauseAnalysisDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<RootCauseAnalysisDapperRepository> logger)
     : IRootCauseAnalysisRepository

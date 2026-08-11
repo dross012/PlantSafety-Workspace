@@ -35,8 +35,7 @@ public static class TrendAnalysisEndpoints
         var group = app
             .MapGroup("api/v1/analytics/dashboard/trendanalysis")
             .RequireAuthorization(TrendAnalysisAuthorizationPolicies.Read)
-            .WithTags("TrendAnalysis")
-            .WithOpenApi();
+            .WithTags("TrendAnalysis");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

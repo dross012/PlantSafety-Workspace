@@ -35,8 +35,7 @@ public static class ErgonomicsEndpoints
         var group = app
             .MapGroup("api/v1/operational/ergonomics")
             .RequireAuthorization(ErgonomicsAuthorizationPolicies.Read)
-            .WithTags("Ergonomics")
-            .WithOpenApi();
+            .WithTags("Ergonomics");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

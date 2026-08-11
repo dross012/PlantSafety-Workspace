@@ -62,9 +62,21 @@ public sealed class MoneyTests : UnitTestBase
         var lower = new Money(10m, "USD");
         var higher = new Money(20m, "USD");
 
+        // Separate instances holding the same amount, not the same variable twice. Comparing a
+        // variable to itself is what CS1718 flagged, and it was also the weaker test: it can pass
+        // on reference identity alone, so it would not notice if <= and >= stopped honouring
+        // value equality -- the exact property these operators exist to provide.
+        var sameAsLower = new Money(10m, "USD");
+        var sameAsHigher = new Money(20m, "USD");
+
         (lower < higher).Should().BeTrue();
         (higher > lower).Should().BeTrue();
-        (lower <= lower).Should().BeTrue();
-        (higher >= higher).Should().BeTrue();
+        (lower <= sameAsLower).Should().BeTrue();
+        (higher >= sameAsHigher).Should().BeTrue();
+
+        // The strict operators must reject equal values, or <= and >= above would pass for a
+        // type whose comparisons ignore equality entirely.
+        (lower < sameAsLower).Should().BeFalse();
+        (higher > sameAsHigher).Should().BeFalse();
     }
 }

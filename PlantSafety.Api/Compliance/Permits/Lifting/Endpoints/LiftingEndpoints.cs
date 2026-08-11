@@ -35,8 +35,7 @@ public static class LiftingEndpoints
         var group = app
             .MapGroup("api/v1/compliance/permits/lifting")
             .RequireAuthorization(LiftingAuthorizationPolicies.Read)
-            .WithTags("Lifting")
-            .WithOpenApi();
+            .WithTags("Lifting");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

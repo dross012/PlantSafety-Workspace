@@ -35,8 +35,7 @@ public static class TrendModelingEndpoints
         var group = app
             .MapGroup("api/v1/analytics/culture/trendmodeling")
             .RequireAuthorization(TrendModelingAuthorizationPolicies.Read)
-            .WithTags("TrendModeling")
-            .WithOpenApi();
+            .WithTags("TrendModeling");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

@@ -35,8 +35,7 @@ public static class UpdatesEndpoints
         var group = app
             .MapGroup("api/v1/cross-domain/updates")
             .RequireAuthorization(UpdatesAuthorizationPolicies.Read)
-            .WithTags("Updates")
-            .WithOpenApi();
+            .WithTags("Updates");
 
         // Stub - no Minimal API routes active yet. MVC controllers handle all traffic.
         _ = group;

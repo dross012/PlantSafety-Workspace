@@ -16,7 +16,6 @@ namespace PlantSafety.Infrastructure.Checklists.ChecklistTemplate.HazardousMater
 
 /// <summary>Dapper-backed repository for HazardousMaterialsAndChemicalSafety read-model queries.</summary>
 public sealed class HazardousMaterialsAndChemicalSafetyDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<HazardousMaterialsAndChemicalSafetyDapperRepository> logger)
     : IHazardousMaterialsAndChemicalSafetyRepository
