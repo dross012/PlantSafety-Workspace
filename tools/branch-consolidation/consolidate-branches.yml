@@ -1,0 +1,178 @@
+# =============================================================================
+#  Branch consolidation workflow (OPTIONAL)
+#
+#  Copy to .github/workflows/consolidate-branches.yml in each repository.
+#
+#  SAFETY MODEL:
+#    * Manual dispatch ONLY. It never runs on push or on a schedule.
+#    * Dry-run is the default input value.
+#    * Execute mode is gated on a GitHub Environment ("branch-consolidation")
+#      that you configure with required reviewers, so a human approves before
+#      anything is written. Without that environment, execute mode simply
+#      waits and never runs.
+#    * A conflict fails the job. Conflicts are never auto-resolved.
+# =============================================================================
+name: Consolidate branches into master
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run lists actions only; execute performs them"
+        required: true
+        default: "dry-run"
+        type: choice
+        options: [dry-run, execute]
+      delete_remote_branches:
+        description: "Delete merged branches from origin (execute mode only)"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write        # required to push master, tags, and branch deletions
+
+jobs:
+  consolidate:
+    name: "Consolidate (${{ inputs.mode }})"
+    runs-on: ubuntu-latest
+
+    # Execute mode routes through a protected Environment. Configure it with
+    # required reviewers; dry-run bypasses it so anyone can preview safely.
+    environment: ${{ inputs.mode == 'execute' && 'branch-consolidation' || '' }}
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # merges need real history, not a shallow clone
+          persist-credentials: true
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch and prune
+        run: git fetch --all --prune --tags
+
+      - name: Resolve master
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [ -n "$(git ls-remote --heads origin master)" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            # This repository has no master. Its default branch becomes the base.
+            default="$(git symbolic-ref refs/remotes/origin/HEAD | sed 's|refs/remotes/origin/||')"
+            if [ -z "$default" ]; then
+              echo "::error::origin/master is missing and origin/HEAD is unset."
+              exit 1
+            fi
+            echo "::notice::origin/master missing; master will be created from origin/$default"
+            echo "exists=false"        >> "$GITHUB_OUTPUT"
+            echo "source=$default"     >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge test (fails on any conflict)
+        id: test
+        run: |
+          set -uo pipefail
+          if [ "${{ steps.resolve.outputs.exists }}" = "true" ]; then
+            base="origin/master"
+          else
+            base="origin/${{ steps.resolve.outputs.source }}"
+          fi
+
+          conflicts=0
+          mergeable=""
+          # ls-remote --heads, NOT for-each-ref: git shortens
+          # refs/remotes/origin/HEAD to the bare remote name ("origin"), which
+          # would otherwise be evaluated as a phantom branch.
+          for b in $(git ls-remote --heads origin | awk '{print $2}' \
+                       | sed 's|^refs/heads/||' | grep -v '^master$' | sort -u); do
+            git checkout -q -B ci-merge-test "$base"
+            if git merge --no-commit --no-ff "origin/$b" >/dev/null 2>&1; then
+              git merge --abort >/dev/null 2>&1 || git reset --hard -q
+              mergeable="$mergeable $b"
+              echo "::notice::mergeable: $b"
+            else
+              files="$(git diff --name-only --diff-filter=U | tr '\n' ' ')"
+              git merge --abort >/dev/null 2>&1 || git reset --hard -q
+              conflicts=$((conflicts+1))
+              echo "::error::conflict in $b -> $files"
+            fi
+          done
+          git checkout -q "$base" 2>/dev/null || true
+          git branch -q -D ci-merge-test 2>/dev/null || true
+
+          echo "mergeable=$mergeable" >> "$GITHUB_OUTPUT"
+
+          # Fail safely: surface every conflict, change nothing.
+          if [ "$conflicts" -gt 0 ]; then
+            echo "::error::$conflicts branch(es) conflict. Resolve manually; nothing was modified."
+            exit 1
+          fi
+
+      - name: Summary (dry-run stops here)
+        if: inputs.mode != 'execute'
+        run: |
+          {
+            echo "### Dry run -- no changes made"
+            echo ""
+            echo "Mergeable branches:"
+            for b in ${{ steps.test.outputs.mergeable }}; do echo "- \`$b\`"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tag, merge, push
+        if: inputs.mode == 'execute'
+        run: |
+          set -euo pipefail
+          ts="$(date +%Y%m%d-%H%M%S)"
+
+          if [ "${{ steps.resolve.outputs.exists }}" = "true" ]; then
+            git checkout -B master origin/master
+          else
+            git checkout -B master "origin/${{ steps.resolve.outputs.source }}"
+            git push -u origin master
+          fi
+
+          # Tags first, and pushed, so every branch is recoverable before any
+          # merge or delete touches it.
+          for b in ${{ steps.test.outputs.mergeable }}; do
+            git tag -a "pre-delete-backup/$b/$ts" "origin/$b" -m "Backup of $b before consolidation ($ts)"
+            git push origin "refs/tags/pre-delete-backup/$b/$ts"
+          done
+
+          for b in ${{ steps.test.outputs.mergeable }}; do
+            git merge --no-ff "origin/$b" -m "Merge $b into master (consolidation)"
+          done
+
+          git push origin master
+          echo "MASTER_SHA=$(git rev-parse --short master)" >> "$GITHUB_ENV"
+
+      - name: Delete merged branches
+        if: inputs.mode == 'execute' && inputs.delete_remote_branches
+        run: |
+          set -uo pipefail
+          for b in ${{ steps.test.outputs.mergeable }}; do
+            [ "$b" = "master" ] && continue
+            if git push origin --delete "$b"; then
+              echo "::notice::deleted origin/$b"
+            else
+              # Branch protection or the default-branch pointer refuses this.
+              echo "::warning::could not delete origin/$b (protected, or it is the default branch)"
+            fi
+          done
+
+      - name: Write summary
+        if: always() && inputs.mode == 'execute'
+        run: |
+          {
+            echo "### Consolidation complete"
+            echo ""
+            echo "- Final master: \`${MASTER_SHA:-unknown}\`"
+            echo "- Branches deleted: \`${{ inputs.delete_remote_branches }}\`"
+            echo ""
+            echo "Backup tags are pushed under \`pre-delete-backup/<branch>/<timestamp>\`."
+          } >> "$GITHUB_STEP_SUMMARY"
