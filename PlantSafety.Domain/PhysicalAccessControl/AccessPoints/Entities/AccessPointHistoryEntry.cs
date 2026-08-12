@@ -37,7 +37,14 @@ public sealed class AccessPointHistoryEntry
     public string? Notes { get; private set; }
 
     /// <summary>For ORM rehydration only.</summary>
-    private AccessPointHistoryEntry() { }
+    private AccessPointHistoryEntry() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        ChangedBy = null!;
+        NewStatus = null!;
+        PreviousStatus = null!;
+    }
 
     /// <summary>Creates a new history entry for the given transition.</summary>
     public AccessPointHistoryEntry(

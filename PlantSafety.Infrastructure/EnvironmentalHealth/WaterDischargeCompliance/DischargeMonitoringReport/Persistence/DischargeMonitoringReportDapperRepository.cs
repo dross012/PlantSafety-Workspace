@@ -44,8 +44,7 @@ public sealed class DischargeMonitoringReportDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<DischargeMonitoringReportDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IWriteRepo, IReadRepo
 {
     private const string Schema = "EnvironmentalHealth";

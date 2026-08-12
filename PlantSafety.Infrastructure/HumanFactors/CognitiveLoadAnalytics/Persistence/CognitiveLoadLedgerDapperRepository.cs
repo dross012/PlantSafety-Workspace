@@ -33,8 +33,7 @@ public sealed class CognitiveLoadLedgerDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<CognitiveLoadLedgerDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : ICognitiveLoadLedgerRepository
 {
     /// <inheritdoc/>

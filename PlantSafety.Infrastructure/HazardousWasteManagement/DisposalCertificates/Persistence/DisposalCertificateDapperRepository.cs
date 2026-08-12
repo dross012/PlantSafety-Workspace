@@ -56,8 +56,7 @@ public sealed class DisposalCertificateDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<DisposalCertificateDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IWriteRepo, IReadRepo
 {
     private const string Schema = "HazardousWasteManagement";

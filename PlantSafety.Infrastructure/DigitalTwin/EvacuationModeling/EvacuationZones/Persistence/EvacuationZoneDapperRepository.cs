@@ -58,8 +58,7 @@ public sealed class EvacuationZoneDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<EvacuationZoneDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IWriteRepo, IReadRepo
 {
     private const string Schema = "DigitalTwin";

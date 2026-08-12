@@ -36,8 +36,7 @@ public sealed class TsdfFacilityDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<TsdfFacilityDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IWriteRepo
 {
     private const string Schema = "HazardousWasteManagement";

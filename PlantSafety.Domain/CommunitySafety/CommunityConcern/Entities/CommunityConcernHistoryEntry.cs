@@ -39,7 +39,14 @@ public sealed class CommunityConcernHistoryEntry
     public string Description { get; private set; }
 
     /// <summary>For ORM/read-model rehydration only.</summary>
-    private CommunityConcernHistoryEntry() { }
+    private CommunityConcernHistoryEntry() 
+    {
+        // Assigned by the data mapper immediately after construction; see the public
+        // constructor for the invariant these properties actually hold.
+        Actor = null!;
+        Description = null!;
+        EventType = null!;
+    }
 
     /// <summary>Creates a new history entry.</summary>
     public CommunityConcernHistoryEntry(

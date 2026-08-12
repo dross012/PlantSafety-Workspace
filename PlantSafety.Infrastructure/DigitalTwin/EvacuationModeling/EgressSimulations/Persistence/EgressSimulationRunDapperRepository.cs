@@ -47,8 +47,7 @@ public sealed class EgressSimulationRunDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<EgressSimulationRunDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IWriteRepo, IReadRepo
 {
     private const string Schema = "DigitalTwin";

@@ -36,8 +36,7 @@ public sealed class TransporterDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<TransporterDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IWriteRepo
 {
     private const string Schema = "HazardousWasteManagement";

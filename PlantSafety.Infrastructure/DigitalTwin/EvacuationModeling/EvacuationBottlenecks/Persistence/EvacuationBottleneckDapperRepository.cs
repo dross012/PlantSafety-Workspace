@@ -48,8 +48,7 @@ public sealed class EvacuationBottleneckDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<EvacuationBottleneckDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IWriteRepo, IReadRepo
 {
     private const string Schema = "DigitalTwin";

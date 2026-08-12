@@ -27,8 +27,7 @@ public sealed class CognitiveRiskPredictionDapperRepository(
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
     ISqlConnectionFactory connectionFactory,
-    IOutboxWriter outboxWriter,
-    ILogger<CognitiveRiskPredictionDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : ICognitiveRiskPredictionRepository
 {
     /// <inheritdoc/>

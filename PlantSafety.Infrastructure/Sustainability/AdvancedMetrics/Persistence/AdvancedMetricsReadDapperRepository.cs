@@ -17,8 +17,7 @@ namespace PlantSafety.Infrastructure.Sustainability.AdvancedMetrics.Persistence;
 
 /// <summary>Dapper-backed repository for Sustainability.AdvancedMetrics dashboard and report read-model queries.</summary>
 public sealed class AdvancedMetricsReadDapperRepository(
-    DapperQueryExecutor queryExecutor,
-    ILogger<AdvancedMetricsReadDapperRepository> logger)
+    DapperQueryExecutor queryExecutor)
     : IAdvancedMetricsReadRepository
 {
     /// <inheritdoc/>

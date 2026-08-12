@@ -26,8 +26,7 @@ public sealed class EsgDisclosureReportDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<EsgDisclosureReportDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IEsgDisclosureReportRepository
 {
     /// <inheritdoc/>

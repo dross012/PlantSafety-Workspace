@@ -32,8 +32,7 @@ public sealed class AdvancedMetricsLedgerDapperRepository(
     ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     DapperCommandExecutor commandExecutor,
-    IOutboxWriter outboxWriter,
-    ILogger<AdvancedMetricsLedgerDapperRepository> logger)
+    IOutboxWriter outboxWriter)
     : IAdvancedMetricsLedgerRepository
 {
     /// <inheritdoc/>

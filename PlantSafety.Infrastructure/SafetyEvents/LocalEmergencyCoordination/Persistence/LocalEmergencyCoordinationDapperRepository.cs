@@ -19,7 +19,6 @@ namespace PlantSafety.Infrastructure.SafetyEvents.LocalEmergencyCoordination.Per
 
 /// <summary>Dapper-backed repository for LocalEmergencyCoordination read-model queries. Executes stored procedures for all persistence operations.</summary>
 public sealed class LocalEmergencyCoordinationDapperRepository(
-    ISqlConnectionFactory connectionFactory,
     DapperQueryExecutor queryExecutor,
     ILogger<LocalEmergencyCoordinationDapperRepository> logger)
     : ILocalEmergencyCoordinationRepository

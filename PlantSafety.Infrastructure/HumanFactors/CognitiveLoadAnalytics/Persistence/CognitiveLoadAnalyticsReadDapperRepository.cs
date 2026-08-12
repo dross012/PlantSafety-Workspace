@@ -17,8 +17,7 @@ namespace PlantSafety.Infrastructure.HumanFactors.CognitiveLoadAnalytics.Persist
 
 /// <summary>Dapper-backed repository for HumanFactors.CognitiveLoadAnalytics dashboard read-model queries.</summary>
 public sealed class CognitiveLoadAnalyticsReadDapperRepository(
-    DapperQueryExecutor queryExecutor,
-    ILogger<CognitiveLoadAnalyticsReadDapperRepository> logger)
+    DapperQueryExecutor queryExecutor)
     : ICognitiveLoadAnalyticsReadRepository
 {
     /// <inheritdoc/>
