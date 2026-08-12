@@ -61,9 +61,10 @@ public sealed class CyberPhysicalSecurityRepositoryIntegrationTests(IntegrationT
         var row = await conn.QuerySingleOrDefaultAsync(
             "[CyberPhysicalSecurity].[usp_OtAsset_GetById]",
             new { OtAssetId = otAssetId, TenantId },
-            commandType: CommandType.StoredProcedure);
+            commandType: CommandType.StoredProcedure)
+            ?? throw new InvalidOperationException("Expected the stored procedure to return the row just written.");
 
-        ((object)row).Should().NotBeNull();
+        ((object?)row).Should().NotBeNull();
         ((string)row.AssetTag).Should().Be("PLC-RT-001");
         ((string)row.Status).Should().Be("Active");
     }
@@ -77,7 +78,8 @@ public sealed class CyberPhysicalSecurityRepositoryIntegrationTests(IntegrationT
         var row = await conn.QuerySingleOrDefaultAsync(
             "[CyberPhysicalSecurity].[usp_OtAsset_GetById]",
             new { OtAssetId = otAssetId, TenantId = Guid.NewGuid() },
-            commandType: CommandType.StoredProcedure);
+            commandType: CommandType.StoredProcedure)
+            ?? throw new InvalidOperationException("Expected the stored procedure to return the row just written.");
 
         ((object?)row).Should().BeNull("tenant isolation must prevent cross-tenant reads");
     }
@@ -94,7 +96,8 @@ public sealed class CyberPhysicalSecurityRepositoryIntegrationTests(IntegrationT
 
         var row = await conn.QuerySingleOrDefaultAsync(
             "[CyberPhysicalSecurity].[usp_OtAsset_GetById]", new { OtAssetId = otAssetId, TenantId },
-            commandType: CommandType.StoredProcedure);
+            commandType: CommandType.StoredProcedure)
+            ?? throw new InvalidOperationException("Expected the stored procedure to return the row just written.");
 
         ((string)row.Status).Should().Be("Quarantined");
     }
@@ -132,9 +135,10 @@ public sealed class CyberPhysicalSecurityRepositoryIntegrationTests(IntegrationT
 
         var row = await conn.QuerySingleOrDefaultAsync(
             "[CyberPhysicalSecurity].[usp_ControlChangeEvent_GetById]",
-            new { ControlChangeEventId = eventId, TenantId }, commandType: CommandType.StoredProcedure);
+            new { ControlChangeEventId = eventId, TenantId }, commandType: CommandType.StoredProcedure)
+            ?? throw new InvalidOperationException("Expected the stored procedure to return the row just written.");
 
-        ((object)row).Should().NotBeNull();
+        ((object?)row).Should().NotBeNull();
         ((string)row.RecordHash).Should().Be(recordHash);
         ((string?)row.PriorRecordHash).Should().BeNull();
     }
@@ -201,7 +205,8 @@ public sealed class CyberPhysicalSecurityRepositoryIntegrationTests(IntegrationT
 
         var row = await conn.QuerySingleOrDefaultAsync(
             "[CyberPhysicalSecurity].[usp_ControlChangeEvent_GetById]",
-            new { ControlChangeEventId = eventId, TenantId }, commandType: CommandType.StoredProcedure);
+            new { ControlChangeEventId = eventId, TenantId }, commandType: CommandType.StoredProcedure)
+            ?? throw new InvalidOperationException("Expected the stored procedure to return the row just written.");
 
         ((string)row.AuthorizationStatus).Should().Be("Unauthorized");
         ((string)row.RecordHash).Should().Be(recordHash, "reclassifying authorization must never mutate the tamper-evident hash");
@@ -315,7 +320,8 @@ public sealed class CyberPhysicalSecurityRepositoryIntegrationTests(IntegrationT
 
         var row = await conn.QuerySingleOrDefaultAsync(
             "[CyberPhysicalSecurity].[usp_SabotageIndicator_GetById]",
-            new { SabotageIndicatorId = indicatorId, TenantId }, commandType: CommandType.StoredProcedure);
+            new { SabotageIndicatorId = indicatorId, TenantId }, commandType: CommandType.StoredProcedure)
+            ?? throw new InvalidOperationException("Expected the stored procedure to return the row just written.");
 
         ((string)row.Severity).Should().Be("Critical");
         ((string)row.Status).Should().Be("UnderInvestigation");
@@ -366,7 +372,8 @@ public sealed class CyberPhysicalSecurityRepositoryIntegrationTests(IntegrationT
 
         var row = await conn.QuerySingleOrDefaultAsync(
             "[CyberPhysicalSecurity].[usp_CyberPhysicalIncident_GetById]",
-            new { CyberPhysicalIncidentId = incidentId, TenantId }, commandType: CommandType.StoredProcedure);
+            new { CyberPhysicalIncidentId = incidentId, TenantId }, commandType: CommandType.StoredProcedure)
+            ?? throw new InvalidOperationException("Expected the stored procedure to return the row just written.");
 
         ((string)row.RelatedSabotageIndicatorIds).Should().Be(relatedIds);
     }
@@ -393,7 +400,8 @@ public sealed class CyberPhysicalSecurityRepositoryIntegrationTests(IntegrationT
 
         var row = await conn.QuerySingleOrDefaultAsync(
             "[CyberPhysicalSecurity].[usp_CyberPhysicalIncident_GetById]",
-            new { CyberPhysicalIncidentId = incidentId, TenantId }, commandType: CommandType.StoredProcedure);
+            new { CyberPhysicalIncidentId = incidentId, TenantId }, commandType: CommandType.StoredProcedure)
+            ?? throw new InvalidOperationException("Expected the stored procedure to return the row just written.");
 
         ((string)row.Status).Should().Be("Closed");
         ((int)row.ResponseTimeMinutes).Should().Be(90);
