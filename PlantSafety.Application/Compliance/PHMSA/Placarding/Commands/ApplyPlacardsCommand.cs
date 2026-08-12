@@ -17,10 +17,10 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Compliance.PHMSA.Placarding.Commands;
 
-/// <summary>A single load material item used to compute placarding for a HazmatContainer.</summary>
-/// <param name="HazardClass">DOT hazard class/division discriminator (e.g. "3", "1.1", "8").</param>
-/// <param name="Quantity">Quantity of this material present in the load.</param>
-/// <param name="QuantityUnit">Unit for <paramref name="Quantity"/> (e.g. "L", "kg", "gal").</param>
+/// <summary>A single load material item used to compute placarding for a HazmatContainer.</summary>
+/// <param name="HazardClass">DOT hazard class/division discriminator (e.g. "3", "1.1", "8").</param>
+/// <param name="Quantity">Quantity of this material present in the load.</param>
+/// <param name="QuantityUnit">Unit for <paramref name="Quantity"/> (e.g. "L", "kg", "gal").</param>
 public sealed record PlacardingMaterialItem(string HazardClass, decimal Quantity, string QuantityUnit);
 
 /// <summary>

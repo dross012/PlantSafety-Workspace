@@ -11,9 +11,9 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.PublicSafetyCommunication.Commands;
 
-/// <summary>Records an external agency's acknowledgement of a dispatched IncidentNotification.</summary>
-/// <param name="IncidentNotificationId">Identity of the IncidentNotification being acknowledged.</param>
-/// <param name="AcknowledgedByContactName">Name/desk of the agency contact who acknowledged receipt.</param>
+/// <summary>Records an external agency's acknowledgement of a dispatched IncidentNotification.</summary>
+/// <param name="IncidentNotificationId">Identity of the IncidentNotification being acknowledged.</param>
+/// <param name="AcknowledgedByContactName">Name/desk of the agency contact who acknowledged receipt.</param>
 /// <param name="CommandId">Unique identifier for this command instance.</param>
 /// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
 /// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>

@@ -16,12 +16,12 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Compliance.PHMSA.Placarding.Commands;
 
-/// <summary>
-/// Re-evaluates placarding for an existing HazmatShipment and compares the computed result to
-/// what is currently persisted on the shipment.
-/// </summary>
-/// <param name="ShipmentId">Identity of the HazmatShipment to validate.</param>
-/// <param name="IsBulkPackaging">Whether the shipment's load is carried in bulk packaging.</param>
+/// <summary>
+/// Re-evaluates placarding for an existing HazmatShipment and compares the computed result to
+/// what is currently persisted on the shipment.
+/// </summary>
+/// <param name="ShipmentId">Identity of the HazmatShipment to validate.</param>
+/// <param name="IsBulkPackaging">Whether the shipment's load is carried in bulk packaging.</param>
 /// <param name="CommandId">Unique identifier for this command instance.</param>
 /// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
 /// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>

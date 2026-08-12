@@ -17,9 +17,9 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Compliance.PHMSA.Placarding.Commands;
 
-/// <summary>Computes the required DOT transport placard set for a proposed load, with no persistence.</summary>
-/// <param name="Materials">The hazard classes present in the load, with quantity and unit.</param>
-/// <param name="IsBulkPackaging">Whether the load is carried in bulk packaging.</param>
+/// <summary>Computes the required DOT transport placard set for a proposed load, with no persistence.</summary>
+/// <param name="Materials">The hazard classes present in the load, with quantity and unit.</param>
+/// <param name="IsBulkPackaging">Whether the load is carried in bulk packaging.</param>
 /// <param name="CommandId">Unique identifier for this command instance.</param>
 /// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
 /// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>

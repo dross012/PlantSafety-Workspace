@@ -18,9 +18,9 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Compliance.PHMSA.ShippingPapers.Commands;
 
-/// <summary>Generates and attaches a DOT shipping paper to a HazmatShipment (Draft/Validated -&gt; Validated).</summary>
-/// <param name="WasteManifestReference">Optional hazardous-waste manifest reference, when applicable.</param>
-/// <param name="ShipperCertificationText">Optional shipper certification text override.</param>
+/// <summary>Generates and attaches a DOT shipping paper to a HazmatShipment (Draft/Validated -&gt; Validated).</summary>
+/// <param name="WasteManifestReference">Optional hazardous-waste manifest reference, when applicable.</param>
+/// <param name="ShipperCertificationText">Optional shipper certification text override.</param>
 /// <param name="CommandId">Unique identifier for this command instance.</param>
 /// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
 /// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
