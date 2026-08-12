@@ -10,15 +10,20 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.PublicSafetyCommunication.Commands;
 
-/// <summary>Records a new, immutable CommunicationLogEntry.</summary>
-/// <param name="IncidentId">Optional identity of the originating SafetyEvents.EmergencyManagement incident.</param>
-/// <param name="RelatedIncidentNotificationId">Optional identity of the related IncidentNotification.</param>
-/// <param name="RelatedPublicAlertBroadcastId">Optional identity of the related PublicAlertBroadcast.</param>
-/// <param name="Direction">Direction of the communication (Outbound/Inbound).</param>
-/// <param name="Medium">Medium used for the communication.</param>
-/// <param name="CounterpartyName">Name of the external counterparty (agency/contact) involved.</param>
-/// <param name="Summary">Free-text summary of the communication content.</param>
-/// <param name="OccurredAtUtc">UTC timestamp the communication actually occurred.</param>
+/// <summary>Records a new, immutable CommunicationLogEntry.</summary>
+/// <param name="IncidentId">Optional identity of the originating SafetyEvents.EmergencyManagement incident.</param>
+/// <param name="RelatedIncidentNotificationId">Optional identity of the related IncidentNotification.</param>
+/// <param name="RelatedPublicAlertBroadcastId">Optional identity of the related PublicAlertBroadcast.</param>
+/// <param name="Direction">Direction of the communication (Outbound/Inbound).</param>
+/// <param name="Medium">Medium used for the communication.</param>
+/// <param name="CounterpartyName">Name of the external counterparty (agency/contact) involved.</param>
+/// <param name="Summary">Free-text summary of the communication content.</param>
+/// <param name="OccurredAtUtc">UTC timestamp the communication actually occurred.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="SiteId">Site the operation is scoped to, when site-scoped.</param>
 public sealed record LogCommunicationEntryCommand(
     Guid CommandId,
     Guid CorrelationId,

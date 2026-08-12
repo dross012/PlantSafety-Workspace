@@ -18,11 +18,17 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Compliance.PHMSA.Placarding.Commands;
 
-/// <summary>Applies text markings and hazard labels to a HazmatContainer (Draft -&gt; MarkedAndLabeled).</summary>
-/// <param name="Markings">Text markings applied (e.g. "UN1090", proper shipping name, "RQ").</param>
-/// <param name="Labels">Hazard label names (e.g. "Flammable Liquid", "Corrosive", "Marine Pollutant").</param>
-/// <param name="OrientationArrowsRequired">Whether orientation arrows are required on this container's packaging.</param>
-/// <param name="CompatibilityGroup">Explosives compatibility group letter (A-N, S). Only meaningful for Class 1 materials.</param>
+/// <summary>Applies text markings and hazard labels to a HazmatContainer (Draft -&gt; MarkedAndLabeled).</summary>
+/// <param name="Markings">Text markings applied (e.g. "UN1090", proper shipping name, "RQ").</param>
+/// <param name="Labels">Hazard label names (e.g. "Flammable Liquid", "Corrosive", "Marine Pollutant").</param>
+/// <param name="OrientationArrowsRequired">Whether orientation arrows are required on this container's packaging.</param>
+/// <param name="CompatibilityGroup">Explosives compatibility group letter (A-N, S). Only meaningful for Class 1 materials.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="HazmatContainerId">Identifier of the HazmatContainer record.</param>
+/// <param name="PerformedByUserId">Identifier of the user performing this operation.</param>
 public sealed record ApplyMarkingsAndLabelsCommand(
     Guid CommandId,
     Guid CorrelationId,

@@ -18,12 +18,16 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Compliance.PHMSA.Packaging.Commands;
 
-/// <summary>Validates whether a proposed DOT packaging spec is authorized for a hazard class/packing group.</summary>
-/// <param name="ProposedDOTSpec">DOT packaging specification code being validated, e.g. "1A1".</param>
-/// <param name="HazardClass">Primary DOT hazard class, 1-9.</param>
-/// <param name="HazardClassDivision">Optional division within the class (e.g. "1" in Class 1.1).</param>
-/// <param name="PackingGroup">DOT packing group (I/II/III/NotApplicable).</param>
-/// <param name="RequestedByUserId">Identity of the user requesting the validation.</param>
+/// <summary>Validates whether a proposed DOT packaging spec is authorized for a hazard class/packing group.</summary>
+/// <param name="ProposedDOTSpec">DOT packaging specification code being validated, e.g. "1A1".</param>
+/// <param name="HazardClass">Primary DOT hazard class, 1-9.</param>
+/// <param name="HazardClassDivision">Optional division within the class (e.g. "1" in Class 1.1).</param>
+/// <param name="PackingGroup">DOT packing group (I/II/III/NotApplicable).</param>
+/// <param name="RequestedByUserId">Identity of the user requesting the validation.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
 public sealed record ValidatePackagingCommand(
     Guid CommandId,
     Guid CorrelationId,

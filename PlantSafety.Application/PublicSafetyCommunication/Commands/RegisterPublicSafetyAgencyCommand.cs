@@ -9,12 +9,17 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.PublicSafetyCommunication.Commands;
 
-/// <summary>Registers a new external public-safety agency in the directory.</summary>
-/// <param name="AgencyName">Legal/display name of the agency.</param>
-/// <param name="AgencyType">Classification of the agency (Fire, Police, EMS, RegulatoryHotline, etc.).</param>
-/// <param name="JurisdictionDescription">Description of the jurisdiction/coverage area.</param>
-/// <param name="PrimaryPhoneNumber">Primary phone number for general/dispatch contact.</param>
-/// <param name="PrimaryEmail">Optional primary email address.</param>
+/// <summary>Registers a new external public-safety agency in the directory.</summary>
+/// <param name="AgencyName">Legal/display name of the agency.</param>
+/// <param name="AgencyType">Classification of the agency (Fire, Police, EMS, RegulatoryHotline, etc.).</param>
+/// <param name="JurisdictionDescription">Description of the jurisdiction/coverage area.</param>
+/// <param name="PrimaryPhoneNumber">Primary phone number for general/dispatch contact.</param>
+/// <param name="PrimaryEmail">Optional primary email address.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="SiteId">Site the operation is scoped to, when site-scoped.</param>
 public sealed record RegisterPublicSafetyAgencyCommand(
     Guid CommandId,
     Guid CorrelationId,

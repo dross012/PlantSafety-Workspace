@@ -16,11 +16,17 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Compliance.PHMSA.ShippingPapers.Commands;
 
-/// <summary>Marks a HazmatShipment ready for dispatch (Validated -&gt; Ready).</summary>
-/// <param name="ErgGuideNumber">Emergency Response Guidebook guide number.</param>
-/// <param name="EmergencyContactName">Emergency contact name.</param>
-/// <param name="EmergencyContactPhone">Emergency contact phone.</param>
-/// <param name="ResponseGuidanceSummary">Emergency response guidance summary.</param>
+/// <summary>Marks a HazmatShipment ready for dispatch (Validated -&gt; Ready).</summary>
+/// <param name="ErgGuideNumber">Emergency Response Guidebook guide number.</param>
+/// <param name="EmergencyContactName">Emergency contact name.</param>
+/// <param name="EmergencyContactPhone">Emergency contact phone.</param>
+/// <param name="ResponseGuidanceSummary">Emergency response guidance summary.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="HazmatShipmentId">Identifier of the HazmatShipment record.</param>
+/// <param name="PerformedByUserId">Identifier of the user performing this operation.</param>
 public sealed record MarkShipmentReadyCommand(
     Guid CommandId,
     Guid CorrelationId,

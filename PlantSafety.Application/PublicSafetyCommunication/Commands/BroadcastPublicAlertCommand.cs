@@ -9,13 +9,18 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.PublicSafetyCommunication.Commands;
 
-/// <summary>Sends a new PublicAlertBroadcast to a public warning system.</summary>
-/// <param name="IncidentId">Optional identity of the originating SafetyEvents.EmergencyManagement incident.</param>
-/// <param name="SeverityCode">Stable code of the PublicAlertSeverity (Advisory/Watch/Warning/Emergency).</param>
-/// <param name="ChannelCode">Stable code of the PublicBroadcastChannel to use.</param>
-/// <param name="Headline">Short headline for the alert.</param>
-/// <param name="Message">Full alert message content.</param>
-/// <param name="TargetArea">Description of the geographic area targeted by this broadcast.</param>
+/// <summary>Sends a new PublicAlertBroadcast to a public warning system.</summary>
+/// <param name="IncidentId">Optional identity of the originating SafetyEvents.EmergencyManagement incident.</param>
+/// <param name="SeverityCode">Stable code of the PublicAlertSeverity (Advisory/Watch/Warning/Emergency).</param>
+/// <param name="ChannelCode">Stable code of the PublicBroadcastChannel to use.</param>
+/// <param name="Headline">Short headline for the alert.</param>
+/// <param name="Message">Full alert message content.</param>
+/// <param name="TargetArea">Description of the geographic area targeted by this broadcast.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="SiteId">Site the operation is scoped to, when site-scoped.</param>
 public sealed record BroadcastPublicAlertCommand(
     Guid CommandId,
     Guid CorrelationId,

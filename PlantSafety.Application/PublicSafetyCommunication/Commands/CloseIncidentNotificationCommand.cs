@@ -9,8 +9,12 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.PublicSafetyCommunication.Commands;
 
-/// <summary>Closes an IncidentNotification's dispatch lifecycle.</summary>
-/// <param name="IncidentNotificationId">Identity of the IncidentNotification being closed.</param>
+/// <summary>Closes an IncidentNotification's dispatch lifecycle.</summary>
+/// <param name="IncidentNotificationId">Identity of the IncidentNotification being closed.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
 public sealed record CloseIncidentNotificationCommand(
     Guid CommandId,
     Guid CorrelationId,

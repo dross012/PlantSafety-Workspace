@@ -17,10 +17,10 @@ using PlantSafety.Application.Common.Results;
 
 namespace PlantSafety.Application.Compliance.PHMSA.Placarding.Commands;
 
-/// <summary>A single load material item used to compute placarding for a HazmatContainer.</summary>
-/// <param name="HazardClass">DOT hazard class/division discriminator (e.g. "3", "1.1", "8").</param>
-/// <param name="Quantity">Quantity of this material present in the load.</param>
-/// <param name="QuantityUnit">Unit for <paramref name="Quantity"/> (e.g. "L", "kg", "gal").</param>
+/// <summary>A single load material item used to compute placarding for a HazmatContainer.</summary>
+/// <param name="HazardClass">DOT hazard class/division discriminator (e.g. "3", "1.1", "8").</param>
+/// <param name="Quantity">Quantity of this material present in the load.</param>
+/// <param name="QuantityUnit">Unit for <paramref name="Quantity"/> (e.g. "L", "kg", "gal").</param>
 public sealed record PlacardingMaterialItem(string HazardClass, decimal Quantity, string QuantityUnit);
 
 /// <summary>
@@ -29,6 +29,12 @@ public sealed record PlacardingMaterialItem(string HazardClass, decimal Quantity
 /// </summary>
 /// <param name="Materials">The hazard classes present in the load, with quantity and unit.</param>
 /// <param name="IsBulkPackaging">Whether the load is carried in bulk packaging.</param>
+/// <param name="CommandId">Unique identifier for this command instance.</param>
+/// <param name="CorrelationId">Correlation identifier grouping every operation in the same business transaction.</param>
+/// <param name="CausationId">Identifier of the immediate parent command or event that caused this one.</param>
+/// <param name="TenantId">Tenant the operation is scoped to.</param>
+/// <param name="HazmatContainerId">Identifier of the HazmatContainer record.</param>
+/// <param name="PerformedByUserId">Identifier of the user performing this operation.</param>
 public sealed record ApplyPlacardsCommand(
     Guid CommandId,
     Guid CorrelationId,
