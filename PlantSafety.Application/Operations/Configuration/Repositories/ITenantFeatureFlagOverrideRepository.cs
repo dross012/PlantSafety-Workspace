@@ -25,9 +25,14 @@ namespace PlantSafety.Application.Operations.Configuration.Repositories;
 public interface ITenantFeatureFlagOverrideRepository
 {
     /// <summary>Returns the override for the given tenant/feature pair, or null if none exists.</summary>
+    /// <param name="tenantId">Tenant the operation is scoped to.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="featureName">Name of the feature flag.</param>
     Task<TenantFeatureFlagOverrideDto?> FindAsync(Guid tenantId, string featureName, CancellationToken cancellationToken);
 
     /// <summary>Returns every override configured for the given feature, across all tenants.</summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="featureName">Name of the feature flag.</param>
     Task<IReadOnlyList<TenantFeatureFlagOverrideDto>> GetAllForFeatureAsync(string featureName, CancellationToken cancellationToken);
 
     /// <summary>Creates or updates (upserts) the override for the given tenant/feature pair.</summary>
@@ -36,6 +41,7 @@ public interface ITenantFeatureFlagOverrideRepository
     /// <param name="enabled">Whether the feature is enabled for this tenant.</param>
     /// <param name="rolloutPercentage">Optional tenant-scoped rollout percentage (0-100), or null to clear it.</param>
     /// <param name="updatedBy">The identity of the caller making the change.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<TenantFeatureFlagOverrideDto> SetAsync(Guid tenantId, string featureName, bool enabled, int? rolloutPercentage, string updatedBy, CancellationToken cancellationToken);
 
     /// <summary>
@@ -43,5 +49,8 @@ public interface ITenantFeatureFlagOverrideRepository
     /// given feature. Used by rollback automation (<see cref="Release.IRollbackAutomationPolicy"/>)
     /// to revert an in-progress canary rollout without deleting the tenant's on/off override.
     /// </summary>
+    /// <param name="updatedBy">Identity of the caller making the change.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="featureName">Name of the feature flag.</param>
     Task<int> ResetRolloutPercentageForFeatureAsync(string featureName, string updatedBy, CancellationToken cancellationToken);
 }

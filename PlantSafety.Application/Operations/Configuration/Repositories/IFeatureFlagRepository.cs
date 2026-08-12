@@ -49,6 +49,7 @@ public interface IFeatureFlagRepository
 
     /// <summary>Returns every feature flag row from the given database's [System].[FeatureFlag] table, ordered by FlagName.</summary>
     /// <param name="databaseKey">The logical database key (must be one of <see cref="GetDatabaseKeys"/>).</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<IReadOnlyList<FeatureFlagDto>> GetAllAsync(string databaseKey, CancellationToken cancellationToken);
 
     /// <summary>
@@ -57,6 +58,7 @@ public interface IFeatureFlagRepository
     /// <see cref="FeatureFlagDto.DatabaseKey"/> — this is a convenience aggregation for
     /// the operator UI, not evidence the flags are related across databases.
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<IReadOnlyList<FeatureFlagDto>> GetAllAcrossDatabasesAsync(CancellationToken cancellationToken);
 
     /// <summary>
@@ -69,6 +71,7 @@ public interface IFeatureFlagRepository
     /// <param name="flagName">The flag to toggle.</param>
     /// <param name="isEnabled">The new IsEnabled value.</param>
     /// <param name="updatedBy">The identity of the caller making the change (from ICurrentUserService), recorded in UpdatedBy.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<FeatureFlagDto> SetEnabledAsync(string databaseKey, string flagName, bool isEnabled, string updatedBy, CancellationToken cancellationToken);
 
     /// <summary>
@@ -79,5 +82,6 @@ public interface IFeatureFlagRepository
     /// <param name="flagName">The flag to update.</param>
     /// <param name="rolloutPercentage">The new rollout percentage (0-100), or null to clear it (binary IsEnabled-only behavior).</param>
     /// <param name="updatedBy">The identity of the caller making the change.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<FeatureFlagDto> SetRolloutPercentageAsync(string databaseKey, string flagName, int? rolloutPercentage, string updatedBy, CancellationToken cancellationToken);
 }

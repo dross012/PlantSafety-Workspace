@@ -80,5 +80,7 @@ public interface IMonitoringRepository
     /// Returns the most recent <paramref name="top"/> deadlock events parsed from the
     /// built-in "system_health" Extended Events session's ring_buffer target, newest first.
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="top">Maximum number of rows to return.</param>
     Task<IReadOnlyList<DeadlockEventDto>> GetRecentDeadlocksAsync(int top, CancellationToken cancellationToken);
 }

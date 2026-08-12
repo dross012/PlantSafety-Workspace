@@ -26,11 +26,14 @@ public interface ITenantReleaseChannelRepository
     /// Returns the tenant's assigned release channel, or null if the tenant has never been
     /// assigned one (callers should treat a missing row as <see cref="TenantReleaseChannel.Stable"/>).
     /// </summary>
+    /// <param name="tenantId">Tenant the operation is scoped to.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<TenantReleaseChannelDto?> FindAsync(Guid tenantId, CancellationToken cancellationToken);
 
     /// <summary>Creates or updates (upserts) the tenant's assigned release channel.</summary>
     /// <param name="tenantId">The tenant to assign a channel to.</param>
     /// <param name="channel">The channel to assign.</param>
     /// <param name="updatedBy">The identity of the caller making the change.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<TenantReleaseChannelDto> SetAsync(Guid tenantId, TenantReleaseChannel channel, string updatedBy, CancellationToken cancellationToken);
 }

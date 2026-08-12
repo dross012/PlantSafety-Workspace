@@ -22,6 +22,9 @@ namespace PlantSafety.Application.Operations.Configuration.Repositories;
 public interface IUserFeatureFlagOverrideRepository
 {
     /// <summary>Returns the override for the given user/feature pair, or null if none exists.</summary>
+    /// <param name="userId">Identifier of the user.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="featureName">Name of the feature flag.</param>
     Task<UserFeatureFlagOverrideDto?> FindAsync(Guid userId, string featureName, CancellationToken cancellationToken);
 
     /// <summary>Creates or updates (upserts) the override for the given user/feature pair.</summary>
@@ -29,5 +32,6 @@ public interface IUserFeatureFlagOverrideRepository
     /// <param name="featureName">The feature flag name.</param>
     /// <param name="enabled">Whether the feature is enabled for this specific user.</param>
     /// <param name="updatedBy">The identity of the caller making the change.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<UserFeatureFlagOverrideDto> SetAsync(Guid userId, string featureName, bool enabled, string updatedBy, CancellationToken cancellationToken);
 }

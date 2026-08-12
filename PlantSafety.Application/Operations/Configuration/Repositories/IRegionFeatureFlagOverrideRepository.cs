@@ -22,9 +22,14 @@ namespace PlantSafety.Application.Operations.Configuration.Repositories;
 public interface IRegionFeatureFlagOverrideRepository
 {
     /// <summary>Returns the override for the given region/feature pair, or null if none exists.</summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="region">Region the override applies to.</param>
+    /// <param name="featureName">Name of the feature flag.</param>
     Task<RegionFeatureFlagOverrideDto?> FindAsync(string region, string featureName, CancellationToken cancellationToken);
 
     /// <summary>Returns every override configured for the given feature, across all regions.</summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="featureName">Name of the feature flag.</param>
     Task<IReadOnlyList<RegionFeatureFlagOverrideDto>> GetAllForFeatureAsync(string featureName, CancellationToken cancellationToken);
 
     /// <summary>Creates or updates (upserts) the override for the given region/feature pair.</summary>
@@ -33,11 +38,15 @@ public interface IRegionFeatureFlagOverrideRepository
     /// <param name="enabled">Whether the feature is enabled in this region.</param>
     /// <param name="rolloutPercentage">Optional region-scoped rollout percentage (0-100), or null to clear it.</param>
     /// <param name="updatedBy">The identity of the caller making the change.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<RegionFeatureFlagOverrideDto> SetAsync(string region, string featureName, bool enabled, int? rolloutPercentage, string updatedBy, CancellationToken cancellationToken);
 
     /// <summary>
     /// Resets (sets to 0) the rollout percentage of every region override configured for the
     /// given feature. Used by rollback automation to revert an in-progress canary rollout.
     /// </summary>
+    /// <param name="updatedBy">Identity of the caller making the change.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="featureName">Name of the feature flag.</param>
     Task<int> ResetRolloutPercentageForFeatureAsync(string featureName, string updatedBy, CancellationToken cancellationToken);
 }

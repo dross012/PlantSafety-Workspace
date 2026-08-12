@@ -32,6 +32,8 @@ public interface IBackupRepository
     /// success/failure of the backup itself is observed via <see cref="GetBackupHistoryAsync"/>
     /// or <see cref="GetBackupHealthAsync"/> after it completes.
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="backupType">Backup type to filter by, or null for all types.</param>
     Task<BackupTriggerResultDto> TriggerBackupAsync(BackupType backupType, CancellationToken cancellationToken);
 
     /// <summary>
@@ -40,12 +42,16 @@ public interface IBackupRepository
     /// </summary>
     /// <param name="databaseName">Optional exact database name filter. Null returns all PlantSafety.* databases.</param>
     /// <param name="top">Maximum number of rows to return.</param>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<IReadOnlyList<BackupHistoryItemDto>> GetBackupHistoryAsync(string? databaseName, int top, CancellationToken cancellationToken);
 
     /// <summary>
     /// Returns the most recent database size snapshots from
     /// msdb.dbo.PlantSafety_DatabaseSizeLog, optionally filtered to a single database.
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="databaseName">Name of the database the operation targets.</param>
+    /// <param name="top">Maximum number of rows to return.</param>
     Task<IReadOnlyList<DatabaseSizeSnapshotDto>> GetDatabaseSizeHistoryAsync(string? databaseName, int top, CancellationToken cancellationToken);
 
     /// <summary>
@@ -54,11 +60,14 @@ public interface IBackupRepository
     /// isolated, self-cleaning &lt;databaseName&gt;_DRTest database, runs DBCC CHECKDB, then
     /// always drops the test database. Never modifies the live database.
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
+    /// <param name="databaseName">Name of the database the operation targets.</param>
     Task<RestoreVerifyResultDto> RunRestoreVerifyAsync(string databaseName, CancellationToken cancellationToken);
 
     /// <summary>
     /// Derives a backup-health status (Green/Yellow/Red) for every live PlantSafety.*
     /// database from the recency of its most recent successful FULL backup.
     /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the asynchronous operation.</param>
     Task<IReadOnlyList<BackupHealthDto>> GetBackupHealthAsync(CancellationToken cancellationToken);
 }
