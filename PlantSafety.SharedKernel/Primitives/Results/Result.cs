@@ -30,7 +30,14 @@ public sealed class Result<T>
     /// nullable-dereference warning, and the usual way that gets silenced is the null-forgiving
     /// operator, which suppresses genuine bugs just as effectively as false ones.
     /// </remarks>
+    /// <remarks>
+    /// Both halves of the invariant are declared on BOTH properties. Annotating only
+    /// IsSuccess=>Value and IsFailure=>Error left the common shapes unhelped: a caller writing
+    /// `if (!IsSuccess) ... Error.Code` was not told Error is non-null, because that fact was
+    /// attached to IsFailure, and the compiler does not connect the two.
+    /// </remarks>
     [MemberNotNullWhen(true, nameof(Value))]
+    [MemberNotNullWhen(false, nameof(Error))]
     public bool IsSuccess { get; }
 
     /// <summary>
@@ -38,6 +45,7 @@ public sealed class Result<T>
     /// </summary>
     /// <remarks>Failure implies Error is set, the other half of the documented invariant.</remarks>
     [MemberNotNullWhen(true, nameof(Error))]
+    [MemberNotNullWhen(false, nameof(Value))]
     public bool IsFailure => !IsSuccess;
 
     /// <summary>

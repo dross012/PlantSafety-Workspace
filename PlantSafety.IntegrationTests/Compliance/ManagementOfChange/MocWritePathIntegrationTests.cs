@@ -74,7 +74,7 @@ public sealed class MocWritePathIntegrationTests(IntegrationTestWebAppFactory fa
                   WHERE MocId = @MocId",
                 new { MocId = mocId });
 
-            ((object)row).Should().NotBeNull("CreateMocCommand must persist a real row via usp_Moc_Create");
+            ((object?)row).Should().NotBeNull("CreateMocCommand must persist a real row via usp_Moc_Create");
             ((string)row.Title).Should().Be(createCommand.Title);
             ((string)row.ChangeType).Should().Be("Permanent");
             ((string)row.RiskLevel).Should().Be("High");

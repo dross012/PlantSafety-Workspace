@@ -96,6 +96,18 @@ public sealed class GeneticAlgorithmOptimizationStrategy : IOptimizationStrategy
             population = nextGeneration;
         }
 
+        // `best` starts as default, so Decoded is null until the generation loop assigns it. If no
+        // generation ever produced an evaluated candidate -- an empty population, or a generation
+        // count of zero -- this fell through to the property accesses below and threw
+        // NullReferenceException from inside the result construction, where nothing names the
+        // actual cause. The same condition is already tested at the top of the loop
+        // (best.Chromosome is null); this makes it a stated precondition of building the result.
+        if (best.Chromosome is null || best.Decoded is null)
+        {
+            throw new InvalidOperationException(
+                "Genetic optimization produced no evaluated candidate: the population or generation count was empty.");
+        }
+
         return new OptimizationResult
         {
             StrategyName = StrategyName,

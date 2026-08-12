@@ -48,7 +48,7 @@ public sealed class CorrelationIdOperationFilter : IOperationFilter
         operation.Parameters ??= [];
 
         var alreadyDeclared = operation.Parameters.Any(
-            p => p.Name.Equals(ApiHeaderConstants.CorrelationId, StringComparison.OrdinalIgnoreCase)
+            p => string.Equals(p.Name, ApiHeaderConstants.CorrelationId, StringComparison.OrdinalIgnoreCase)
               && p.In == ParameterLocation.Header);
 
         if (!alreadyDeclared)
@@ -63,6 +63,9 @@ public sealed class CorrelationIdOperationFilter : IOperationFilter
                 Schema      = new OpenApiSchema { Type = JsonSchemaType.String, Format = "uuid" }
             });
         }
+
+        operation.Responses ??= [];
+
 
         foreach (var (statusCode, response) in operation.Responses)
         {

@@ -56,7 +56,7 @@ public sealed class TenantIdHeaderFilter : IOperationFilter
         operation.Parameters ??= [];
 
         var alreadyDeclared = operation.Parameters.Any(
-            p => p.Name.Equals(ApiHeaderConstants.TenantId, StringComparison.OrdinalIgnoreCase)
+            p => string.Equals(p.Name, ApiHeaderConstants.TenantId, StringComparison.OrdinalIgnoreCase)
               && p.In == ParameterLocation.Header);
 
         if (alreadyDeclared)

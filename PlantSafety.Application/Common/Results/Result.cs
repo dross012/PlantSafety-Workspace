@@ -7,6 +7,8 @@
 // SchemaVersion: 1
 // Additive-only evolution: new factory methods may be added; no existing constructors or properties may change.
 
+using System.Diagnostics.CodeAnalysis;
+
 using PlantSafety.Application.Common.Errors;
 
 namespace PlantSafety.Application.Common.Results;
@@ -44,6 +46,14 @@ public sealed class Result<T>
 
     /// <summary>Gets the success value. Throws <see cref="InvalidOperationException"/> if the result is a failure.</summary>
     /// <exception cref="InvalidOperationException">Thrown when accessed on a failure result.</exception>
+    /// <remarks>
+    /// [NotNull] states a fact rather than a hope: this property never returns null, because the
+    /// failure path throws instead of returning. Without it, callers of Result&lt;T&gt; with an
+    /// unconstrained T see the value as maybe-null even after checking IsSuccess, and the usual
+    /// way that gets silenced at the call site is the null-forgiving operator -- which suppresses
+    /// genuine nulls just as effectively as false ones.
+    /// </remarks>
+    [NotNull]
     public T Value => IsSuccess
         ? _value!
         : throw new InvalidOperationException("Cannot access Value on a failure Result.");
