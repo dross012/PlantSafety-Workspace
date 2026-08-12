@@ -46,23 +46,29 @@ public sealed class PhysicalAccessControlScenarioTests : UnitTestBase
         var accessAnomalyRepo = Substitute.For<IAccessAnomalyRepository>();
         var policyRepo = Substitute.For<IRestrictedZonePolicyRepository>();
 
+        // Discarded, not awaited. These Arg.Do calls CONFIGURE the substitute -- they register a
+        // callback that captures the aggregate when the handler later calls AddAsync -- rather
+        // than performing an operation. The Task they return is NSubstitute's default and carries
+        // no work, so awaiting it would suspend on nothing and imply a sequencing guarantee that
+        // does not exist. The discard says the return value is deliberately ignored, which is
+        // what CS4014 asks for here.
         SafetyZoneAggregate? zone = null;
-        safetyZoneRepo.AddAsync(Arg.Do<SafetyZoneAggregate>(a => zone = a), Arg.Any<CancellationToken>());
+        _ = safetyZoneRepo.AddAsync(Arg.Do<SafetyZoneAggregate>(a => zone = a), Arg.Any<CancellationToken>());
 
         AccessPointAggregate? accessPoint = null;
-        accessPointRepo.AddAsync(Arg.Do<AccessPointAggregate>(a => accessPoint = a), Arg.Any<CancellationToken>());
+        _ = accessPointRepo.AddAsync(Arg.Do<AccessPointAggregate>(a => accessPoint = a), Arg.Any<CancellationToken>());
 
         CredentialAggregate? credential = null;
-        credentialRepo.AddAsync(Arg.Do<CredentialAggregate>(a => credential = a), Arg.Any<CancellationToken>());
+        _ = credentialRepo.AddAsync(Arg.Do<CredentialAggregate>(a => credential = a), Arg.Any<CancellationToken>());
 
         RestrictedZonePolicyAggregate? policy = null;
-        policyRepo.AddAsync(Arg.Do<RestrictedZonePolicyAggregate>(a => policy = a), Arg.Any<CancellationToken>());
+        _ = policyRepo.AddAsync(Arg.Do<RestrictedZonePolicyAggregate>(a => policy = a), Arg.Any<CancellationToken>());
 
         AccessEventAggregate? accessEvent = null;
-        accessEventRepo.AddAsync(Arg.Do<AccessEventAggregate>(a => accessEvent = a), Arg.Any<CancellationToken>());
+        _ = accessEventRepo.AddAsync(Arg.Do<AccessEventAggregate>(a => accessEvent = a), Arg.Any<CancellationToken>());
 
         AccessAnomalyAggregate? anomaly = null;
-        accessAnomalyRepo.AddAsync(Arg.Do<AccessAnomalyAggregate>(a => anomaly = a), Arg.Any<CancellationToken>());
+        _ = accessAnomalyRepo.AddAsync(Arg.Do<AccessAnomalyAggregate>(a => anomaly = a), Arg.Any<CancellationToken>());
 
         // ---- Step 1: register the SafetyZone --------------------------------------------
         var zoneResult = await new RegisterSafetyZoneCommandHandler(safetyZoneRepo, NullLogger<RegisterSafetyZoneCommandHandler>())
@@ -175,7 +181,7 @@ public sealed class PhysicalAccessControlScenarioTests : UnitTestBase
         var safetyZoneRepo = Substitute.For<ISafetyZoneRepository>();
 
         SafetyZoneAggregate? zone = null;
-        safetyZoneRepo.AddAsync(Arg.Do<SafetyZoneAggregate>(a => zone = a), Arg.Any<CancellationToken>());
+        _ = safetyZoneRepo.AddAsync(Arg.Do<SafetyZoneAggregate>(a => zone = a), Arg.Any<CancellationToken>());
 
         var zoneResult = await new RegisterSafetyZoneCommandHandler(safetyZoneRepo, NullLogger<RegisterSafetyZoneCommandHandler>())
             .Handle(new RegisterSafetyZoneCommand(
@@ -185,7 +191,7 @@ public sealed class PhysicalAccessControlScenarioTests : UnitTestBase
         zoneResult.IsSuccess.Should().BeTrue();
 
         AccessPointAggregate? accessPoint = null;
-        accessPointRepo.AddAsync(Arg.Do<AccessPointAggregate>(a => accessPoint = a), Arg.Any<CancellationToken>());
+        _ = accessPointRepo.AddAsync(Arg.Do<AccessPointAggregate>(a => accessPoint = a), Arg.Any<CancellationToken>());
 
         await new RegisterAccessPointCommandHandler(accessPointRepo, NullLogger<RegisterAccessPointCommandHandler>())
             .Handle(new RegisterAccessPointCommand(
