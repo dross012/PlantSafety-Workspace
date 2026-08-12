@@ -27,6 +27,8 @@ public sealed class ProductionTrackingReadDapperRepository(DapperQueryExecutor q
     /// <inheritdoc/>
     public async Task<IReadOnlyList<ProductionRunKpiInputDto>> GetActiveRunKpiInputsAsync(Guid tenantId, CancellationToken cancellationToken)
     {
+        logger.LogDebug("Active run KPI inputs read-model for Tenant {TenantId}", tenantId);
+
         var parameters = new StoredProcedureBuilder().AddGuid("TenantId", tenantId).Build();
         var rows = await queryExecutor.QueryAsync<ActiveRunKpiBaseRow>("[Operational].[usp_ProductionRun_ActiveKpiBase]", parameters, cancellationToken);
 

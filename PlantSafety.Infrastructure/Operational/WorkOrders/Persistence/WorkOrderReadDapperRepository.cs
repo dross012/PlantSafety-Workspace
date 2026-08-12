@@ -26,6 +26,8 @@ public sealed class WorkOrderReadDapperRepository(DapperQueryExecutor queryExecu
     /// <inheritdoc/>
     public async Task<WorkOrderItemDto?> GetByIdAsync(Guid tenantId, Guid workOrderId, CancellationToken cancellationToken)
     {
+        logger.LogDebug("GetById read-model for WorkOrder {WorkOrderId} Tenant {TenantId}", workOrderId, tenantId);
+
         var parameters = new StoredProcedureBuilder()
             .AddGuid("WorkOrderId", workOrderId)
             .AddGuid("TenantId", tenantId)
