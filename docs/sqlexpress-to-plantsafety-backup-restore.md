@@ -40,8 +40,10 @@ picture.
   directly in C# Options classes rather than `appsettings.json` — found 7
   more databases genuinely owned by that cross-cutting governance tooling
   (schema-drift guard, archival/purge, error-log viewer, monitoring). See
-  "Corrected database ownership" below for the full accounting; only
-  `ExportImportDB`'s actual data source remains a genuine open question.
+  "Corrected database ownership" below for the full accounting — all 18
+  are now accounted for, including `ExportImportDB` (see that section for
+  why its 15 rows turned out to be governance bookkeeping, not business
+  data).
 - **No application service was found running** on this machine at the time
   of this check (no matching Windows service, nothing listening on common
   web ports) — there was no live traffic to coordinate a no-downtime
@@ -129,7 +131,7 @@ everything currently untracked in git, and found a real owner for 7 more:
 | `CloudIdentityDB` | Owned (governance-only) | `Operations/Monitoring` + `Operations/SchemaGuard` (Query Store + `[System].[SchemaMigrations]` tracking); no dedicated business module claims it — `Azure/Identity.Infrastructure` is Azure AD/Graph-based, no SQL connectivity |
 | `DiagnosticsDB` | Owned | `Operations/{Archival,Monitoring,SchemaGuard}`, targeting `Diagnostics.sp_DiagnosticEvent_Purge` etc. Note: the standalone `Diagnostics/Safety.Diagnostics` engine and `Diagnostics.UI` have **no SQL connectivity at all** — only the Ops module connects |
 | `ErrorDB` | Owned | `Operations/{Archival,Monitoring}` (`ErrorDbConnectionString`), queried directly in `MonitoringDapperRepository.cs`, surfaced via `OperationsMonitoringV1Controller`/UI. Also the shared cross-DB error-log sink every stored proc's `CATCH` block writes to |
-| `ExportImportDB` | **Owned, but with an open question** | `Operations/{Monitoring,SchemaGuard}` has a connection string, but the dedicated `ExportImport` module (full Domain/Application/Infrastructure/Integration stack, `ExportImportDbOptions.cs`) has an **empty default connection string, no `appsettings.json`, no host, no `Program.cs`** — `AddExportImportInfrastructure()` is only ever called from its own test project. Its 12 tables / 15 rows were populated by *something*, but nothing traceable in this repo is currently doing it. **Follow-up needed before this one is touched in any migration.** |
+| `ExportImportDB` | Owned (governance-only), **fully resolved** | `Operations/{Monitoring,SchemaGuard}` has the connection string. The dedicated `ExportImport` module (full Domain/Application/Infrastructure/Integration stack) is unwired (empty connection string, no host, no `Program.cs`) — but that no longer matters: its 15 "rows" are `System.DataDictionary` (11, a self-describing catalog of the module's 10 real tables — one entry states outright "no `PlantSafety.Domain` namespace named ExportImport exists... schema is authoritative in its own right") and `System.SchemaMigrations` (4, a deploy log, every row's `Notes` field reading "Backfilled retroactively; AppliedAtUtc approximated from file mtime", `AppliedBy = 'Dross\dross'` — a human running scripts by hand, not an application). Confirmed directly: `ExportBatch`, `ExportRecord`, `ImportBatch`, `ImportRecord`, and the other business tables all have **zero rows**. No import/export operation has ever run; there is no mystery writer because there is nothing being written. The same `System.DataDictionary`/`System.SchemaMigrations`-only pattern was confirmed present in `CloudIdentityDB`, `PredictiveDB`, and `ReportingDB` too — none of the four governance-only databases hold real business data. |
 | `PredictiveDB` | Owned (governance-only) | `Operations/{Monitoring,SchemaGuard}`. The separate `Intelligence` (ML/predictive) module connects to its own `IntelligenceDev` localdb, not this database — no overlap |
 | `ReportingDB` | Owned (governance-only) | `Operations/{Monitoring,SchemaGuard}`. **Not** the same database `Reporting.Api` uses — despite the name, `Reporting.Api` connects to `AuditDB`+`IntegrationDB` only |
 | `MaintenanceDB` | Deliberately empty placeholder | Documented in untracked `PlantSafety/docs/database/placeholder-databases.md`: "do not populate without a corresponding Domain-layer module" |
@@ -146,10 +148,10 @@ indiscriminately by `usp_PlantSafety_BackupFull`/`Diff`/`Log` (driven off
 `sys.databases WHERE name LIKE 'PlantSafety.%'`) — that's infrastructure
 coverage, not application ownership, and doesn't change any row above.
 
-**Net effect:** 17 of 18 databases are now accounted for (3 app-owned + 7
-governance-owned + 8 deliberately empty). `ExportImportDB` is the one
-genuine open item — real data, no traceable writer — and should be
-resolved before it's included in any cutover decision.
+**Net effect: all 18 of 18 databases are now fully accounted for** (3
+app-owned + 7 governance-owned, none holding real business data beyond
+`ArchiveDB`/`DiagnosticsDB`/`ErrorDB` + 8 deliberately empty). No
+remaining ownership gaps.
 
 ## What is explicitly NOT done
 
@@ -159,8 +161,9 @@ resolved before it's included in any cutover decision.
   was dropped. Unlike Training's own move (where the source was marked
   `READ_ONLY` after cutover), no cutover has happened here, so there is
   nothing to protect yet.
-- **`ExportImportDB`'s actual data source has not been identified** — see
-  above. This is the one remaining ownership gap.
 - **No decommission timeline for `localhost\SQLEXPRESS`.** That instance
   cannot be considered for decommissioning until an actual cutover happens
-  and soaks, which has not been scheduled.
+  and soaks, which has not been scheduled. Ownership is no longer the
+  blocker for planning that cutover — it would now be a question of
+  scheduling a maintenance window and repointing `PlantSafety.Api`/
+  `Reporting.Api`, not further discovery.
