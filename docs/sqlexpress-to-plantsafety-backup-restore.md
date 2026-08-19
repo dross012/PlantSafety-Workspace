@@ -30,12 +30,18 @@ picture.
   unrelated to the 18-database estate this note covers.
 - **No migration runbook or deviations register already existed** for this
   question in this repo (unlike Training's `docs/deviations.md`).
-- **Only 2 of 18 databases have a traceable live connection string**:
-  `PlantSafety.Api` → `CoreDB` + `IntegrationDB`; `Reporting.Api` →
-  `AuditDB` + `IntegrationDB`. The other 16 database names have no
-  discoverable code reference anywhere in this repo, tracked or untracked.
-  8 of those 16 turned out to be genuinely empty (0 tables) on inspection —
-  see the table below.
+- **Initial pass found a live connection string for only 3 of 18
+  databases** (`PlantSafety.Api` → `CoreDB` + `IntegrationDB`;
+  `Reporting.Api` → `AuditDB` + `IntegrationDB`), because it searched
+  `appsettings*.json` and git-tracked files only. A follow-up pass
+  searching the full working tree — including the untracked
+  `PlantSafety.Infrastructure/Operations/{Archival,Monitoring,SchemaGuard,
+  Configuration}` module, which hardcodes per-database connection strings
+  directly in C# Options classes rather than `appsettings.json` — found 7
+  more databases genuinely owned by that cross-cutting governance tooling
+  (schema-drift guard, archival/purge, error-log viewer, monitoring). See
+  "Corrected database ownership" below for the full accounting; only
+  `ExportImportDB`'s actual data source remains a genuine open question.
 - **No application service was found running** on this machine at the time
   of this check (no matching Windows service, nothing listening on common
   web ports) — there was no live traffic to coordinate a no-downtime
@@ -48,10 +54,12 @@ picture.
   (`EXEC msdb.dbo.usp_PlantSafety_BackupFull @BackupRootPath = ...`) rather
   than writing new backup logic.
 
-Given the above — most of the 18 databases have no traceable owner in this
-codebase — a full cutover was judged too risky to execute without further
-discovery. The backup-and-restore verification below is as far as this
-pass went.
+At the time the backup/restore below was executed, most of the 18
+databases had no traceable owner in this codebase, so a full cutover was
+judged too risky without further discovery. A follow-up ownership pass
+(2026-08-19, same day) closed most of that gap — see "Corrected database
+ownership" — but cutover still has not happened; the backup-and-restore
+verification below remains as far as this work has gone.
 
 ## What was done
 
@@ -105,6 +113,44 @@ pass went.
 consistent with `PlantSafety.Api`'s live connection to it. The eight
 zero-row databases were already empty on the source — not a restore defect.
 
+## Corrected database ownership (2026-08-19, follow-up pass)
+
+The original "16 unaccounted databases" framing above was too pessimistic
+— it came from a pass that searched `appsettings*.json` and git-tracked
+files only. A follow-up pass searched the actual working tree, including
+everything currently untracked in git, and found a real owner for 7 more:
+
+| Database | Status | Owner |
+|---|---|---|
+| `CoreDB` | Owned | `PlantSafety.Api` (`appsettings.json`) |
+| `AuditDB` | Owned | `Reporting.Api` (`appsettings.json`) |
+| `IntegrationDB` | Owned | `PlantSafety.Api` + `Reporting.Api` (`appsettings.json`) |
+| `ArchiveDB` | Owned | `PlantSafety.Infrastructure/Operations/Archival` — `Archival.ArchivalJob`/`TierPolicy`, `[System].[FeatureFlag]` etc., via `ArchivalDapperRepository`/`FeatureFlagDapperRepository` (untracked) |
+| `CloudIdentityDB` | Owned (governance-only) | `Operations/Monitoring` + `Operations/SchemaGuard` (Query Store + `[System].[SchemaMigrations]` tracking); no dedicated business module claims it — `Azure/Identity.Infrastructure` is Azure AD/Graph-based, no SQL connectivity |
+| `DiagnosticsDB` | Owned | `Operations/{Archival,Monitoring,SchemaGuard}`, targeting `Diagnostics.sp_DiagnosticEvent_Purge` etc. Note: the standalone `Diagnostics/Safety.Diagnostics` engine and `Diagnostics.UI` have **no SQL connectivity at all** — only the Ops module connects |
+| `ErrorDB` | Owned | `Operations/{Archival,Monitoring}` (`ErrorDbConnectionString`), queried directly in `MonitoringDapperRepository.cs`, surfaced via `OperationsMonitoringV1Controller`/UI. Also the shared cross-DB error-log sink every stored proc's `CATCH` block writes to |
+| `ExportImportDB` | **Owned, but with an open question** | `Operations/{Monitoring,SchemaGuard}` has a connection string, but the dedicated `ExportImport` module (full Domain/Application/Infrastructure/Integration stack, `ExportImportDbOptions.cs`) has an **empty default connection string, no `appsettings.json`, no host, no `Program.cs`** — `AddExportImportInfrastructure()` is only ever called from its own test project. Its 12 tables / 15 rows were populated by *something*, but nothing traceable in this repo is currently doing it. **Follow-up needed before this one is touched in any migration.** |
+| `PredictiveDB` | Owned (governance-only) | `Operations/{Monitoring,SchemaGuard}`. The separate `Intelligence` (ML/predictive) module connects to its own `IntelligenceDev` localdb, not this database — no overlap |
+| `ReportingDB` | Owned (governance-only) | `Operations/{Monitoring,SchemaGuard}`. **Not** the same database `Reporting.Api` uses — despite the name, `Reporting.Api` connects to `AuditDB`+`IntegrationDB` only |
+| `MaintenanceDB` | Deliberately empty placeholder | Documented in untracked `PlantSafety/docs/database/placeholder-databases.md`: "do not populate without a corresponding Domain-layer module" |
+| `NotificationsDB` | Deliberately empty placeholder | Same doc |
+| `ProductionDB` | Deliberately empty placeholder | Same doc |
+| `RoutingDB` | Deliberately empty placeholder | Same doc |
+| `SandboxDB` | Deliberately empty placeholder — **naming-hygiene flag** | Same doc. A database named "Sandbox" sitting in the same estate as `CoreDB` (484 tables/57,025 rows) is worth a governance conversation independent of its emptiness |
+| `SchedulingDB` | Deliberately empty placeholder | Same doc |
+| `TestHarnessDB` | Deliberately empty placeholder — **naming-hygiene flag** | Same doc. Same concern as `SandboxDB` |
+| `ToolingDB` | Deliberately empty placeholder | Same doc. `SafetyTooling/` (Roslyn analyzers/CLI/codegen) is pure dev tooling with no SQL connectivity — doesn't own this DB despite the name similarity |
+
+All 18 databases, including the 8 empty placeholders, are backed up
+indiscriminately by `usp_PlantSafety_BackupFull`/`Diff`/`Log` (driven off
+`sys.databases WHERE name LIKE 'PlantSafety.%'`) — that's infrastructure
+coverage, not application ownership, and doesn't change any row above.
+
+**Net effect:** 17 of 18 databases are now accounted for (3 app-owned + 7
+governance-owned + 8 deliberately empty). `ExportImportDB` is the one
+genuine open item — real data, no traceable writer — and should be
+resolved before it's included in any cutover decision.
+
 ## What is explicitly NOT done
 
 - **`PlantSafety.Api` / `Reporting.Api` connection strings are unchanged**
@@ -113,20 +159,8 @@ zero-row databases were already empty on the source — not a restore defect.
   was dropped. Unlike Training's own move (where the source was marked
   `READ_ONLY` after cutover), no cutover has happened here, so there is
   nothing to protect yet.
-- **The 16 databases with no traceable code owner have not been
-  investigated further.** Before any real cutover, something needs to
-  positively confirm what — if anything — reads or writes
-  `ProductionDB`/`SchedulingDB`/`MaintenanceDB`/`DiagnosticsDB`/
-  `PredictiveDB`/`RoutingDB`/`ToolingDB`/`NotificationsDB`/
-  `ExportImportDB`/`CloudIdentityDB`/`ArchiveDB`/`SandboxDB`/
-  `TestHarnessDB`/`ErrorDB` beyond the backup job itself. The untracked
-  working-tree folders present in this repo at the time of this check
-  (`Azure/`, `DataLake/`, `Diagnostics/`, `ExportImport/`, `Intelligence/`,
-  `PlantSafety/`, `Reporting/`, `SafetyIntegrations/`, `SafetyTooling/`,
-  and parts of `Shared/`) were not committed and were not searched by this
-  pass beyond what a working-tree grep could see — a plan built only from
-  git history would miss most of the application code that could touch
-  these databases.
+- **`ExportImportDB`'s actual data source has not been identified** — see
+  above. This is the one remaining ownership gap.
 - **No decommission timeline for `localhost\SQLEXPRESS`.** That instance
   cannot be considered for decommissioning until an actual cutover happens
   and soaks, which has not been scheduled.
