@@ -23,20 +23,28 @@
 // ============================================================================
 using PlantSafety.Application.Intelligence.AITraining.Repositories;
 using PlantSafety.Application.Intelligence.DataLake.Repositories;
+using PlantSafety.Application.Intelligence.FeatureEngineering.Repositories;
+using PlantSafety.Application.Intelligence.ModelRegistry.Repositories;
 using PlantSafety.Application.Intelligence.PredictiveSafety.Repositories;
 using PlantSafety.Infrastructure.Intelligence.AITraining.Persistence;
 using PlantSafety.Infrastructure.Intelligence.DataLake.Persistence;
+using PlantSafety.Infrastructure.Intelligence.FeatureEngineering.Persistence;
+using PlantSafety.Infrastructure.Intelligence.ModelRegistry.Persistence;
 using PlantSafety.Infrastructure.Intelligence.PredictiveSafety.Persistence;
 
 namespace PlantSafety.Infrastructure.Intelligence.DependencyInjection;
 
 /// <summary>
 /// Registers the Infrastructure-layer write-side aggregate repositories and by-id read
-/// repositories for the AITraining, DataLake, and PredictiveSafety Intelligence sub-modules.
+/// repositories for the AITraining, DataLake, PredictiveSafety, FeatureEngineering, and
+/// ModelRegistry Intelligence sub-modules.
 /// </summary>
 public static class IntelligenceAggregateInfrastructureServiceRegistration
 {
-    /// <summary>Adds the AITrainingJob/DataLakeActivity/PredictiveSafetyAlert write-side aggregate repositories and by-id read repositories to the service collection.</summary>
+    /// <summary>
+    /// Adds the AITrainingJob/DataLakeActivity/PredictiveSafetyAlert/FeatureSet/ModelRegistryEntry
+    /// write-side aggregate repositories and by-id read repositories to the service collection.
+    /// </summary>
     public static IServiceCollection AddIntelligenceAggregatesInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<PlantSafety.Domain.Intelligence.AITraining.Interfaces.IAITrainingJobRepository, AITrainingJobAggregateDapperRepository>();
@@ -47,6 +55,14 @@ public static class IntelligenceAggregateInfrastructureServiceRegistration
 
         services.AddScoped<PlantSafety.Domain.Intelligence.PredictiveSafety.Interfaces.IPredictiveSafetyAlertRepository, PredictiveSafetyAlertAggregateDapperRepository>();
         services.AddScoped<IPredictiveSafetyAlertDetailRepository, PredictiveSafetyAlertDetailDapperRepository>();
+
+        // ---- Intelligence.FeatureEngineering / Intelligence.ModelRegistry (2026-08-20) --
+        // ported from the confirmed-dead, orphaned Intelligence.Domain project. ----------------
+        services.AddScoped<PlantSafety.Domain.Intelligence.FeatureEngineering.Interfaces.IFeatureSetRepository, FeatureSetAggregateDapperRepository>();
+        services.AddScoped<IFeatureSetDetailRepository, FeatureSetDetailDapperRepository>();
+
+        services.AddScoped<PlantSafety.Domain.Intelligence.ModelRegistry.Interfaces.IModelRegistryEntryRepository, ModelRegistryEntryAggregateDapperRepository>();
+        services.AddScoped<IModelRegistryEntryDetailRepository, ModelRegistryEntryDetailDapperRepository>();
 
         return services;
     }

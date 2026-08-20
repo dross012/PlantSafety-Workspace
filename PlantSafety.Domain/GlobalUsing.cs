@@ -1655,6 +1655,30 @@ global using PlantSafety.Domain.Intelligence.PredictiveSafety.Rules;
 global using PlantSafety.Domain.Intelligence.PredictiveSafety.ValueObjects.Ids;
 global using PlantSafety.Domain.Intelligence.PredictiveSafety.Predictors;
 
+// ---- Intelligence.FeatureEngineering / Intelligence.ModelRegistry (2026-08-20) -- ported from the
+// confirmed-dead, orphaned Intelligence.Domain project (Intelligence.Domain/FeatureEngineering,
+// Intelligence.Domain/ModelRegistry) into this real, live Intelligence module. FeatureSet is an
+// Entity (not an aggregate root) per the orphan's original documented design; ModelRegistryEntry is
+// an aggregate root. See ModelRegistryDomainService for the Safety Rule 4.5 deployment-eligibility
+// gate and FeatureEngineeringDomainService for feature-set versioning/publish-readiness rules. -----
+global using PlantSafety.Domain.Intelligence.FeatureEngineering.Entities;
+global using PlantSafety.Domain.Intelligence.FeatureEngineering.Events;
+global using PlantSafety.Domain.Intelligence.FeatureEngineering.Exceptions;
+global using PlantSafety.Domain.Intelligence.FeatureEngineering.Interfaces;
+global using PlantSafety.Domain.Intelligence.FeatureEngineering.Rules;
+global using PlantSafety.Domain.Intelligence.FeatureEngineering.Services;
+global using PlantSafety.Domain.Intelligence.FeatureEngineering.ValueObjects;
+global using PlantSafety.Domain.Intelligence.FeatureEngineering.ValueObjects.Ids;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.Aggregates;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.Enums;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.Events;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.Exceptions;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.Interfaces;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.Rules;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.Services;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.ValueObjects;
+global using PlantSafety.Domain.Intelligence.ModelRegistry.ValueObjects.Ids;
+
 // ---- PhysicalAccessControl (new top-level module, 2026-08-04 -- badge/access-control
 // integration: Access Point Management, Badge/Credential Management, Access Event Ingestion,
 // Zone Occupancy Correlation, Anomaly Detection) ----------------------------------------------
