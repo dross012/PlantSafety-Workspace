@@ -2,11 +2,31 @@
 
 ## Status
 
-**Planned, not executed (2026-08-19).** This is the concrete procedure for
-the actual switch — repointing every connection string and marking the
-source read-only. Nothing in this document has been run. It exists so the
-cutover can be picked up and executed deliberately, on a chosen date,
-rather than improvised.
+**Scheduled, not executed (window set 2026-08-19).** This is the concrete
+procedure for the actual switch — repointing every connection string and
+marking the source read-only. Nothing in this document has been run.
+Scheduling the window below is a calendar entry, not a go-ahead — no step
+in this document runs automatically when the window arrives; execution
+still requires an explicit start-of-window confirmation.
+
+### Scheduled window
+
+| | |
+|---|---|
+| Date | Saturday, 2026-08-22 |
+| Start | 06:00 CDT |
+| End (maintenance) | 12:00 CDT |
+| Rollback buffer | 12:00–14:00 CDT |
+| Duration | 6 hours maintenance + 2 hours rollback buffer |
+| Scope | PlantSafety cutover only — no other program |
+
+Chosen for zero weekday operational impact, and to leave room within the
+window itself for: fresh backup/restore (checklist step 2), installer
+validation, `PlantSafety.Api`/`Reporting.Api` smoke tests, cross-module and
+reporting-pipeline validation, and Outbox/Inbox checks, before step 7
+(marking `SQLEXPRESS` read-only) is reached. If those validations don't
+pass inside the window, the correct move is to stop and reschedule, not to
+push through past 12:00 into the rollback buffer.
 
 Prerequisite work already done and verified — see
 `docs/sqlexpress-to-plantsafety-backup-restore.md`:
