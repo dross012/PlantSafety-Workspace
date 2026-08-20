@@ -156,11 +156,7 @@ global using PlantSafety.Infrastructure.SafetyEvents.Observation.Messaging;
 global using PlantSafety.Infrastructure.SafetyEvents.Observation.Persistence;
 
 // ---- Infrastructure: Training.CompetencyManagement ---------------------------
-global using PlantSafety.Infrastructure.Training.CompetencyManagement.Interfaces;
-global using PlantSafety.Infrastructure.Training.CompetencyManagement.Mapping;
 global using PlantSafety.Infrastructure.Training.CompetencyManagement.Messaging;
-global using PlantSafety.Infrastructure.Training.CompetencyManagement.Persistence;
-global using PlantSafety.Infrastructure.Training.CompetencyManagement.Repositories;
 
 // ---- Infrastructure: Financials -----------------------------------------------
 global using PlantSafety.Infrastructure.Financials.Persistence;

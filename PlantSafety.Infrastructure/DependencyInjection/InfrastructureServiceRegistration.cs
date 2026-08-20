@@ -74,8 +74,6 @@ using PlantSafety.Infrastructure.Persistence.UnitOfWork;
 using PlantSafety.Infrastructure.PlanningProjects.Persistence;
 using PlantSafety.Infrastructure.PlanningProjects.Services;
 using PlantSafety.Infrastructure.Search;
-using PlantSafety.Infrastructure.Training.CompetencyManagement.Interfaces;
-using PlantSafety.Infrastructure.Training.CompetencyManagement.Repositories;
 using PlantSafety.Application.Features.SafetyEvents.Handlers.RootCauseAnalysis;
 using PlantSafety.Infrastructure.Features.SafetyEvents.RootCauseAnalysis.Repositories;
 using PlantSafety.Application.Features.SafetyEvents.Handlers.Exports;
@@ -621,9 +619,6 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IPPEManagementInfrastructure, PPEManagementDapperRepository>();
         services.AddScoped<IRiskManagementInfrastructure, RiskManagementDapperRepository>();
         services.AddScoped<ISchedulesInfrastructure, SchedulesDapperRepository>();
-
-        // Training module repositories
-        services.AddScoped<ICompetencyManagementInfrastructure, CompetencyManagementDapperRepository>();
 
         // Features tree — ProcessManagement module repositories
         services.AddScoped<PlantSafety.Application.Features.ProcessManagement.Handlers.Processes.IProcessRepository,
