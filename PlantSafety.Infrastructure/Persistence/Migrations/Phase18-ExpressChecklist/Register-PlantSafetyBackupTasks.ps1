@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Registers Windows Task Scheduler tasks that replace the Phase 12 SQL
-    Server Agent backup jobs, since SQL Server Agent (SQLEXPRESS) is
+    Server Agent backup jobs, since SQL Server Agent (PLANTSAFETY) is
     confirmed DISABLED on this dev instance (2026-07-19).
 
 .DESCRIPTION

@@ -2,7 +2,7 @@
 .SYNOPSIS
     Registers a daily Windows Task Scheduler task that runs the Phase 18
     database size snapshot (msdb.dbo.usp_PlantSafety_LogDatabaseSizes),
-    since SQL Server Agent (SQLEXPRESS) is confirmed DISABLED on this dev
+    since SQL Server Agent (PLANTSAFETY) is confirmed DISABLED on this dev
     instance (2026-07-19) and this new monitoring routine has the same
     reliability problem as the Phase 12 backup/maintenance jobs.
 

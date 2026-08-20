@@ -68,7 +68,7 @@ internal static class Program
 
         var skipDownload = args.Contains("--skip-download");
         var connectionString = GetArg(args, "--connection-string")
-            ?? "Server=localhost\\SQLEXPRESS;Database=PlantSafety.CoreDB;Trusted_Connection=True;TrustServerCertificate=True;";
+            ?? "Server=localhost\\PLANTSAFETY;Database=PlantSafety.CoreDB;Trusted_Connection=True;TrustServerCertificate=True;";
 
         Console.WriteLine("=== PHASE 1: Load mock NFPA reference-data input files (SampleData/) ===");
         if (skipDownload)

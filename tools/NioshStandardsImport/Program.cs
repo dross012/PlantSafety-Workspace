@@ -52,7 +52,7 @@ internal static class Program
         var defaultSeedFile = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "data", "niosh-hazards.seed.json"));
 
         var connectionString = GetArg(args, "--connection-string")
-            ?? "Server=localhost\\SQLEXPRESS;Database=PlantSafety.CoreDB;Trusted_Connection=True;TrustServerCertificate=True;";
+            ?? "Server=localhost\\PLANTSAFETY;Database=PlantSafety.CoreDB;Trusted_Connection=True;TrustServerCertificate=True;";
         var seedFile = GetArg(args, "--seed-file") ?? defaultSeedFile;
 
         Console.WriteLine("=== PHASE 1: Load NIOSH hazard seed data ===");

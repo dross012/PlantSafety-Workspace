@@ -27,18 +27,18 @@ public sealed class SchemaGuardOptions
     /// <summary>
     /// Logical database key -&gt; connection string, one entry per live database tracked
     /// by Phase 7's [System].[SchemaMigrations] rollout. Defaults match the 8 databases
-    /// enumerated in 70-schema-migrations-tracking.sql on the local SQLEXPRESS instance.
+    /// enumerated in 70-schema-migrations-tracking.sql on the local PLANTSAFETY instance.
     /// </summary>
     public Dictionary<string, string> DatabaseConnectionStrings { get; init; } = new()
     {
-        ["CoreDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.CoreDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["ArchiveDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ArchiveDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["CloudIdentityDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.CloudIdentityDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["PredictiveDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.PredictiveDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["ReportingDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ReportingDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["IntegrationDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.IntegrationDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["DiagnosticsDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.DiagnosticsDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["ExportImportDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ExportImportDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["CoreDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.CoreDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ArchiveDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ArchiveDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["CloudIdentityDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.CloudIdentityDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["PredictiveDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.PredictiveDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ReportingDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ReportingDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["IntegrationDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.IntegrationDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["DiagnosticsDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.DiagnosticsDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ExportImportDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ExportImportDB;Integrated Security=true;TrustServerCertificate=true;",
     };
 
     /// <summary>Root folder scanned for migration script manifests. Defaults to Persistence\Migrations under Infrastructure.</summary>

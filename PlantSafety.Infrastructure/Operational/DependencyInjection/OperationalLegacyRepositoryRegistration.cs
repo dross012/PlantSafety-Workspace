@@ -31,7 +31,7 @@
 //                  26 interfaces were backed by brand-new "*ReadModel" tables + "usp_*_List" (or
 //                  usp_OperationalResources_BulkUpdate / usp_OperationalExportItems_List) stored
 //                  procedures under PlantSafety.Infrastructure\Operational\Sql\{Tables,Procedures}\,
-//                  deployed to the live localhost\SQLEXPRESS -> PlantSafety.CoreDB database as part
+//                  deployed to the live localhost\PLANTSAFETY -> PlantSafety.CoreDB database as part
 //                  of this pass. All 26 required brand-new SQL (no genuine pre-existing match).
 //
 //                  Call <c>services.AddOperationalLegacyRepositories()</c> from host startup

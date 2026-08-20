@@ -3,7 +3,7 @@
     Express-safe replacement for the Phase 12 SQL Server Agent backup jobs.
 
 .DESCRIPTION
-    SQL Server Agent (SQLEXPRESS) is confirmed DISABLED (not just stopped) on
+    SQL Server Agent (PLANTSAFETY) is confirmed DISABLED (not just stopped) on
     this dev instance (live-verified 2026-07-19), so the Agent jobs registered
     in Phase 12 (120-backup-jobs-full-diff-log.sql) will never fire on their
     own. This script calls the SAME existing stored procedures
@@ -18,7 +18,7 @@
     Full | Diff | Log -- selects which usp_PlantSafety_Backup<Type> proc to run.
 
 .PARAMETER ServerInstance
-    SQL Server instance name. Defaults to (local)\SQLEXPRESS.
+    SQL Server instance name. Defaults to (local)\PLANTSAFETY.
 
 .OUTPUTS
     Writes a timestamped log file under
@@ -32,7 +32,7 @@ param(
     [ValidateSet('Full', 'Diff', 'Log')]
     [string]$BackupType,
 
-    [string]$ServerInstance = '(local)\SQLEXPRESS'
+    [string]$ServerInstance = '(local)\PLANTSAFETY'
 )
 
 $ErrorActionPreference = 'Stop'

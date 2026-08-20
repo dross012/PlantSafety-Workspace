@@ -2,7 +2,7 @@
 .SYNOPSIS
     Registers Windows Task Scheduler tasks that replace the Phase 7 SQL
     Server Agent retention-purge jobs (74-retention-archival.sql), since SQL
-    Server Agent (SQLEXPRESS) is confirmed DISABLED on this dev instance
+    Server Agent (PLANTSAFETY) is confirmed DISABLED on this dev instance
     (2026-07-19). Same daily 02:00 cadence as the original Agent jobs.
 
 .DESCRIPTION

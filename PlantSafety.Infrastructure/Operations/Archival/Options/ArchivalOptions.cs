@@ -33,11 +33,11 @@ public sealed class ArchivalOptions
     /// </summary>
     public Dictionary<string, string> DatabaseConnectionStrings { get; init; } = new()
     {
-        ["AuditDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.AuditDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["ErrorDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ErrorDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["IntegrationDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.IntegrationDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["DiagnosticsDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.DiagnosticsDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["ArchiveDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ArchiveDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["AuditDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.AuditDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ErrorDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ErrorDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["IntegrationDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.IntegrationDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["DiagnosticsDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.DiagnosticsDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ArchiveDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ArchiveDB;Integrated Security=true;TrustServerCertificate=true;",
     };
 
     /// <summary>
@@ -51,7 +51,7 @@ public sealed class ArchivalOptions
         @"C:\Users\dross\source\PlantSafety\PlantSafety.Infrastructure\Persistence\Migrations\Phase18-ExpressChecklist\Invoke-PlantSafetyPurge.ps1";
 
     /// <summary>SQL Server instance name, surfaced alongside <see cref="PurgeScriptPath"/> for reference.</summary>
-    public string ServerInstance { get; init; } = "(local)\\SQLEXPRESS";
+    public string ServerInstance { get; init; } = "(local)\\PLANTSAFETY";
 
     /// <summary>
     /// Directory Invoke-PlantSafetyPurge.ps1 writes its timestamped Purge-&lt;ProcName&gt;-&lt;stamp&gt;.log

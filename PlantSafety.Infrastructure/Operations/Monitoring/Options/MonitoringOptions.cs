@@ -32,18 +32,18 @@ public sealed class MonitoringOptions
     /// <summary>
     /// Logical database key -&gt; connection string, one entry per live database with
     /// Query Store enabled (Phase 11, 111-query-store-configuration.sql). Defaults match
-    /// the same 8 databases enumerated in SchemaGuardOptions on the local SQLEXPRESS instance.
+    /// the same 8 databases enumerated in SchemaGuardOptions on the local  PLANTSAFETY instance.
     /// </summary>
     public Dictionary<string, string> DatabaseConnectionStrings { get; init; } = new()
     {
-        ["CoreDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.CoreDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["ArchiveDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ArchiveDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["CloudIdentityDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.CloudIdentityDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["PredictiveDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.PredictiveDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["ReportingDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ReportingDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["IntegrationDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.IntegrationDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["DiagnosticsDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.DiagnosticsDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["ExportImportDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ExportImportDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["CoreDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.CoreDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ArchiveDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ArchiveDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["CloudIdentityDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.CloudIdentityDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["PredictiveDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.PredictiveDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ReportingDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ReportingDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["IntegrationDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.IntegrationDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["DiagnosticsDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.DiagnosticsDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ExportImportDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ExportImportDB;Integrated Security=true;TrustServerCertificate=true;",
     };
 
     /// <summary>
@@ -52,7 +52,7 @@ public sealed class MonitoringOptions
     /// (see Phase8, 83-synonyms-audit-error.sql, and Phase17, 170-fix-errorlog-masking-bug.sql).
     /// </summary>
     public string ErrorDbConnectionString { get; init; } =
-        "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ErrorDB;Integrated Security=true;TrustServerCertificate=true;";
+        "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ErrorDB;Integrated Security=true;TrustServerCertificate=true;";
 
     /// <summary>
     /// Connection string used to read server-scoped DMVs (sys.dm_xe_sessions,
@@ -61,7 +61,7 @@ public sealed class MonitoringOptions
     /// to master.
     /// </summary>
     public string ServerConnectionString { get; init; } =
-        "Server=(local)\\SQLEXPRESS;Database=master;Integrated Security=true;TrustServerCertificate=true;";
+        "Server=(local)\\PLANTSAFETY;Database=master;Integrated Security=true;TrustServerCertificate=true;";
 
     /// <summary>
     /// Name of the Extended Events session whose ring buffer is read for deadlock events.

@@ -21,7 +21,7 @@
 //                   (one CREATE TABLE + one usp_*_Get* per interface, each shaped to
 //                   match its DTO exactly) but had never been executed against the live
 //                   database. All 31 Table scripts and all 31 Procedure scripts were
-//                   deployed to localhost\SQLEXPRESS / PlantSafety.CoreDB as part of
+//                   deployed to localhost\PLANTSAFETY / PlantSafety.CoreDB as part of
 //                   this pass. No new SQL objects were authored from scratch; the
 //                   pre-existing scaffolded scripts were used as-is.
 //

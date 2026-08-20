@@ -28,10 +28,10 @@ public sealed class BackupOptions
     /// PlantSafety_MaintenanceLog, and PlantSafety_DatabaseSizeLog all live.
     /// </summary>
     public string MsdbConnectionString { get; init; } =
-        "Server=(local)\\SQLEXPRESS;Database=msdb;Integrated Security=true;TrustServerCertificate=true;";
+        "Server=(local)\\PLANTSAFETY;Database=msdb;Integrated Security=true;TrustServerCertificate=true;";
 
     /// <summary>SQL Server instance name passed to Invoke-PlantSafetyBackup.ps1 -ServerInstance.</summary>
-    public string ServerInstance { get; init; } = "(local)\\SQLEXPRESS";
+    public string ServerInstance { get; init; } = "(local)\\PLANTSAFETY";
 
     /// <summary>Absolute path to Invoke-PlantSafetyBackup.ps1 (Phase 18, Express Checklist).</summary>
     public string BackupScriptPath { get; init; } =

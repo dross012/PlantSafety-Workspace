@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Express-safe replacement for the Phase 7 SQL Server Agent retention-purge
-    jobs (74-retention-archival.sql). SQL Server Agent (SQLEXPRESS) is
+    jobs (74-retention-archival.sql). SQL Server Agent (PLANTSAFETY) is
     confirmed DISABLED on this dev instance (2026-07-19), so those jobs never
     fire on their own. This script calls the SAME existing purge stored
     procedures via sqlcmd -- no purge logic is duplicated here.
@@ -30,7 +30,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ProcName,
 
-    [string]$ServerInstance = '(local)\SQLEXPRESS'
+    [string]$ServerInstance = '(local)\PLANTSAFETY'
 )
 
 $ErrorActionPreference = 'Stop'

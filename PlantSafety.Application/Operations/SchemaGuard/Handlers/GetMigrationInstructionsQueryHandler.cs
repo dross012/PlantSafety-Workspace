@@ -55,7 +55,7 @@ public sealed class GetMigrationInstructionsQueryHandler : IRequestHandler<GetMi
                 var path = await _manifestProvider.ResolveScriptPathAsync(scriptName, cancellationToken);
 
                 var command = path is not null
-                    ? $"sqlcmd -S (local)\\SQLEXPRESS -d PlantSafety.{request.DatabaseKey} -i \"{path}\""
+                    ? $"sqlcmd -S (local)\\PLANTSAFETY -d PlantSafety.{request.DatabaseKey} -i \"{path}\""
                     : $"Script '{scriptName}' referenced in the manifest but not found on disk — verify the Migrations\\ folder tree.";
 
                 instructions.Add(new MigrationInstructionDto(scriptName, path, command));

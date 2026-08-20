@@ -7,11 +7,11 @@
     manually too.
 
 .PARAMETER ServerInstance
-    SQL Server instance name. Defaults to (local)\SQLEXPRESS.
+    SQL Server instance name. Defaults to (local)\PLANTSAFETY.
 #>
 [CmdletBinding()]
 param(
-    [string]$ServerInstance = '(local)\SQLEXPRESS'
+    [string]$ServerInstance = '(local)\PLANTSAFETY'
 )
 
 $ErrorActionPreference = 'Stop'

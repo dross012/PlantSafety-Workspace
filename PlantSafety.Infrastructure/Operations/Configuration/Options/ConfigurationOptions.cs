@@ -31,11 +31,11 @@ public sealed class ConfigurationOptions
     /// <summary>
     /// Logical database key -&gt; connection string, one entry per database confirmed (via
     /// 144-feature-flags.sql) to own a [System].[FeatureFlag] table. Defaults match the
-    /// two live databases on the local SQLEXPRESS instance.
+    /// two live databases on the local PLANTSAFETY instance.
     /// </summary>
     public Dictionary<string, string> DatabaseConnectionStrings { get; init; } = new()
     {
-        ["ArchiveDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.ArchiveDB;Integrated Security=true;TrustServerCertificate=true;",
-        ["IntegrationDB"] = "Server=(local)\\SQLEXPRESS;Database=PlantSafety.IntegrationDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["ArchiveDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.ArchiveDB;Integrated Security=true;TrustServerCertificate=true;",
+        ["IntegrationDB"] = "Server=(local)\\PLANTSAFETY;Database=PlantSafety.IntegrationDB;Integrated Security=true;TrustServerCertificate=true;",
     };
 }
