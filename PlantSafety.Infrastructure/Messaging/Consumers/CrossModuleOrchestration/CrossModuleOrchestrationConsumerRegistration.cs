@@ -6,13 +6,20 @@
 //  Created:        2026-08-02
 //  Author:         PlantSafety Platform Team (Phase 5 §3 Cross-Module Orchestration)
 //  SchemaVersion:  2026.1
-//  Description:    MassTransit consumer registration for all 8 Phase 5 §3 cross-module
+//  Description:    MassTransit consumer registration for all Phase 5 §3 cross-module
 //                  orchestration wiring points (§3.1 Maintenance <-> Predictive Maintenance,
 //                  §3.2 Production Tracking <-> Scheduling, §3.3 RiskManagement <->
 //                  ContinuousImprovement, §3.4 Intelligence <-> everything). Called from
 //                  InfrastructureServiceRegistration when configuring MassTransit, mirroring the
 //                  per-module *ConsumerRegistration.Register(cfg) convention established elsewhere
-//                  under Messaging.Consumers. Additive-only evolution.
+//                  under Messaging.Consumers.
+//
+//                  2026-08-20 UPDATE (new-features-agent): added the 4 FeatureSetPublished /
+//                  ModelRegistryEntry{Approved,Deprecated,Retired} consumers closing the documented
+//                  Intelligence.FeatureEngineering/ModelRegistry -> AITraining/PredictiveSafety/
+//                  Analytics integration gap (Intelligence design manual's Integration Patterns
+//                  section: "Model Registry Events for deployment and versioning" / "Feature Store
+//                  Contracts for cross-module reuse"). Additive-only evolution.
 // ============================================================================
 using PlantSafety.Infrastructure.Messaging.Consumers.CrossModuleOrchestration.IntelligenceAggregation;
 using PlantSafety.Infrastructure.Messaging.Consumers.CrossModuleOrchestration.MaintenancePrediction;
@@ -45,5 +52,9 @@ public static class CrossModuleOrchestrationConsumerRegistration
         // §3.4 Intelligence <-> everything
         cfg.AddConsumer<InsufficientMitigationInsightConsumer>();
         cfg.AddConsumer<PredictiveSafetyAlertDashboardFeedConsumer>();
+        cfg.AddConsumer<FeatureSetPublishedTrainingPrepConsumer>();
+        cfg.AddConsumer<ModelRegistryEntryApprovedDashboardFeedConsumer>();
+        cfg.AddConsumer<ModelRegistryEntryDeprecatedDashboardFeedConsumer>();
+        cfg.AddConsumer<ModelRegistryEntryRetiredDashboardFeedConsumer>();
     }
 }
