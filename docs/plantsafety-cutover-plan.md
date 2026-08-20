@@ -2,33 +2,47 @@
 
 ## Status
 
-**Rescheduled, not executed (window updated 2026-08-19, 20:xx CDT).** This
-is the concrete procedure for the actual switch — repointing every
-connection string and marking the source read-only. Nothing in this
-document has been run. Scheduling the window below is a calendar entry,
-not a go-ahead — no step in this document runs automatically when the
-window arrives; execution still requires an explicit start-of-window
-confirmation.
+**Attempted and paused mid-window (2026-08-19, 20:51–~21:30 CDT). Held for
+a future window.** Phases 1 (final pre-cutover validation) and 2 (fresh
+backup/restore `WITH REPLACE`) completed cleanly. Phase 3 (repointing
+connection strings) was blocked partway through by the environment's own
+permission classifier when editing `Reporting.Api`'s config — not a data
+or SQL problem, a tooling permission gate. One file
+(`PlantSafety.Api/Appsettings.json`) was briefly repointed to
+`localhost\PLANTSAFETY` and then **reverted back to `localhost\SQLEXPRESS`**
+before stopping, confirmed via `git diff` (clean) and a live check that all
+18 `SQLEXPRESS` databases are still `is_read_only = 0`. `localhost\SQLEXPRESS`
+was never marked read-only and was not otherwise modified — it remains the
+sole authoritative source. No Phase 4+ step (Scheduled Tasks, service
+restarts, marking the source read-only) was attempted.
 
-### Scheduled window
+**What's actually true right now:** `localhost\PLANTSAFETY` holds a fresh,
+verified, `WITH REPLACE`-restored copy of all 18 databases as of
+2026-08-19 ~21:15 CDT (backup timestamp `20260820_015941`), so the next
+attempt can likely skip straight to Phase 3 rather than re-running Phase 2,
+provided it re-verifies nothing changed on `SQLEXPRESS` in the meantime.
+The next attempt should run with Bash access to `Reporting.Api`'s config
+(and the rest of Groups B–F, 20 files, none of which were touched tonight)
+cleanly granted before starting, rather than discovering the same
+permission gate mid-window again.
+
+### Window used tonight (2026-08-19) — attempted, paused, not completed
 
 | | |
 |---|---|
-| Date | Wednesday, 2026-08-19 (moved up from Saturday 2026-08-22) |
+| Date | Wednesday, 2026-08-19 |
 | Start | 20:45 CDT |
-| End (maintenance) | 00:00 CDT (2026-08-20) |
-| Rollback buffer | 00:00–02:00 CDT (2026-08-20) |
-| Duration | 3h15m maintenance + 2 hours rollback buffer |
+| Actually stopped at | ~21:30 CDT, partway through Phase 3 |
+| Planned end (maintenance) | 00:00 CDT (2026-08-20) — not reached |
+| Rollback buffer | 00:00–02:00 CDT (2026-08-20) — not needed; nothing left in a half-changed state |
 | Scope | PlantSafety cutover only — no other program |
 
-**This window is materially shorter than the original 6-hour Saturday
-window** (3h15m vs. 6h) and starts same-day rather than with days of lead
-time. The per-step timestamps below compress the same procedure into that
-smaller window — there is correspondingly less slack if any step runs
-long. If the pre-cutover checklist or any validation step doesn't pass
-inside its allotted time, the correct move is still to stop and
-reschedule, not to compress the remaining steps further or push past
-00:00 into the rollback buffer. See `pre-cutover-checklist.md`,
+**No new date is set.** Per the decision to hold, the next attempt happens
+in a future window with clean Bash/tooling permissions confirmed
+beforehand and a fresh operator, not as a continuation of tonight's
+partial run. The per-step timestamps below (originally built for a 3h15m
+window) are still a reasonable template for the next attempt but will need
+new clock times once a date is picked. See `pre-cutover-checklist.md`,
 `rollback-plan.md`, and `post-cutover-smoke-tests.md` (same directory) for
 the detailed, timestamped versions of each phase below.
 
