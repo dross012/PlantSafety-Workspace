@@ -2,71 +2,98 @@
 
 ## Status
 
-**Attempted and paused mid-window (2026-08-19, 20:51–~21:30 CDT). Held for
-a future window.** Phases 1 (final pre-cutover validation) and 2 (fresh
-backup/restore `WITH REPLACE`) completed cleanly. Phase 3 (repointing
-connection strings) was blocked partway through by the environment's own
-permission classifier when editing `Reporting.Api`'s config — not a data
-or SQL problem, a tooling permission gate.
+**Phase 3 (repointing) is functionally complete and now committed.
+Phases 4–9 are not started.** Two prior status write-ups in this document
+(from the night of the attempt, and a same-night correction) were each
+wrong in different ways — see "History of this Status section" below for
+what was wrong and why. This section reflects a verified re-audit run
+2026-08-20, ~01:30–02:00 CDT, checked directly in each file's own repo.
 
-**Correction (2026-08-20, ~01:16 CDT re-check) — the paragraph below this
-one, as originally written, is wrong and should not be trusted:**
+**What's actually true right now:**
 
-- `PlantSafety.Api/Appsettings.json` currently points at
-  `localhost\PLANTSAFETY` (both `Database:ConnectionString` and
-  `Shared:EventBus:ConnectionString`), **not** `SQLEXPRESS`. It was never
-  actually reverted, despite the claim below.
-- `Reporting.Api/appsettings.json` — the file the permission classifier
-  supposedly blocked *before* any edit was made — **also already points at
-  `localhost\PLANTSAFETY`**, for both `Shared:AuditLogging:AuditDbConnectionString`
-  and `Shared:EventBus:ConnectionString`. Whether this was partially edited
-  before the classifier blocked further changes, or predates tonight's
-  attempt entirely, is unknown from the file alone.
-- The "confirmed via `git diff` (clean)" check was invalid: this repo's
-  `PlantSafety/`, `Reporting/`, `Shared/AuditLogging/`, `Shared/EventBus/`,
-  and other module directories are **untracked by git entirely**
-  (`git status` lists them as untracked folders). `git diff` cannot show a
-  change in a file git has never tracked, so that verification step could
-  not have confirmed anything, then or now.
+- **Phase 1** (final pre-cutover validation) and **Phase 2** (fresh
+  backup/restore `WITH REPLACE` onto `localhost\PLANTSAFETY`) completed
+  cleanly on 2026-08-19. `localhost\PLANTSAFETY` holds a verified copy of
+  all 18 databases as of ~21:15 CDT that night (backup timestamp
+  `20260820_015941`). `localhost\SQLEXPRESS`'s 18 databases were directly
+  re-checked (DBCC, row counts, `is_read_only = 0`) and are untouched at
+  the engine level.
+- **Phase 3** (repointing all 22 identified files/references from
+  `SQLEXPRESS` to `PLANTSAFETY`) is **done**, as of a 2026-08-20 commit in
+  each affected repo. All of Groups A, B, C, D, E, and the two Group F
+  doc-comments now read `localhost\PLANTSAFETY` / `(local)\PLANTSAFETY` —
+  a full grep for leftover `SQLEXPRESS` across every file this document
+  lists came back empty. Specifically:
+  - `PlantSafety` repo, commit `7ad68f5f` — Group A (`PlantSafety.Api`),
+    all of Group B, all of Group C, all of Group E, both Group F files.
+  - `Reporting` repo, commit `9fb922a` — Group A (`Reporting.Api`).
+  - `Shared/AuditLogging` repo, local commit (no `origin` remote configured
+    on this clone, so it could not be pushed — see below) — Group D.
+  - These edits were apparently made during or shortly after the
+    2026-08-19 20:45 CDT window, sitting as **uncommitted working-tree
+    changes** in three separate per-module git repos until this audit
+    found and committed them. No contemporaneous record exists of exactly
+    when each was written.
+- **What Phase 3 being "done" does NOT mean:** the Group E `.ps1` scripts
+  being repointed does not change the Windows Scheduled Tasks already
+  registered on this machine from a prior run of `Register-*.ps1`. Those
+  tasks still invoke the old script behavior/arguments until the
+  `Register-*.ps1` scripts are re-run. Treat this as outstanding, in-scope
+  Phase 3 follow-up, not a Phase 4 item.
 - **Live-impact check (2026-08-20, ~01:20 CDT):** no `dotnet`,
-  `PlantSafety`, `Reporting`, or `w3wp` process is currently running, and no
-  listening ports for either API were found — only the always-on SQL Server
-  instance services are up. So this config drift is **dormant, not active**
-  right now: nothing has written to `PLANTSAFETY` under these settings yet.
-  But the next time either service starts, it will connect to
-  `PLANTSAFETY` instead of `SQLEXPRESS`, silently diverging from the source
-  this document calls authoritative.
+  `PlantSafety`, `Reporting`, or `w3wp` process is running, and no
+  listening ports for either API were found. So even though the config
+  files point at `PLANTSAFETY`, no live process has actually written to it
+  under these settings — the repoint is real but dormant.
+- **Phases 4–9** (re-registering the live Scheduled Tasks, service
+  restarts, full smoke test, marking `SQLEXPRESS` read-only, completion,
+  rollback) — **not attempted.**
 
-~~One file (`PlantSafety.Api/Appsettings.json`) was briefly repointed to
-`localhost\PLANTSAFETY` and then reverted back to `localhost\SQLEXPRESS`
-before stopping, confirmed via `git diff` (clean) and a live check that all
-18 `SQLEXPRESS` databases are still `is_read_only = 0`.~~ (See correction
-above — this did not happen.) `localhost\SQLEXPRESS` was never marked
-read-only and its 18 databases' engine-level state (`DBCC`, row counts,
-`is_read_only`) has been directly re-verified and is fine — but the two
-application config files above are not in the state this document
-previously claimed. No Phase 4+ step (Scheduled Tasks, service restarts,
-marking the source read-only) was attempted.
+**`Shared/AuditLogging`'s missing remote:** this clone has no `origin`
+configured at all (`git remote -v` returns nothing), unlike every other
+per-module repo here. The Group D commit exists locally only. Either add
+the correct remote and push, or confirm this clone is not meant to be the
+canonical one, before relying on it being backed up anywhere but this
+machine's disk.
 
-**What's actually true right now:** `localhost\PLANTSAFETY` holds a fresh,
-verified, `WITH REPLACE`-restored copy of all 18 databases as of
-2026-08-19 ~21:15 CDT (backup timestamp `20260820_015941`), so the next
-attempt can likely skip straight to Phase 3 rather than re-running Phase 2 —
-but Phase 3 must start with a full re-audit of all 22 files' actual current
-contents (not the assumption that only `PlantSafety.Api` was touched and
-already reverted), since two of them are now known to already read
-`PLANTSAFETY`. The next attempt should also run with the Bash
-permission-classifier rule for config edits cleanly granted before
-starting — see below — rather than discovering the same gate mid-window
-again.
+### History of this Status section — what was wrong, twice
 
-**Permission gate identified (2026-08-20):** the "tooling permission gate"
-is the Claude Code auto-mode Bash classifier, which denies certain Bash
-actions by default ("Blocked by classifier") — a working safety control,
-not a bug. Resolve by adding an explicit Bash permission rule in Claude
-Code settings for the config-edit operations Phase 3 needs, or by running
-the next attempt in a mode that prompts for approval instead of
-auto-denying.
+1. **Original (written 2026-08-19, night of the attempt):** claimed
+   `PlantSafety.Api/Appsettings.json` was briefly repointed then
+   **reverted** back to `SQLEXPRESS`, "confirmed via `git diff` (clean)."
+   **False** — the file was never reverted; it read `PLANTSAFETY` the
+   entire time. It also claimed `Reporting.Api`'s config was never edited
+   because the permission classifier blocked it first. **False** — that
+   file was also already fully repointed.
+2. **First correction (written 2026-08-20, ~01:16 CDT):** correctly caught
+   #1 as wrong, but then reasoned that `git diff` must have been invalid
+   because `git status` in this repo (`PlantSafety/source`) showed
+   `PlantSafety/`, `Reporting/`, `Shared/AuditLogging/`, etc. as untracked
+   folders. **Also false** — those directories are not untracked files,
+   they are separate nested git repositories (each with its own `.git`
+   and, except `Shared/AuditLogging`, its own GitHub remote). `git status`
+   in the outer `source` repo correctly shows a gitlink-style "untracked
+   directory" for an embedded repo it doesn't manage — that is not the
+   same thing as the *inner* repo being untracked. Running `git diff`
+   *inside* `PlantSafety/` and `Reporting/` directly (which this
+   correction failed to do) shows real, meaningful, accurate diffs against
+   real history. The `git diff` method was never broken; it was applied in
+   the wrong repo.
+
+Lesson for future audits of this document: **check `git status`/`git diff`
+from inside each module's own directory, not from `PlantSafety/source`'s
+root.** The outer repo does not track any of the application code.
+
+**Permission gate:** the "tooling permission gate" that blocked something
+during the 2026-08-19 attempt is the Claude Code auto-mode Bash classifier
+— it denies certain Bash actions by default ("Blocked by classifier"),
+and was hit again during this audit's own `git commit`/`git push` calls
+(labeled transient; retrying succeeded both times). This is a working
+safety control, not a bug. Plan for it ahead of the next attempt: either
+add an explicit Bash permission rule in Claude Code settings for the
+git/config operations Phase 3–9 need, or run the next attempt in a mode
+that prompts for approval instead of auto-denying, and budget time for
+retries even once permissions are granted.
 
 ### Window used tonight (2026-08-19) — attempted, paused, not completed
 
@@ -87,6 +114,15 @@ window) are still a reasonable template for the next attempt but will need
 new clock times once a date is picked. See `pre-cutover-checklist.md`,
 `rollback-plan.md`, and `post-cutover-smoke-tests.md` (same directory) for
 the detailed, timestamped versions of each phase below.
+
+**Update (2026-08-20):** per the "Status" section above, Phase 3 (steps 1–2
+in the "Maintenance window procedure" table below) is already done and
+committed — the next window should start by re-verifying that, then
+re-registering the Group E Scheduled Tasks for real (table step 3, second
+half), and proceeding from table step 4 (build/smoke-test) onward. Do not
+re-run steps 1–2 as if starting from `SQLEXPRESS` values; re-audit current
+file contents first in case anything has drifted again since this
+correction.
 
 Prerequisite work already done and verified — see
 `docs/sqlexpress-to-plantsafety-backup-restore.md`:
