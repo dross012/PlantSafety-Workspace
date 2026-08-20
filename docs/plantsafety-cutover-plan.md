@@ -2,62 +2,56 @@
 
 ## Status
 
-**Scheduled, not executed (window set 2026-08-19).** This is the concrete
-procedure for the actual switch — repointing every connection string and
-marking the source read-only. Nothing in this document has been run.
-Scheduling the window below is a calendar entry, not a go-ahead — no step
-in this document runs automatically when the window arrives; execution
-still requires an explicit start-of-window confirmation.
+**Rescheduled, not executed (window updated 2026-08-19, 20:xx CDT).** This
+is the concrete procedure for the actual switch — repointing every
+connection string and marking the source read-only. Nothing in this
+document has been run. Scheduling the window below is a calendar entry,
+not a go-ahead — no step in this document runs automatically when the
+window arrives; execution still requires an explicit start-of-window
+confirmation.
 
 ### Scheduled window
 
 | | |
 |---|---|
-| Date | Saturday, 2026-08-22 |
-| Start | 06:00 CDT |
-| End (maintenance) | 12:00 CDT |
-| Rollback buffer | 12:00–14:00 CDT |
-| Duration | 6 hours maintenance + 2 hours rollback buffer |
+| Date | Wednesday, 2026-08-19 (moved up from Saturday 2026-08-22) |
+| Start | 20:45 CDT |
+| End (maintenance) | 00:00 CDT (2026-08-20) |
+| Rollback buffer | 00:00–02:00 CDT (2026-08-20) |
+| Duration | 3h15m maintenance + 2 hours rollback buffer |
 | Scope | PlantSafety cutover only — no other program |
 
-Chosen for zero weekday operational impact, and to leave room within the
-window itself for: fresh backup/restore (checklist step 2), installer
-validation, `PlantSafety.Api`/`Reporting.Api` smoke tests, cross-module and
-reporting-pipeline validation, and Outbox/Inbox checks, before step 7
-(marking `SQLEXPRESS` read-only) is reached. If those validations don't
-pass inside the window, the correct move is to stop and reschedule, not to
-push through past 12:00 into the rollback buffer.
+**This window is materially shorter than the original 6-hour Saturday
+window** (3h15m vs. 6h) and starts same-day rather than with days of lead
+time. The per-step timestamps below compress the same procedure into that
+smaller window — there is correspondingly less slack if any step runs
+long. If the pre-cutover checklist or any validation step doesn't pass
+inside its allotted time, the correct move is still to stop and
+reschedule, not to compress the remaining steps further or push past
+00:00 into the rollback buffer. See `pre-cutover-checklist.md`,
+`rollback-plan.md`, and `post-cutover-smoke-tests.md` (same directory) for
+the detailed, timestamped versions of each phase below.
 
 Prerequisite work already done and verified — see
 `docs/sqlexpress-to-plantsafety-backup-restore.md`:
 - All 18 `PlantSafety.*` databases backed up and restored onto
   `localhost\PLANTSAFETY`, `DBCC CHECKDB` clean, table/row counts
-  exact-matched.
+  exact-matched. Re-verified again at 2026-08-19 (same day, prior to this
+  reschedule) — still clean, still exact-matched, no drift.
 - All 18 databases' ownership is accounted for — no unexplained data.
 
 ## Pre-cutover checklist
 
-1. **Confirm no application is running.** As of 2026-08-19, no PlantSafety
-   Windows service was found running and nothing was listening on common
-   web ports — re-verify this is still true immediately before the window,
-   since that assumption is what makes this a data-safety exercise rather
-   than a live-traffic cutover.
-2. **Take a fresh backup/restore.** The verified copy on `PLANTSAFETY` is a
-   point-in-time snapshot from 2026-08-19. Anything written to
-   `SQLEXPRESS` since then (manual testing, the daily
-   `usp_PlantSafety_BackupFull`/`Diff`/`Log` jobs still targeting the old
-   instance, etc.) is not on `PLANTSAFETY` yet. Re-run the same procedure
-   documented in `sqlexpress-to-plantsafety-backup-restore.md` — `EXEC
-   msdb.dbo.usp_PlantSafety_BackupFull`, verify, `RESTORE ... WITH MOVE,
-   REPLACE`, `DBCC CHECKDB` — immediately before starting the window below,
-   so the cutover moves current data, not a stale snapshot. `WITH REPLACE`
-   is required this time since `PLANTSAFETY` already has these databases.
-3. **Pick a window** where nobody is actively using `PlantSafetyPMForm.xlsm`
-   or any tool that might write to `CoreDB`/`AuditDB`/`IntegrationDB` via
-   one of the standalone import tools below.
+See `pre-cutover-checklist.md` for the timestamped version. Summary:
+
+1. **Confirm no application is running** (20:45–20:50 CDT).
+2. **Take a fresh backup/restore** with `WITH REPLACE` (20:50–21:35 CDT).
+3. **Confirm the window** — nobody is actively using
+   `PlantSafetyPMForm.xlsm` or any tool that might write to
+   `CoreDB`/`AuditDB`/`IntegrationDB` via one of the standalone import
+   tools below.
 4. **Notify whoever owns this repo's day-to-day work** — this document
-   doesn't know who that is; that's a step for whoever schedules the actual
-   date.
+   doesn't know who that is; that's a step for whoever runs the window.
 
 ## Everything that needs repointing
 
@@ -135,43 +129,46 @@ find-and-fix for accuracy, but not part of the functional cutover.
 
 ## Maintenance window procedure
 
-1. Confirm the pre-cutover checklist above, including the fresh
-   backup/restore with `WITH REPLACE`.
-2. Update all of Group A and Group B's connection strings/instance names
-   from `SQLEXPRESS`/`(local)\SQLEXPRESS` to `PLANTSAFETY`/
-   `localhost\PLANTSAFETY` (match whichever host-name style — `localhost`
-   vs `(local)` — each file already uses, for a minimal diff).
-3. Update Group C and Group D's default fallback strings the same way.
-4. Update Group E's `.ps1` scripts, then re-run the `Register-*.ps1`
-   scripts so the already-registered Scheduled Tasks pick up the new
-   instance (or manually verify/update the Scheduled Task definitions —
-   check both paths, don't assume one alone is sufficient).
-5. Build and smoke-test `PlantSafety.Api` and `Reporting.Api` against
-   `localhost\PLANTSAFETY` before calling the cutover done — confirm their
-   health checks pass and a read-only operation against each succeeds.
-6. Run one of the Group E scripts manually
-   (`Invoke-PlantSafetyBackup.ps1 -BackupType Full`) against
-   `localhost\PLANTSAFETY` to confirm the repointed automation actually
-   works end to end, not just that it compiles.
-7. Only after 5 and 6 both pass: set `localhost\SQLEXPRESS`'s
-   `PlantSafety.*` databases `READ_ONLY` (`ALTER DATABASE ... SET
-   READ_ONLY WITH ROLLBACK IMMEDIATE`) — reversible via `SET READ_WRITE`,
-   not a drop. This is the point of no casual return; everything before it
-   is safely reversible by just reverting the config changes.
+Timestamped execution sequence — full detail for each step lives in the
+companion documents noted. All times CDT.
+
+| Time | Step |
+|---|---|
+| 20:45–20:50 | 0a. Confirm pre-cutover checklist item 1 (no app running) — `pre-cutover-checklist.md` |
+| 20:50–21:35 | 0b. Fresh backup/restore `WITH REPLACE`, `DBCC CHECKDB` — `pre-cutover-checklist.md` |
+| 21:35–21:50 | 1. Update Group A + Group B connection strings/instance names from `SQLEXPRESS`/`(local)\SQLEXPRESS` to `PLANTSAFETY`/`localhost\PLANTSAFETY` (match each file's existing `localhost` vs `(local)` style) |
+| 21:50–22:00 | 2. Update Group C + Group D default fallback strings the same way |
+| 22:00–22:20 | 3. Update Group E's `.ps1` scripts, then re-run `Register-*.ps1` so the already-registered Scheduled Tasks pick up the new instance (verify both the script defaults and the live Task definitions — don't assume one alone is sufficient) |
+| 22:20–22:50 | 4. Build and smoke-test `PlantSafety.Api` and `Reporting.Api` against `localhost\PLANTSAFETY` — `post-cutover-smoke-tests.md` |
+| 22:50–23:10 | 5. Run `Invoke-PlantSafetyBackup.ps1 -BackupType Full` against `localhost\PLANTSAFETY` manually to confirm the repointed automation works end to end, not just that it compiles |
+| 23:10–23:30 | 6. Post-cutover verification — row-count comparison on all 18 databases, confirm the Group E scripts' logs — `post-cutover-smoke-tests.md` |
+| 23:30–23:55 | 7. Only after 4, 5, and 6 all pass: set `localhost\SQLEXPRESS`'s `PlantSafety.*` databases `READ_ONLY` (`ALTER DATABASE ... SET READ_ONLY WITH ROLLBACK IMMEDIATE`) — reversible via `SET READ_WRITE`, not a drop. This is the point of no casual return; everything before it is safely reversible by just reverting the config changes. |
+| 23:55–00:00 | 8. Close out: confirm final state, hand-off notes, log the actual clock times used (see `pre-cutover-checklist.md` for the log template) |
+
+If any step's window is missed by more than ~10 minutes, treat that as a
+signal to stop and reschedule rather than compressing what's left — this
+window has materially less slack than the original 6-hour version.
 
 ## Rollback
 
-Before step 7: revert the config/script changes (steps 2–4), nothing on
-either instance was touched destructively, so rollback is trivial.
+See `rollback-plan.md` for the timestamped version (00:00–02:00 CDT
+buffer). Summary:
+
+Before step 7 (23:30 CDT): revert the config/script changes (steps 1–3),
+nothing on either instance was touched destructively, so rollback is
+trivial.
 
 After step 7: `ALTER DATABASE ... SET READ_WRITE` on the `SQLEXPRESS`
 copies, then revert the config/script changes back. Data written to
 `PLANTSAFETY` between cutover and the decision to roll back would need to
 be reconciled or accepted as lost — this is the one point in the whole
 plan with genuine risk, which is why step 7 is deliberately the last step
-and gated on 5 and 6 both passing first.
+and gated on 4, 5, and 6 all passing first.
 
 ## Post-cutover verification
+
+See `post-cutover-smoke-tests.md` for the full timestamped procedure.
+Summary:
 
 - Repeat the same table/row-count comparison used for the original
   backup/restore verification, source vs. target, for all 18 databases.
