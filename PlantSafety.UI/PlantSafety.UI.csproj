@@ -76,11 +76,6 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.10" />
     </ItemGroup>
 
-    <!-- ── Mapping ───────────────────────────────────────────────────────────── -->
-    <ItemGroup>
-        <PackageReference Include="Mapster" Version="10.0.11" />
-    </ItemGroup>
-
     <!-- ── Real-time (SignalR) ───────────────────────────────────────────────── -->
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.10" />
@@ -98,8 +93,10 @@
     -->
 
     <!-- ── Forbidden packages (listed for documentation — never add these) ─────
-         Entity Framework Core, AutoMapper, Newtonsoft.Json (domain/app layers),
+         Entity Framework Core, AutoMapper, Mapster, Newtonsoft.Json (domain/app layers),
          Dapper, StackExchange.Redis — prohibited per Enterprise Arch Handbook §2.16
+         (reflection-based mapping is prohibited platform-wide; the UI layer now uses
+         plain explicit C# mapping methods, converted 2026-08-20)
          ────────────────────────────────────────────────────────────────────────── -->
 
     <!-- ── Module Page Folder Stubs (Planning Projects / Financials) ────────── -->

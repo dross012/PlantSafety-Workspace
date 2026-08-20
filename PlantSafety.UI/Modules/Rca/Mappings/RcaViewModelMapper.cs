@@ -1,18 +1,16 @@
 // ============================================================
 // AUTHOR: PlantSafety Platform
 // CREATED: 2026-07-14
-// UPDATED: 2026-07-15 — converted from hand-written mapping to Mapster
-//   TypeAdapterConfig per UI Platform Master Architecture Vol.0 §6 (Mapster
-//   is the mandatory UI-layer DTO -> ViewModel mapping mechanism; the
-//   Enterprise Handbook's AutoMapper/reflection prohibition governs
-//   backend Domain/Application CQRS mapping paths only, not this layer).
-// FILE DESCRIPTION: Mapster-based DTO -> ViewModel mapping for the RCA
+// UPDATED: 2026-08-20 — converted from Mapster (reflection-based mapping)
+//   to plain, explicit, deterministic C# mapping per Enterprise Handbook
+//   Prohibited Technology Rule 2.16 (reflection-based mapping is
+//   prohibited); this closes out a deferred follow-up from an earlier
+//   remediation pass.
+// FILE DESCRIPTION: Explicit DTO -> ViewModel mapping for the RCA
 //   module.
 // SchemaVersion: 2026.1
 // Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
 // ============================================================
-
-using Mapster;
 
 using PlantSafety.UI.Modules.Rca.Models;
 
@@ -31,25 +29,17 @@ public sealed record RcaViewModel
     public bool IsCompleted { get; init; }
 }
 
-/// <summary>Mapster DTO -&gt; ViewModel projection config and call-site adapters for the RCA module.</summary>
+/// <summary>Explicit deterministic DTO -&gt; ViewModel mapping for the RCA module.</summary>
 public static class RcaViewModelMapper
 {
-    private static readonly TypeAdapterConfig Config = CreateConfig();
-
-    /// <summary>Maps a <see cref="RootCauseAnalysisDto"/> to its presentation <see cref="RcaViewModel"/> via Mapster.</summary>
+    /// <summary>Maps a <see cref="RootCauseAnalysisDto"/> to its presentation <see cref="RcaViewModel"/>.</summary>
     /// <param name="dto">The source DTO.</param>
-    public static RcaViewModel ToViewModel(this RootCauseAnalysisDto dto) => dto.Adapt<RcaViewModel>(Config);
-
-    /// <summary>Builds the module's Mapster <see cref="TypeAdapterConfig"/>, registering the DTO -&gt; ViewModel projection.</summary>
-    private static TypeAdapterConfig CreateConfig()
+    public static RcaViewModel ToViewModel(this RootCauseAnalysisDto dto) => new()
     {
-        var config = new TypeAdapterConfig();
-        config.NewConfig<RootCauseAnalysisDto, RcaViewModel>()
-            .Map(dest => dest.Source, src => src)
-            .Map(dest => dest.IsCompleted, src => src.CompletedAtUtc.HasValue)
-            .Map(dest => dest.OperationalStatus, src => ToOperationalStatus(src.Status));
-        return config;
-    }
+        Source = dto,
+        IsCompleted = dto.CompletedAtUtc.HasValue,
+        OperationalStatus = ToOperationalStatus(dto.Status),
+    };
 
     private static string ToOperationalStatus(string status) => status.Trim().ToLowerInvariant() switch
     {

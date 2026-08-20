@@ -1,18 +1,16 @@
 // ============================================================
 // AUTHOR: PlantSafety Platform
 // CREATED: 2026-07-14
-// UPDATED: 2026-07-15 — converted from hand-written mapping to Mapster
-//   TypeAdapterConfig per UI Platform Master Architecture Vol.0 §6 (Mapster
-//   is the mandatory UI-layer DTO -> ViewModel mapping mechanism; the
-//   Enterprise Handbook's AutoMapper/reflection prohibition governs
-//   backend Domain/Application CQRS mapping paths only, not this layer).
-// FILE DESCRIPTION: Mapster-based DTO -> ViewModel mapping for the Drills &
+// UPDATED: 2026-08-20 — converted from Mapster (reflection-based mapping)
+//   to plain, explicit, deterministic C# mapping per Enterprise Handbook
+//   Prohibited Technology Rule 2.16 (reflection-based mapping is
+//   prohibited); this closes out a deferred follow-up from an earlier
+//   remediation pass.
+// FILE DESCRIPTION: Explicit DTO -> ViewModel mapping for the Drills &
 //   Exercises module.
 // SchemaVersion: 2026.1
 // Additive-only evolution — see Enterprise Architectural Rule Handbook §XI
 // ============================================================
-
-using Mapster;
 
 using PlantSafety.UI.Modules.Drills.Models;
 
@@ -31,25 +29,17 @@ public sealed record DrillViewModel
     public bool WasExecuted { get; init; }
 }
 
-/// <summary>Mapster DTO -&gt; ViewModel projection config and call-site adapters for the Drills &amp; Exercises module.</summary>
+/// <summary>Explicit deterministic DTO -&gt; ViewModel mapping for the Drills &amp; Exercises module.</summary>
 public static class DrillViewModelMapper
 {
-    private static readonly TypeAdapterConfig Config = CreateConfig();
-
-    /// <summary>Maps a <see cref="DrillDto"/> to its presentation <see cref="DrillViewModel"/> via Mapster.</summary>
+    /// <summary>Maps a <see cref="DrillDto"/> to its presentation <see cref="DrillViewModel"/>.</summary>
     /// <param name="dto">The source DTO.</param>
-    public static DrillViewModel ToViewModel(this DrillDto dto) => dto.Adapt<DrillViewModel>(Config);
-
-    /// <summary>Builds the module's Mapster <see cref="TypeAdapterConfig"/>, registering the DTO -&gt; ViewModel projection.</summary>
-    private static TypeAdapterConfig CreateConfig()
+    public static DrillViewModel ToViewModel(this DrillDto dto) => new()
     {
-        var config = new TypeAdapterConfig();
-        config.NewConfig<DrillDto, DrillViewModel>()
-            .Map(dest => dest.Source, src => src)
-            .Map(dest => dest.WasExecuted, src => src.ExecutedAtUtc.HasValue)
-            .Map(dest => dest.OperationalStatus, src => ToOperationalStatus(src.Status));
-        return config;
-    }
+        Source = dto,
+        WasExecuted = dto.ExecutedAtUtc.HasValue,
+        OperationalStatus = ToOperationalStatus(dto.Status),
+    };
 
     private static string ToOperationalStatus(string status) => status.Trim().ToLowerInvariant() switch
     {
