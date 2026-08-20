@@ -27,8 +27,10 @@ what was wrong and why. This section reflects a verified re-audit run
   - `PlantSafety` repo, commit `7ad68f5f` — Group A (`PlantSafety.Api`),
     all of Group B, all of Group C, all of Group E, both Group F files.
   - `Reporting` repo, commit `9fb922a` — Group A (`Reporting.Api`).
-  - `Shared/AuditLogging` repo, local commit (no `origin` remote configured
-    on this clone, so it could not be pushed — see below) — Group D.
+  - `Shared/AuditLogging`'s repoint — Group D — is folded into the
+    `dross012/Shared` flatten described below (commit `9dd8ce0`); it was
+    never pushed as its own repo, since it turned out not to be a
+    standalone repo at all.
   - These edits were apparently made during or shortly after the
     2026-08-19 20:45 CDT window, sitting as **uncommitted working-tree
     changes** in three separate per-module git repos until this audit
@@ -49,12 +51,23 @@ what was wrong and why. This section reflects a verified re-audit run
   restarts, full smoke test, marking `SQLEXPRESS` read-only, completion,
   rollback) — **not attempted.**
 
-**`Shared/AuditLogging`'s missing remote:** this clone has no `origin`
-configured at all (`git remote -v` returns nothing), unlike every other
-per-module repo here. The Group D commit exists locally only. Either add
-the correct remote and push, or confirm this clone is not meant to be the
-canonical one, before relying on it being backed up anywhere but this
-machine's disk.
+**`Shared/AuditLogging`'s missing remote — resolved (2026-08-20):** it had
+no `origin` because it was never meant to be its own repo. It, along with
+`Shared/Authorization` and `Shared/EventBus`, turned out to be the only 3
+of 18 components under `dross012/Shared` set up as separate nested git
+repos — referenced from `dross012/Shared` as submodule-style gitlinks with
+no `.gitmodules` entry, meaning no clone of `dross012/Shared` could ever
+resolve them. Every other Shared component (`Configuration`,
+`Deterministic`, `EmployeeDomain`, `ErrorHandling`, `FacilityDomain`,
+`MachineDomain`, `ModuleContracts`, `PredictiveModels`, `SafetyData`,
+`SnapshotTesting`, `SqlGateway`, `Telemetry`, `Workflow`, `WorkflowEngine`,
+`AiInference`) is a plain committed directory in that repo, not a
+submodule. Fixed to match: removed the local `.git` from all three
+directories under `PlantSafety/source/Shared/` and committed their real
+file content directly into `dross012/Shared` (commit `9dd8ce0`) as normal
+tracked directories, same as the other 15. No new remote was needed —
+these three were never independent repos to begin with, just accidentally
+`git init`'d as if they were.
 
 ### History of this Status section — what was wrong, twice
 
