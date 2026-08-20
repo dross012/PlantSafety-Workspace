@@ -44,6 +44,7 @@ public sealed class IncidentToIncidentDtoMappingProfile
             LastModifiedAtUtc = source.LastModifiedAtUtc,
             ETag = source.ETag,
             EscalationReason = source.EscalationReason,
+            EscalatedAtUtc = source.EscalatedAtUtc,
             EscalationCount = source.EscalationCount,
             ResolutionNotes = source.ResolutionNotes,
         };

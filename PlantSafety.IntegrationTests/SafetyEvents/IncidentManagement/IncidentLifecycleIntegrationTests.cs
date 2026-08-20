@@ -30,6 +30,7 @@ using PlantSafety.Application.Abstractions.Messaging;
 using PlantSafety.Application.Common.Results;
 using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Create;
 using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Delete;
+using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Escalate;
 using PlantSafety.Application.Features.SafetyEvents.Commands.IncidentManagement.Update;
 using PlantSafety.Application.Features.SafetyEvents.Models.IncidentManagement;
 using PlantSafety.Application.Features.SafetyEvents.Queries.IncidentManagement.Get;
@@ -398,6 +399,75 @@ public sealed class IncidentLifecycleIntegrationTests(IntegrationTestWebAppFacto
 
         errorRowCount.Should().BeGreaterThanOrEqualTo(1,
             "the CATCH block must write an ErrorLog row for the failed duplicate-key insert, never fail silently");
+    }
+
+    [Fact]
+    public async Task EscalateIncident_ShouldRoundTripEscalatedAtUtcThroughIncidentDto()
+    {
+        // Regression test for the IncidentDto field-drop bug fixed in the prior domain-validators
+        // pass: IncidentToIncidentDtoMappingProfile.Map must copy EscalatedAtUtc (along with
+        // EscalationReason/EscalationCount) from the Infrastructure read model onto IncidentDto --
+        // it was previously silently dropped, so GetIncidentByIdQuery would return a null
+        // EscalatedAtUtc for an incident that had, in fact, just been escalated.
+        var scope = TenantHttpContextTestHelper.CreateScopeWithResolvedTenant(Factory, TenantId);
+        var sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        try
+        {
+            var createCommand = new CreateIncidentCommand
+            {
+                CommandId = Guid.NewGuid(),
+                CorrelationId = CorrelationId,
+                CausationId = null,
+                RequestedAtUtc = FixedUtcNow,
+                ApiVersionToken = "v1",
+                TenantId = TenantId,
+                ActorId = ActorId,
+                SiteId = Guid.NewGuid(),
+                Title = "Unattended chemical reaction in Lab 4",
+                Description = "Reaction vessel left unmonitored past the safe processing window.",
+                IncidentOccurredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-20),
+                Severity = "Serious",
+                Location = "Lab 4",
+                ReportedByWorkerId = Guid.NewGuid(),
+            };
+
+            var incidentId = await sender.Send(createCommand, CancellationToken.None);
+
+            var getBeforeEscalation = await sender.Send(BuildGetByIdQuery(incidentId), CancellationToken.None);
+            getBeforeEscalation.Should().NotBeNull();
+            getBeforeEscalation!.EscalatedAtUtc.Should().BeNull("no escalation has occurred yet");
+            getBeforeEscalation.EscalationCount.Should().Be(0);
+
+            var escalateCommand = new EscalateIncidentCommand
+            {
+                CommandId = Guid.NewGuid(),
+                CorrelationId = CorrelationId,
+                CausationId = null,
+                RequestedAtUtc = FixedUtcNow,
+                ApiVersionToken = "v1",
+                TenantId = TenantId,
+                ActorId = ActorId,
+                IncidentId = incidentId,
+                Reason = "Unmonitored reaction vessel -- immediate supervisor notification required.",
+            };
+
+            var beforeEscalate = DateTimeOffset.UtcNow;
+            await sender.Send(escalateCommand, CancellationToken.None);
+            var afterEscalate = DateTimeOffset.UtcNow;
+
+            var getAfterEscalation = await sender.Send(BuildGetByIdQuery(incidentId), CancellationToken.None);
+            getAfterEscalation.Should().NotBeNull();
+            getAfterEscalation!.EscalatedAtUtc.Should().NotBeNull(
+                "EscalatedAtUtc must round-trip through IncidentDto after IncidentToIncidentDtoMappingProfile.Map's field-drop fix");
+            getAfterEscalation.EscalatedAtUtc!.Value.Should().BeOnOrAfter(beforeEscalate.AddSeconds(-1))
+                .And.BeOnOrBefore(afterEscalate.AddSeconds(1));
+            getAfterEscalation.EscalationReason.Should().Be(escalateCommand.Reason);
+            getAfterEscalation.EscalationCount.Should().Be(1);
+        }
+        finally
+        {
+            scope.Dispose();
+        }
     }
 
     private GetIncidentByIdQuery BuildGetByIdQuery(Guid incidentId) => new()

@@ -63,6 +63,9 @@ public sealed record IncidentDto
     /// <summary>Reason recorded for the most recent escalation, if any. Added 2026-08-03.</summary>
     public string? EscalationReason { get; init; }
 
+    /// <summary>UTC instant of the most recent escalation, if any. Added 2026-08-20 (mapping/DTO consistency fix).</summary>
+    public DateTimeOffset? EscalatedAtUtc { get; init; }
+
     /// <summary>Number of times this incident has been escalated. Added 2026-08-03.</summary>
     public int EscalationCount { get; init; }
 
