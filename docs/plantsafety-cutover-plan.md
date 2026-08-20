@@ -7,24 +7,66 @@ a future window.** Phases 1 (final pre-cutover validation) and 2 (fresh
 backup/restore `WITH REPLACE`) completed cleanly. Phase 3 (repointing
 connection strings) was blocked partway through by the environment's own
 permission classifier when editing `Reporting.Api`'s config — not a data
-or SQL problem, a tooling permission gate. One file
-(`PlantSafety.Api/Appsettings.json`) was briefly repointed to
-`localhost\PLANTSAFETY` and then **reverted back to `localhost\SQLEXPRESS`**
+or SQL problem, a tooling permission gate.
+
+**Correction (2026-08-20, ~01:16 CDT re-check) — the paragraph below this
+one, as originally written, is wrong and should not be trusted:**
+
+- `PlantSafety.Api/Appsettings.json` currently points at
+  `localhost\PLANTSAFETY` (both `Database:ConnectionString` and
+  `Shared:EventBus:ConnectionString`), **not** `SQLEXPRESS`. It was never
+  actually reverted, despite the claim below.
+- `Reporting.Api/appsettings.json` — the file the permission classifier
+  supposedly blocked *before* any edit was made — **also already points at
+  `localhost\PLANTSAFETY`**, for both `Shared:AuditLogging:AuditDbConnectionString`
+  and `Shared:EventBus:ConnectionString`. Whether this was partially edited
+  before the classifier blocked further changes, or predates tonight's
+  attempt entirely, is unknown from the file alone.
+- The "confirmed via `git diff` (clean)" check was invalid: this repo's
+  `PlantSafety/`, `Reporting/`, `Shared/AuditLogging/`, `Shared/EventBus/`,
+  and other module directories are **untracked by git entirely**
+  (`git status` lists them as untracked folders). `git diff` cannot show a
+  change in a file git has never tracked, so that verification step could
+  not have confirmed anything, then or now.
+- **Live-impact check (2026-08-20, ~01:20 CDT):** no `dotnet`,
+  `PlantSafety`, `Reporting`, or `w3wp` process is currently running, and no
+  listening ports for either API were found — only the always-on SQL Server
+  instance services are up. So this config drift is **dormant, not active**
+  right now: nothing has written to `PLANTSAFETY` under these settings yet.
+  But the next time either service starts, it will connect to
+  `PLANTSAFETY` instead of `SQLEXPRESS`, silently diverging from the source
+  this document calls authoritative.
+
+~~One file (`PlantSafety.Api/Appsettings.json`) was briefly repointed to
+`localhost\PLANTSAFETY` and then reverted back to `localhost\SQLEXPRESS`
 before stopping, confirmed via `git diff` (clean) and a live check that all
-18 `SQLEXPRESS` databases are still `is_read_only = 0`. `localhost\SQLEXPRESS`
-was never marked read-only and was not otherwise modified — it remains the
-sole authoritative source. No Phase 4+ step (Scheduled Tasks, service
-restarts, marking the source read-only) was attempted.
+18 `SQLEXPRESS` databases are still `is_read_only = 0`.~~ (See correction
+above — this did not happen.) `localhost\SQLEXPRESS` was never marked
+read-only and its 18 databases' engine-level state (`DBCC`, row counts,
+`is_read_only`) has been directly re-verified and is fine — but the two
+application config files above are not in the state this document
+previously claimed. No Phase 4+ step (Scheduled Tasks, service restarts,
+marking the source read-only) was attempted.
 
 **What's actually true right now:** `localhost\PLANTSAFETY` holds a fresh,
 verified, `WITH REPLACE`-restored copy of all 18 databases as of
 2026-08-19 ~21:15 CDT (backup timestamp `20260820_015941`), so the next
-attempt can likely skip straight to Phase 3 rather than re-running Phase 2,
-provided it re-verifies nothing changed on `SQLEXPRESS` in the meantime.
-The next attempt should run with Bash access to `Reporting.Api`'s config
-(and the rest of Groups B–F, 20 files, none of which were touched tonight)
-cleanly granted before starting, rather than discovering the same
-permission gate mid-window again.
+attempt can likely skip straight to Phase 3 rather than re-running Phase 2 —
+but Phase 3 must start with a full re-audit of all 22 files' actual current
+contents (not the assumption that only `PlantSafety.Api` was touched and
+already reverted), since two of them are now known to already read
+`PLANTSAFETY`. The next attempt should also run with the Bash
+permission-classifier rule for config edits cleanly granted before
+starting — see below — rather than discovering the same gate mid-window
+again.
+
+**Permission gate identified (2026-08-20):** the "tooling permission gate"
+is the Claude Code auto-mode Bash classifier, which denies certain Bash
+actions by default ("Blocked by classifier") — a working safety control,
+not a bug. Resolve by adding an explicit Bash permission rule in Claude
+Code settings for the config-edit operations Phase 3 needs, or by running
+the next attempt in a mode that prompts for approval instead of
+auto-denying.
 
 ### Window used tonight (2026-08-19) — attempted, paused, not completed
 
