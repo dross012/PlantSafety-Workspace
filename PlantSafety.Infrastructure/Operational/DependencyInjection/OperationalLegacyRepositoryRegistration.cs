@@ -41,12 +41,18 @@
 //                  task constraints, that central file is intentionally not edited here to avoid
 //                  concurrent-edit collisions with other agents working the same file). Additive-only
 //                  evolution.
+//
+//                  2026-08-20 addendum: three more genuinely-new Operational list-view modules
+//                  (EnvironmentalMonitoring, Wellness, WorkforceSafety) were scaffolded end-to-end
+//                  following this exact EquipmentSafety/Webinars convention and are registered
+//                  below alongside the original 26. Bringing the total to 29.
 // ============================================================================
 using PlantSafety.Application.Operational.Alerts.Repositories;
 using PlantSafety.Application.Operational.Checklists.Repositories;
 using PlantSafety.Application.Operational.Commands;
 using PlantSafety.Application.Operational.CompetencyManagement.Repositories;
 using PlantSafety.Application.Operational.Contractor.Repositories;
+using PlantSafety.Application.Operational.EnvironmentalMonitoring.Repositories;
 using PlantSafety.Application.Operational.EquipmentSafety.Repositories;
 using PlantSafety.Application.Operational.Ergonomics.Repositories;
 using PlantSafety.Application.Operational.FatigueManagement.Repositories;
@@ -68,11 +74,14 @@ using PlantSafety.Application.Operational.Training.Courses.Repositories;
 using PlantSafety.Application.Operational.Training.Repositories;
 using PlantSafety.Application.Operational.Training.Seminars.Repositories;
 using PlantSafety.Application.Operational.Training.Webinars.Repositories;
+using PlantSafety.Application.Operational.Wellness.Repositories;
+using PlantSafety.Application.Operational.WorkforceSafety.Repositories;
 using PlantSafety.Infrastructure.Operational.Alerts.Persistence;
 using PlantSafety.Infrastructure.Operational.Checklists.Persistence;
 using PlantSafety.Infrastructure.Operational.Commands.Persistence;
 using PlantSafety.Infrastructure.Operational.CompetencyManagement.Persistence;
 using PlantSafety.Infrastructure.Operational.Contractor.Persistence;
+using PlantSafety.Infrastructure.Operational.EnvironmentalMonitoring.Persistence;
 using PlantSafety.Infrastructure.Operational.EquipmentSafety.Persistence;
 using PlantSafety.Infrastructure.Operational.Ergonomics.Persistence;
 using PlantSafety.Infrastructure.Operational.FatigueManagement.Persistence;
@@ -94,6 +103,8 @@ using PlantSafety.Infrastructure.Operational.Training.Courses.Persistence;
 using PlantSafety.Infrastructure.Operational.Training.Persistence;
 using PlantSafety.Infrastructure.Operational.Training.Seminars.Persistence;
 using PlantSafety.Infrastructure.Operational.Training.Webinars.Persistence;
+using PlantSafety.Infrastructure.Operational.Wellness.Persistence;
+using PlantSafety.Infrastructure.Operational.WorkforceSafety.Persistence;
 
 namespace PlantSafety.Infrastructure.Operational.DependencyInjection;
 
@@ -139,6 +150,14 @@ public static class OperationalLegacyRepositoryRegistration
         services.AddScoped<ICoursesRepository, CoursesDapperRepository>();
         services.AddScoped<ISeminarsRepository, SeminarsDapperRepository>();
         services.AddScoped<IWebinarsRepository, WebinarsDapperRepository>();
+
+        // Genuinely-new Operational.list-view modules (previously miscategorized as
+        // zero-Application/zero-Api stubs; scaffolded 2026-08-20 following this exact
+        // EquipmentSafety/Webinars list-view convention -- brand-new *ReadModel tables +
+        // usp_*_List procedures, no pre-existing SQL objects).
+        services.AddScoped<IEnvironmentalMonitoringRepository, EnvironmentalMonitoringDapperRepository>();
+        services.AddScoped<IWellnessRepository, WellnessDapperRepository>();
+        services.AddScoped<IWorkforceSafetyRepository, WorkforceSafetyDapperRepository>();
 
         // Cross-cutting Operational repositories
         services.AddScoped<IOperationalBulkRepository, OperationalBulkDapperRepository>();
