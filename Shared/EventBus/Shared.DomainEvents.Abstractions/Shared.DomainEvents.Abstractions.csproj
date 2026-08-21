@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Shared.DomainEvents.Abstractions</RootNamespace>
+    <AssemblyName>Shared.DomainEvents.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="PlantSafety\IncidentManagement\" />
+    <Folder Include="PlantSafety\CAPA\" />
+    <Folder Include="PlantSafety\AccidentManagement\" />
+    <Folder Include="PlantSafety\RiskManagement\" />
+  </ItemGroup>
+
+</Project>
