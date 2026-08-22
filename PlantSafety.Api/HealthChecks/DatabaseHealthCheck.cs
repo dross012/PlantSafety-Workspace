@@ -3,8 +3,8 @@
 // Project: PlantSafety.Api
 // Author: David (Ted)
 // Created: 2026-06-12
-// Last Updated: 2026-06-12
-// Description: ASP.NET Core health check that verifies Azure SQL Server connectivity
+// Last Updated: 2026-08-21
+// Description: ASP.NET Core health check that verifies SQL Server connectivity
 //              for the /health/ready readiness probe.
 // ============================================================================
 //
@@ -13,10 +13,21 @@
 //   /health/ready endpoint in Program.cs (readiness probe only, not liveness).
 // - Uses Dapper for the health check query to stay consistent with the platform's
 //   no-EF-Core, Dapper-only data access policy.
-// - The connection string is retrieved from Azure Key Vault via IConfiguration.
-//   Connection strings are NEVER stored in appsettings.json.
-// - This health check tests the primary Azure SQL Server connection. Individual module
-//   schema health is NOT validated here — that is out of scope for a liveness/readiness check.
+// - FIXED 2026-08-21: this check originally read `ConnectionStrings:PlantSafetyDb`
+//   (an Azure Key Vault-era key this codebase never actually populates anywhere) and
+//   so always reported Unhealthy regardless of real database state -- verified live
+//   against a working PlantSafety.Api instance whose schema-version health check and
+//   OutboxProcessor both proved real DB connectivity while this check failed with
+//   "connection string is not configured." The real connection string this codebase's
+//   actual repositories use lives at `Database:ConnectionString` (see
+//   PlantSafety.Api/Appsettings.json and Group A of
+//   source/docs/plantsafety-cutover-plan.md) -- this check now reads that key instead.
+//   This is on-prem SQL Server (Express in dev, Standard in production), not Azure SQL
+//   -- the "Azure Key Vault" premise in this file's original comments never reflected
+//   this program's actual deployment target.
+// - This health check tests the primary SQL Server connection. Individual module
+//   schema health is NOT validated here -- see the separate schema-version health check
+//   for that signal.
 // - See Architecture Specification §4.10 (Health Checks) and §8.5 (Observability).
 //
 // Rationale:
@@ -37,19 +48,19 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 namespace PlantSafety.Api.HealthChecks;
 
 /// <summary>
-/// Health check that validates Azure SQL Server connectivity by executing a lightweight
+/// Health check that validates SQL Server connectivity by executing a lightweight
 /// SELECT 1 query. Used by the /health/ready readiness probe.
 /// </summary>
 public sealed class DatabaseHealthCheck : IHealthCheck
 {
-    private const string ConnectionStringKey = "ConnectionStrings:PlantSafetyDb";
+    private const string ConnectionStringKey = "Database:ConnectionString";
     private readonly IConfiguration _configuration;
     private readonly ILogger<DatabaseHealthCheck> _logger;
 
     /// <summary>
     /// Initializes a new instance of <see cref="DatabaseHealthCheck"/>.
     /// </summary>
-    /// <param name="configuration">Configuration provider backed by Azure Key Vault in production.</param>
+    /// <param name="configuration">Configuration provider for the application's connection strings.</param>
     /// <param name="logger">Logger for recording health check failures.</param>
     public DatabaseHealthCheck(IConfiguration configuration, ILogger<DatabaseHealthCheck> logger)
     {

@@ -151,11 +151,18 @@ public sealed class BackupDapperRepository : IBackupRepository
     /// <inheritdoc/>
     public async Task<IReadOnlyList<BackupHistoryItemDto>> GetBackupHistoryAsync(string? databaseName, int top, CancellationToken cancellationToken)
     {
+        // backup_finish_date is documented by SQL Server as the local server time the
+        // backup completed, not UTC, despite the misleadingly-named DTO field below --
+        // converted here via AT TIME ZONE so callers get a genuine UTC value, matching
+        // every other timestamp this repository surfaces (all sourced from
+        // SYSUTCDATETIME() elsewhere). The server's Windows time zone id
+        // ("Central Standard Time") is used explicitly rather than assumed generically,
+        // and AT TIME ZONE handles the CST/CDT DST transition automatically.
         const string sql = @"
 SELECT TOP (@Top)
     bs.database_name       AS DatabaseName,
     bs.type                AS BackupTypeCode,
-    bs.backup_finish_date  AS BackupFinishDateUtc,
+    CAST(bs.backup_finish_date AT TIME ZONE 'Central Standard Time' AT TIME ZONE 'UTC' AS DATETIME2(3)) AS BackupFinishDateUtc,
     CAST(bmf.backup_size / 1048576.0 AS DECIMAL(18,2)) AS SizeMB,
     bmf.physical_device_name AS PhysicalDeviceName
 FROM msdb.dbo.backupset bs
@@ -279,13 +286,20 @@ ORDER BY StartUtc DESC;";
     {
         // Live-verified inventory approach mirrors Phase 12/120 and Phase 18/180: PlantSafety.*
         // databases with state_desc = 'ONLINE' and database_id > 4 (i.e. not a system database).
+        // See the AT TIME ZONE note in GetBackupHistoryAsync above -- backup_finish_date
+        // is local server time, not UTC. This query feeds BackupRpoHealthCheck's
+        // `DateTime.UtcNow - LastFullBackupUtc` age calculation directly, so an
+        // unconverted value here silently inflated every reported backup age by the
+        // server's local UTC offset (verified live: a backup 33 minutes old was reported
+        // as 5:33 stale -- exactly the Central time zone's 5-hour offset).
         const string sql = @"
 SELECT
     d.name AS DatabaseName,
     b.LastFullBackupUtc
 FROM sys.databases d
 LEFT JOIN (
-    SELECT database_name, MAX(backup_finish_date) AS LastFullBackupUtc
+    SELECT database_name,
+           CAST(MAX(backup_finish_date) AT TIME ZONE 'Central Standard Time' AT TIME ZONE 'UTC' AS DATETIME2(3)) AS LastFullBackupUtc
     FROM msdb.dbo.backupset
     WHERE type = 'D'
     GROUP BY database_name
