@@ -2,14 +2,73 @@
 
 ## Status
 
-**Phase 3 (repointing) is functionally complete and now committed.
-Phases 4–9 are not started.** Two prior status write-ups in this document
-(from the night of the attempt, and a same-night correction) were each
-wrong in different ways — see "History of this Status section" below for
-what was wrong and why. This section reflects a verified re-audit run
-2026-08-20, ~01:30–02:00 CDT, checked directly in each file's own repo.
+**CUTOVER CONSIDERED COMPLETE (2026-08-21).** All phases through 6 done and
+verified; Phase 7 (`READ_ONLY` on `SQLEXPRESS`) is superseded — see below.
+Phases 8–9 (close-out, rollback) are moot once step 7 is superseded.
 
-**What's actually true right now:**
+**Update (2026-08-21):** two things not covered anywhere above this line:
+
+1. **A real gap in the original 22-file scope**: `msdb`-level objects
+   (`usp_PlantSafety_BackupFull`/`Diff`/`Log`/`Cleanup`,
+   `usp_PlantSafety_LogDatabaseSizes`, `usp_PlantSafety_RestoreTest`,
+   `usp_PlantSafety_IndexMaintenance`/`IntegrityCheck`/`UpdateStatistics`,
+   and the `PlantSafety_DatabaseSizeLog`/`PlantSafety_MaintenanceLog` tables)
+   were never migrated — Phase 2's backup/restore only covers the 18
+   `PlantSafety.*` user databases, not `msdb`. This silently broke the
+   Group E Scheduled Tasks (confirmed live: the Database Size Snapshot task
+   failed with `Invalid object name 'msdb.dbo.PlantSafety_DatabaseSizeLog'`).
+   Fixed by deploying `Phase12-Reliability/120`–`123` and
+   `Phase18-ExpressChecklist/180` (all idempotent, `CREATE OR ALTER`/
+   existence-checked) against `PLANTSAFETY`'s own `msdb`, plus an `icacls`
+   grant of `NT SERVICE\MSSQL$PLANTSAFETY` on
+   `C:\Users\dross\SQLBackups\PlantSafety\` (previously only
+   `MSSQL$SQLEXPRESS` had access). **Also confirmed empirically that Group
+   E's Scheduled Tasks do NOT need re-registration** — the registered task
+   actions call the `.ps1` files by path with no `-ServerInstance`
+   override, so each script's own already-repointed default parameter
+   (`(local)\PLANTSAFETY`) takes effect on the next run automatically. The
+   "re-run Register-*.ps1" instruction earlier in this document was
+   over-cautious and is not required.
+2. **Verified live** (not just by reading config): `Invoke-PlantSafetyDatabaseSizeLog.ps1`
+   and `Invoke-PlantSafetyBackup.ps1 -BackupType Full` both ran clean
+   against `PLANTSAFETY`, 18/18 databases; `PlantSafety.Api` built and ran
+   live against `PLANTSAFETY` with its `schema-version` health check
+   reporting Healthy across all 8 known databases and its `OutboxProcessor`
+   successfully processing real work every 5 seconds for the duration of
+   the smoke test. Two **pre-existing, cutover-unrelated** bugs were found
+   during this smoke test and flagged separately (not fixed here): a
+   local-time-vs-UTC mismatch in `BackupRpoHealthCheck`'s age calculation,
+   and `DatabaseHealthCheck` reading an unused config key
+   (`ConnectionStrings:PlantSafetyDb` instead of the real
+   `Database:ConnectionString`).
+3. **Step 7 superseded, not performed as written**: `MSSQL$SQLEXPRESS`
+   (and `SQLEXPRESS01`) were found with `StartType = Disabled` as of this
+   morning's boot (2026-08-21 04:04 CDT) — not done by this session, no
+   crash event in the System log, presumably a deliberate action taken
+   outside any Claude Code session. Starting the service to run the literal
+   `ALTER DATABASE ... SET READ_ONLY` requires local admin rights not
+   available in this session. **A disabled service is a strictly stronger
+   safeguard against accidental writes than `READ_ONLY` would be** (nothing
+   can connect at all, versus a running instance that merely rejects
+   writes), so the practical intent of step 7 is already satisfied. If
+   `SQLEXPRESS` is ever re-enabled for any reason, run step 7's
+   `ALTER DATABASE` for real before allowing anything to connect to it.
+   Row-count re-verification against `SQLEXPRESS` (part of step 6) was
+   skipped for the same reason (service unreachable without admin rights)
+   — relying instead on the exact-match verification already on record from
+   2026-08-19/20, since nothing has written to `SQLEXPRESS` in the interim
+   (confirmed dormant then, confirmed disabled now).
+
+### History of this Status section — what was wrong, twice, before today
+
+Two earlier status write-ups in this document (from the night of the
+attempt, and a same-night correction) were each wrong in different ways —
+detailed further below. The account that follows reflects a verified
+re-audit run 2026-08-20, ~01:30–02:00 CDT, checked directly in each file's
+own repo, and was itself superseded by the 2026-08-21 completion recorded
+above.
+
+**What was true as of the 2026-08-20 audit:**
 
 - **Phase 1** (final pre-cutover validation) and **Phase 2** (fresh
   backup/restore `WITH REPLACE` onto `localhost\PLANTSAFETY`) completed
