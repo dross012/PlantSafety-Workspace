@@ -1,0 +1,54 @@
+# ============================================================================
+# TEMPLATE — NOT EXECUTABLE IN THIS REPO TODAY.
+#
+# No CI runner (GitHub Actions self-hosted runner, Azure DevOps agent, Jenkins node) is
+# registered anywhere in this repo or the EmergencyMgt repo (confirmed: EmergencyMgt's own
+# .github/workflows/ci.yml has jobs that reference an `emergencymgt`-labeled runner that has
+# never existed — see EmergencyMgt docs/deviations.md, "Open items carried forward"). This file
+# defines the STAGES/STEPS/CONTRACTS a real pipeline would need, so the work is scoped and
+# ready the moment a runner exists — it is not wired into any trigger and will not run.
+# ============================================================================
+name: emergencymgt-integration (TEMPLATE — not wired to any trigger)
+
+stages:
+  - build
+  - test
+  - deploy
+  - audit
+
+build:
+  steps:
+    - name: Restore & build PlantSafety.sln
+      run: dotnet build PlantSafety.sln
+      required_artifacts: []
+    - name: Restore & build PlantSafety.Integration.Pusher.Local
+      run: dotnet build Enterprise/Integration/Pusher/PlantSafety.Integration.Pusher.Local
+      produces_artifact: PlantSafety.Integration.Pusher.Local.zip
+
+test:
+  depends_on: [build]
+  steps:
+    - name: Run EmergencyMgtIntegration schema tests
+      run: dotnet test Enterprise/Integration/Tests/EmergencyMgtIntegration.Tests
+      requires: a real EMERGENCYMGT + PLANTSAFETY SQL Server target (see test-template.yml)
+
+deploy:
+  depends_on: [test]
+  manual_approval: true
+  steps:
+    - name: Apply EmergencyMgt-Integration SQL (00- through 51-*.sql, filename order)
+      run: sqlcmd -S <target> -i <each file in Enterprise/Integration/sql/EmergencyMgt-Integration/>
+    - name: Run usp_ValidateEmergencyMgtIntegration and fail the stage on any Passed=0 row
+      run: sqlcmd -S <target> -Q "EXEC EmergencyMgtIntegration.usp_ValidateEmergencyMgtIntegration"
+    - name: Run PlantSafety.Integration.Pusher.Local once
+      run: PlantSafety.Integration.Pusher.Local.exe <EmergencyMgtConnString> <PlantSafetyConnString>
+
+audit:
+  depends_on: [deploy]
+  steps:
+    - name: Compute and record a new VersionManifest
+      run: sqlcmd -S <target> -Q "EXEC EmergencyMgtIntegration.usp_VersionManifest_ComputeAndRecord @SchemaVersionLabel=N'<build-number>'"
+    - name: Sign the manifest hash (requires a real, ops-managed signing certificate — none exists in this environment)
+      run: <not implemented — see PlantSafetyInstallerContract.md>
+    - name: Produce health report
+      run: curl <plantsafety-api-base>/integration/emergency/health

@@ -1,0 +1,16 @@
+# TEMPLATE — NOT EXECUTABLE. See pipeline-template.yml's header for why.
+name: emergencymgt-integration-deploy (TEMPLATE)
+
+requires:
+  - manual_approval: true
+  - A registered PlantSafety-side deploy tool. None exists today (see
+    PlantSafetyInstallerContract.md, "Rollback / upgrade logic" — the SQL layer's own
+    idempotent CREATE OR ALTER pattern is the closest real substitute).
+
+steps:
+  - name: Apply EmergencyMgt-Integration SQL, filename order
+    run: sqlcmd -S $(PlantSafetyTargetInstance) -i <00-create-schema.sql .. 51-usp-validateintegration-extensions.sql>
+  - name: Validate installation
+    run: sqlcmd -S $(PlantSafetyTargetInstance) -Q "EXEC EmergencyMgtIntegration.usp_ValidateEmergencyMgtIntegration" ; fail on any Passed=0 row
+  - name: Deploy PlantSafety.Integration.Pusher.Local as a scheduled task
+    run: <Register-ScheduledTask — not implemented; PlantSafetyInstallerContract.md's PusherScheduleCron config section names the intended shape>

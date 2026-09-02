@@ -19,6 +19,8 @@ Deployable in any order, first:
 - `Enterprise/DigitalTwin/sql/Phase1-DigitalTwin`
 - `Enterprise/PredictiveModeling/sql/Phase1-PredictiveModeling`
 - `Enterprise/Integration/sql/Phase1-Integration`
+- `Enterprise/Integration/sql/IncidentMgt-Integration` — no downstream FKs from other PlantSafety modules; source-only as of this entry, not yet deployed to the live `PlantSafety.CoreDB`.
+- `Enterprise/Integration/sql/EmergencyMgt-Integration` — mirrors `IncidentMgt-Integration`'s own pattern exactly (own `EmergencyMgtIntegration` schema, no FKs into any other PlantSafety schema). Deployed live to `PlantSafety.CoreDB` and verified (`usp_ValidateEmergencyMgtIntegration`: 23/23 checks passing) 2026-08-28 — the first schema of this integration shape actually deployed live in this repo.
 - `Enterprise/Graph/sql/Phase1-Graph`
 - `Enterprise/RulesEngine/sql/Phase1-RulesEngine`
 - `Enterprise/WorkflowOrchestration/sql/Phase1-WorkflowOrchestration`
