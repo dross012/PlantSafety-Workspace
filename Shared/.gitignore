@@ -1,0 +1,66 @@
+# ============================================================================
+# Shared .gitignore
+# Standard .NET build output + tooling artifacts, matching the pattern used
+# across the other PlantSafety-family repos (Azure, PlantSafety, Reporting,
+# etc.). Golden-file snapshots under __snapshots__/ are intentionally NOT
+# ignored (Shared.SnapshotTesting) -- they are committed, reviewed
+# baselines, not build output.
+# ============================================================================
+
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / IntelliJ
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# MSBuild / dotnet
+*.binlog
+*.dotCover
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Rider/VS temp
+*.tmp
+*.bak
+*.swp
+*~
+
+# Secrets / private key material - never commit, store in a secret vault instead.
+*.pfx
+*.p12
+*.key
+!**/*.publickey
+*.env
+.env.*
