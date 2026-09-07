@@ -2,20 +2,19 @@
 
 **Date:** 2026-07-27
 
-> **Status (2026-09-06): committed, but dormant — not currently wired into
-> PlantSafety.** PlantSafety previously depended on this module; its eventing
-> layer was deliberately disabled after a 2026-08-29 build-repair pass found
-> this module's source unrecoverable at the time (see
-> `PlantSafety.Infrastructure.csproj`'s and `PlantSafety.Tests.csproj`'s own
-> comments, and `docs/architecture/eventbus-architecture.md`'s status note in
-> the PlantSafety repo). This module has since been reconstructed from
-> scratch and is fully tested (41/41) in isolation. It remains committed here
-> for repo completeness and so this reconstruction is available for future
-> platform-eventing modernization work, but PlantSafety will only re-integrate
-> it after someone verifies the reconstructed contracts actually match what
-> the disabled `CrossModuleDomainEventMapper[V2]`/`CrossModuleEventRelay[V2]`
-> tests (and the real cross-module flow this module's docs describe) expect —
-> that verification is separate, not-yet-started work.
+> **Status (2026-09-07): re-wired into PlantSafety.** PlantSafety previously
+> depended on this module; its eventing layer was deliberately disabled after
+> a 2026-08-29 build-repair pass found this module's source unrecoverable at
+> the time. This module was reconstructed from scratch and fully tested
+> (41/41) in isolation, and on 2026-09-07 that reconstruction was verified
+> against PlantSafety's own `CrossModuleDomainEventMapper[V2]`/
+> `CrossModuleEventRelay[V2]` and their previously-disabled tests: the
+> `PlantSafety.Infrastructure.csproj` / `PlantSafety.Tests.csproj` Compile
+> exclusions and the commented-out `AddSharedEventBus` DI registration were
+> all removed, and the full solution builds and the full test suite passes
+> (3861/3861, including those tests) with the two projects compiled together
+> for the first time since the rebuild — confirming the reconstructed
+> contracts genuinely match what PlantSafety expects, not just in isolation.
 
 Cross-module event bus for the PlantSafety solution family. Lets one module
 (currently: PlantSafety) publish versioned integration event contracts that

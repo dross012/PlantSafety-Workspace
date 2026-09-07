@@ -6,7 +6,7 @@ to stop that. Update it whenever a module's state changes materially — don't
 let it go stale the way its absence let this exact question get re-asked and
 re-audited from scratch.
 
-Last updated: 2026-09-06.
+Last updated: 2026-09-07.
 
 ## How to read this
 
@@ -32,6 +32,7 @@ platform is finished" — see the Known gaps section at the bottom.
 | PlantDigitalTwin | `D:\Manufacturing Program\PlatformServices\PlantDigitalTwin` (own repo, `dross012/PlantDigitalTwin`) | Full SQL module + .NET solution, GovernanceExt-backed auth verified live, replay/timestamp protections, error-code registry. Separate module from PlantSafety proper. |
 | `EmergencyMgt-Integration` | `Enterprise/Integration/sql/EmergencyMgt-Integration` | Deployed live to `PlantSafety.CoreDB`, `usp_ValidateEmergencyMgtIntegration`: 23/23. Has a full `/integration/emergency/*` API vertical slice. |
 | `IncidentMgt-Integration` | `Enterprise/Integration/sql/IncidentMgt-Integration` | Deployed live 2026-09-06, `usp_ValidateIncidentMgtIntegration`: 44/44. Has a full `/integration/incident/*` API vertical slice (10 endpoints), smoke-tested live. |
+| `Shared.EventBus` | `Shared/EventBus/` | Reconstructed after being declared unrecoverable in a 2026-08-29 PlantSafety build-repair pass, tested in isolation (41/41). Re-wired into PlantSafety 2026-09-07: `ProjectReference`, DI registration, and the `CrossModuleDomainEventMapper[V2]`/`CrossModuleEventRelay[V2]` tests restored. Verified: full solution builds 0 errors, full test suite 3861/3861. See `Shared/EventBus/docs/README.md` and `PlantSafety/docs/architecture/eventbus-architecture.md`. |
 
 ## Partial
 
@@ -39,7 +40,6 @@ platform is finished" — see the Known gaps section at the bottom.
 |---|---|---|
 | `Shared.Authorization` | `Shared/Authorization/` | Real, tested (100/100), actively consumed by PlantSafety. Committed 2026-09-06 (was previously untracked despite committed PlantSafety code depending on it — see `PHASE9`–`PHASE13`-README.md for the modernization history). No known open gap beyond normal ongoing phase work. |
 | `Shared.AuditLogging` | `Shared/AuditLogging/` | Real, tested (13/13), actively consumed by PlantSafety + (historically) Reporting. Committed 2026-09-06 for the same reason as Authorization. No known open gap. |
-| `Shared.EventBus` | `Shared/EventBus/` | Reconstructed after being declared unrecoverable in a 2026-08-29 PlantSafety build-repair pass; tested in isolation (41/41). Committed 2026-09-06, but **deliberately left unwired** — PlantSafety's `ProjectReference`s to it and its `CrossModuleDomainEventMapper[V2]`/`CrossModuleEventRelay[V2]` tests remain disabled until someone verifies the reconstructed contracts actually match what those tests expect. See `Shared/EventBus/docs/README.md` and `PlantSafety/docs/architecture/eventbus-architecture.md`. |
 | Most mid-size PlatformServices modules | `D:\Manufacturing Program\PlatformServices\{Azure,Diagnostics,Reporting,GovernanceExt,IntegrationHub,IdentityExt,OpsSpine,DataLake,Intelligence,Monitoring,ExportImport}` | Substantial real code, but none have been run through a validation/governance report the way PlantDigitalTwin and Governance were. Status is "probably fine" not "verified." |
 
 ## Not started
