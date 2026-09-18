@@ -2,16 +2,16 @@
 // PlantSafety.Integration.Pusher.Local -- Program.cs
 // Console entry point. Intended to run as a scheduled task (mirrors EmergencyMgt's own
 // tools/*.ps1 "no CI runner, run manually or via Windows Task Scheduler" precedent -- see
-// EmergencyMgt docs/deviations.md DEV-020). Trusted-connection (Windows auth) to both named
-// instances, matching every other tool in either repo. No secrets in source or config.
+// EmergencyMgt docs/deviations.md DEV-020). Trusted-connection (Windows auth) to the shared
+// localhost\PLANTSAFETY instance, matching every other tool in either repo. No secrets in source or config.
 // ============================================================================
 using Dapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using PlantSafety.Integration.Pusher.Local;
 
-var emergencyMgtConn = args.Length > 0 ? args[0] : @"Server=.\EMERGENCYMGT;Database=EmergencyManagementDB;Trusted_Connection=True;TrustServerCertificate=True;";
-var plantSafetyConn = args.Length > 1 ? args[1] : @"Server=.\PLANTSAFETY;Database=PlantSafety.CoreDB;Trusted_Connection=True;TrustServerCertificate=True;";
+var emergencyMgtConn = args.Length > 0 ? args[0] : @"Server=localhost\PLANTSAFETY;Database=EmergencyManagementDB;Trusted_Connection=True;TrustServerCertificate=True;";
+var plantSafetyConn = args.Length > 1 ? args[1] : @"Server=localhost\PLANTSAFETY;Database=PlantSafety.CoreDB;Trusted_Connection=True;TrustServerCertificate=True;";
 
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
 var logger = loggerFactory.CreateLogger<LocalEmergencyMgtPusher>();

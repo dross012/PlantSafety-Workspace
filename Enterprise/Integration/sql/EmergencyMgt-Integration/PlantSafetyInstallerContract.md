@@ -36,8 +36,8 @@ A real installer would need a config section along these lines (illustrative, no
 {
   "EmergencyMgtIntegration": {
     "PusherConnectionStrings": {
-      "EmergencyMgt": "Server=.\\EMERGENCYMGT;Database=EmergencyManagementDB;Trusted_Connection=True;",
-      "PlantSafety": "Server=.\\PLANTSAFETY;Database=PlantSafety.CoreDB;Trusted_Connection=True;"
+      "EmergencyMgt": "Server=localhost\\PLANTSAFETY;Database=EmergencyManagementDB;Trusted_Connection=True;",
+      "PlantSafety": "Server=localhost\\PLANTSAFETY;Database=PlantSafety.CoreDB;Trusted_Connection=True;"
     },
     "PusherScheduleCron": "*/15 * * * *",
     "RetentionYears": 3

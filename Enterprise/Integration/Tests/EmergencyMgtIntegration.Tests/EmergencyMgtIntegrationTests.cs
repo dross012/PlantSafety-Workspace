@@ -14,8 +14,8 @@ namespace EmergencyMgtIntegration.Tests;
 
 public sealed class EmergencyMgtIntegrationTests
 {
-    private const string PlantSafetyConnString = @"Server=.\PLANTSAFETY;Database=PlantSafety.CoreDB;Trusted_Connection=True;TrustServerCertificate=True;";
-    private const string EmergencyMgtConnString = @"Server=.\EMERGENCYMGT;Database=EmergencyManagementDB;Trusted_Connection=True;TrustServerCertificate=True;";
+    private const string PlantSafetyConnString = @"Server=localhost\PLANTSAFETY;Database=PlantSafety.CoreDB;Trusted_Connection=True;TrustServerCertificate=True;";
+    private const string EmergencyMgtConnString = @"Server=localhost\PLANTSAFETY;Database=EmergencyManagementDB;Trusted_Connection=True;TrustServerCertificate=True;";
 
     [Fact]
     public async Task ValidateEmergencyMgtIntegration_AllChecksPass()
