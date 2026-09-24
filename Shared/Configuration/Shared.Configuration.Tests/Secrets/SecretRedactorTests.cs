@@ -40,7 +40,7 @@ public sealed class SecretRedactorTests
     [InlineData("", "")]
     [InlineData("ab", "**")]
     [InlineData("abcd", "****")]
-    [InlineData("sk_live_abcdef123456", "s*******************6")]
+    [InlineData("sk_live_abcdef123456", "s******************6")] // mask keeps the input's length: 20 chars -> 1 + 18 '*' + 1
     public void Mask_KeepsOnlyFirstAndLastCharacterForLongerValues(string input, string expected)
     {
         SecretRedactor.Mask(input).Should().Be(expected);

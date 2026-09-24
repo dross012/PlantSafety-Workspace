@@ -30,7 +30,7 @@ public sealed class AuditLoggingOptions
 
     /// <summary>Connection string targeting [PlantSafety.AuditDB], where dbo.AuditLog lives.</summary>
     public string AuditDbConnectionString { get; init; } =
-        "Server=(local)\\PLANTSAFETY;Database=PlantSafety.AuditDB;Integrated Security=true;TrustServerCertificate=true;";
+        "Server=localhost\\PLANTSAFETY;Database=PlantSafety.AuditDB;Integrated Security=true;TrustServerCertificate=true;";
 
     /// <summary>Command timeout (seconds) for AuditLog search queries.</summary>
     public int SearchCommandTimeoutSeconds { get; init; } = 60;
