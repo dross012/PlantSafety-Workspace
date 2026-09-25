@@ -54,3 +54,14 @@ Thumbs.db
 *.bak
 *.swp
 *~
+
+# Nested repositories with their own GitHub remotes - tracked there, not here:
+#   PlantSafety/        -> github.com/dross012/PlantSafety (the solution)
+#   SafetyIntegrations/ -> github.com/dross012/SafetyIntegrations
+#   SafetyTooling/      -> github.com/dross012/SafetyTooling
+/PlantSafety/
+/SafetyIntegrations/
+/SafetyTooling/
+
+# dotnet publish output
+publish/
