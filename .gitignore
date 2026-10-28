@@ -65,3 +65,8 @@ Thumbs.db
 
 # dotnet publish output
 publish/
+
+# Visual Studio per-user state and scratch tree listings (untracked 2026-10-28; files remain on disk)
+.vs/
+FullTree.txt
+NoFiles.txt
