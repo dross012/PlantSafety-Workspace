@@ -1,0 +1,17 @@
+# TEMPLATE — NOT EXECUTABLE. See pipeline-template.yml's header for why.
+name: emergencymgt-integration-tests (TEMPLATE)
+
+requires:
+  - A real SQL Server instance reachable as EMERGENCYMGT with EmergencyManagementDB deployed
+  - A real SQL Server instance reachable as PLANTSAFETY with PlantSafety.CoreDB deployed
+  - Both are LIVE named instances in this dev environment today; no Testcontainers harness
+    exists for either (EmergencyMgt's own Testcontainers usage is scoped to its own
+    EmergencyManagementDB only, not PlantSafety.CoreDB — see EmergencyMgt.IntegrationTests)
+
+steps:
+  - name: Deploy EmergencyMgtIntegration schema fresh
+    run: sqlcmd -S $(PlantSafetyTestInstance) -i <each 00-*.sql through 51-*.sql, filename order>
+  - name: Run EmergencyMgtIntegration.Tests
+    run: dotnet test Enterprise/Integration/Tests/EmergencyMgtIntegration.Tests --logger trx
+  - name: Publish TRX results
+    run: <artifact publish step — no artifact store configured in this repo today>

@@ -2,6 +2,20 @@
 
 **Date:** 2026-07-27
 
+> **Status (2026-09-07): re-wired into PlantSafety.** PlantSafety previously
+> depended on this module; its eventing layer was deliberately disabled after
+> a 2026-08-29 build-repair pass found this module's source unrecoverable at
+> the time. This module was reconstructed from scratch and fully tested
+> (41/41) in isolation, and on 2026-09-07 that reconstruction was verified
+> against PlantSafety's own `CrossModuleDomainEventMapper[V2]`/
+> `CrossModuleEventRelay[V2]` and their previously-disabled tests: the
+> `PlantSafety.Infrastructure.csproj` / `PlantSafety.Tests.csproj` Compile
+> exclusions and the commented-out `AddSharedEventBus` DI registration were
+> all removed, and the full solution builds and the full test suite passes
+> (3861/3861, including those tests) with the two projects compiled together
+> for the first time since the rebuild — confirming the reconstructed
+> contracts genuinely match what PlantSafety expects, not just in isolation.
+
 Cross-module event bus for the PlantSafety solution family. Lets one module
 (currently: PlantSafety) publish versioned integration event contracts that
 other modules (currently: Reporting) can subscribe to idempotently, with

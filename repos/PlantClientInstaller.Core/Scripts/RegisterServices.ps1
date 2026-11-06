@@ -54,16 +54,18 @@ if ($existing) {
 
 Write-Host "Creating service '$ServiceName'..."
 
-New-Service `
-    -Name $ServiceName `
-    -BinaryPathName "`"$ExePath`"" `
-    -DisplayName $DisplayName `
-    -Description $Description `
-    -StartupType Automatic `
-    -Credential (New-Object System.Management.Automation.PSCredential($Account, (ConvertTo-SecureString $Password -AsPlainText -Force)))
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to create service '$ServiceName'."
+try {
+    New-Service `
+        -Name $ServiceName `
+        -BinaryPathName "`"$ExePath`"" `
+        -DisplayName $DisplayName `
+        -Description $Description `
+        -StartupType Automatic `
+        -Credential (New-Object System.Management.Automation.PSCredential($Account, (ConvertTo-SecureString $Password -AsPlainText -Force))) `
+        -ErrorAction Stop | Out-Null
+}
+catch {
+    Write-Host "ERROR: Failed to create service '$ServiceName'. $($_.Exception.Message)"
     exit 1
 }
 
@@ -75,10 +77,11 @@ Write-Host "Service '$ServiceName' created successfully."
 
 Write-Host "Starting service '$ServiceName'..."
 
-Start-Service -Name $ServiceName
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to start service '$ServiceName'."
+try {
+    Start-Service -Name $ServiceName -ErrorAction Stop
+}
+catch {
+    Write-Host "ERROR: Failed to start service '$ServiceName'. $($_.Exception.Message)"
     exit 1
 }
 

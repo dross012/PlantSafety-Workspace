@@ -1,0 +1,14 @@
+# TEMPLATE — NOT EXECUTABLE. See pipeline-template.yml's header for why.
+name: emergencymgt-integration-audit (TEMPLATE)
+
+steps:
+  - name: Compute and record VersionManifest
+    run: sqlcmd -S $(PlantSafetyTargetInstance) -Q "EXEC EmergencyMgtIntegration.usp_VersionManifest_ComputeAndRecord @SchemaVersionLabel=N'$(BuildNumber)'"
+  - name: Sign manifest hash
+    run: <requires a real, ops-managed RSA signing certificate — none exists for PlantSafety in this environment; EmergencyMgt's own signing is DEV-ONLY self-signed, see EmergencyMgt docs/deviations.md DEV-017, and that precedent does not extend to PlantSafety automatically>
+  - name: Snapshot drift check
+    run: sqlcmd -S $(PlantSafetyTargetInstance) -Q "EXEC EmergencyMgtIntegration.usp_DriftCheck_GetUnresolved" ; fail if any row returned
+  - name: Fetch health report
+    run: curl $(PlantSafetyApiBaseUrl)/integration/emergency/health
+  - name: Bundle artifacts
+    run: <no artifact bundling tool exists for PlantSafety today — EmergencyMgt's own tools/New-EmergencyMgtPackage.ps1 is the only precedent in either repo, and it only targets EmergencyMgt's own objects>
