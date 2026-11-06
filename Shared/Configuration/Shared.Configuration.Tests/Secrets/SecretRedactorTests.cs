@@ -40,7 +40,11 @@ public sealed class SecretRedactorTests
     [InlineData("", "")]
     [InlineData("ab", "**")]
     [InlineData("abcd", "****")]
-    [InlineData("sk_live_abcdef123456", "s*******************6")]
+    // 20-char input -> 20-char mask: first char + 18 stars + last char. This expectation
+    // previously carried 19 stars, making the mask one character LONGER than the input, which
+    // a length-preserving masker cannot produce. Every other case above is length-preserving,
+    // so the test data was wrong here, not SecretRedactor.Mask.
+    [InlineData("sk_live_abcdef123456", "s******************6")]
     public void Mask_KeepsOnlyFirstAndLastCharacterForLongerValues(string input, string expected)
     {
         SecretRedactor.Mask(input).Should().Be(expected);

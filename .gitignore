@@ -54,3 +54,15 @@ Thumbs.db
 *.bak
 *.swp
 *~
+
+# Secrets / private key material - never commit, store in a secret vault instead.
+# PlantSafety_AlwaysEncrypted_CMK.pfx (Phase9-Security) is the concrete case that
+# prompted this: an Always Encrypted Column Master Key backup, i.e. the private key
+# for decrypting encrypted production columns. The sibling .cer (public certificate)
+# is fine to keep tracked.
+*.pfx
+*.p12
+*.key
+!**/*.publickey
+*.env
+.env.*
