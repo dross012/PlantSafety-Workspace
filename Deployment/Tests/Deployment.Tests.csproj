@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Deployment.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.v3.runner.console" Version="3.2.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Deployment.csproj" />
+    <ProjectReference Include="..\..\Shared\Deterministic\Shared.Deterministic.Abstractions\Shared.Deterministic.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\Authorization\Shared.Authorization.Abstractions\Shared.Authorization.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\Authorization\Shared.Authorization.Infrastructure\Shared.Authorization.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

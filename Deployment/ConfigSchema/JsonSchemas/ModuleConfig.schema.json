@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plantsafety.internal/schemas/deployment/ModuleConfig.schema.json",
+  "title": "ModuleConfig",
+  "description": "Phase 18. Mirrors Deployment.ConfigSchema.Contracts.ModuleConfig field-for-field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "moduleId", "moduleName", "state", "featureFlags", "dependsOnModuleIds"],
+  "properties": {
+    "metadata": { "$ref": "DeploymentContractMetadata.schema.json" },
+    "moduleId": { "type": "string", "minLength": 1 },
+    "moduleName": { "type": "string", "minLength": 1 },
+    "state": { "type": "string", "enum": ["Enabled", "Disabled", "Preview"] },
+    "featureFlags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["flagId", "isEnabled", "description"],
+        "properties": {
+          "flagId": { "type": "string", "minLength": 1 },
+          "isEnabled": { "type": "boolean" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "dependsOnModuleIds": { "type": "array", "items": { "type": "string" } }
+  }
+}

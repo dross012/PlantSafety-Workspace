@@ -78,6 +78,31 @@ public static class LogCategoryClassifier
             return LogCategory.Routing;
         }
 
+        if (normalized == "scheduling")
+        {
+            return LogCategory.Scheduling;
+        }
+
+        if (normalized is "predictivesafety" or "predictive-safety" or "predictive")
+        {
+            return LogCategory.PredictiveSafety;
+        }
+
+        if (normalized is "safetygraph" or "safety-graph" or "graph")
+        {
+            return LogCategory.SafetyGraph;
+        }
+
+        if (normalized is "simulation")
+        {
+            return LogCategory.Simulation;
+        }
+
+        if (normalized is "deployment")
+        {
+            return LogCategory.Deployment;
+        }
+
         if (AiEngineModules.Contains(normalized))
         {
             return LogCategory.AiEngine;

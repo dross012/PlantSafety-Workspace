@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plantsafety.internal/schemas/deployment/RoleConfig.schema.json",
+  "title": "RoleConfig",
+  "description": "Phase 18. Mirrors Deployment.ConfigSchema.Contracts.RoleConfig field-for-field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "roleId", "roleName", "inheritsFromRoleIds", "grantedPermissions", "requiresMfa"],
+  "properties": {
+    "metadata": { "$ref": "DeploymentContractMetadata.schema.json" },
+    "roleId": { "type": "string", "minLength": 1 },
+    "roleName": { "type": "string", "minLength": 1 },
+    "inheritsFromRoleIds": { "type": "array", "items": { "type": "string" } },
+    "grantedPermissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["ViewDeployments", "ApproveDeployments", "ExecuteDeployments", "ManageTenants", "ManageConfig", "ManageSecrets"]
+      }
+    },
+    "requiresMfa": { "type": "boolean" }
+  }
+}

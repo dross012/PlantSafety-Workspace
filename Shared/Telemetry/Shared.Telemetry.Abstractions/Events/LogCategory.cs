@@ -40,6 +40,21 @@ public enum LogCategory
     /// <summary>Shared.SafetyData's Eventing &amp; Orchestration routing subsystem (Phase 13).</summary>
     Routing,
 
+    /// <summary>Shared.Scheduling's deterministic rule/due-time engine and orchestration (Phase 14).</summary>
+    Scheduling,
+
+    /// <summary>Shared.PredictiveSafety's deterministic, ML-free predictive inference engines (Phase 15).</summary>
+    PredictiveSafety,
+
+    /// <summary>Shared.SafetyGraph's deterministic, unified cross-module graph model (Phase 16).</summary>
+    SafetyGraph,
+
+    /// <summary>Shared.Simulation's deterministic, ML-free replay/scenario engine (Phase 17).</summary>
+    Simulation,
+
+    /// <summary>Deployment's deterministic multi-tenant deployment, config registry, and rollout orchestration (Phase 18).</summary>
+    Deployment,
+
     /// <summary>Any AI.* engine (Path E).</summary>
     AiEngine,
 

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plantsafety.internal/schemas/deployment/DeploymentContractMetadata.schema.json",
+  "title": "DeploymentContractMetadata",
+  "description": "Phase 18. The unified schema envelope every Deployment contract carries -- mirrors Deployment.ConfigSchema.Contracts.DeploymentContractMetadata field-for-field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "tenantId", "correlationId", "issuedAtUtc"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "correlationId": { "type": "string", "minLength": 1 },
+    "issuedAtUtc": { "type": "string", "format": "date-time" }
+  }
+}

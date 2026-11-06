@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Deployment.Tools.SnapshotDrill</RootNamespace>
+    <AssemblyName>SnapshotDrill</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Deployment.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Telemetry\Shared.Telemetry.Abstractions\Shared.Telemetry.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

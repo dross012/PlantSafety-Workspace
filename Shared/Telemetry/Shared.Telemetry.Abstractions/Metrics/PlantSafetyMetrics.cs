@@ -123,4 +123,97 @@ public static class PlantSafetyMetrics
     /// <summary>Total EventRoutingEngine.Route invocations, tagged by event code.</summary>
     public static readonly Counter<long> RoutingDecisionsComputed = Meter.CreateCounter<long>(
         "plantsafety.routing_decisions_computed", unit: "{decision}", description: "Total EventRoutingEngine.Route invocations, tagged by event code.");
+
+    // ---- Phase 14 (Scheduling Modernization): SchedulingScheduleCalculator.Calculate invocations
+    //      and SchedulingDueTimeEvaluator.EvaluateStatus rollups (Shared.Scheduling, new this
+    //      phase -- deterministic rule engine + due-time engine, no ML/probabilistic inference).
+    //      Same Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total SchedulingScheduleCalculator.Calculate invocations, tagged by whether immediate scheduling was required.</summary>
+    public static readonly Counter<long> SchedulingSchedulesComputed = Meter.CreateCounter<long>(
+        "plantsafety.scheduling_schedules_computed", unit: "{schedule}", description: "Total SchedulingScheduleCalculator.Calculate invocations, tagged by whether immediate scheduling was required.");
+
+    /// <summary>Total SchedulingDueTimeEngine.CalculateDueTimes due-time evaluations, tagged by resulting status.</summary>
+    public static readonly Counter<long> SchedulingDueTimeEvaluationsPerformed = Meter.CreateCounter<long>(
+        "plantsafety.scheduling_due_time_evaluations_performed", unit: "{evaluation}", description: "Total due-time status evaluations performed, tagged by resulting status.");
+
+    /// <summary>Total SchedulingScheduleCalculator.Calculate results that required immediate scheduling (worst-case-wins escalation).</summary>
+    public static readonly Counter<long> SchedulingImmediateRequiredCount = Meter.CreateCounter<long>(
+        "plantsafety.scheduling_immediate_required_count", unit: "{schedule}", description: "Total scheduling evaluations that required immediate scheduling.");
+
+    /// <summary>Total Scheduling governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> SchedulingGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.scheduling_governance_violations_detected", unit: "{violation}", description: "Total Scheduling-specific governance violations detected, tagged by rule name.");
+
+    // ---- Phase 15 (Predictive Safety Engine): deterministic, ML-free prediction evaluations
+    //      across the Hazard/Maintenance/Routing/Scheduling/Audit domains (Shared.PredictiveSafety,
+    //      new this phase). Same Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total predictive evaluations computed, tagged by domain (Hazard/Maintenance/Routing/Scheduling/Audit).</summary>
+    public static readonly Counter<long> PredictiveEvaluationsComputed = Meter.CreateCounter<long>(
+        "plantsafety.predictive_evaluations_computed", unit: "{evaluation}", description: "Total predictive evaluations computed, tagged by domain.");
+
+    /// <summary>Total predictive evaluations that required immediate escalation, tagged by domain.</summary>
+    public static readonly Counter<long> PredictiveEscalationsRequired = Meter.CreateCounter<long>(
+        "plantsafety.predictive_escalations_required", unit: "{escalation}", description: "Total predictive evaluations that required immediate escalation, tagged by domain.");
+
+    /// <summary>Total Predictive Safety governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> PredictiveGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.predictive_governance_violations_detected", unit: "{violation}", description: "Total Predictive Safety governance violations detected, tagged by rule name.");
+
+    // ---- Phase 16 (Safety Graph Model): deterministic graph construction, traversal, and
+    //      inference (Shared.SafetyGraph, new this phase). Same Meter, same pattern as every
+    //      instrument above. ----
+
+    /// <summary>Total SafetyGraph construction/assembly operations, tagged by outcome.</summary>
+    public static readonly Counter<long> SafetyGraphsConstructed = Meter.CreateCounter<long>(
+        "plantsafety.safety_graphs_constructed", unit: "{graph}", description: "Total SafetyGraph construction operations, tagged by outcome.");
+
+    /// <summary>Total SafetyGraph traversal operations performed, tagged by traversal kind (DepthFirst/BreadthFirst/PathEnumeration/CycleDetection/Reachability/DependencyResolution).</summary>
+    public static readonly Counter<long> SafetyGraphTraversalsPerformed = Meter.CreateCounter<long>(
+        "plantsafety.safety_graph_traversals_performed", unit: "{traversal}", description: "Total SafetyGraph traversal operations performed, tagged by traversal kind.");
+
+    /// <summary>Total SafetyGraph inference evaluations computed, tagged by whether graph-wide escalation was required.</summary>
+    public static readonly Counter<long> SafetyGraphInferencesComputed = Meter.CreateCounter<long>(
+        "plantsafety.safety_graph_inferences_computed", unit: "{inference}", description: "Total SafetyGraph inference evaluations computed, tagged by escalation outcome.");
+
+    /// <summary>Total Safety Graph governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> SafetyGraphGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.safety_graph_governance_violations_detected", unit: "{violation}", description: "Total Safety Graph governance violations detected, tagged by rule name.");
+
+    // ---- Phase 17 (Simulation Engine): deterministic scenario replay and evaluation
+    //      (Shared.Simulation, new this phase). Same Meter, same pattern as every instrument
+    //      above. ----
+
+    /// <summary>Total scenario replays performed, tagged by validity outcome.</summary>
+    public static readonly Counter<long> SimulationReplaysPerformed = Meter.CreateCounter<long>(
+        "plantsafety.simulation_replays_performed", unit: "{replay}", description: "Total scenario replays performed, tagged by validity outcome.");
+
+    /// <summary>Total scenario evaluations computed, tagged by escalation outcome.</summary>
+    public static readonly Counter<long> SimulationScenariosEvaluated = Meter.CreateCounter<long>(
+        "plantsafety.simulation_scenarios_evaluated", unit: "{scenario}", description: "Total scenario evaluations computed, tagged by escalation outcome.");
+
+    /// <summary>Total Simulation governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> SimulationGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.simulation_governance_violations_detected", unit: "{violation}", description: "Total Simulation governance violations detected, tagged by rule name.");
+
+    // ---- Phase 18 (Deployment Modernization): deterministic deployment orchestration, config
+    //      registry, drift reconciliation, and governance (Deployment/, new this phase). Same
+    //      Meter, same pattern as every instrument above. ----
+
+    /// <summary>Total deployment steps executed by DeploymentEngine, tagged by outcome.</summary>
+    public static readonly Counter<long> DeploymentStepsExecuted = Meter.CreateCounter<long>(
+        "plantsafety.deployment_steps_executed", unit: "{step}", description: "Total deployment steps executed, tagged by outcome.");
+
+    /// <summary>Total config registry snapshots published, tagged by tenant.</summary>
+    public static readonly Counter<long> ConfigSnapshotsPublished = Meter.CreateCounter<long>(
+        "plantsafety.config_snapshots_published", unit: "{snapshot}", description: "Total config registry snapshots published, tagged by tenant.");
+
+    /// <summary>Total drift reconciliation passes performed, tagged by whether drift was found.</summary>
+    public static readonly Counter<long> DriftReconciliationsPerformed = Meter.CreateCounter<long>(
+        "plantsafety.drift_reconciliations_performed", unit: "{reconciliation}", description: "Total drift reconciliation passes performed, tagged by whether drift was found.");
+
+    /// <summary>Total Deployment governance violations detected, tagged by rule name.</summary>
+    public static readonly Counter<long> DeploymentGovernanceViolationsDetected = Meter.CreateCounter<long>(
+        "plantsafety.deployment_governance_violations_detected", unit: "{violation}", description: "Total Deployment governance violations detected, tagged by rule name.");
 }

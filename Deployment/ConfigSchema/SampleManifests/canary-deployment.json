@@ -1,0 +1,10 @@
+{
+  "metadata": { "version": 1, "tenantId": "regulated-plant-9", "correlationId": "deploy-regulated-plant-9-2026-08-10", "issuedAtUtc": "2026-08-10T00:00:00Z" },
+  "deploymentId": "deploy-regulated-plant-9-2026-08-10",
+  "environmentName": "production",
+  "strategy": "Canary",
+  "moduleIds": ["facility", "scheduling"],
+  "canaryStagePercentages": [10, 25, 50, 100],
+  "healthCheckTimeoutSeconds": 60,
+  "maxRetries": 3
+}

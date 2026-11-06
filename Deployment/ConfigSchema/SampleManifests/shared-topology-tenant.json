@@ -1,0 +1,10 @@
+{
+  "metadata": { "version": 1, "tenantId": "acme-plant-1", "correlationId": "onboarding-acme-plant-1", "issuedAtUtc": "2026-08-10T00:00:00Z" },
+  "tenantId": "acme-plant-1",
+  "tenantName": "Acme Plant 1",
+  "topology": "Shared",
+  "status": "Active",
+  "resourceQuota": { "maxMachineGroups": 25, "maxConcurrentDeployments": 3, "maxStorageBytes": 53687091200 },
+  "assignedModuleIds": ["facility", "scheduling", "predictive-safety"],
+  "assignedRoleIds": ["deployment-viewer", "deployment-operator"]
+}

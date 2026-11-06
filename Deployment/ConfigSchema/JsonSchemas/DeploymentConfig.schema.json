@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plantsafety.internal/schemas/deployment/DeploymentConfig.schema.json",
+  "title": "DeploymentConfig",
+  "description": "Phase 18 (Deployment Modernization). Mirrors Deployment.ConfigSchema.Contracts.DeploymentConfig field-for-field, in declared field order.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "deploymentId", "environmentName", "strategy", "moduleIds", "canaryStagePercentages", "healthCheckTimeoutSeconds", "maxRetries"],
+  "properties": {
+    "metadata": { "$ref": "DeploymentContractMetadata.schema.json" },
+    "deploymentId": { "type": "string", "minLength": 1 },
+    "environmentName": { "type": "string", "minLength": 1 },
+    "strategy": { "type": "string", "enum": ["BlueGreen", "Canary"] },
+    "moduleIds": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "canaryStagePercentages": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 100 } },
+    "healthCheckTimeoutSeconds": { "type": "integer", "minimum": 1 },
+    "maxRetries": { "type": "integer", "minimum": 0 }
+  }
+}

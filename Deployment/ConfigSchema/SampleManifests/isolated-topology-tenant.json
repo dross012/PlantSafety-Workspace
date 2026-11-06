@@ -1,0 +1,10 @@
+{
+  "metadata": { "version": 1, "tenantId": "regulated-plant-9", "correlationId": "onboarding-regulated-plant-9", "issuedAtUtc": "2026-08-10T00:00:00Z" },
+  "tenantId": "regulated-plant-9",
+  "tenantName": "Regulated Plant 9",
+  "topology": "Isolated",
+  "status": "Active",
+  "resourceQuota": { "maxMachineGroups": 60, "maxConcurrentDeployments": 5, "maxStorageBytes": 214748364800 },
+  "assignedModuleIds": ["facility", "scheduling", "predictive-safety", "safety-graph", "simulation"],
+  "assignedRoleIds": ["deployment-viewer", "deployment-operator", "deployment-admin"]
+}
